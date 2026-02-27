@@ -758,12 +758,14 @@ button:disabled {
     max-width: 100%;
     height: calc(100svh - 62px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     display: grid;
-    grid-template-rows: minmax(16px, auto) minmax(0, 1fr) minmax(16px, auto) minmax(84px, auto);
+    grid-template-rows: minmax(16px, auto) minmax(0, 1fr);
     align-content: stretch;
     align-items: stretch;
     justify-items: center;
     gap: 4px;
     overflow: hidden;
+    padding-top: calc(74px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(98px + env(safe-area-inset-bottom, 0px));
   }
 
   body.landscape-game-active .round-title {
@@ -824,10 +826,14 @@ button:disabled {
 
   body.landscape-game-active .ai-seat-top {
     position: fixed;
-    top: calc(6px + env(safe-area-inset-top, 0px));
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 12;
+    top: calc(2px + env(safe-area-inset-top, 0px));
+    left: 0;
+    right: 0;
+    transform: none;
+    z-index: 14;
+    width: 100%;
+    gap: 3px;
+    pointer-events: none;
   }
 
   body.landscape-game-active .ai-seat-left {
@@ -853,6 +859,38 @@ button:disabled {
     margin: 0;
   }
 
+  body.landscape-game-active .ai-seat-top .ai-fan-stack {
+    position: static;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  body.landscape-game-active .ai-seat-top .ai-fan-stack .fan-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    width: 44px;
+    height: 64px;
+    transform: none !important;
+  }
+
+  body.landscape-game-active .ai-seat-top .ai-fan-stack .count {
+    position: static;
+    transform: none;
+    margin-left: 2px;
+    font-size: 14px;
+    line-height: 1;
+    align-self: flex-end;
+    padding-bottom: 3px;
+  }
+
   body.landscape-game-active .ai-fan-stack {
     width: 90px;
     height: 80px;
@@ -872,19 +910,33 @@ button:disabled {
   }
 
   body.landscape-game-active .player-title {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    z-index: 14;
     font-size: 0.85rem;
     margin: 0;
     line-height: 1;
+    text-align: center;
   }
 
   body.landscape-game-active .hand {
-    width: min(96vw, 880px);
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    z-index: 14;
+    width: min(98vw, 900px);
     justify-content: center;
     gap: 6px;
     min-height: 84px;
     align-items: flex-end;
     padding: 2px 2px calc(4px + env(safe-area-inset-bottom, 0px));
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    white-space: nowrap;
   }
 
   body.landscape-game-active .hand .card {

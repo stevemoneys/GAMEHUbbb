@@ -3,6 +3,8 @@ import { generatePaths, PATHS, HOME_SLOTS, ENTRY_CELLS } from "./board.js";
 const tokenEls = {};
 let isMoving = false;
 let gameOver = false;
+let hasRolledThisTurn = false;
+let waitingForTokenMove = false;
 const LUDO_RESUME_KEY = "ludo_saved_match_v1";
 
 const boardEl = document.querySelector(".ludo-board");
@@ -401,6 +403,8 @@ function maybeRestoreSavedGame() {
   state.diceValue = null;
   gameOver = false;
   isMoving = false;
+  hasRolledThisTurn = false;
+  waitingForTokenMove = false;
   clearHighlights();
 }
 
@@ -457,6 +461,7 @@ state.players.forEach(player => {
       if (activePlayer.isAI) return;
       if (player.color !== activePlayer.color) return;
       if (state.diceValue === null) return;
+      if (!waitingForTokenMove) return;
       if (!canTokenMove(state.currentPlayer, i, state.diceValue)) return;
 
       if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return;
@@ -851,7 +856,14 @@ function setActiveDieGlow(color) {
   Object.keys(diceEls).forEach(c => {
     const panel = diceEls[c].closest(".dice-panel");
     if (!panel) return;
-    panel.classList.toggle("dice-active", c === color);
+    const isActiveColor = c === color;
+    const canGlow =
+      isActiveColor &&
+      !isMoving &&
+      state.diceValue === null &&
+      !hasRolledThisTurn &&
+      !waitingForTokenMove;
+    panel.classList.toggle("dice-active", canGlow);
   });
 }
 
@@ -874,11 +886,16 @@ function resetDiceInteractivity() {
     const die = diceEls[color];
     const panel = dicePanelsByColor[color];
     if (!die) return;
-    const isActive = color === activeColor;
-    die.style.pointerEvents = isActive ? "auto" : "none";
+    const canRoll =
+      color === activeColor &&
+      !isMoving &&
+      state.diceValue === null &&
+      !hasRolledThisTurn &&
+      !waitingForTokenMove;
+    die.style.pointerEvents = canRoll ? "auto" : "none";
     if (panel) {
-      panel.style.pointerEvents = isActive ? "auto" : "none";
-      panel.classList.toggle("clickable", isActive);
+      panel.style.pointerEvents = canRoll ? "auto" : "none";
+      panel.classList.toggle("clickable", canRoll);
     }
   });
   setActiveDieGlow(activeColor);
@@ -1131,6 +1148,8 @@ function nextTurn(extraTurn = false) {
   }
 
   state.diceValue = null;
+  hasRolledThisTurn = false;
+  waitingForTokenMove = false;
   isMoving = false;
   clearHighlights();
   resetDiceInteractivity();
@@ -1145,13 +1164,17 @@ function handleTurn() {
   const playerIndex = state.currentPlayer;
   if (state.players[playerIndex].isAI) return;
   if (state.diceValue === null) {
+    waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
     setTimeout(() => nextTurn(false), 250);
     return;
   }
 
   const movesCount = highlightMoves(playerIndex, state.diceValue);
+  waitingForTokenMove = movesCount > 0;
+  resetDiceInteractivity();
   if (movesCount === 0) {
+    waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
     setTimeout(() => nextTurn(false), 400);
   }
@@ -1161,12 +1184,15 @@ function rollDice() {
   if (gameOver) return;
   if (isMoving) return;
   if (state.players[state.currentPlayer].isAI) return;
+  if (state.diceValue !== null) return;
+  if (hasRolledThisTurn) return;
+  if (waitingForTokenMove) return;
 
+  hasRolledThisTurn = true;
   isMoving = true;
   const color = state.players[state.currentPlayer].color;
   animateDiceRoll(color, () => {
     isMoving = false;
-    resetDiceInteractivity();
     handleTurn();
   });
 }
@@ -1226,6 +1252,7 @@ async function executeMove(move) {
   try {
     if (gameOver) return;
     isMoving = true;
+    waitingForTokenMove = false;
     if (!move) {
       isMoving = false;
       nextTurn(false);
