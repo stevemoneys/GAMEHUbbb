@@ -3258,14 +3258,20 @@ function initializeHome() {
       saveState();
     });
   }
+  const goBackFromGameScreen = () => {
+    saveMatchSnapshot();
+    controller.gameOver = true;
+    controller.aiBusy = false;
+    closeResultModal();
+    showScreen("home");
+  };
+
   if (gameBackButton) {
-    gameBackButton.addEventListener("click", () => {
-      saveMatchSnapshot();
-      controller.gameOver = true;
-      controller.aiBusy = false;
-      closeResultModal();
-      showScreen("home");
-    });
+    gameBackButton.onclick = goBackFromGameScreen;
+    gameBackButton.addEventListener("touchend", (event) => {
+      event.preventDefault();
+      goBackFromGameScreen();
+    }, { passive: false });
   }
   if (fxUndoButton) fxUndoButton.addEventListener("click", () => activateEffect("undo"));
   if (fxHintR1Button) fxHintR1Button.addEventListener("click", () => activateEffect("hint_r1"));

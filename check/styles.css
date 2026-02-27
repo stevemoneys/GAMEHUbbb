@@ -1653,6 +1653,8 @@ body.landscape-game-active {
   top: 8px;
   left: 8px;
   z-index: 40;
+  pointer-events: auto;
+  touch-action: manipulation;
   width: 52px;
   height: 52px;
   border-radius: 999px;

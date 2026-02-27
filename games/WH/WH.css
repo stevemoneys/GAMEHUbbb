@@ -301,6 +301,24 @@ button:disabled {
   background: #fff;
   color: #4a2d1a;
   border: 2px solid #e5d2c2;
+  position: relative;
+}
+
+.chosen-shape-tag {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  padding: 4px 8px;
+  z-index: 4;
 }
 
 .hand {
@@ -557,6 +575,30 @@ button:disabled {
   padding: 14px;
 }
 
+#modal.side-modal {
+  inset: auto;
+  top: calc(54px + env(safe-area-inset-top, 0px));
+  right: 8px;
+  left: auto;
+  bottom: auto;
+  display: block;
+  background: transparent;
+  padding: 0;
+  pointer-events: none;
+}
+
+#modal.side-modal #modal-content {
+  width: min(40vw, 240px);
+  max-height: min(72svh, 420px);
+  pointer-events: auto;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+#modal.no-backdrop {
+  background: transparent;
+}
+
 .resume-modal {
   position: fixed;
   inset: 0;
@@ -639,6 +681,11 @@ button:disabled {
   z-index: 9999;
   transition: transform 1.2s ease, opacity 1.2s ease;
   pointer-events: none;
+}
+
+.card.flying.play-flight {
+  transition: transform 540ms cubic-bezier(0.2, 0.75, 0.2, 1), opacity 540ms ease;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.5);
 }
 
 @media (min-width: 900px) {
@@ -993,5 +1040,15 @@ button:disabled {
 
   body.landscape-game-active .hand .card .shape {
     font-size: 22px;
+  }
+
+  body.landscape-game-active #modal.side-modal {
+    top: calc(40px + env(safe-area-inset-top, 0px));
+    right: 6px;
+  }
+
+  body.landscape-game-active #modal.side-modal #modal-content {
+    width: min(44vw, 220px);
+    max-height: min(62svh, 360px);
   }
 }

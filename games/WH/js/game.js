@@ -32,6 +32,7 @@ let skipAiTurns = 0;
 let skipAllAIs = false;
 let skipPlayerTurns = 0;
 let playAnimationLocked = false;
+let aiTurnTimer = null;
 
 let bgIndex = 0;
 let usingImages = false;
@@ -85,15 +86,21 @@ function updateBackgroundMusic() {
   bgMusic.play().catch(() => {});
 }
 
-function showModal(title, bodyHTML) {
+function showModal(title, bodyHTML, options = {}) {
   const modal = document.getElementById("modal");
+  if (!modal) return;
+  modal.classList.toggle("side-modal", Boolean(options.side));
+  modal.classList.toggle("no-backdrop", Boolean(options.noBackdrop));
   document.getElementById("modal-title").innerText = title;
   document.getElementById("modal-body").innerHTML = bodyHTML;
   modal.classList.remove("hidden");
 }
 
 function hideModal() {
-  document.getElementById("modal").classList.add("hidden");
+  const modal = document.getElementById("modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.classList.remove("side-modal", "no-backdrop");
 }
 
 function ensureRotateLockOverlay() {
@@ -208,6 +215,7 @@ function applySavedMatch(saved) {
   document.getElementById("hubBackBtn")?.classList.add("hidden");
 
   hideModal();
+  clearAiTurnSchedule();
   requestLandscapeGameplay();
   render();
   updateBackgroundMusic();
@@ -217,11 +225,7 @@ function applySavedMatch(saved) {
   }
 
   if (!state.gameOver && state.turn === "ai") {
-    if (state.mode === "quick") {
-      setTimeout(aiTurn, ANIMATION_SPEED);
-    } else {
-      setTimeout(aiGroupTurn, ANIMATION_SPEED);
-    }
+    scheduleAiTurn(ANIMATION_SPEED);
   }
 
   return true;
@@ -321,6 +325,25 @@ function animatePlayCard(sourceRef, card) {
   });
 }
 
+function clearAiTurnSchedule() {
+  if (!aiTurnTimer) return;
+  clearTimeout(aiTurnTimer);
+  aiTurnTimer = null;
+}
+
+function scheduleAiTurn(delay = ANIMATION_SPEED) {
+  clearAiTurnSchedule();
+  aiTurnTimer = setTimeout(() => {
+    aiTurnTimer = null;
+    if (state.gameOver || state.turn !== "ai") return;
+    if (state.mode === "quick") {
+      aiTurn();
+      return;
+    }
+    aiGroupTurn();
+  }, delay);
+}
+
 function getRoundLabel() {
   if (state.mode === "quick") {
     return `Level ${state.quickLevel}`;
@@ -391,6 +414,7 @@ export function initGame(level = 1) {
 
   hideModal();
   clearSavedMatch();
+  clearAiTurnSchedule();
   requestLandscapeGameplay();
   render();
   updateBackgroundMusic();
@@ -433,7 +457,7 @@ function renderAiArea() {
     const aiSide = state.ais[1];
     return `
       <div class="ai-table ai-table-tournament">
-        <div class="ai-seat ai-seat-bottom">
+        <div class="ai-seat ai-seat-top">
           <p class="ai-label">AI 1</p>
           ${renderAiFan(aiBottom?.hand.length || 0, "ai-stack-0", "right")}
         </div>
@@ -480,7 +504,10 @@ function render() {
         <div class="center-zone">
           <div class="board">
             <div class="pile market" id="market"></div>
-            <div class="pile discard">${display(state.discard[state.discard.length - 1])}</div>
+            <div class="pile discard">
+              ${display(state.discard[state.discard.length - 1])}
+              ${state.chosenShape ? `<div class="chosen-shape-tag">${state.chosenShape} ${getShapeName(state.chosenShape)}</div>` : ""}
+            </div>
           </div>
         </div>
       </div>
@@ -593,6 +620,14 @@ function applySpecial(card, target) {
   }
 }
 
+function clearChosenShapeIfSatisfied(card) {
+  if (!state.chosenShape) return;
+  if (!card || card.shape === "WHOT") return;
+  if (card.shape === state.chosenShape) {
+    state.chosenShape = null;
+  }
+}
+
 async function playCard(index, el) {
   if (state.gameOver || state.turn !== "player" || playAnimationLocked) return;
 
@@ -608,7 +643,7 @@ async function playCard(index, el) {
     state.player.splice(index, 1);
     state.discard.push(card);
     playSound("play");
-    state.chosenShape = null;
+    clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
       playSound("whot");
@@ -623,12 +658,7 @@ async function playCard(index, el) {
     if (checkWinLose()) return;
 
     state.turn = "ai";
-
-    if (state.mode === "quick") {
-      setTimeout(aiTurn, ANIMATION_SPEED);
-    } else {
-      setTimeout(aiGroupTurn, ANIMATION_SPEED);
-    }
+    scheduleAiTurn(ANIMATION_SPEED);
   } finally {
     playAnimationLocked = false;
   }
@@ -649,12 +679,7 @@ function drawFromMarket() {
   state.turn = "ai";
   render();
   if (checkWinLose()) return;
-
-  if (state.mode === "quick") {
-    setTimeout(aiTurn, ANIMATION_SPEED);
-  } else {
-    setTimeout(aiGroupTurn, ANIMATION_SPEED);
-  }
+  scheduleAiTurn(ANIMATION_SPEED);
 }
 
 function aiChooseCard(aiHand) {
@@ -686,6 +711,7 @@ async function aiTurn() {
     await animatePlayCard("#ai-stack-0", card);
     state.ai.splice(idx, 1);
     state.discard.push(card);
+    clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
       playSound("whot");
@@ -709,7 +735,7 @@ async function aiTurn() {
   if (skipPlayerTurns > 0) {
     skipPlayerTurns -= 1;
     state.turn = "ai";
-    setTimeout(aiTurn, ANIMATION_SPEED);
+    scheduleAiTurn(ANIMATION_SPEED);
     return;
   }
 
@@ -717,12 +743,14 @@ async function aiTurn() {
 }
 
 function finishAiRound() {
-  state.currentAIIndex = 0;
+  const total = Math.max(1, state.ais.length);
+  state.currentAIIndex = (state.currentAIIndex + 1) % total;
 
   if (skipPlayerTurns > 0) {
     skipPlayerTurns -= 1;
     state.turn = "ai";
-    setTimeout(aiGroupTurn, ANIMATION_SPEED);
+    render();
+    scheduleAiTurn(Math.floor(ANIMATION_SPEED * 0.8));
     return;
   }
 
@@ -739,19 +767,17 @@ async function aiGroupTurn() {
     return;
   }
 
-  if (state.currentAIIndex >= state.ais.length) {
+  if (skipAiTurns > 0) {
+    skipAiTurns -= 1;
     finishAiRound();
     return;
   }
 
-  if (skipAiTurns > 0) {
-    skipAiTurns -= 1;
-    state.currentAIIndex += 1;
-    setTimeout(aiGroupTurn, Math.floor(ANIMATION_SPEED * 0.5));
+  const ai = state.ais[state.currentAIIndex];
+  if (!ai) {
+    finishAiRound();
     return;
   }
-
-  const ai = state.ais[state.currentAIIndex];
   const idx = aiChooseCard(ai.hand);
 
   if (idx !== -1) {
@@ -759,6 +785,7 @@ async function aiGroupTurn() {
     await animatePlayCard(`#ai-stack-${state.currentAIIndex}`, card);
     ai.hand.splice(idx, 1);
     state.discard.push(card);
+    clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
       aiWhotChoice();
@@ -777,14 +804,7 @@ async function aiGroupTurn() {
 
   render();
   if (checkWinLose()) return;
-
-  state.currentAIIndex += 1;
-
-  if (state.currentAIIndex >= state.ais.length) {
-    finishAiRound();
-  } else {
-    setTimeout(aiGroupTurn, ANIMATION_SPEED);
-  }
+  finishAiRound();
 }
 
 function checkWinLose() {
@@ -870,11 +890,7 @@ function getShapeName(shape) {
 function aiWhotChoice() {
   const choice = SHAPES[Math.floor(Math.random() * SHAPES.length)];
   state.chosenShape = choice;
-
-  showModal(
-    "AI played WHOT",
-    `<p>AI chooses <strong>${getShapeName(choice)}</strong>.</p><button onclick="hideModal()">Continue</button>`
-  );
+  showToast(`AI chooses ${getShapeName(choice)}`);
 }
 
 function shuffle(arr) {
@@ -921,6 +937,7 @@ function startBackgroundImages() {
 
 window.hideModal = hideModal;
 window.goHome = function goHome() {
+  clearAiTurnSchedule();
   hideModal();
   releaseLandscapeGameplay();
   document.getElementById("game").classList.add("hidden");
@@ -931,12 +948,14 @@ window.goHome = function goHome() {
 };
 
 window.playAgain = function playAgain() {
+  clearAiTurnSchedule();
   hideModal();
   clearSavedMatch();
   initGame(currentLevel);
 };
 
 window.nextLevel = function nextLevel() {
+  clearAiTurnSchedule();
   hideModal();
   clearSavedMatch();
 
@@ -959,7 +978,8 @@ window.nextLevel = function nextLevel() {
 window.showWhotChoice = function showWhotChoice() {
   showModal(
     "WHOT - Choose Shape",
-    SHAPES.map((shape) => `<button onclick="chooseWhot('${shape}')">${shape} ${getShapeName(shape)}</button>`).join("")
+    SHAPES.map((shape) => `<button onclick="chooseWhot('${shape}')">${shape} ${getShapeName(shape)}</button>`).join(""),
+    { side: true, noBackdrop: true }
   );
 };
 
@@ -968,15 +988,11 @@ window.chooseWhot = function chooseWhot(shape) {
   hideModal();
   state.turn = "ai";
   render();
-
-  if (state.mode === "quick") {
-    setTimeout(aiTurn, ANIMATION_SPEED);
-  } else {
-    setTimeout(aiGroupTurn, ANIMATION_SPEED);
-  }
+  scheduleAiTurn(ANIMATION_SPEED);
 };
 
 window.goBack = function goBack() {
+  clearAiTurnSchedule();
   hideModal();
   saveMatchSnapshot();
   releaseLandscapeGameplay();
