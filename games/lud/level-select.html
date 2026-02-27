@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Select Level</title>
+  <link rel="stylesheet" href="level-select.css" />
+</head>
+<body>
+  <main class="level-wrap">
+    <section class="level-card">
+      <header class="level-head">
+        <h1>Select Level</h1>
+        <a class="close-btn" href="vs-computer.html" aria-label="Back">X</a>
+      </header>
+
+      <p class="sub">Finish a level to unlock the next one.</p>
+
+      <div class="level-grid" id="level-grid"></div>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const players = params.get("players") || "4";
+    const human = (params.get("human") || "red").toLowerCase();
+    const TOTAL_LEVELS = 60;
+    const storageKey = "ludo_unlocked_level";
+
+    let unlocked = Number(localStorage.getItem(storageKey) || "1");
+    if (!Number.isFinite(unlocked) || unlocked < 1) unlocked = 1;
+    unlocked = Math.min(TOTAL_LEVELS, unlocked);
+    localStorage.setItem(storageKey, String(unlocked));
+
+    const grid = document.getElementById("level-grid");
+
+    for (let level = 1; level <= TOTAL_LEVELS; level++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "level-btn";
+      btn.textContent = `Level ${level}`;
+
+      const isUnlocked = level <= unlocked;
+      if (!isUnlocked) {
+        btn.disabled = true;
+        btn.classList.add("locked");
+      }
+
+      btn.addEventListener("click", () => {
+        if (!isUnlocked) return;
+        const query = new URLSearchParams({
+          mode: "vs-computer",
+          players,
+          human,
+          level: String(level)
+        });
+        window.location.href = `ludo.html?${query.toString()}`;
+      });
+
+      grid.appendChild(btn);
+    }
+  </script>
+</body>
+</html>

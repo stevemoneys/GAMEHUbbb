@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WHOT | GameHub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="WH.css">
+</head>
+<body>
+  <div class="bg-stage" aria-hidden="true">
+    <div class="bg-transition-layer bg-a" id="bgA"></div>
+    <div class="bg-transition-layer bg-b" id="bgB"></div>
+    <div class="bg-overlay"></div>
+  </div>
+
+  <a class="hub-back-btn" id="hubBackBtn" href="../../index.html" aria-label="Back to GameHub">Back to GameHub</a>
+
+  <main class="page-shell">
+    <section id="menu" class="menu-card">
+      <p class="menu-eyebrow">Card Strategy</p>
+      <h1>WHOT</h1>
+      <p class="menu-subtitle">Play quick matches, climb tournament rounds, or battle three AI opponents in multiplayer.</p>
+      <div class="menu-actions">
+        <button onclick="showLevels()" id="quickPlay">Quick Play</button>
+        <button onclick="showTournamentLevels()" id="tournamentPlay">Tournament</button>
+        <button onclick="showMultiplayerLevels()" id="multiplayerPlay">Multiplayer</button>
+      </div>
+    </section>
+
+    <section id="levels" class="hidden"></section>
+    <section id="game" class="hidden"></section>
+  </main>
+
+  <div id="modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="modal-content">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div id="resume-modal" class="resume-modal hidden" role="dialog" aria-modal="true" aria-labelledby="resume-modal-title">
+    <div class="resume-card">
+      <h3 id="resume-modal-title">Resume Saved Match</h3>
+      <p id="resume-modal-body"></p>
+      <div class="resume-actions">
+        <button id="resume-continue" type="button">Continue</button>
+        <button id="resume-new" type="button">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="quickplay-ui" id="quickUI">
+    <button class="floating-btn settings" id="settingsBtn" aria-label="Settings">SET</button>
+    <button class="floating-btn rules" id="rulesBtn" aria-label="Rules">RULES</button>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

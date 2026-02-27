@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GameHub Checkers</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a id="hub-back-btn" class="hub-back-btn" href="../index.html" aria-label="Back to GameHub">Back to GameHub</a>
+  <button id="settings-button" class="global-settings-btn" type="button" aria-label="Settings">Settings</button>
+  <main id="home-screen" class="home-screen">
+    <section class="home-topbar glass-panel">
+      <div class="brand">
+        <div class="brand-mark">GH</div>
+        <div>
+          <p class="brand-kicker">GameHub Signature</p>
+          <h1 class="brand-title">Checkers Royale</h1>
+          <div class="brand-stats">
+            <span id="level-display" class="stat-chip">Level: Beginner</span>
+            <span id="coins-display" class="stat-chip">Coins: 0</span>
+          </div>
+        </div>
+      </div>
+      <div class="home-actions">
+        <button id="claim-button" class="wallet-chip claim-chip" type="button">Claim</button>
+        <button id="rules-button" class="icon-chip" type="button">Rules</button>
+        <button id="shop-button" class="icon-chip" type="button">Shop</button>
+      </div>
+    </section>
+
+    <section class="hero-card glass-panel">
+      <p class="section-eyebrow">Play Modes</p>
+      <h2 class="section-title">Start Match</h2>
+      <div class="mode-grid">
+        <button id="mode-pass-play" class="mode-tile active" type="button">Pass &amp; Play</button>
+        <button id="mode-computer" class="mode-tile" type="button">Computer Mode</button>
+      </div>
+      <button id="play-now-button" class="cta-button" type="button">Play Now</button>
+    </section>
+
+    <section class="home-card glass-panel">
+      <div class="card-head">
+        <p class="section-eyebrow">Global Rules</p>
+        <h2 class="section-title">Countries &amp; Variants</h2>
+      </div>
+      <div class="variant-nav">
+        <button id="variant-prev" class="variant-nav-btn" type="button" aria-label="Previous variant">&lt;</button>
+        <article class="variant-card main">
+          <div class="variant-flag-row">
+            <div id="variant-flag" class="variant-flag"></div>
+          </div>
+          <h3 id="variant-name" class="variant-main-name">American checkers</h3>
+        </article>
+        <button id="variant-next" class="variant-nav-btn" type="button" aria-label="Next variant">&gt;</button>
+      </div>
+    </section>
+  </main>
+
+  <section id="level-screen" class="level-screen hidden">
+    <div class="level-shell glass-panel">
+      <div class="level-top">
+        <button id="level-back-button" class="icon-chip" type="button">&lt; Back</button>
+        <h2 class="level-title">Computer Challenge</h2>
+      </div>
+      <p class="level-subtitle">Choose level and tier (10 tiers per level)</p>
+      <div id="level-list" class="level-list"></div>
+      <div class="tier-panel">
+        <p id="tier-headline" class="tier-headline">Beginner - Tier 1 of 10</p>
+        <div id="tier-grid" class="tier-grid"></div>
+      </div>
+      <button id="start-tier-button" class="cta-button level-start-button" type="button">
+        Start Tier Match
+      </button>
+    </div>
+  </section>
+
+  <section id="rewards-screen" class="rewards-screen hidden">
+    <div class="rewards-shell glass-panel">
+      <div class="rewards-top">
+        <button id="rewards-back-button" class="icon-chip" type="button">&lt; Back</button>
+        <h2 class="rewards-title">Claim Rewards</h2>
+      </div>
+      <p class="rewards-subtitle">Collect your earned rewards and daily login bonuses.</p>
+      <div class="rewards-balance" id="rewards-balance"></div>
+      <div id="rewards-list" class="rewards-list"></div>
+    </div>
+  </section>
+
+  <section id="shop-screen" class="shop-screen hidden">
+    <div class="shop-shell glass-panel">
+      <div class="shop-top">
+        <button id="ides the claim button on my mobile phone ack-button" class="icon-chip" type="button">&lt; Back</button>
+        <h2 class="shop-title">Shop</h2>
+      </div>
+      <div id="shop-balance" class="shop-balance"></div>
+      <p class="shop-subtitle">Customize style collections. Purchase logic will be connected in the next phase.</p>
+      <div class="shop-grid">
+        <article class="shop-category">
+          <h3 class="shop-category-title">Background</h3>
+          <button id="background-default-button" class="shop-default-btn" type="button">Default Background</button>
+          <div class="piece-carousel">
+            <button id="bg-prev" class="piece-nav" type="button" aria-label="Previous backgrounds">&lt;</button>
+            <div id="bg-grid" class="piece-grid"></div>
+            <button id="bg-next" class="piece-nav" type="button" aria-label="Next backgrounds">&gt;</button>
+          </div>
+        </article>
+        <article class="shop-category">
+          <h3 class="shop-category-title">Board</h3>
+          <button id="board-default-button" class="shop-default-btn" type="button">Default Board</button>
+          <div class="piece-carousel">
+            <button id="board-prev" class="piece-nav" type="button" aria-label="Previous boards">&lt;</button>
+            <div id="board-grid" class="piece-grid"></div>
+            <button id="board-next" class="piece-nav" type="button" aria-label="Next boards">&gt;</button>
+          </div>
+        </article>
+        <article class="shop-category">
+          <h3 class="shop-category-title">Piece</h3>
+          <button id="piece-default-button" class="shop-default-btn" type="button">Default Piece</button>
+          <div class="piece-carousel">
+            <button id="piece-prev" class="piece-nav" type="button" aria-label="Previous skins">&lt;</button>
+            <div id="piece-grid" class="piece-grid"></div>
+            <button id="piece-next" class="piece-nav" type="button" aria-label="Next skins">&gt;</button>
+          </div>
+          <p class="piece-note">Skins are unlocked in groups of five. Purchase Skin 5 to reveal 6-10, Skin 10 to reveal 11-15, and Skin 15 to reveal 16-20.</p>
+        </article>
+        <article class="shop-category">
+          <h3 class="shop-category-title">Effects</h3>
+          <div id="effects-owned-summary" class="piece-note">Owned effects: 0</div>
+          <div class="piece-carousel">
+            <button id="effect-prev" class="piece-nav" type="button" aria-label="Previous effects">&lt;</button>
+            <div id="effect-grid" class="piece-grid"></div>
+            <button id="effect-next" class="piece-nav" type="button" aria-label="Next effects">&gt;</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+    <div id="game-screen" class="game-screen hidden">
+    <div class="game-hud glass-panel">
+      <div class="game-hud-left">
+        <button id="game-back-button" class="icon-chip" type="button"></button>
+        <span id="game-level-display" class="stat-chip">Level: Beginner</span>
+        <span id="game-coins-display" class="stat-chip">Coins: 0</span>
+      </div>
+    </div>
+    <button id="effects-nav-toggle" class="effects-nav-toggle" type="button" aria-label="Toggle effects"></button>
+    <div id="effects-toolbar" class="effects-toolbar glass-panel">
+      <button id="fx-undo" class="fx-btn" type="button">Undo<span id="fx-undo-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r1" class="fx-btn" type="button">H1<span id="fx-hint-r1-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r2" class="fx-btn" type="button">H2<span id="fx-hint-r2-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r3" class="fx-btn" type="button">H3<span id="fx-hint-r3-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r4" class="fx-btn" type="button">H4<span id="fx-hint-r4-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r5" class="fx-btn" type="button">H5<span id="fx-hint-r5-count" class="fx-count">0</span></button>
+      <button id="fx-hint-r6" class="fx-btn" type="button">H6<span id="fx-hint-r6-count" class="fx-count">0</span></button>
+      <button id="fx-threat" class="fx-btn" type="button">Threat<span id="fx-threat-count" class="fx-count">0</span></button>
+      <button id="fx-moves" class="fx-btn" type="button">Moves<span id="fx-moves-count" class="fx-count">0</span></button>
+      <button id="fx-shield" class="fx-btn" type="button">Shield<span id="fx-shield-count" class="fx-count">0</span></button>
+      <button id="fx-freeze" class="fx-btn" type="button">Freeze<span id="fx-freeze-count" class="fx-count">0</span></button>
+    </div>
+    <div class="game-shell">
+      <div id="board-level-badge" class="board-level-badge">Level: Beginner (Tier 1)</div>
+      <div class="captured-tray left">
+        <div class="tray-label">Black</div>
+        <div id="captured-black" class="tray-pieces"></div>
+      </div>
+
+      <div class="game-container">
+        <div class="board-stage">
+          <div id="board-coord-top" class="board-coords top"></div>
+          <div id="board-coord-left" class="board-coords side left"></div>
+          <div id="board" class="board"></div>
+          <div id="board-coord-right" class="board-coords side right"></div>
+          <div id="board-coord-bottom" class="board-coords bottom"></div>
+        </div>
+      </div>
+
+      <div class="captured-tray right">
+        <div class="tray-label">White</div>
+        <div id="captured-white" class="tray-pieces"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="modal-card settings-card">
+      <div class="modal-title">Settings</div>
+      <div class="settings-grid">
+        <div class="settings-row">
+          <span class="settings-label">Sound Effects</span>
+          <div class="settings-toggle">
+            <button id="set-sfx-on" class="piece-btn secondary" type="button">On</button>
+            <button id="set-sfx-off" class="piece-btn secondary" type="button">Off</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Background Music</span>
+          <div class="settings-toggle">
+            <button id="set-bgm-on" class="piece-btn secondary" type="button">On</button>
+            <button id="set-bgm-off" class="piece-btn secondary" type="button">Off</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">First Move</span>
+          <div class="settings-toggle">
+            <button id="set-first-white" class="piece-btn secondary" type="button">White</button>
+            <button id="set-first-black" class="piece-btn secondary" type="button">Black</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Play As</span>
+          <div class="settings-toggle">
+            <button id="set-playas-white" class="piece-btn secondary" type="button">White</button>
+            <button id="set-playas-black" class="piece-btn secondary" type="button">Black</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="settings-label">Forced Capture</span>
+          <div class="settings-toggle">
+            <button id="set-forced-on" class="piece-btn secondary" type="button">On</button>
+            <button id="set-forced-off" class="piece-btn secondary" type="button">Off</button>
+          </div>
+        </div>
+      </div>
+      <div class="result-actions">
+        <button id="settings-close" class="result-button" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="modal-card">
+      <div class="modal-title">Move Not Allowed</div>
+      <div class="modal-body">Forced capture must be implemented</div>
+      <button id="modal-close" class="modal-button" type="button">OK</button>
+    </div>
+  </div>
+
+  <div id="rules-modal" class="modal hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="modal-card rules-card">
+      <div id="rules-title" class="modal-title">Rules</div>
+      <div id="rules-body" class="modal-body rules-body"></div>
+      <button id="rules-close" class="modal-button" type="button">Close</button>
+    </div>
+  </div>
+
+  <div id="result-modal" class="modal hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="modal-card result-card">
+      <div id="result-title" class="modal-title">Game Over</div>
+      <div id="result-body" class="modal-body"></div>
+      <div class="result-actions">
+        <button id="result-menu" class="result-button" type="button">To Menu</button>
+        <button id="result-next" class="result-button" type="button">Next</button>
+        <button id="result-replay" class="result-button" type="button">Play Again</button>
+        <button id="result-cancel" class="result-button ghost" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resume-modal" class="modal hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="modal-card result-card">
+      <div id="resume-title" class="modal-title">Resume Saved Match</div>
+      <div id="resume-body" class="modal-body"></div>
+      <div class="result-actions">
+        <button id="resume-continue" class="result-button" type="button">Continue</button>
+        <button id="resume-new" class="result-button ghost" type="button">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
+

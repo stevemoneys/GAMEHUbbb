@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dice Shop</title>
+  <link rel="stylesheet" href="dice-shop.css" />
+</head>
+<body>
+  <div class="rotate-overlay" id="rotate-overlay" aria-hidden="true">
+    <div class="rotate-card">
+      <div class="rotate-icon" aria-hidden="true">ROTATE</div>
+      <h2>Use landscape mode</h2>
+      <p>Dice shop is optimized for horizontal view.</p>
+      <button type="button" id="rotate-try-btn">Try landscape</button>
+    </div>
+  </div>
+  <main class="shop-wrap">
+    <header class="shop-head">
+      <a class="back-btn" href="index.html" aria-label="Back">X</a>
+      <h1>Dice Skins</h1>
+      <div class="coin-badge">
+        <span class="coin-dot"></span>
+        <span id="coin-total">0</span>
+      </div>
+    </header>    <section class="default-row">
+      <button class="btn use use-default-btn" id="use-default" type="button">Use default skin</button>
+    </section>
+
+    <section class="shop-stage">
+      <button class="nav-btn" id="prev-btn" type="button">&lt;</button>
+      <div class="skin-row" id="skin-row"></div>
+      <button class="nav-btn" id="next-btn" type="button">&gt;</button>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById("rotate-overlay");
+      const tryBtn = document.getElementById("rotate-try-btn");
+      function showOverlay() {
+        const mobile = window.matchMedia("(max-width: 900px)").matches;
+        const landscape = window.matchMedia("(orientation: landscape)").matches;
+        const show = mobile && !landscape;
+        overlay.classList.toggle("show", show);
+        overlay.setAttribute("aria-hidden", show ? "false" : "true");
+        document.body.classList.toggle("needs-landscape", show);
+      }
+      async function tryLandscape() {
+        try {
+          if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+          }
+        } catch (_) {}
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock("landscape");
+          }
+        } catch (_) {}
+        showOverlay();
+      }
+      window.addEventListener("resize", showOverlay);
+      window.addEventListener("orientationchange", showOverlay);
+      document.addEventListener("DOMContentLoaded", showOverlay);
+      if (tryBtn) tryBtn.addEventListener("click", tryLandscape);
+      setTimeout(showOverlay, 300);
+      window.addEventListener("pointerdown", tryLandscape, { once: true });
+    })();
+  </script>
+  <script>
+    const TOTAL_SKINS = 20;
+    const SKINS_PER_PAGE = 5;
+    const PAGE_COUNT = TOTAL_SKINS / SKINS_PER_PAGE;
+    const SKIN_META = {
+      1: { price: 100, effect: "No effects" },
+      2: { price: 200, effect: "+2 bonus coins per match" },
+      3: { price: 400, effect: "+5 coins on win" },
+      4: { price: 700, effect: "3% increased chance of rolling 6" },
+      5: { price: 1000, effect: "5% reduced chance of rolling 1" },
+      6: { price: 1500, effect: "+10 coins per win" },
+      7: { price: 2500, effect: "+5 coins per capture" },
+      8: { price: 3200, effect: "Once per match, survive one capture" },
+      9: { price: 4000, effect: "Once per match, add +1 to a roll" },
+      10: { price: 5500, effect: "8% higher chance to roll 5 or 6" },
+      11: { price: 7000, effect: "Once per match, replay last roll" },
+      12: { price: 8500, effect: "On capture: 50% chance to re-enter if 6 is rolled in 2 turns" },
+      13: { price: 10000, effect: "After capturing a token, next roll is boosted" },
+      14: { price: 13000, effect: "Safe square stay grants +1 extra turn" },
+      15: { price: 17000, effect: "After 10 rolls, guaranteed one 6" },
+      16: { price: 22000, effect: "Once per match, double movement of a roll" },
+      17: { price: 28000, effect: "Bring 2 tokens home to gain one bonus turn" },
+      18: { price: 30000, effect: "10% chance any roll repeats automatically" },
+      19: { price: 35000, effect: "10% chance any roll repeats automatically" },
+      20: { price: 50000, effect: "1 guaranteed 6 +15% win coin bonus + once per match shield" }
+    };
+
+    const COINS_KEY = "ludo_coins";
+    const OWNED_KEY = "ludo_owned_dice_skins";
+    const ACTIVE_KEY = "ludo_active_dice_skin";
+
+    const coinTotalEl = document.getElementById("coin-total");
+    const rowEl = document.getElementById("skin-row");
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const useDefaultBtn = document.getElementById("use-default");
+
+    let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
+    let owned = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");
+      owned = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      owned = [];
+    }
+    let activeSkin = localStorage.getItem(ACTIVE_KEY) || "classic";
+    let currentPage = 0;
+
+    function skinKey(id) {
+      return `skin${id}`;
+    }
+
+    function skinPrice(id) {
+      return SKIN_META[id]?.price || 0;
+    }
+
+    function saveState() {
+      localStorage.setItem(COINS_KEY, String(coins));
+      localStorage.setItem(OWNED_KEY, JSON.stringify(owned));
+      localStorage.setItem(ACTIVE_KEY, activeSkin);
+    }
+
+    function owns(id) {
+      return owned.includes(skinKey(id));
+    }
+
+    function highestOnPageId(pageIndex) {
+      return (pageIndex + 1) * SKINS_PER_PAGE;
+    }
+
+    function canGoNext(pageIndex) {
+      if (pageIndex >= PAGE_COUNT - 1) return false;
+      return owns(highestOnPageId(pageIndex));
+    }
+
+    function renderCoins() {
+      coinTotalEl.textContent = String(coins);
+    }
+
+    function renderNav() {
+      prevBtn.disabled = currentPage === 0;
+      nextBtn.disabled = !canGoNext(currentPage);
+    }
+
+    function buildCard(id) {
+      const key = skinKey(id);
+      const ownedNow = owns(id);
+      const inUse = activeSkin === key;
+      const price = skinPrice(id);
+
+      const card = document.createElement("article");
+      card.className = "skin-card";
+
+      const preview = document.createElement("img");
+      preview.className = "skin-preview";
+      preview.src = `dice/skins/${key}/6_result.webp`;
+      preview.alt = `Dice skin ${id}`;
+      preview.onerror = () => {
+        preview.src = "dice/5.png";
+      };
+
+      const title = document.createElement("h3");
+      title.textContent = `Skin ${id}`;
+      const effect = document.createElement("p");
+      effect.className = "effect";
+      effect.textContent = SKIN_META[id]?.effect || "";
+
+      const buyBtn = document.createElement("button");
+      buyBtn.type = "button";
+      buyBtn.className = "btn buy";
+      buyBtn.textContent = ownedNow ? "Owned" : "Buy";
+
+      const useBtn = document.createElement("button");
+      useBtn.type = "button";
+      useBtn.className = "btn use";
+      useBtn.textContent = inUse ? "In Use" : "Use";
+
+      const priceLabel = document.createElement("p");
+      priceLabel.className = "price";
+      priceLabel.innerHTML = `<span class="price-coin"></span><span>${price}</span>`;
+
+      if (ownedNow) {
+        buyBtn.disabled = true;
+        buyBtn.classList.add("owned");
+      } else if (coins < price) {
+        buyBtn.disabled = true;
+      }
+
+      if (!ownedNow) {
+        useBtn.disabled = true;
+      }
+      if (inUse) {
+        useBtn.disabled = true;
+        useBtn.classList.add("active");
+      }
+
+      buyBtn.addEventListener("click", () => {
+        if (owns(id)) return;
+        if (coins < price) return;
+        coins -= price;
+        owned.push(key);
+        saveState();
+        render();
+      });
+
+      useBtn.addEventListener("click", () => {
+        if (!owns(id)) return;
+        activeSkin = key;
+        saveState();
+        render();
+      });
+
+      card.appendChild(preview);
+      card.appendChild(title);
+      card.appendChild(effect);
+      card.appendChild(buyBtn);
+      card.appendChild(useBtn);
+      card.appendChild(priceLabel);
+      return card;
+    }
+
+    function render() {
+      renderCoins();
+      rowEl.innerHTML = "";
+      const start = currentPage * SKINS_PER_PAGE + 1;
+      const end = start + SKINS_PER_PAGE - 1;
+      for (let id = start; id <= end; id++) {
+        rowEl.appendChild(buildCard(id));
+      }
+      renderNav();
+    }
+
+    prevBtn.addEventListener("click", () => {
+      if (currentPage === 0) return;
+      currentPage -= 1;
+      render();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (!canGoNext(currentPage)) return;
+      currentPage += 1;
+      render();
+    });
+
+    useDefaultBtn.addEventListener("click", () => {
+      activeSkin = "classic";
+      saveState();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
+
+
+

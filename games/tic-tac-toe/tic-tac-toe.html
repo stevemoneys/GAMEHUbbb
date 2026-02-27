@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic Tac Toe | GameHub</title>
+  <link rel="stylesheet" href="tic-tac-toe.css">
+</head>
+<body>
+  <a class="hub-back-btn" href="../../index.html" aria-label="Back to GameHub">Back to GameHub</a>
+
+  <main class="app" aria-live="polite">
+    <header class="hero">
+      <p class="eyebrow">Classic Arcade</p>
+      <h1>Tic Tac Toe</h1>
+      <p class="subtitle">Play solo with progressive AI levels or challenge a friend.</p>
+    </header>
+
+    <section class="menu active" id="menu" aria-label="Game mode">
+      <button onclick="startVsAI()">Play vs Computer</button>
+      <button onclick="startTwoPlayer()">Two Players</button>
+    </section>
+
+    <section class="menu" id="levels" aria-label="Level selection">
+      <h2>Select Level</h2>
+      <div id="levelButtons" class="level-grid"></div>
+      <button class="ghost" onclick="backToHome()">Back</button>
+    </section>
+
+    <section class="menu" id="avatars" aria-label="AI avatar selection">
+      <h2>Select AI Style</h2>
+      <div id="avatarButtons" class="avatar-grid">
+        <button onclick="selectAvatar('human')">Human-like</button>
+        <button onclick="selectAvatar('aggressive')">Aggressive</button>
+        <button onclick="selectAvatar('defensive')">Defensive</button>
+        <button onclick="selectAvatar('trickster')">Trickster</button>
+      </div>
+      <button class="ghost" onclick="showLevels()">Back</button>
+    </section>
+
+    <section class="menu" id="symbolSelect" aria-label="Symbol selection">
+      <h2>Choose Your Symbol</h2>
+      <div class="symbol-grid">
+        <button onclick="chooseSymbol('X')">X</button>
+        <button onclick="chooseSymbol('O')">O</button>
+      </div>
+      <button class="ghost" onclick="backToLevelsFromSymbol()">Back</button>
+    </section>
+
+    <section class="game" id="game" aria-label="Game board">
+      <div class="meta-bar">
+        <p class="status" id="status">Player X Turn</p>
+        <p class="timer">Turn timer <span id="timerText">10s</span></p>
+      </div>
+
+      <div class="board" id="board"></div>
+
+      <div class="score">
+        <span>X <strong id="scoreX">0</strong></span>
+        <span>O <strong id="scoreO">0</strong></span>
+      </div>
+
+      <div class="controls">
+        <button onclick="resetScores()">Reset Scores</button>
+        <button onclick="restartGame()">Restart</button>
+        <button onclick="backToMenu()">Menu</button>
+      </div>
+    </section>
+  </main>
+
+  <audio id="tapSound" src="sounds/tap.mp3"></audio>
+  <audio id="winSound" src="sounds/win.mp3"></audio>
+  <audio id="drawSound" src="sounds/draw.mp3"></audio>
+
+  <div class="modal" id="resultModal">
+    <div class="modal-card">
+      <h2 id="resultTitle"></h2>
+      <div class="modal-buttons">
+        <button onclick="restartGame()">Play Again</button>
+        <button onclick="goHome()">Cancel</button>
+        <button id="nextBtn" onclick="nextLevel()">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="tic-tac-toe.js"></script>
+</body>
+</html>

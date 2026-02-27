@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ludo Home</title>
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+  <a class="hub-back-btn" href="../../index.html" aria-label="Back to GameHub">Back to GameHub</a>
+  <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <aside class="side-menu" id="side-menu" aria-hidden="true">
+    <div class="side-menu-head">
+      <h2>Menu</h2>
+      <button class="close-menu" id="close-menu" type="button" aria-label="Close menu">X</button>
+    </div>
+
+    <nav class="menu-tabs">
+      <button class="menu-tab active" data-tab="settings" type="button">Settings</button>
+      <button class="menu-tab" data-tab="rules" type="button">Rules</button>
+      <button class="menu-tab" data-tab="shop" type="button">Shop</button>
+    </nav>
+
+    <section class="menu-panel active" id="panel-settings">
+      <div class="setting-row">
+        <span>Background Music</span>
+        <button class="toggle-btn" id="toggle-bgm" type="button">ON</button>
+      </div>
+      <div class="setting-row">
+        <span>Sound Effects</span>
+        <button class="toggle-btn" id="toggle-sfx" type="button">ON</button>
+      </div>
+    </section>
+
+    <section class="menu-panel" id="panel-rules">
+      <h3>How To Play</h3>
+      <p>Roll 6 to bring a token out from home to the entry square.</p>
+      <p>Move tokens clockwise by exactly the dice number.</p>
+      <p>Landing on opponent token captures it (except safe/star squares).</p>
+      <p>Use your arrow turn square to enter your home lane.</p>
+      <p>Reach the center with all 4 tokens to win.</p>
+      <h3>Classic Rules</h3>
+      <p>Three 6 rolls in a row can trigger bonus/penalty depending on your game mode rules.</p>
+      <p>A token in the center triangle is finished and cannot move again.</p>
+      <p>You need exact steps inside home lane to finish a token.</p>
+    </section>
+
+    <section class="menu-panel" id="panel-shop">
+      <h3>Shop</h3>
+      <button class="shop-link-btn" id="open-dice-shop" type="button">Dice Skins</button>
+      <button class="shop-link-btn" id="open-token-shop" type="button">Token Skins</button>
+    </section>
+  </aside>
+  <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
+
+  <main class="home-wrap">
+    <section class="home-card">
+      <h1>Classic Ludo</h1>
+      <p>Select game mode</p>
+
+      <button class="mode-btn primary" id="play-vs-computer-btn" type="button">PLAY VS COMPUTER</button>
+      <button class="mode-btn secondary" id="pass-play-btn" type="button">PASS AND PLAY</button>
+    </section>
+  </main>
+
+  <script>
+    const MUSIC_KEY = "ludo_bgm_enabled";
+    const SFX_KEY = "ludo_sfx_enabled";
+
+    const menuBtn = document.getElementById("menu-btn");
+    const closeBtn = document.getElementById("close-menu");
+    const sideMenu = document.getElementById("side-menu");
+    const backdrop = document.getElementById("menu-backdrop");
+    const tabs = Array.from(document.querySelectorAll(".menu-tab"));
+    const panels = {
+      settings: document.getElementById("panel-settings"),
+      rules: document.getElementById("panel-rules"),
+      shop: document.getElementById("panel-shop")
+    };
+
+    const bgmToggle = document.getElementById("toggle-bgm");
+    const sfxToggle = document.getElementById("toggle-sfx");
+    const openDiceShopBtn = document.getElementById("open-dice-shop");
+    const openTokenShopBtn = document.getElementById("open-token-shop");
+    const playVsComputerBtn = document.getElementById("play-vs-computer-btn");
+    const passPlayBtn = document.getElementById("pass-play-btn");
+
+    function getEnabled(key, fallback = true) {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      return raw === "1";
+    }
+
+    function setEnabled(key, enabled) {
+      localStorage.setItem(key, enabled ? "1" : "0");
+    }
+
+    function maybeResumeOr(startUrl) {
+      window.location.href = startUrl;
+    }
+
+    function renderToggle(btn, enabled) {
+      btn.textContent = enabled ? "ON" : "OFF";
+      btn.classList.toggle("off", !enabled);
+    }
+
+    function openMenu() {
+      sideMenu.classList.add("open");
+      backdrop.classList.add("show");
+      sideMenu.setAttribute("aria-hidden", "false");
+    }
+
+    function closeMenu() {
+      sideMenu.classList.remove("open");
+      backdrop.classList.remove("show");
+      sideMenu.setAttribute("aria-hidden", "true");
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const key = tab.dataset.tab;
+        tabs.forEach(t => t.classList.toggle("active", t === tab));
+        Object.keys(panels).forEach(p => {
+          panels[p].classList.toggle("active", p === key);
+        });
+      });
+    });
+
+    let bgmEnabled = getEnabled(MUSIC_KEY, true);
+    let sfxEnabled = getEnabled(SFX_KEY, true);
+    renderToggle(bgmToggle, bgmEnabled);
+    renderToggle(sfxToggle, sfxEnabled);
+
+    bgmToggle.addEventListener("click", () => {
+      bgmEnabled = !bgmEnabled;
+      setEnabled(MUSIC_KEY, bgmEnabled);
+      renderToggle(bgmToggle, bgmEnabled);
+    });
+
+    sfxToggle.addEventListener("click", () => {
+      sfxEnabled = !sfxEnabled;
+      setEnabled(SFX_KEY, sfxEnabled);
+      renderToggle(sfxToggle, sfxEnabled);
+    });
+
+    menuBtn.addEventListener("click", openMenu);
+    closeBtn.addEventListener("click", closeMenu);
+    backdrop.addEventListener("click", closeMenu);
+    openDiceShopBtn.addEventListener("click", () => {
+      window.location.href = "dice-shop.html";
+    });
+    openTokenShopBtn.addEventListener("click", () => {
+      window.location.href = "token-shop.html";
+    });
+
+    playVsComputerBtn.addEventListener("click", () => {
+      maybeResumeOr("vs-computer.html");
+    });
+
+    passPlayBtn.addEventListener("click", () => {
+      maybeResumeOr("vs-computer.html?mode=pass-play");
+    });
+  </script>
+</body>
+</html>

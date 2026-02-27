@@ -1,0 +1,199 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 14% 18%, #7ce7ff 0%, transparent 34%),
+    radial-gradient(circle at 85% 16%, #ffe08b 0%, transparent 30%),
+    radial-gradient(circle at 18% 84%, #98f08d 0%, transparent 32%),
+    radial-gradient(circle at 86% 82%, #9dc0ff 0%, transparent 32%),
+    linear-gradient(135deg, #0b6ee3 0%, #2f90ff 38%, #1cbfa2 100%);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.vs-wrap {
+  width: min(94vw, 760px);
+  height: min(90vh, 820px);
+}
+
+.vs-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 22px;
+  padding: clamp(14px, 2vh, 22px);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.78));
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 24px 56px rgba(10, 20, 50, 0.35);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  padding-bottom: clamp(96px, 12vh, 126px);
+}
+
+.vs-head {
+  border-radius: 14px;
+  padding: clamp(10px, 1.4vh, 16px) clamp(14px, 2vw, 20px);
+  background: linear-gradient(135deg, #1453d0, #1f76ff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vs-head h1 {
+  margin: 0;
+  font-size: clamp(32px, 5.2vw, 52px);
+  letter-spacing: 0.4px;
+}
+
+.close-btn {
+  text-decoration: none;
+  color: #fff;
+  font-size: clamp(22px, 3.4vw, 32px);
+  line-height: 1;
+  font-weight: 800;
+}
+
+.section {
+  width: min(94%, 430px);
+  margin: clamp(16px, 2.5vh, 26px) auto 0;
+}
+
+.opt-btn {
+  width: 100%;
+  border: 2px solid #c8dcff;
+  border-radius: 12px;
+  margin: 10px 0;
+  padding: 10px 14px;
+  font-size: clamp(24px, 4.6vw, 42px);
+  font-style: italic;
+  font-weight: 700;
+  background: linear-gradient(135deg, #e8f0ff, #d5e6ff);
+  color: #1743a4;
+  cursor: pointer;
+}
+
+.opt-btn.active {
+  background: linear-gradient(135deg, #1f76ff, #17b994);
+  color: #fff;
+  border-color: #c7fff0;
+}
+
+h2 {
+  margin: clamp(16px, 2.3vh, 24px) 0 8px;
+  text-align: center;
+  color: #172349;
+  font-size: clamp(28px, 5vw, 48px);
+}
+
+.color-grid {
+  width: min(94%, 560px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.color-btn {
+  aspect-ratio: 1 / 1;
+  border: 3px solid #f7d9e2;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #fff, #ffeff6);
+  cursor: pointer;
+  position: relative;
+}
+
+.color-btn::before {
+  content: "";
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+}
+
+.color-btn.red::before { background: #ef4444; }
+.color-btn.green::before { background: #22c55e; }
+.color-btn.yellow::before { background: #f59e0b; }
+.color-btn.blue::before { background: #0ea5e9; }
+
+.color-btn.active {
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px rgba(0, 0, 0, 0.16);
+}
+
+.play-btn {
+  position: absolute;
+  right: clamp(12px, 2vw, 22px);
+  bottom: clamp(12px, 2vh, 22px);
+  width: clamp(150px, 24vw, 220px);
+  height: clamp(62px, 9vh, 90px);
+  border: 3px solid #bfeaff;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #1453d0, #17b994);
+  color: #fff;
+  font-size: clamp(30px, 5vw, 52px);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+}
+
+.resume-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 22, 46, 0.72);
+  padding: 14px;
+  z-index: 1000;
+}
+
+.resume-card {
+  width: min(100%, 420px);
+  border-radius: 16px;
+  padding: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 248, 255, 0.95));
+  box-shadow: 0 20px 44px rgba(12, 25, 58, 0.3);
+}
+
+.resume-card h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #11418f;
+}
+
+.resume-card p {
+  margin: 0 0 14px;
+  color: #1f2b4d;
+  font-size: 14px;
+}
+
+.resume-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.resume-actions button {
+  border: 2px solid #bfeaff;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1453d0, #17b994);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 10px 12px;
+}

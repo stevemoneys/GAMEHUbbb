@@ -1,0 +1,249 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token Skins</title>
+  <link rel="stylesheet" href="token-shop.css" />
+</head>
+<body>
+  <div class="rotate-overlay" id="rotate-overlay" aria-hidden="true">
+    <div class="rotate-card">
+      <div class="rotate-icon" aria-hidden="true">ROTATE</div>
+      <h2>Use landscape mode</h2>
+      <p>Token shop is optimized for horizontal view.</p>
+      <button type="button" id="rotate-try-btn">Try landscape</button>
+    </div>
+  </div>
+  <main class="shop-wrap">
+    <header class="shop-head">
+      <a class="back-btn" href="index.html" aria-label="Back">X</a>
+      <h1>Token Skins</h1>
+      <div class="coin-badge">
+        <span class="coin-dot"></span>
+        <span id="coin-total">0</span>
+      </div>
+    </header>
+    <section class="default-row">
+      <button class="btn use use-default-btn" id="use-default" type="button">Use default skin</button>
+    </section>
+
+
+    <section class="shop-stage">
+      <button class="nav-btn" id="prev-btn" type="button">&lt;</button>
+      <div class="skin-row" id="skin-row"></div>
+      <button class="nav-btn" id="next-btn" type="button">&gt;</button>
+    </section>
+    <p class="hint" id="hint-text"></p>
+  </main>
+
+  <script>
+    (function () {
+      const overlay = document.getElementById("rotate-overlay");
+      const tryBtn = document.getElementById("rotate-try-btn");
+      function showOverlay() {
+        const mobile = window.matchMedia("(max-width: 900px)").matches;
+        const landscape = window.matchMedia("(orientation: landscape)").matches;
+        const show = mobile && !landscape;
+        overlay.classList.toggle("show", show);
+        overlay.setAttribute("aria-hidden", show ? "false" : "true");
+        document.body.classList.toggle("needs-landscape", show);
+      }
+      async function tryLandscape() {
+        try {
+          if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+            await document.documentElement.requestFullscreen();
+          }
+        } catch (_) {}
+        try {
+          if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock("landscape");
+          }
+        } catch (_) {}
+        showOverlay();
+      }
+      window.addEventListener("resize", showOverlay);
+      window.addEventListener("orientationchange", showOverlay);
+      document.addEventListener("DOMContentLoaded", showOverlay);
+      if (tryBtn) tryBtn.addEventListener("click", tryLandscape);
+      setTimeout(showOverlay, 300);
+      window.addEventListener("pointerdown", tryLandscape, { once: true });
+    })();
+  </script>
+  <script>
+    const TOTAL_SKINS = 10;
+    const SKINS_PER_PAGE = 5;
+    const PAGE_COUNT = TOTAL_SKINS / SKINS_PER_PAGE;
+    const PRICE_MAP = {
+      1: 500,
+      2: 1000,
+      3: 1500,
+      4: 2,
+      5: 2500,
+      6: 3000,
+      7: 3500,
+      8: 4000,
+      9: 4500,
+      10: 5000
+    };
+
+    const COINS_KEY = "ludo_coins";
+    const OWNED_KEY = "ludo_owned_token_skins";
+    const ACTIVE_KEY = "ludo_active_token_skin";
+
+    const coinTotalEl = document.getElementById("coin-total");
+    const rowEl = document.getElementById("skin-row");
+    const prevBtn = document.getElementById("prev-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const hintEl = document.getElementById("hint-text");
+    const useDefaultBtn = document.getElementById("use-default");
+
+    let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
+    let owned = [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");
+      owned = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      owned = [];
+    }
+    let activeSkin = localStorage.getItem(ACTIVE_KEY) || "classic";
+    let currentPage = 0;
+
+    function skinKey(id) {
+      return `skin${id}`;
+    }
+
+    function skinPrice(id) {
+      return PRICE_MAP[id] || 0;
+    }
+
+    function saveState() {
+      localStorage.setItem(COINS_KEY, String(coins));
+      localStorage.setItem(OWNED_KEY, JSON.stringify(owned));
+      localStorage.setItem(ACTIVE_KEY, activeSkin);
+    }
+
+    function owns(id) {
+      return owned.includes(skinKey(id));
+    }
+
+    function renderCoins() {
+      coinTotalEl.textContent = String(coins);
+    }
+
+    function renderNav() {
+      prevBtn.disabled = currentPage === 0;
+      nextBtn.disabled = currentPage === PAGE_COUNT - 1;
+      hintEl.textContent = "";
+    }
+
+    function buildCard(id) {
+      const key = skinKey(id);
+      const ownedNow = owns(id);
+      const inUse = activeSkin === key;
+      const price = skinPrice(id);
+
+      const card = document.createElement("article");
+      card.className = "skin-card";
+
+      const preview = document.createElement("img");
+      preview.className = "skin-preview";
+      preview.src = `tokens/skins/${key}/red_result.webp`;
+      preview.alt = `Token skin ${id}`;
+      preview.onerror = () => {
+        preview.src = "tokens/red_result.webp";
+      };
+
+      const title = document.createElement("h3");
+      title.textContent = `Skin ${id}`;
+
+      const buyBtn = document.createElement("button");
+      buyBtn.type = "button";
+      buyBtn.className = "btn buy";
+      buyBtn.textContent = ownedNow ? "Owned" : "Buy";
+
+      const useBtn = document.createElement("button");
+      useBtn.type = "button";
+      useBtn.className = "btn use";
+      useBtn.textContent = inUse ? "In Use" : "Use";
+
+      const priceLabel = document.createElement("p");
+      priceLabel.className = "price";
+      priceLabel.innerHTML = `<span class="price-coin"></span><span>${price}</span>`;
+
+      if (ownedNow) {
+        buyBtn.disabled = true;
+        buyBtn.classList.add("owned");
+      } else if (coins < price) {
+        buyBtn.disabled = true;
+      }
+
+      if (!ownedNow) {
+        useBtn.disabled = true;
+      }
+      if (inUse) {
+        useBtn.disabled = true;
+        useBtn.classList.add("active");
+      }
+
+      buyBtn.addEventListener("click", () => {
+        if (owns(id)) return;
+        if (coins < price) return;
+        coins -= price;
+        owned.push(key);
+        saveState();
+        render();
+      });
+
+      useBtn.addEventListener("click", () => {
+        if (!owns(id)) return;
+        activeSkin = key;
+        saveState();
+        render();
+      });
+
+      card.appendChild(preview);
+      card.appendChild(title);
+      card.appendChild(buyBtn);
+      card.appendChild(useBtn);
+      card.appendChild(priceLabel);
+      return card;
+    }
+
+    function render() {
+      renderCoins();
+      rowEl.innerHTML = "";
+      const start = currentPage * SKINS_PER_PAGE + 1;
+      const end = start + SKINS_PER_PAGE - 1;
+      for (let id = start; id <= end; id++) {
+        rowEl.appendChild(buildCard(id));
+      }
+      renderNav();
+    }
+
+    useDefaultBtn.addEventListener("click", () => {
+      activeSkin = "classic";
+      saveState();
+      render();
+    });
+
+    prevBtn.addEventListener("click", () => {
+      if (currentPage === 0) return;
+      currentPage -= 1;
+      render();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (currentPage >= PAGE_COUNT - 1) return;
+      currentPage += 1;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
+
+
+
+
