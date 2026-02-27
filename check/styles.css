@@ -1995,7 +1995,7 @@ body.landscape-game-active {
     min-height: 100svh;
     height: 100svh;
     padding: 2px;
-    grid-template-rows: 34px minmax(0, 1fr);
+    grid-template-rows: 28px minmax(0, 1fr);
     gap: 2px;
     align-items: stretch;
   }
@@ -2003,9 +2003,9 @@ body.landscape-game-active {
   body.landscape-game-active #game-screen .game-shell {
     width: 100vw;
     max-width: none;
-    height: calc(100svh - 36px);
+    height: calc(100svh - 30px);
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    grid-template-columns: 34px minmax(0, 1fr) 34px;
     gap: 4px;
     padding: 0 2px;
     justify-items: center;
@@ -2015,7 +2015,9 @@ body.landscape-game-active {
   body.landscape-game-active #game-screen .captured-tray {
     display: flex;
     width: 100%;
-    max-height: min(calc(100svh - 46px), calc(100vw - 160px));
+    height: min(calc(100svh - 26px), calc(100vw - 138px));
+    max-height: min(calc(100svh - 26px), calc(100vw - 138px));
+    min-height: 0;
     padding: 4px 2px;
     gap: 3px;
     border-radius: 10px;
@@ -2028,11 +2030,16 @@ body.landscape-game-active {
   body.landscape-game-active #game-screen .tray-pieces {
     grid-template-columns: 1fr;
     gap: 2px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 1px;
+    align-content: start;
   }
 
   body.landscape-game-active #game-screen .game-container {
-    width: min(calc(100svh - 40px), calc(100vw - 152px));
-    height: min(calc(100svh - 40px), calc(100vw - 152px));
+    width: min(calc(100svh - 26px), calc(100vw - 138px));
+    height: min(calc(100svh - 26px), calc(100vw - 138px));
     justify-self: center;
     align-self: center;
   }

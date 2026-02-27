@@ -31,6 +31,7 @@ let currentLevel = 1;
 let skipAiTurns = 0;
 let skipAllAIs = false;
 let skipPlayerTurns = 0;
+let playAnimationLocked = false;
 
 let bgIndex = 0;
 let usingImages = false;
@@ -280,6 +281,44 @@ function animateDrawCard(targetSelector) {
   });
 
   setTimeout(() => ghost.remove(), ANIMATION_SPEED);
+}
+
+function animatePlayCard(sourceRef, card) {
+  return new Promise((resolve) => {
+    const discard = document.querySelector(".pile.discard");
+    const source = typeof sourceRef === "string" ? document.querySelector(sourceRef) : sourceRef;
+    if (!discard || !source || !card) {
+      resolve();
+      return;
+    }
+
+    const from = source.getBoundingClientRect();
+    const to = discard.getBoundingClientRect();
+    const cardWidth = Math.max(38, Math.min(72, Math.round(from.width || 62)));
+    const cardHeight = Math.max(56, Math.min(104, Math.round(from.height || 90)));
+
+    const ghost = document.createElement("div");
+    ghost.className = `card flying play-flight ${card.shape === "WHOT" ? "whot" : ""}`;
+    ghost.style.width = `${cardWidth}px`;
+    ghost.style.height = `${cardHeight}px`;
+    ghost.style.left = `${from.left + (from.width - cardWidth) / 2}px`;
+    ghost.style.top = `${from.top + (from.height - cardHeight) / 2}px`;
+    ghost.innerHTML = display(card);
+    document.body.appendChild(ghost);
+
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+
+    requestAnimationFrame(() => {
+      ghost.style.transform = `translate(${dx}px, ${dy}px) scale(0.9)`;
+      ghost.style.opacity = "0.22";
+    });
+
+    setTimeout(() => {
+      ghost.remove();
+      resolve();
+    }, 540);
+  });
 }
 
 function getRoundLabel() {
@@ -554,16 +593,18 @@ function applySpecial(card, target) {
   }
 }
 
-function playCard(index, el) {
-  if (state.gameOver || state.turn !== "player") return;
+async function playCard(index, el) {
+  if (state.gameOver || state.turn !== "player" || playAnimationLocked) return;
 
   const card = state.player[index];
   const top = state.discard[state.discard.length - 1];
   if (!isValid(card, top)) return;
 
-  el.classList.add("played");
+  playAnimationLocked = true;
 
-  setTimeout(() => {
+  try {
+    await animatePlayCard(el, card);
+
     state.player.splice(index, 1);
     state.discard.push(card);
     playSound("play");
@@ -588,7 +629,9 @@ function playCard(index, el) {
     } else {
       setTimeout(aiGroupTurn, ANIMATION_SPEED);
     }
-  }, 350);
+  } finally {
+    playAnimationLocked = false;
+  }
 }
 
 function drawFromMarket() {
@@ -619,7 +662,7 @@ function aiChooseCard(aiHand) {
   return aiHand.findIndex((card) => isValid(card, top));
 }
 
-function aiTurn() {
+async function aiTurn() {
   if (state.gameOver || state.turn !== "ai") return;
 
   if (skipAllAIs) {
@@ -639,7 +682,9 @@ function aiTurn() {
   const idx = aiChooseCard(state.ai);
 
   if (idx !== -1) {
-    const card = state.ai.splice(idx, 1)[0];
+    const card = state.ai[idx];
+    await animatePlayCard("#ai-stack-0", card);
+    state.ai.splice(idx, 1);
     state.discard.push(card);
 
     if (card.shape === "WHOT") {
@@ -685,7 +730,7 @@ function finishAiRound() {
   render();
 }
 
-function aiGroupTurn() {
+async function aiGroupTurn() {
   if (state.gameOver || state.turn !== "ai") return;
 
   if (skipAllAIs) {
@@ -710,7 +755,9 @@ function aiGroupTurn() {
   const idx = aiChooseCard(ai.hand);
 
   if (idx !== -1) {
-    const card = ai.hand.splice(idx, 1)[0];
+    const card = ai.hand[idx];
+    await animatePlayCard(`#ai-stack-${state.currentAIIndex}`, card);
+    ai.hand.splice(idx, 1);
     state.discard.push(card);
 
     if (card.shape === "WHOT") {

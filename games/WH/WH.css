@@ -854,6 +854,51 @@ button:disabled {
     transform: translateX(-50%);
   }
 
+  body.landscape-game-active .ai-table-tournament .ai-seat-bottom {
+    position: fixed;
+    top: calc(2px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: 0;
+    right: 0;
+    width: 100%;
+    transform: none;
+    z-index: 14;
+    gap: 3px;
+    pointer-events: none;
+  }
+
+  body.landscape-game-active .ai-table-tournament .ai-seat-bottom .ai-fan-stack {
+    position: static;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 4px;
+  }
+
+  body.landscape-game-active .ai-table-tournament .ai-seat-bottom .ai-fan-stack .fan-card {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    width: 44px;
+    height: 64px;
+    transform: none !important;
+  }
+
+  body.landscape-game-active .ai-table-tournament .ai-seat-bottom .ai-fan-stack .count {
+    position: static;
+    transform: none;
+    margin-left: 2px;
+    font-size: 14px;
+    line-height: 1;
+    align-self: flex-end;
+    padding-bottom: 3px;
+  }
+
   body.landscape-game-active .ai-label {
     font-size: 11px;
     margin: 0;
