@@ -1,0 +1,131 @@
+:root {
+    --text-main: #eef4ff;
+    --text-muted: #cfdbff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.settings-page {
+    min-height: 100svh;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: var(--text-main);
+    background-color: #040a19;
+    background-image:
+        linear-gradient(185deg, rgba(4, 9, 23, 0.16) 0%, rgba(4, 9, 23, 0.84) 78%),
+        url("./assets/firstpagebg.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: contain;
+}
+
+.settings-app {
+    width: min(100%, 27rem);
+    margin: 0 auto;
+    min-height: 100svh;
+    padding: 0.9rem 0.75rem 1.2rem;
+    display: grid;
+    gap: 0.9rem;
+    align-content: start;
+}
+
+.settings-topbar {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.62rem;
+}
+
+.icon-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.72rem;
+    border: 1px solid rgba(196, 213, 255, 0.24);
+    background: rgba(6, 11, 25, 0.36);
+    color: var(--text-main);
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+}
+
+.icon-btn svg {
+    width: 1.12rem;
+    height: 1.12rem;
+    fill: currentColor;
+}
+
+.settings-heading .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.58rem;
+    color: var(--text-muted);
+}
+
+.settings-heading h1 {
+    margin-top: 0.04rem;
+    font-size: clamp(1.08rem, 4.4vw, 1.35rem);
+}
+
+.settings-card {
+    border: 1px solid rgba(159, 184, 244, 0.27);
+    border-radius: 1.02rem;
+    background: rgba(8, 15, 32, 0.78);
+    padding: 0.7rem;
+    display: grid;
+    gap: 0.62rem;
+}
+
+.setting-row {
+    border: 1px solid rgba(159, 184, 244, 0.22);
+    border-radius: 0.86rem;
+    background: rgba(9, 17, 37, 0.72);
+    padding: 0.62rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.setting-row h2 {
+    font-size: 0.86rem;
+}
+
+.setting-row p {
+    margin-top: 0.14rem;
+    font-size: 0.67rem;
+    color: var(--text-muted);
+}
+
+.toggle-btn {
+    min-width: 3.15rem;
+    border: 1px solid rgba(176, 198, 245, 0.34);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.42rem 0.56rem;
+    color: #e9f2ff;
+    background: linear-gradient(180deg, rgba(34, 136, 81, 0.84), rgba(14, 73, 41, 0.9));
+}
+
+.toggle-btn.toggle-btn--off {
+    background: linear-gradient(180deg, rgba(146, 56, 56, 0.84), rgba(84, 25, 25, 0.9));
+}
+
+.toggle-pair {
+    display: inline-flex;
+    gap: 0.34rem;
+}
+
+.toggle-btn.toggle-btn--active {
+    box-shadow: 0 0 0.64rem rgba(173, 205, 255, 0.38);
+    border-color: rgba(220, 233, 255, 0.74);
+    opacity: 1;
+}
+
+.toggle-btn:not(.toggle-btn--active) {
+    opacity: 0.52;
+    filter: saturate(0.7);
+}

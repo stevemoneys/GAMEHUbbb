@@ -1,0 +1,189 @@
+:root {
+    --text-main: #f2f6ff;
+    --text-muted: #c8d3f4;
+    --panel: rgba(7, 13, 28, 0.74);
+    --panel-edge: rgba(151, 175, 237, 0.26);
+    --one-bg: rgba(18, 46, 102, 0.78);
+    --one-edge: rgba(156, 194, 255, 0.42);
+    --two-bg: rgba(92, 48, 12, 0.78);
+    --two-edge: rgba(255, 198, 138, 0.4);
+    --coin-gold: #ffd867;
+    --coin-amber: #f59e0b;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.home-page {
+    min-height: 100svh;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+    background-color: #040a19;
+    background-image:
+        linear-gradient(185deg, rgba(4, 9, 23, 0.18) 0%, rgba(4, 9, 23, 0.82) 78%),
+        url("./assets/firstpagebg.png");
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.home {
+    width: min(100%, 24.5rem);
+    min-height: calc(100svh - 2rem);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.home-topbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    align-self: start;
+}
+
+.top-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.icon-btn {
+    width: 2.35rem;
+    height: 2.35rem;
+    border: 1px solid var(--panel-edge);
+    border-radius: 0.78rem;
+    background: var(--panel);
+    color: var(--text-main);
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.icon-btn svg {
+    width: 1.24rem;
+    height: 1.24rem;
+    fill: currentColor;
+}
+
+.icon-btn--claim {
+    background: linear-gradient(180deg, rgba(101, 63, 9, 0.84), rgba(47, 29, 5, 0.9));
+    border-color: rgba(255, 215, 132, 0.58);
+}
+
+.icon-btn:focus-visible,
+.mode-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 2px;
+}
+
+.brand {
+    text-align: center;
+    align-self: center;
+    padding-bottom: 0.2rem;
+}
+
+.brand-kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.21em;
+    font-size: 0.62rem;
+    color: var(--text-muted);
+}
+
+.brand-title {
+    margin-top: 0.16rem;
+    font-size: clamp(1.55rem, 6vw, 2.12rem);
+    line-height: 1.05;
+    text-shadow: 0 0.16rem 0.8rem rgba(0, 0, 0, 0.48);
+}
+
+.brand-subtitle {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.mode-panel {
+    align-self: start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.62rem;
+    width: 100%;
+    max-width: 23.8rem;
+    justify-self: center;
+    transform: translateY(-6.5vh);
+}
+
+.mode-btn {
+    border: 1px solid var(--panel-edge);
+    border-radius: 1rem;
+    background: var(--panel);
+    backdrop-filter: blur(2px);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.92rem 0.9rem;
+    min-height: 4.45rem;
+    text-decoration: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mode-btn--one {
+    background: linear-gradient(180deg, var(--one-bg), rgba(12, 24, 62, 0.86));
+    border-color: var(--one-edge);
+}
+
+.mode-btn--two {
+    background: linear-gradient(180deg, var(--two-bg), rgba(53, 27, 10, 0.86));
+    border-color: var(--two-edge);
+}
+
+.mode-btn__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.72rem;
+    background: rgba(255, 255, 255, 0.1);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.mode-btn__icon svg {
+    width: 1.3rem;
+    height: 1.3rem;
+    fill: currentColor;
+}
+
+.mode-btn__copy {
+    display: grid;
+    gap: 0.06rem;
+}
+
+.mode-btn__copy strong {
+    font-size: 0.96rem;
+    line-height: 1.1;
+}
+
+.mode-btn__copy small {
+    font-size: 0.71rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 380px) {
+    .mode-panel {
+        transform: translateY(-5.4vh);
+    }
+}

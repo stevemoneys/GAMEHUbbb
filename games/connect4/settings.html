@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 | Settings</title>
+    <link rel="stylesheet" href="settings.css">
+</head>
+<body class="settings-page">
+    <main class="settings-app">
+        <header class="settings-topbar">
+            <a class="icon-btn" href="index.html" aria-label="Back home">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 3 2 11h2v10h6v-6h4v6h6V11h2Z"/>
+                </svg>
+            </a>
+            <div class="settings-heading">
+                <p class="eyebrow">System</p>
+                <h1>Audio Settings</h1>
+            </div>
+        </header>
+
+        <section class="settings-card">
+            <div class="setting-row">
+                <div>
+                    <h2>Background Music</h2>
+                    <p>Looped music during gameplay.</p>
+                </div>
+                <div class="toggle-pair" role="group" aria-label="Background Music toggle">
+                    <button id="musicOnBtn" class="toggle-btn" type="button">ON</button>
+                    <button id="musicOffBtn" class="toggle-btn toggle-btn--off" type="button">OFF</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <div>
+                    <h2>Sound Effects</h2>
+                    <p>Drop, win, alerts, and interactions.</p>
+                </div>
+                <div class="toggle-pair" role="group" aria-label="Sound Effects toggle">
+                    <button id="sfxOnBtn" class="toggle-btn" type="button">ON</button>
+                    <button id="sfxOffBtn" class="toggle-btn toggle-btn--off" type="button">OFF</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="settings-config.js"></script>
+    <script src="settings.js"></script>
+</body>
+</html>
