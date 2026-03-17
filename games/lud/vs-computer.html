@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VS Computer</title>
+  <link rel="stylesheet" href="vs-computer.css" />
+</head>
+<body>
+  <main class="vs-wrap">
+    <section class="vs-card">
+      <header class="vs-head">
+        <h1>VS Computer</h1>
+        <a class="close-btn" href="index.html" aria-label="Close">X</a>
+      </header>
+
+      <div class="section">
+        <button class="opt-btn active" data-players="2" type="button">2 Player</button>
+        <button class="opt-btn" data-players="3" type="button">3 Player</button>
+        <button class="opt-btn" data-players="4" type="button">4 Player</button>
+      </div>
+
+      <h2>Choose Color</h2>
+      <div class="color-grid">
+        <button class="color-btn active red" data-color="red" type="button" aria-label="Red"></button>
+        <button class="color-btn green" data-color="green" type="button" aria-label="Green"></button>
+        <button class="color-btn yellow" data-color="yellow" type="button" aria-label="Yellow"></button>
+        <button class="color-btn blue" data-color="blue" type="button" aria-label="Blue"></button>
+      </div>
+
+      <button class="play-btn" id="play-btn" type="button">Play</button>
+    </section>
+  </main>
+
+  <div class="resume-modal hidden" id="resume-modal" role="dialog" aria-modal="true" aria-labelledby="resume-title">
+    <div class="resume-card">
+      <h3 id="resume-title">Resume Saved Match</h3>
+      <p id="resume-body"></p>
+      <div class="resume-actions">
+        <button id="resume-continue" type="button">Continue</button>
+        <button id="resume-new" type="button">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const mode = (params.get("mode") || "vs-computer").toLowerCase();
+    const LUDO_RESUME_KEY = "ludo_saved_match_v1";
+    const titleEl = document.querySelector(".vs-head h1");
+    if (titleEl) {
+      titleEl.textContent = mode === "pass-play" ? "Pass And Play" : "VS Computer";
+    }
+
+    const playerButtons = Array.from(document.querySelectorAll("[data-players]"));
+    const colorButtons = Array.from(document.querySelectorAll("[data-color]"));
+    const resumeModal = document.getElementById("resume-modal");
+    const resumeBody = document.getElementById("resume-body");
+    const resumeContinue = document.getElementById("resume-continue");
+    const resumeNew = document.getElementById("resume-new");
+    let selectedPlayers = 2;
+    let selectedColor = "red";
+
+    function getSavedMatch() {
+      try {
+        const raw = localStorage.getItem(LUDO_RESUME_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object") return null;
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    function buildStartUrl() {
+      const query = new URLSearchParams({
+        mode,
+        players: String(selectedPlayers),
+        human: selectedColor
+      });
+      if (mode === "pass-play") return `ludo.html?${query.toString()}`;
+      return `level-select.html?${query.toString()}`;
+    }
+
+    function openResumeModal(saved, startUrl) {
+      if (!resumeModal || !resumeContinue || !resumeNew) {
+        window.location.href = startUrl;
+        return;
+      }
+      resumeBody.textContent = `Saved match found for ${saved.playerCount} players. Continue from where you left off?`;
+      resumeModal.classList.remove("hidden");
+
+      resumeContinue.onclick = () => {
+        resumeModal.classList.add("hidden");
+        window.location.href = saved.returnUrl;
+      };
+
+      resumeNew.onclick = () => {
+        resumeModal.classList.add("hidden");
+        localStorage.removeItem(LUDO_RESUME_KEY);
+        window.location.href = startUrl;
+      };
+    }
+
+    playerButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedPlayers = Number(btn.dataset.players);
+        playerButtons.forEach(b => b.classList.toggle("active", b === btn));
+      });
+    });
+
+    colorButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        selectedColor = btn.dataset.color;
+        colorButtons.forEach(b => b.classList.toggle("active", b === btn));
+      });
+    });
+
+    document.getElementById("play-btn").addEventListener("click", () => {
+      const startUrl = buildStartUrl();
+      const saved = getSavedMatch();
+      if (
+        saved &&
+        saved.gameMode === mode &&
+        Number(saved.playerCount) === selectedPlayers &&
+        typeof saved.returnUrl === "string" &&
+        saved.returnUrl
+      ) {
+        openResumeModal(saved, startUrl);
+        return;
+      }
+      window.location.href = startUrl;
+    });
+  </script>
+</body>
+</html>

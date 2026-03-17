@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UNO – Play Your Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="layout.css">
+<link rel="stylesheet" href="components.css">
+</head>
+<body class="home-screen">
+<div class="app">
+
+<!-- TOP BAR -->
+<header class="topbar">
+<div class="profile">
+<button class="avatar-btn" id="avatar-btn" aria-label="Choose Avatar">
+  <span id="avatar-label">A1</span>
+</button>
+<div class="player-info">
+<h3>Player</h3>
+<span id="player-level">Level 1</span>
+</div>
+</div>
+<div class="currency">
+<div class="coin">
+<span class="coin-icon" aria-hidden="true"></span>
+<span id="coin-count">1200</span>
+</div>
+<button class="settings-btn" aria-label="Settings">⚙</button>
+</div>
+</header>
+
+<!-- ACTION ICONS ROW -->
+<div class="action-icons">
+<button class="action-icon" data-action="daily-reward" aria-label="Daily Reward">
+<svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<polyline points="20 12 20 22 4 22 4 12"/>
+<rect x="2" y="7" width="20" height="5"/>
+<line x1="12" y1="22" x2="12" y2="7"/>
+<path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+<path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+</svg>
+<span class="action-icon-badge" aria-hidden="true"></span>
+<span class="action-icon-label">Daily</span>
+</button>
+<button class="action-icon" data-action="customize" aria-label="Customize">
+<svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="13.5" cy="6.5" r="1.5"/>
+<circle cx="17.5" cy="10.5" r="1.5"/>
+<circle cx="8.5" cy="7.5" r="1.5"/>
+<circle cx="6.5" cy="12.5" r="1.5"/>
+<path d="M12 2a10 10 0 0 0-1 19.93 1.5 1.5 0 0 1 1.06-1.06A10 10 0 1 0 12 2z"/>
+</svg>
+<span class="action-icon-label">Customize</span>
+</button>
+<button class="action-icon" data-action="stats" aria-label="Stats">
+<svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<line x1="18" y1="20" x2="18" y2="10"/>
+<line x1="12" y1="20" x2="12" y2="4"/>
+<line x1="6" y1="20" x2="6" y2="14"/>
+</svg>
+<span class="action-icon-label">Stats</span>
+</button>
+</div>
+
+<!-- HERO PLAY SECTION -->
+<section class="hero">
+<h1 class="game-title">UNO</h1>
+<p class="game-tagline">Play Your Cards Right</p>
+<button class="play-btn">
+<span class="play-btn-text">Start Match</span>
+</button>
+</section>
+
+<!-- QUICK GAME MODES -->
+<section class="game-modes">
+<h2 class="section-label">Quick Play</h2>
+<div class="mode-cards">
+<button class="mode-card">
+<span class="mode-icon">🤖</span>
+<span class="mode-name">AI Match</span>
+</button>
+<button class="mode-card mode-card-featured">
+<span class="mode-icon">⚡</span>
+<span class="mode-name">Quick Game</span>
+</button>
+<button class="mode-card">
+<span class="mode-icon">📖</span>
+<span class="mode-name">Practice</span>
+</button>
+</div>
+</section>
+
+</div>
+<script src="rewards-core.js"></script>
+<script src="avatars-data.js"></script>
+<script src="home.js"></script>
+</body>
+</html>

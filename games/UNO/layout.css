@@ -1,0 +1,43 @@
+.app {
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 0 0 40px;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+}
+
+/* Action icons row */
+.action-icons {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 20px 24px;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 32px 24px 40px;
+}
+
+/* Game modes */
+.game-modes {
+  padding: 0 20px;
+}
+
+.section-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  padding-left: 2px;
+}

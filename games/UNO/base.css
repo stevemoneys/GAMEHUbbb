@@ -1,0 +1,65 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Professional UNO palette - elegant & enticing */
+  --bg-deep: #0a0e17;
+  --bg-primary: #0f1629;
+  --bg-secondary: #151d2e;
+  --bg-card: #1a2332;
+  --bg-card-hover: #222d40;
+  --border-subtle: rgba(248, 250, 252, 0.06);
+  --border-accent: rgba(251, 191, 36, 0.25);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-gold: #fbbf24;
+  --accent-gold-dim: #f59e0b;
+  --accent-warm: #f97316;
+  --accent-coral: #fb923c;
+  --uno-red: #ef4444;
+  --uno-blue: #3b82f6;
+  --uno-green: #22c55e;
+  --uno-yellow: #eab308;
+  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 40px rgba(251, 191, 36, 0.08);
+  --gradient-hero: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #f97316 100%);
+  --gradient-bg: linear-gradient(180deg, #0f1629 0%, #0a0e17 100%);
+  --home-bg-image: url('assets/home-bg.png');
+  --game-bg-image: url('assets/game-bg.png');
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  background: var(--gradient-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+body.home-screen {
+  background:
+    linear-gradient(180deg, rgba(10, 14, 23, 0.85), rgba(10, 14, 23, 0.6)),
+    var(--home-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}

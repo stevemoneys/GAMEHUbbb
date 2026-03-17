@@ -1,0 +1,138 @@
+:root {
+    --text-main: #eef4ff;
+    --text-muted: #cfd9f6;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.rewards-page {
+    min-height: 100svh;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: var(--text-main);
+    background-color: #040a19;
+    background-image:
+        linear-gradient(185deg, rgba(4, 9, 23, 0.16) 0%, rgba(4, 9, 23, 0.84) 78%),
+        url("./assets/firstpagebg.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: contain;
+}
+
+.rewards-app {
+    width: min(100%, 27rem);
+    margin: 0 auto;
+    min-height: 100svh;
+    padding: 0.85rem 0.75rem 1.3rem;
+    display: grid;
+    gap: 0.8rem;
+    align-content: start;
+}
+
+.rewards-topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.62rem;
+}
+
+.icon-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.72rem;
+    border: 1px solid rgba(196, 213, 255, 0.24);
+    background: rgba(6, 11, 25, 0.36);
+    color: var(--text-main);
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+}
+
+.icon-btn svg {
+    width: 1.12rem;
+    height: 1.12rem;
+    fill: currentColor;
+}
+
+.rewards-headline .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.58rem;
+    color: var(--text-muted);
+}
+
+.rewards-headline h1 {
+    margin-top: 0.04rem;
+    font-size: clamp(1.06rem, 4.4vw, 1.3rem);
+}
+
+.coin-balance {
+    border: 1px solid rgba(255, 218, 129, 0.48);
+    border-radius: 999px;
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
+    color: #ffe8b2;
+    background: rgba(37, 24, 7, 0.82);
+    white-space: nowrap;
+}
+
+.claim-panel,
+.progress-panel {
+    border: 1px solid rgba(255, 214, 116, 0.32);
+    border-radius: 1rem;
+    background: linear-gradient(170deg, rgba(44, 31, 10, 0.84), rgba(17, 13, 7, 0.9));
+    padding: 0.72rem;
+    display: grid;
+    gap: 0.6rem;
+    backdrop-filter: blur(2px);
+}
+
+.claim-title h2,
+.progress-panel h2 {
+    font-size: 0.94rem;
+}
+
+.claim-title p,
+.progress-panel p {
+    margin-top: 0.18rem;
+    font-size: 0.7rem;
+    color: #f3ddb0;
+}
+
+.claim-box {
+    border: 1px solid rgba(255, 218, 129, 0.3);
+    border-radius: 0.88rem;
+    background: rgba(56, 38, 10, 0.58);
+    padding: 0.52rem;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.claim-btn {
+    border: 1px solid rgba(255, 224, 146, 0.56);
+    border-radius: 0.72rem;
+    background: linear-gradient(180deg, rgba(250, 174, 42, 0.92), rgba(161, 98, 13, 0.94));
+    color: #201404;
+    padding: 0.56rem 0.66rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 0.81rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.claim-btn[disabled] {
+    opacity: 0.58;
+    filter: grayscale(0.3);
+}
+
+.claim-result {
+    min-height: 1.1rem;
+    font-size: 0.7rem;
+    color: #ffe9b7;
+}

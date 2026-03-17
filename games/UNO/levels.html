@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO - Level Select</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="levels.css">
+</head>
+<body>
+  <div class="levels-shell">
+    <header class="levels-header">
+      <div>
+        <p class="eyebrow">GameHub</p>
+        <h1>UNO Road</h1>
+        <p class="subtitle">Unlock levels in order. Each level increases AI difficulty.</p>
+      </div>
+      <button id="btn-back" class="back-btn" type="button">Back</button>
+    </header>
+
+    <main class="road-map">
+      <div id="level-road" class="level-road">
+        <div class="road-track"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="levels.js"></script>
+</body>
+</html>

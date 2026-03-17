@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 | Level Atlas</title>
+    <link rel="stylesheet" href="levelselect.css">
+</head>
+<body class="level-page">
+    <main class="level-app">
+        <header class="level-topbar">
+            <a class="icon-btn" href="index.html" aria-label="Back to home">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 3 2 11h2v10h6v-6h4v6h6V11h2Z"/>
+                </svg>
+            </a>
+            <div class="level-heading">
+                <p class="eyebrow">Single Player</p>
+                <h1>Level Atlas</h1>
+            </div>
+            <div id="progressBadge" class="progress-badge">1 / 100</div>
+        </header>
+
+        <section id="levelGrid" class="level-grid" aria-label="Level and stage selection"></section>
+    </main>
+
+    <script src="progression.js"></script>
+    <script src="ai.js"></script>
+    <script src="levelselect.js"></script>
+</body>
+</html>

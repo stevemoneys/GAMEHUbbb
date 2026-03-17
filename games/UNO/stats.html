@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO - Stats</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="stats.css">
+</head>
+<body class="stats-screen">
+  <div class="stats-shell">
+    <header class="stats-header">
+      <button id="btn-back" class="back-btn" type="button">Back</button>
+      <div class="balance-card">
+        <span class="coin-icon" aria-hidden="true"></span>
+        <span id="coin-count">1200</span>
+      </div>
+    </header>
+
+    <section class="stats-title">
+      <p class="eyebrow">Player Stats</p>
+      <h1>Performance Overview</h1>
+      <p class="subtitle">Live stats based on your matches.</p>
+    </section>
+
+    <section class="stats-list" id="stats-list">
+      <div class="stat-row"><span>Total Games Played</span><strong data-stat="matchesPlayed">0</strong></div>
+      <div class="stat-row"><span>Total Wins</span><strong data-stat="wins">0</strong></div>
+      <div class="stat-row"><span>Total Losses</span><strong data-stat="losses">0</strong></div>
+      <div class="stat-row"><span>Win Rate (%)</span><strong data-stat="winRate">0</strong></div>
+      <div class="stat-row"><span>Total Coins Earned</span><strong data-stat="totalCoinsEarned">0</strong></div>
+      <div class="stat-row"><span>Total Coins Spent</span><strong data-stat="totalCoinsSpent">0</strong></div>
+      <div class="stat-row"><span>Longest Win Streak</span><strong data-stat="longestWinStreak">0</strong></div>
+      <div class="stat-row"><span>Current Win Streak</span><strong data-stat="currentWinStreak">0</strong></div>
+      <div class="stat-row"><span>Comebacks Won</span><strong data-stat="comebacksWon">0</strong></div>
+      <div class="stat-row"><span>Fastest Win (sec)</span><strong data-stat="fastestWinSec">0</strong></div>
+      <div class="stat-row"><span>Average Game Duration (sec)</span><strong data-stat="avgGameDuration">0</strong></div>
+      <div class="stat-row"><span>Total Cards Played</span><strong data-stat="cardsPlayed">0</strong></div>
+      <div class="stat-row"><span>Draw Cards Taken</span><strong data-stat="drawCardsTaken">0</strong></div>
+      <div class="stat-row"><span>Draw 2 Played</span><strong data-stat="draw2Played">0</strong></div>
+      <div class="stat-row"><span>Draw 4 Played</span><strong data-stat="draw4Played">0</strong></div>
+      <div class="stat-row"><span>Skip Cards Played</span><strong data-stat="skipPlayed">0</strong></div>
+      <div class="stat-row"><span>Reverse Cards Played</span><strong data-stat="reversePlayed">0</strong></div>
+      <div class="stat-row"><span>Wild Cards Used</span><strong data-stat="wildPlayed">0</strong></div>
+      <div class="stat-row"><span>UNO Calls Made</span><strong data-stat="unoCalls">0</strong></div>
+      <div class="stat-row"><span>Most Cards Held at Once</span><strong data-stat="maxCardsHeld">0</strong></div>
+      <div class="stat-row"><span>Biggest Comeback</span><strong data-stat="biggestComeback">0</strong></div>
+      <div class="stat-row"><span>Most Cards Given to Opponent</span><strong data-stat="mostCardsGiven">0</strong></div>
+      <div class="stat-row"><span>Most Times Forced to Draw</span><strong data-stat="mostForcedDraws">0</strong></div>
+      <div class="stat-row"><span>Games Won with 1 Card Left</span><strong data-stat="winsWithUno">0</strong></div>
+    </section>
+  </div>
+
+  <script src="rewards-core.js"></script>
+  <script src="stats.js"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO - Theme Shop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="themes.css">
+</head>
+<body class="themes-screen">
+  <div class="themes-shell">
+    <header class="themes-header">
+      <button id="btn-back" class="back-btn" type="button">Back</button>
+      <div class="balance-card">
+        <span class="coin-icon" aria-hidden="true"></span>
+        <span id="coin-count">1200</span>
+      </div>
+    </header>
+
+    <section class="themes-title">
+      <p class="eyebrow">Theme Shop</p>
+      <h1>Playing Backgrounds</h1>
+      <p class="subtitle">Swipe to browse. Buy once, use anytime.</p>
+    </section>
+
+    <section class="theme-carousel" id="theme-carousel" aria-label="Theme list"></section>
+  </div>
+
+  <script src="rewards-core.js"></script>
+  <script src="themes-data.js"></script>
+  <script src="themes.js"></script>
+</body>
+</html>

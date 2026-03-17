@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNO - Rewards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="rewards.css">
+</head>
+<body class="rewards-screen">
+  <div class="rewards-shell">
+    <header class="rewards-header">
+      <button class="back-btn" id="btn-back" type="button">Back</button>
+      <div class="balance-card">
+        <span class="coin-icon" aria-hidden="true"></span>
+        <span id="coin-count">1200</span>
+      </div>
+    </header>
+
+    <section class="rewards-body">
+      <div class="rewards-title">
+        <p class="eyebrow">Rewards</p>
+        <h1>Claim Your Coins</h1>
+        <p class="subtitle">Tap the coin amount to collect.</p>
+      </div>
+
+      <div id="daily-reward" class="reward-card">
+        <div class="reward-info">
+          <div class="reward-title">Daily Streak</div>
+          <div id="daily-subtitle" class="reward-subtitle">Day 1 reward</div>
+        </div>
+        <button id="daily-claim" class="reward-claim-btn" type="button">
+          <span class="coin-icon" aria-hidden="true"></span>
+          <span id="daily-amount">0</span>
+        </button>
+      </div>
+
+      <div id="reward-list" class="reward-list"></div>
+      <div id="empty-state" class="empty-state hidden">No unclaimed rewards yet.</div>
+    </section>
+  </div>
+
+  <div id="coin-fx-layer" class="coin-fx-layer" aria-hidden="true"></div>
+  <script src="rewards-core.js"></script>
+  <script src="rewards.js"></script>
+</body>
+</html>

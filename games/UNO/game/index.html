@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>UNO - GameHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="game.css">
+</head>
+<body class="game-screen">
+  <div class="game-shell">
+    <div id="rotate-overlay" class="rotate-overlay hidden">
+      <div class="rotate-card">
+        <p>Rotate your device to landscape for the best experience.</p>
+      </div>
+    </div>
+
+    <main class="game-table">
+      <section id="player-top" class="player-zone player-zone--top">
+        <div id="avatar-top" class="player-avatar" aria-hidden="true"></div>
+        <div class="player-info-stack">
+          <div class="player-label">AI 2</div>
+          <div class="opponent-hand">
+            <div class="card-back-stack" aria-hidden="true">
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+            </div>
+            <span id="count-top" class="opponent-count">0</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="player-left" class="player-zone player-zone--left">
+        <div id="avatar-left" class="player-avatar" aria-hidden="true"></div>
+        <div class="player-info-stack">
+          <div class="player-label">AI 1</div>
+          <div class="opponent-hand">
+            <div class="card-back-stack" aria-hidden="true">
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+            </div>
+            <span id="count-left" class="opponent-count">0</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="center-zone">
+        <div id="draw-pile" class="pile pile--draw" role="button" aria-label="Draw pile">
+          <div class="uno-card uno-card--back"></div>
+          <span id="deck-count" class="pile-count">0</span>
+          <span class="pile-label">Draw</span>
+        </div>
+
+        <div class="pile pile--discard">
+          <div id="discard-card" class="uno-card uno-card--wild">
+            <div class="uno-card__inner">
+              <div class="uno-card__oval">
+                <span class="uno-card__center">--</span>
+              </div>
+              <span class="uno-card__corner uno-card__corner--tl">--</span>
+              <span class="uno-card__corner uno-card__corner--br">--</span>
+            </div>
+          </div>
+          <span class="pile-label">Discard</span>
+        </div>
+
+        <div id="turn-indicator" class="turn-indicator">Your turn</div>
+      </section>
+
+      <section id="player-right" class="player-zone player-zone--right">
+        <div id="avatar-right" class="player-avatar" aria-hidden="true"></div>
+        <div class="player-info-stack">
+          <div class="player-label">AI 3</div>
+          <div class="opponent-hand">
+            <div class="card-back-stack" aria-hidden="true">
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+              <span class="card-back-mini"></span>
+            </div>
+            <span id="count-right" class="opponent-count">0</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="player-bottom" class="player-zone player-zone--bottom">
+        <div id="avatar-bottom" class="player-avatar" aria-hidden="true"></div>
+        <div class="player-info-stack player-info-stack--bottom">
+          <div class="player-label">You</div>
+          <div id="hand-cards" class="hand-scroll" aria-label="Your hand"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="wild-picker" class="wild-picker hidden">
+      <span class="wild-label">Choose a color</span>
+      <div class="wild-buttons">
+        <button type="button" data-color="red">Red</button>
+        <button type="button" data-color="blue">Blue</button>
+        <button type="button" data-color="green">Green</button>
+        <button type="button" data-color="yellow">Yellow</button>
+      </div>
+    </div>
+
+    <button type="button" id="btn-uno" class="uno-float" aria-label="UNO">UNO</button>
+
+    <footer class="action-bar">
+      <button type="button" id="btn-catch" class="btn">Catch</button>
+      <button type="button" id="btn-new" class="btn ghost">New Game</button>
+    </footer>
+  </div>
+
+  <script src="../avatars-data.js"></script>
+  <script src="../rewards-core.js"></script>
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Rock Paper Scissors</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="ro-pa-sc.css">
+</head>
+<body>
+<div id="level-screen">
+    <h2>Select Level</h2>
+    <input type="range" min="1" max="50" value="1" id="level-slider">
+    <p>Level: <span id="level-number">1</span></p>
+    <button class="start-btn" onclick="startGame()">Start Game</button>
+</div>
+
+<h1 class="title">Rock • Paper • Scissors</h1>
+
+<!-- SCORE -->
+<div class="score-board">
+    <div>
+        <h2>You</h2>
+        <span id="player-score">0</span>
+    </div>
+    <div>
+        <h2>Computer</h2>
+        <span id="computer-score">0</span>
+    </div>
+</div>
+
+<!-- HANDS -->
+<div class="hands">
+   <div id="player-hand" class="hand">
+    <img src="images/player-rock_result.webp" alt="Player Hand">
+</div>
+
+<div id="computer-hand" class="hand">
+    <img src="images/computer-rock_result.webp" alt="Computer Hand">
+</div>
+
+</div>
+
+<p id="message">Choose your move</p>
+
+<!-- CONTROLS -->
+<div class="buttons">
+    <button data-choice="rock" class="rock-btn">✊ Rock</button>
+    <button data-choice="paper">✋ Paper</button>
+    <button data-choice="scissors">✌ Scissors</button>
+</div>
+
+<button id="restart">Restart Game</button>
+<div id="level-modal" class="modal hidden">
+    <div class="modal-content">
+        <h2 id="modal-title">Level Complete!</h2>
+        <div id="modal-stars"></div>
+
+        <div class="modal-buttons">
+            <button id="play-again">Play Again</button>
+            <button id="next-level">Next Level</button>
+            <button id="cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script src="ro-pa-sc.js"></script>
+</body>
+</html>

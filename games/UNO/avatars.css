@@ -1,0 +1,115 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  min-height: 100vh;
+  background: radial-gradient(900px 500px at 15% 10%, rgba(59, 130, 246, 0.25), transparent 60%),
+    radial-gradient(900px 500px at 85% 85%, rgba(34, 197, 94, 0.18), transparent 60%),
+    linear-gradient(180deg, #0b1020, #05070d);
+  color: #f8fafc;
+}
+
+.avatar-shell {
+  min-height: 100vh;
+  padding: 20px 16px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avatar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.7rem;
+  color: #a5b4fc;
+}
+
+.avatar-header h1 {
+  font-size: 2rem;
+  letter-spacing: 0.08em;
+}
+
+.subtitle {
+  color: rgba(248, 250, 252, 0.7);
+  margin-top: 6px;
+  font-size: 0.95rem;
+}
+
+.back-btn {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 16px;
+}
+
+.avatar-card {
+  background: rgba(10, 15, 28, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar-circle {
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #111827;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+  background-size: cover;
+  background-position: center;
+}
+
+.avatar-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.7);
+}
+
+.avatar-card.locked {
+  opacity: 0.4;
+}
+
+.avatar-card.locked .avatar-circle {
+  filter: blur(6px);
+}
+
+.avatar-card.selected {
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4);
+}
+
+@media (min-width: 720px) {
+  .avatar-shell {
+    padding: 28px 24px 40px;
+  }
+}

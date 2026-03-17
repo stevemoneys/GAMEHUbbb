@@ -1,0 +1,113 @@
+body.rewards-screen {
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(251, 191, 36, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 80% 85%, rgba(59, 130, 246, 0.18), transparent 60%),
+    var(--gradient-bg);
+  min-height: 100vh;
+}
+
+.rewards-shell {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 20px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.rewards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.back-btn {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.balance-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.rewards-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rewards-title h1 {
+  font-size: 1.9rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.7rem;
+  color: #a5b4fc;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: rgba(248, 250, 252, 0.7);
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.reward-claim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(12, 18, 30, 0.7);
+  border: 1px solid rgba(248, 250, 252, 0.2);
+  color: var(--accent-gold);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reward-claim-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.rewards-screen .reward-card {
+  cursor: default;
+}
+
+.reward-claim-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+.empty-state {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed rgba(148, 163, 184, 0.3);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.hidden {
+  display: none;
+}
