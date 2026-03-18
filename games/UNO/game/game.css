@@ -17,6 +17,8 @@
   --green: #22c55e;
   --yellow: #f4c430;
   --game-bg-image: url('../assets/game-bg.png');
+  --card-pack-image: none;
+  --ease-premium: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 * {
@@ -29,6 +31,7 @@ html,
 body {
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   overflow: hidden;
   background: radial-gradient(1200px 600px at 10% 20%, rgba(43, 109, 247, 0.18), transparent 60%),
     radial-gradient(1200px 600px at 90% 80%, rgba(244, 196, 48, 0.2), transparent 55%),
@@ -38,6 +41,7 @@ body {
 }
 
 body.game-screen {
+  min-height: 100dvh;
   background:
     linear-gradient(180deg, rgba(8, 12, 20, 0.45), rgba(5, 7, 13, 0.35)),
     var(--game-bg-image);
@@ -50,9 +54,10 @@ body.game-screen {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
   gap: 10px;
 }
 
@@ -182,9 +187,23 @@ body.game-screen {
   position: absolute;
   inset: 0;
   border-radius: 8px;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(135deg, #111827, #1f2937);
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(31, 41, 55, 0.96)),
+    var(--card-pack-image);
+  background-size: cover;
+  background-position: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+body.has-custom-card-pack .card-back-mini {
+  background-image: var(--card-pack-image);
+  background-size: cover;
+  background-position: center;
+}
+
+body.has-custom-card-pack .card-back-mini::before,
+body.has-custom-card-pack .card-back-mini::after {
+  display: none;
 }
 
 .card-back-mini::before {
@@ -219,20 +238,26 @@ body.game-screen {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  background: rgba(6, 10, 18, 0.55);
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(6px);
-  padding: 10px;
+  gap: 26px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.12), transparent 52%),
+    linear-gradient(180deg, rgba(8, 12, 20, 0.74), rgba(5, 7, 13, 0.58));
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  padding: 18px 14px 20px;
   position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 28px 42px rgba(0, 0, 0, 0.38);
 }
 
 .pile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .pile-label {
@@ -260,7 +285,7 @@ body.game-screen {
 }
 
 .pile--discard .uno-card {
-  transform: rotate(2deg) skewX(1deg);
+  transform: rotate(4deg) translateY(-10px);
 }
 
 .pile--draw.active {
@@ -269,8 +294,114 @@ body.game-screen {
   padding: 6px 8px;
 }
 
-.pile--draw.active .uno-card {
+.pile--draw.active .draw-stack-layer--front {
   box-shadow: 0 0 18px rgba(251, 191, 36, 0.6);
+}
+
+.pile-stack {
+  position: relative;
+  width: clamp(60px, 10vw, 96px);
+  aspect-ratio: 5 / 7;
+  filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.34));
+}
+
+.draw-stack-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.draw-stack-layer--rear {
+  transform: translate(4px, 3px) rotate(0.35deg);
+  filter: brightness(0.88);
+}
+
+.draw-stack-layer--mid {
+  transform: translate(2px, 1px) rotate(0.18deg);
+  filter: brightness(0.95);
+}
+
+.draw-stack-layer--front {
+  transform: translate(0, 0) rotate(0deg);
+}
+
+.draw-stack-layer--rear::before,
+.draw-stack-layer--mid::before {
+  content: '';
+  position: absolute;
+  inset: auto -6px 5px auto;
+  width: 10px;
+  height: calc(100% - 10px);
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(203, 213, 225, 0.84));
+}
+
+.draw-stack-layer--front::before {
+  content: '';
+  position: absolute;
+  inset: auto -8px 6px auto;
+  width: 12px;
+  height: calc(100% - 12px);
+  border-radius: 0 10px 10px 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(203, 213, 225, 0.88)),
+    repeating-linear-gradient(
+      180deg,
+      rgba(148, 163, 184, 0.16) 0,
+      rgba(148, 163, 184, 0.16) 2px,
+      rgba(255, 255, 255, 0.02) 2px,
+      rgba(255, 255, 255, 0.02) 4px
+    );
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.2);
+}
+
+.draw-stack-layer--front::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 10px;
+  bottom: -8px;
+  height: 18px;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0));
+  filter: blur(3px);
+  z-index: -1;
+}
+
+.discard-surface {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 34px);
+  width: clamp(92px, 14vw, 130px);
+  height: 24px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0));
+  filter: blur(2px);
+}
+
+.discard-base-card {
+  position: absolute;
+  inset: auto auto 26px 50%;
+  width: clamp(60px, 10vw, 96px);
+  transform: translateX(-50%) rotate(-8deg);
+  filter: brightness(0.92) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
+}
+
+.pile--discard::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 12px);
+  width: clamp(94px, 14vw, 132px);
+  height: clamp(94px, 14vw, 132px);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.12), transparent 70%);
+}
+
+.pile--discard #discard-card {
+  position: relative;
+  z-index: 2;
 }
 
 .turn-indicator {
@@ -330,18 +461,25 @@ body.game-screen {
 .uno-card::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), transparent 45%);
-  opacity: 0.7;
+  inset: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   pointer-events: none;
 }
 
 .uno-card::after {
   content: '';
   position: absolute;
-  inset: 4px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0.05)
+  );
   pointer-events: none;
 }
 
@@ -366,11 +504,12 @@ body.game-screen {
 }
 
 .uno-card__center {
-  font-size: clamp(1.5rem, 4vw, 2.4rem);
-  font-weight: 800;
+  font-family: 'Outfit', 'Space Grotesk', system-ui, sans-serif;
+  font-size: clamp(1.9rem, 5.1vw, 3.05rem);
+  font-weight: 900;
   color: currentColor;
-  transform: rotate(16deg);
-  letter-spacing: 0.02em;
+  transform: rotate(14deg);
+  letter-spacing: 0;
   position: relative;
   z-index: 1;
 }
@@ -427,8 +566,8 @@ body.game-screen {
 }
 
 .uno-card__stack--wild4 {
-  width: 80%;
-  height: 80%;
+  width: 84%;
+  height: 84%;
 }
 
 .uno-card__stack-card {
@@ -514,8 +653,9 @@ body.game-screen {
 
 .uno-card__corner {
   position: absolute;
-  font-size: 0.6rem;
-  font-weight: 800;
+  font-family: 'Outfit', 'Space Grotesk', system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
   color: #f8fafc;
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
 }
@@ -542,20 +682,20 @@ body.game-screen {
 }
 
 .uno-card__corner--tl {
-  top: 6px;
-  left: 6px;
+  top: 4px;
+  left: 4px;
 }
 
 .uno-card__corner--br {
-  bottom: 6px;
-  right: 6px;
+  bottom: 4px;
+  right: 4px;
   transform: rotate(180deg);
 }
 
-.uno-card--red { background: linear-gradient(135deg, #7f1d1d, var(--red)); color: var(--red); }
-.uno-card--blue { background: linear-gradient(135deg, #1e3a8a, var(--blue)); color: var(--blue); }
-.uno-card--green { background: linear-gradient(135deg, #14532d, var(--green)); color: var(--green); }
-.uno-card--yellow { background: linear-gradient(135deg, #713f12, var(--yellow)); color: var(--yellow); }
+.uno-card--red { background: linear-gradient(145deg, #ff4b5c, #b71c2b); color: #b71c2b; }
+.uno-card--blue { background: linear-gradient(145deg, #4da6ff, #0d5bb5); color: #0d5bb5; }
+.uno-card--green { background: linear-gradient(145deg, #4cd97b, #1e8f4d); color: #1e8f4d; }
+.uno-card--yellow { background: linear-gradient(145deg, #ffe066, #d4a017); color: #d4a017; }
 .uno-card--wild { background: linear-gradient(135deg, #111827, #0b1120); color: #111827; }
 .uno-card--wild { background: linear-gradient(135deg, #111827, #0b1120); }
 
@@ -597,9 +737,23 @@ body.game-screen {
   font-weight: 800;
 }
 .uno-card--back {
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.18), transparent 55%),
-    linear-gradient(135deg, #111827, #1f2937);
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(31, 41, 55, 0.96)),
+    var(--card-pack-image);
+  background-size: cover;
+  background-position: center;
   position: relative;
+}
+
+body.has-custom-card-pack .uno-card--back::before,
+body.has-custom-card-pack .uno-card--back::after {
+  display: none;
+}
+
+body.has-custom-card-pack .uno-card--back {
+  background-image: var(--card-pack-image);
+  background-size: cover;
+  background-position: center;
 }
 
 .uno-card--back::after {
@@ -637,50 +791,193 @@ body.game-screen {
 .wild-picker {
   position: absolute;
   left: 50%;
-  bottom: 72px;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   background: var(--panel);
   border: 1px solid var(--stroke);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 18px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
-  z-index: 10;
+  z-index: 12;
+  min-width: 150px;
 }
 
 .wild-picker.hidden {
   display: none;
 }
 
-.wild-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+.wild-block {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: #111827;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
 }
 
-.wild-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.wild-buttons button {
+.wild-swatch {
   border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-weight: 600;
-  color: #f8fafc;
   cursor: pointer;
 }
 
-.wild-buttons button[data-color="red"] { background: #7f1d1d; }
-.wild-buttons button[data-color="blue"] { background: #1e3a8a; }
-.wild-buttons button[data-color="green"] { background: #14532d; }
-.wild-buttons button[data-color="yellow"] { background: #713f12; }
+.wild-swatch[data-color="red"] { background: #e03b3b; }
+.wild-swatch[data-color="blue"] { background: #2b6df7; }
+.wild-swatch[data-color="green"] { background: #22c55e; }
+.wild-swatch[data-color="yellow"] { background: #f4c430; }
+
+.wild-picker[data-color] .wild-swatch {
+  background: var(--wild-color);
+  pointer-events: none;
+}
+
+.wild-picker[data-color] .wild-block {
+  background: #111827;
+}
+
+.back-btn {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.55);
+  color: rgba(248, 250, 252, 0.92);
+  border-radius: 14px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.back-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.back-btn--game {
+  position: absolute;
+  left: calc(12px + env(safe-area-inset-left));
+  top: calc(12px + env(safe-area-inset-top));
+  z-index: 25;
+}
+
+.value-wild4 .uno-card__oval {
+  background: rgba(255, 255, 255, 0.97);
+  border: 4px solid rgba(255, 255, 255, 0.92);
+}
+
+.value-wild4 .uno-card__corner {
+  text-shadow:
+    -2px -2px 0 #0b1120,
+    2px -2px 0 #0b1120,
+    -2px 2px 0 #0b1120,
+    2px 2px 0 #0b1120,
+    0 0 10px rgba(0, 0, 0, 0.7);
+}
+
+.wild4-center {
+  position: relative;
+  width: 84%;
+  height: 84%;
+}
+
+.wild4-center__cards {
+  position: absolute;
+  inset: 10% 6%;
+}
+
+.wild4-mini {
+  position: absolute;
+  width: 46%;
+  height: 56%;
+  border-radius: 8px;
+  border: 3px solid rgba(0, 0, 0, 0.85);
+  box-shadow: 0 10px 16px rgba(0, 0, 0, 0.22);
+}
+
+.wild4-mini--green { background: #2f8a11; left: 2%; top: 48%; transform: rotate(-12deg); }
+.wild4-mini--blue { background: #2b6df7; left: 18%; top: 28%; transform: rotate(-6deg); }
+.wild4-mini--red { background: #e03b3b; left: 38%; top: 38%; transform: rotate(6deg); }
+.wild4-mini--yellow { background: #f4c430; left: 58%; top: 14%; transform: rotate(10deg); }
+
+.wild-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
 .action-bar {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.hidden-player {
+  display: none;
+}
+
+.player-zone--teammate .player-avatar {
+  box-shadow:
+    0 0 0 2px rgba(56, 189, 248, 0.85),
+    0 0 18px rgba(56, 189, 248, 0.45),
+    0 10px 20px rgba(0, 0, 0, 0.35);
+}
+
+.player-zone--teammate .player-label {
+  color: #7dd3fc;
+}
+
+.team-brief {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 70;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.76), rgba(2, 6, 23, 0.9));
+  backdrop-filter: blur(10px);
+}
+
+.team-brief.hidden {
+  display: none;
+}
+
+.team-brief__panel {
+  width: min(420px, 88vw);
+  padding: 24px 22px 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.18), transparent 52%),
+    rgba(8, 12, 20, 0.92);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  text-align: center;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+}
+
+.team-brief__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  margin-bottom: 8px;
+}
+
+.team-brief__title {
+  font-size: 1.42rem;
+  margin-bottom: 10px;
+}
+
+.team-brief__message {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
 }
 
 .btn {
@@ -721,6 +1018,77 @@ body.game-screen {
   text-transform: uppercase;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.45);
   z-index: 5;
+}
+
+.uno-arrow {
+  position: absolute;
+  right: 26px;
+  top: 32%;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 16px solid rgba(251, 191, 36, 0.95);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  z-index: 6;
+  animation: uno-arrow-bounce 900ms ease-in-out infinite;
+}
+
+.uno-arrow.hidden {
+  display: none;
+}
+
+.end-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+
+.end-modal.hidden {
+  display: none;
+}
+
+.end-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.85), rgba(3, 7, 18, 0.95));
+  backdrop-filter: blur(8px);
+}
+
+.end-modal__panel {
+  position: relative;
+  max-width: 320px;
+  width: 88%;
+  padding: 20px 18px 16px;
+  border-radius: 20px;
+  background: radial-gradient(circle at top, rgba(251, 191, 36, 0.14), transparent 55%), var(--panel);
+  border: 1px solid rgba(248, 250, 252, 0.12);
+  box-shadow:
+    0 24px 50px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(251, 191, 36, 0.35);
+  text-align: center;
+}
+
+.end-modal__title {
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.end-modal__message {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.end-modal__buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .speech-bubble {
@@ -773,31 +1141,31 @@ body.game-screen {
 }
 
 .discard-slam {
-  animation: discard-slam 520ms ease;
+  animation: discard-slam 560ms var(--ease-premium);
 }
 
 .reverse-spin .uno-card__inner {
-  animation: reverse-spin 920ms ease;
+  animation: reverse-spin 980ms var(--ease-premium);
 }
 
 .skip-flash .uno-card__icon {
-  animation: skip-flash 900ms ease;
+  animation: skip-flash 920ms var(--ease-premium);
 }
 
 .deck-glow {
-  animation: deck-glow 1100ms ease;
+  animation: deck-glow 1200ms var(--ease-premium);
 }
 
 .card-land {
-  animation: card-land 420ms ease;
+  animation: card-land 460ms var(--ease-premium);
 }
 
 .table-shake {
-  animation: table-shake 420ms ease;
+  animation: table-shake 460ms var(--ease-premium);
 }
 
 .shuffle-deck {
-  animation: deck-shuffle 1000ms ease-in-out 2;
+  animation: deck-shuffle 1100ms var(--ease-premium) 2;
 }
 
 .uno-pop {
@@ -812,7 +1180,7 @@ body.game-screen {
   box-shadow: 0 16px 24px rgba(0, 0, 0, 0.35);
   z-index: 40;
   pointer-events: none;
-  animation: uno-pop 2600ms ease forwards;
+  animation: uno-pop 2800ms var(--ease-premium) forwards;
 }
 
 .victory-glow {
@@ -826,7 +1194,7 @@ body.game-screen {
   border-radius: 24px;
   background: radial-gradient(circle at center, rgba(251, 191, 36, 0.35), transparent 65%);
   opacity: 0;
-  animation: victory-glow 2600ms ease forwards;
+  animation: victory-glow 2800ms var(--ease-premium) forwards;
   pointer-events: none;
 }
 
@@ -843,6 +1211,7 @@ body.game-screen {
 
 .card-fly {
   position: fixed;
+  will-change: transform;
   z-index: 60;
   pointer-events: none;
   width: clamp(52px, 9vw, 90px);
@@ -861,7 +1230,7 @@ body.game-screen {
   aspect-ratio: 5 / 7;
   z-index: 55;
   pointer-events: none;
-  animation: card-burst 1200ms ease-out forwards;
+  animation: card-burst 1500ms var(--ease-premium) forwards;
 }
 
 .card-burst .uno-card {
@@ -870,20 +1239,20 @@ body.game-screen {
 }
 
 .wild-picker.glow {
-  animation: wild-picker-pop 1000ms ease;
+  animation: wild-picker-pop 1100ms var(--ease-premium);
   box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
 }
 
-.wild-buttons button.selected {
-  animation: wild-selected 1400ms ease;
+.wild-swatch.selected {
+  animation: wild-selected 1500ms var(--ease-premium);
 }
 
 .wild-rotate .uno-card__inner {
-  animation: wild-rotate 900ms ease;
+  animation: wild-rotate 1100ms var(--ease-premium);
 }
 
 .wild-glow {
-  animation: wild-glow 1200ms ease;
+  animation: wild-glow 1400ms var(--ease-premium);
   box-shadow:
     0 0 10px rgba(239, 68, 68, 0.6),
     0 0 12px rgba(59, 130, 246, 0.6),
@@ -1037,6 +1406,13 @@ body.game-screen {
   }
 }
 
+@keyframes uno-arrow-bounce {
+  0% { transform: translateY(0); opacity: 0.2; }
+  30% { transform: translateY(-8px); opacity: 1; }
+  60% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-4px); opacity: 0.7; }
+}
+
 .uno-float::before {
   content: '';
   position: absolute;
@@ -1066,6 +1442,23 @@ body.game-screen {
   .uno-card {
     width: clamp(64px, 6vw, 110px);
   }
+}
+
+body.mode-quick-play .game-table {
+  grid-template-columns: minmax(90px, 1fr) minmax(280px, 1.8fr) minmax(90px, 1fr);
+  grid-template-areas:
+    ". left ."
+    ". center ."
+    "bottom bottom bottom";
+}
+
+body.mode-quick-play .player-zone--left {
+  justify-self: center;
+  align-self: end;
+}
+
+body.mode-quick-play .center-zone {
+  min-height: 240px;
 }
 
 @media (orientation: portrait) {

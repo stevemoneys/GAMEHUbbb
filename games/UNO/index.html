@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UNO – Play Your Cards</title>
+<title>UNO - Play Your Cards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,7 +14,6 @@
 <body class="home-screen">
 <div class="app">
 
-<!-- TOP BAR -->
 <header class="topbar">
 <div class="profile">
 <button class="avatar-btn" id="avatar-btn" aria-label="Choose Avatar">
@@ -34,7 +33,6 @@
 </div>
 </header>
 
-<!-- ACTION ICONS ROW -->
 <div class="action-icons">
 <button class="action-icon" data-action="daily-reward" aria-label="Daily Reward">
 <svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -67,30 +65,28 @@
 </button>
 </div>
 
-<!-- HERO PLAY SECTION -->
 <section class="hero">
 <h1 class="game-title">UNO</h1>
 <p class="game-tagline">Play Your Cards Right</p>
 <button class="play-btn">
-<span class="play-btn-text">Start Match</span>
+<span class="play-btn-text">Start Tournament</span>
 </button>
 </section>
 
-<!-- QUICK GAME MODES -->
 <section class="game-modes">
-<h2 class="section-label">Quick Play</h2>
+<h2 class="section-label">Modes</h2>
 <div class="mode-cards">
-<button class="mode-card">
-<span class="mode-icon">🤖</span>
-<span class="mode-name">AI Match</span>
+<button class="mode-card mode-card-featured" data-mode="tournament">
+<span class="mode-icon">Tournament</span>
+<span class="mode-name">Tournament</span>
 </button>
-<button class="mode-card mode-card-featured">
-<span class="mode-icon">⚡</span>
-<span class="mode-name">Quick Game</span>
+<button class="mode-card" data-mode="quick-play">
+<span class="mode-icon">Quick</span>
+<span class="mode-name">Quick Play</span>
 </button>
-<button class="mode-card">
-<span class="mode-icon">📖</span>
-<span class="mode-name">Practice</span>
+<button class="mode-card" data-mode="team-battle">
+<span class="mode-icon">2v2</span>
+<span class="mode-name">2V2</span>
 </button>
 </div>
 </section>

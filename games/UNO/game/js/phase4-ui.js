@@ -5,14 +5,33 @@
 
 import { GameState } from './game-state.js';
 import { getAIMove } from './ai.js';
+import { initGameAudio, playSfx, unlockAudio, stopBackgroundMusic } from './audio.js';
 
 const params = new URLSearchParams(window.location.search);
+const MODE_CONFIG = {
+  tournament: {
+    playerCount: 4,
+    progressKey: 'gamehub_uno_progress_tournament'
+  },
+  'quick-play': {
+    playerCount: 2,
+    progressKey: 'gamehub_uno_progress_quick_play'
+  },
+  'team-battle': {
+    playerCount: 4,
+    progressKey: 'gamehub_uno_progress_team_battle'
+  }
+};
+const selectedMode = MODE_CONFIG[params.get('mode')] ? params.get('mode') : 'tournament';
+const modeConfig = MODE_CONFIG[selectedMode];
 const selectedLevel = Math.min(Math.max(parseInt(params.get('level') || '1', 10), 1), 10);
 const selectedStage = Math.min(Math.max(parseInt(params.get('stage') || '1', 10), 1), 10);
-const progressKey = 'gamehub_uno_progress';
+const progressKey = modeConfig.progressKey;
+const isQuickPlay = selectedMode === 'quick-play';
+const isTeamBattle = selectedMode === 'team-battle';
 
 const game = new GameState({
-  playerCount: 4,
+  playerCount: modeConfig.playerCount,
   allowDrawStacking: true,
   allowUnoCall: true,
   enforceWild4: false
@@ -23,6 +42,10 @@ const dom = {
   playerLeft: document.getElementById('player-left'),
   playerRight: document.getElementById('player-right'),
   playerBottom: document.getElementById('player-bottom'),
+  labelTop: document.getElementById('label-top'),
+  labelLeft: document.getElementById('label-left'),
+  labelRight: document.getElementById('label-right'),
+  labelBottom: document.getElementById('label-bottom'),
   avatarTop: document.getElementById('avatar-top'),
   avatarLeft: document.getElementById('avatar-left'),
   avatarRight: document.getElementById('avatar-right'),
@@ -41,12 +64,24 @@ const dom = {
   btnNew: document.getElementById('btn-new'),
   rotateOverlay: document.getElementById('rotate-overlay'),
   gameShell: document.querySelector('.game-shell'),
-  centerZone: document.querySelector('.center-zone')
+  centerZone: document.querySelector('.center-zone'),
+  btnBackRoad: document.getElementById('btn-back-road'),
+  unoArrow: document.getElementById('uno-arrow'),
+  endModal: document.getElementById('end-modal'),
+  endModalTitle: document.getElementById('end-modal-title'),
+  endModalMessage: document.getElementById('end-modal-message'),
+  btnPlayAgain: document.getElementById('btn-play-again'),
+  btnNextLevel: document.getElementById('btn-next-level'),
+  btnExit: document.getElementById('btn-exit'),
+  teamBrief: document.getElementById('team-brief'),
+  teamBriefMessage: document.getElementById('team-brief-message'),
+  btnTeamBrief: document.getElementById('btn-team-brief')
 };
 
 let selectedWildCard = null;
 let selectedWildCardEl = null;
 let lastPendingUno = null;
+let lastRewardQueueSize = 0;
 const lastSpeechAt = Array.from({ length: game.playerCount }, () => 0);
 const drawAnimationSuppress = Array.from({ length: game.playerCount }, () => 0);
 const bubbleStacks = Array.from({ length: game.playerCount }, () => 0);
@@ -70,8 +105,129 @@ const avatars = window.GameHubAvatars || [];
 const AVATAR_KEY = 'gamehub_uno_avatar';
 const rewards = window.GameHubRewards;
 const THEME_PATH_KEY = 'gamehub_uno_theme_path';
+const CARD_PACK_PATH_KEY = 'gamehub_uno_card_pack_path';
+const SPEECH_SETTING_KEY = 'gamehub_uno_setting_speech';
+const REACTIONS_SETTING_KEY = 'gamehub_uno_setting_reactions';
+const wildPalette = { red: '#e03b3b', blue: '#2b6df7', green: '#22c55e', yellow: '#f4c430' };
 let matchRecorded = false;
 let opponentAvatars = [];
+
+function isPlayerSideWinner(winnerIndex) {
+  if (isTeamBattle) return winnerIndex === 0 || winnerIndex === 2;
+  return winnerIndex === 0;
+}
+
+function isSpeechEnabled() {
+  return localStorage.getItem(SPEECH_SETTING_KEY) !== 'off';
+}
+
+function areReactionsEnabled() {
+  return localStorage.getItem(REACTIONS_SETTING_KEY) !== 'off';
+}
+
+function syncRewardQueueSize() {
+  lastRewardQueueSize = rewards?.getRewardQueue?.().length || 0;
+}
+
+function checkCoinRewardSound() {
+  const currentSize = rewards?.getRewardQueue?.().length || 0;
+  if (currentSize > lastRewardQueueSize) {
+    playSfx('coinReward', 0.85);
+  }
+  lastRewardQueueSize = currentSize;
+}
+
+function recordRewardedAction(callback) {
+  syncRewardQueueSize();
+  callback?.();
+  checkCoinRewardSound();
+}
+
+function playCardSound(card) {
+  if (!card) return;
+  playSfx('cardPlay', 0.72);
+  if (card.type === 'action' || card.type === 'wild') {
+    playSfx('actionCard', 0.88);
+  }
+}
+
+function getOrderedTeam(indices) {
+  return [...indices].sort((a, b) => game.getHand(a).length - game.getHand(b).length || a - b);
+}
+
+function getRewardPlacements() {
+  if (!isTeamBattle) return getPlacements();
+  const winners = isPlayerSideWinner(game.getWinnerIndex()) ? [0, 2] : [1, 3];
+  const losers = winners[0] === 0 ? [1, 3] : [0, 2];
+  const placements = Array(game.playerCount).fill(game.playerCount);
+  const winnerOrder = getOrderedTeam(winners);
+  const loserOrder = getOrderedTeam(losers);
+  placements[winnerOrder[0]] = 1;
+  placements[winnerOrder[1]] = 2;
+  placements[loserOrder[0]] = 3;
+  placements[loserOrder[1]] = 4;
+  return placements;
+}
+
+function getRewardWinnerIndex() {
+  if (!isTeamBattle) return game.getWinnerIndex();
+  return isPlayerSideWinner(game.getWinnerIndex()) ? 0 : 1;
+}
+
+function configureModeUI() {
+  document.body.classList.remove('mode-tournament', 'mode-quick-play', 'mode-team-battle');
+  document.body.classList.add(`mode-${selectedMode}`);
+
+  dom.playerLeft?.classList.remove('hidden-player');
+  dom.playerTop?.classList.remove('hidden-player', 'player-zone--teammate');
+  dom.playerRight?.classList.remove('hidden-player');
+
+  if (dom.labelBottom) dom.labelBottom.textContent = 'You';
+  if (dom.labelLeft) dom.labelLeft.textContent = isQuickPlay ? 'AI Rival' : isTeamBattle ? 'Opponent 1' : 'AI 1';
+  if (dom.labelTop) dom.labelTop.textContent = isTeamBattle ? 'Teammate' : 'AI 2';
+  if (dom.labelRight) dom.labelRight.textContent = isTeamBattle ? 'Opponent 2' : 'AI 3';
+
+  if (isQuickPlay) {
+    dom.playerTop?.classList.add('hidden-player');
+    dom.playerRight?.classList.add('hidden-player');
+  }
+
+  if (isTeamBattle) {
+    dom.playerTop?.classList.add('player-zone--teammate');
+  }
+}
+
+function showTeamBrief(onStart) {
+  if (!isTeamBattle || !dom.teamBrief) {
+    onStart();
+    return;
+  }
+  const teammate = opponentAvatars[1];
+  if (dom.teamBriefMessage) {
+    const teammateName = teammate?.name || 'your AI partner';
+    dom.teamBriefMessage.textContent = `${teammateName} is on your side. If you or your teammate wins, your team takes the match.`;
+  }
+  dom.teamBrief.classList.remove('hidden');
+  const begin = () => {
+    dom.teamBrief?.classList.add('hidden');
+    dom.btnTeamBrief?.removeEventListener('click', begin);
+    onStart();
+  };
+  dom.btnTeamBrief?.addEventListener('click', begin);
+}
+
+function startRoundPresentation() {
+  render();
+  if (isTeamBattle) {
+    showTeamBrief(() => {
+      animateGameStart();
+      runAITurns();
+    });
+    return;
+  }
+  animateGameStart();
+  runAITurns();
+}
 
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || '1', 10);
@@ -104,6 +260,18 @@ function applyThemeFromStorage() {
   if (!stored) return;
   const resolved = resolveAssetPath(stored);
   document.body.style.setProperty('--game-bg-image', `url('${resolved}')`);
+}
+
+function applyCardPackFromStorage() {
+  const stored = localStorage.getItem(CARD_PACK_PATH_KEY);
+  if (!stored) {
+    document.body.style.removeProperty('--card-pack-image');
+    document.body.classList.remove('has-custom-card-pack');
+    return;
+  }
+  const resolved = resolveAssetPath(stored);
+  document.body.style.setProperty('--card-pack-image', `url('${resolved}')`);
+  document.body.classList.add('has-custom-card-pack');
 }
 
 function addAnimationClass(el, className) {
@@ -161,7 +329,7 @@ function buildCardElement(card, { back = false } = {}) {
   return wrapper;
 }
 
-function createFlyingCard({ fromEl, fromRect, toEl, card, back = false, duration = 620, arc = 90 } = {}) {
+function createFlyingCard({ fromEl, fromRect, toEl, card, back = false, duration = 760, arc = 90 } = {}) {
   const start = fromRect ? getCenterFromRect(fromRect) : getCenterPoint(fromEl);
   const end = getCenterPoint(toEl || dom.centerZone);
   const fly = document.createElement('div');
@@ -180,7 +348,7 @@ function createFlyingCard({ fromEl, fromRect, toEl, card, back = false, duration
 
   const dx = end.x - start.x;
   const dy = end.y - start.y;
-  const arcHeight = Math.min(140, Math.max(50, Math.abs(dx) * 0.2)) + arc * 0.15;
+  const arcHeight = Math.min(120, Math.max(40, Math.abs(dx) * 0.16)) + arc * 0.12;
 
   fly.animate(
     [
@@ -189,7 +357,11 @@ function createFlyingCard({ fromEl, fromRect, toEl, card, back = false, duration
       { transform: `translate(${dx}px, ${dy}px) scale(1.02)`, opacity: 1, offset: 0.82 },
       { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1 }
     ],
-    { duration, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)', fill: 'forwards' }
+    {
+      duration,
+      easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
+      fill: 'forwards'
+    }
   ).onfinish = () => {
     fly.remove();
   };
@@ -226,13 +398,13 @@ function animateDrawToPlayer(playerIndex, count = 1, { wasPenalty = false } = {}
   }
   for (let i = 0; i < count; i += 1) {
     const target = targets[i] || getPlayerTarget(playerIndex);
-    const delay = i * 140;
+    const delay = i * 120;
     setTimeout(() => {
       createFlyingCard({
         fromEl: dom.drawPile,
         toEl: target,
         back: true,
-        duration: 720
+        duration: 780
       });
       if (target && playerIndex === 0) {
         setTimeout(() => {
@@ -253,8 +425,8 @@ function animatePlayCardFromElement(card, sourceRect = null, sourceEl = null) {
     toEl: dom.discardCard,
     card,
     back: false,
-    duration: 580,
-    arc: 70
+    duration: 640,
+    arc: 60
   });
   addAnimationClass(dom.discardCard, 'discard-slam');
 }
@@ -267,8 +439,8 @@ function animatePlayCardFromPlayer(playerIndex, card) {
     toEl: dom.discardCard,
     card,
     back: false,
-    duration: 600,
-    arc: 80
+    duration: 660,
+    arc: 65
   });
   addAnimationClass(dom.discardCard, 'discard-slam');
 }
@@ -294,8 +466,8 @@ function animatePenaltyAttack(targetIndex, count) {
         fromEl: dom.drawPile,
         toEl: getPlayerTarget(targetIndex),
         back: true,
-        duration: 640,
-        arc: 60
+        duration: 700,
+        arc: 55
       });
     }, i * 140);
   }
@@ -304,6 +476,7 @@ function animatePenaltyAttack(targetIndex, count) {
 
 function showUnoPop(playerIndex) {
   if (!dom.gameShell) return;
+  playSfx('unoAlert', 0.9);
   pulseAvatar(playerIndex);
   const anchor = playerIndex === 0
     ? dom.avatarBottom
@@ -352,7 +525,7 @@ function animateVictory() {
 
 function animateGameStart() {
   addAnimationClass(dom.drawPile, 'shuffle-deck');
-  const order = [0, 1, 2, 3];
+  const order = Array.from({ length: game.playerCount }, (_, index) => index);
   let delay = 240;
   for (let r = 0; r < 7; r += 1) {
     order.forEach((pid) => {
@@ -455,8 +628,23 @@ function pickCatchphrase(playerIndex, eventKey) {
   return phrases[Math.floor(Math.random() * phrases.length)];
 }
 
+function shouldOpponentSpeak(eventKey, targetIndex) {
+  if (eventKey === 'winGame' || eventKey === 'loseGame') return true;
+  return targetIndex === 0;
+}
+
+function maybeShowSpeech(playerIndex, eventKey, phraseKey = eventKey, targetIndex = null) {
+  if (playerIndex === 0) {
+    showSpeech(playerIndex, eventKey, phraseKey);
+    return;
+  }
+  if (shouldOpponentSpeak(eventKey, targetIndex)) {
+    showSpeech(playerIndex, eventKey, phraseKey);
+  }
+}
 function showSpeech(playerIndex, eventKey, phraseKey = eventKey) {
   if (!dom.gameShell) return;
+  if (!isSpeechEnabled()) return;
   const now = Date.now();
   if (eventKey !== 'winGame' && eventKey !== 'loseGame') {
     if (now - lastSpeechAt[playerIndex] < 5200) return;
@@ -472,7 +660,7 @@ function showSpeech(playerIndex, eventKey, phraseKey = eventKey) {
         : dom.avatarRight;
   if (!avatarEl) return;
 
-  const emoji = reactions[eventKey] || '';
+  const emoji = areReactionsEnabled() ? reactions[eventKey] || '' : '';
   const phrase = pickCatchphrase(playerIndex, phraseKey);
   if (!emoji && !phrase) return;
 
@@ -595,11 +783,13 @@ function getCardCenterMarkup(card) {
   }
   if (card.value === 'wild4') {
     return `
-      <div class="uno-card__stack uno-card__stack--wild4" aria-hidden="true">
-        <span class="uno-card__stack-card"></span>
-        <span class="uno-card__stack-card"></span>
-        <span class="uno-card__stack-card"></span>
-        <span class="uno-card__stack-card"></span>
+      <div class="wild4-center" aria-hidden="true">
+        <div class="wild4-center__cards">
+          <span class="wild4-mini wild4-mini--green"></span>
+          <span class="wild4-mini wild4-mini--blue"></span>
+          <span class="wild4-mini wild4-mini--red"></span>
+          <span class="wild4-mini wild4-mini--yellow"></span>
+        </div>
       </div>
     `;
   }
@@ -709,7 +899,13 @@ function renderHand() {
 
 function renderTurn() {
   if (!dom.turnIndicator) return;
-  dom.turnIndicator.classList.add('hidden');
+  const current = game.getCurrentPlayerIndex();
+  let text = 'Your turn';
+  if (current !== 0) {
+    text = isTeamBattle && current === 2 ? 'Teammate thinking' : 'Opponent turn';
+  }
+  dom.turnIndicator.textContent = text;
+  dom.turnIndicator.classList.remove('hidden');
 }
 
 function getPlacements() {
@@ -729,15 +925,35 @@ function handleMatchEnd() {
   if (!game.isFinished() || matchRecorded) return;
   matchRecorded = true;
   const winner = game.getWinnerIndex();
+  const playerSideWon = isPlayerSideWinner(winner);
   for (let i = 0; i < game.playerCount; i += 1) {
-    if (i === winner) showSpeech(i, 'winGame');
-    else showSpeech(i, 'loseGame');
+    if (i === winner) maybeShowSpeech(i, 'winGame');
+    else maybeShowSpeech(i, 'loseGame');
   }
   animateVictory();
-  rewards?.recordMatchResult?.({
-    winnerIndex: game.getWinnerIndex(),
-    placements: getPlacements()
+  recordRewardedAction(() => {
+    rewards?.recordMatchResult?.({
+      winnerIndex: getRewardWinnerIndex(),
+      placements: getRewardPlacements()
+    });
   });
+  if (playerSideWon) {
+    playSfx('win', 0.95);
+  }
+
+  if (dom.endModal && dom.endModalTitle && dom.endModalMessage) {
+    dom.endModalTitle.textContent = playerSideWon ? 'You Win!' : 'You Lost';
+    dom.endModalMessage.textContent = playerSideWon
+      ? 'Great job! Ready for the next challenge?'
+      : 'Don’t give up—shuffle again and try once more.';
+    if (isTeamBattle && playerSideWon && winner === 2) {
+      dom.endModalMessage.textContent = 'Your teammate finished the round. Your side still takes the win.';
+    }
+    if (dom.btnNextLevel) {
+      dom.btnNextLevel.style.display = playerSideWon ? 'inline-flex' : 'none';
+    }
+    dom.endModal.classList.remove('hidden');
+  }
 }
 
 function render() {
@@ -749,51 +965,65 @@ function render() {
   renderTurn();
   setActivePlayer(game.getCurrentPlayerIndex());
 
-  rewards?.recordHandSnapshot?.(0, game.getHand(0).length, [
-    game.getHand(1).length,
-    game.getHand(2).length,
-    game.getHand(3).length
-  ]);
+  rewards?.recordHandSnapshot?.(
+    0,
+    game.getHand(0).length,
+    Array.from({ length: game.playerCount - 1 }, (_, index) => game.getHand(index + 1).length)
+  );
 
   const isHumanTurn = game.getCurrentPlayerIndex() === 0 && !game.isFinished();
   const mustDraw = isHumanTurn && (game.getPendingDraw() > 0 || game.getValidMoves(0).length === 0);
   if (dom.drawPile) dom.drawPile.classList.toggle('active', mustDraw);
-  if (dom.btnUno) dom.btnUno.disabled = !game.canCallUno(0);
+  const canCallUno = game.canCallUno(0);
+  if (dom.btnUno) dom.btnUno.disabled = !canCallUno;
+  if (dom.unoArrow) dom.unoArrow.classList.toggle('hidden', !canCallUno);
   if (dom.btnCatch) dom.btnCatch.disabled = !game.canCatchUno(0);
   if (dom.wildPicker) {
     const showPicker = Boolean(selectedWildCard);
     dom.wildPicker.classList.toggle('hidden', !showPicker);
-    if (showPicker) addAnimationClass(dom.wildPicker, 'glow');
+    if (showPicker) {
+      addAnimationClass(dom.wildPicker, 'glow');
+    } else {
+      dom.wildPicker.removeAttribute('data-color');
+      dom.wildPicker.style.removeProperty('--wild-color');
+    }
   }
   if (dom.handCards) dom.handCards.classList.toggle('hand-glow', isHumanTurn);
 
   const pendingUno = game.getPendingUnoPlayer();
   if (pendingUno !== null && pendingUno !== lastPendingUno) {
-    for (let i = 0; i < game.playerCount; i += 1) {
-      if (i !== pendingUno) showSpeech(i, 'opponentUno');
-    }
+    maybeShowSpeech(0, 'opponentUno');
     showUnoPop(pendingUno);
     lastPendingUno = pendingUno;
   }
   if (pendingUno === null && lastPendingUno !== null) lastPendingUno = null;
 }
 
-function triggerCardEvents(playerIndex, card) {
+function triggerCardEvents(playerIndex, card, targetIndex = null) {
   if (!card) return;
   if (card.value === 'draw2') {
-    showSpeech(playerIndex, 'playDraw2', 'playAttack');
+    maybeShowSpeech(playerIndex, 'playDraw2', 'playAttack', targetIndex);
+    if (playerIndex === 0 && targetIndex !== null && targetIndex !== 0) {
+      maybeShowSpeech(targetIndex, 'playDraw2', 'playAttack', 0);
+    }
     return;
   }
   if (card.value === 'wild4') {
-    showSpeech(playerIndex, 'playDraw4', 'playAttack');
+    maybeShowSpeech(playerIndex, 'playDraw4', 'playAttack', targetIndex);
+    if (playerIndex === 0 && targetIndex !== null && targetIndex !== 0) {
+      maybeShowSpeech(targetIndex, 'playDraw4', 'playAttack', 0);
+    }
     return;
   }
   if (card.value === 'skip') {
-    showSpeech(playerIndex, 'skipOpponent', 'skipOpponent');
+    maybeShowSpeech(playerIndex, 'skipOpponent', 'skipOpponent', targetIndex);
+    if (playerIndex === 0 && targetIndex !== null && targetIndex !== 0) {
+      maybeShowSpeech(targetIndex, 'skipOpponent', 'skipOpponent', 0);
+    }
     return;
   }
   if (card.type === 'number') {
-    showSpeech(playerIndex, 'playCard');
+    maybeShowSpeech(playerIndex, 'playCard', 'playCard', targetIndex);
   }
 }
 
@@ -804,8 +1034,11 @@ function playCard(card, wildColor = null, sourceEl = null, sourcePlayer = null) 
   const sourceRect = sourceEl ? sourceEl.getBoundingClientRect() : null;
   const result = game.playCard(card, wildColor);
   if (!result.success) return;
-  rewards?.recordCardPlayed?.(0, card);
-  triggerCardEvents(0, card);
+  recordRewardedAction(() => {
+    rewards?.recordCardPlayed?.(0, card);
+  });
+  playCardSound(card);
+  triggerCardEvents(0, card, projectedTarget);
   selectedWildCard = null;
   selectedWildCardEl = null;
   render();
@@ -836,6 +1069,10 @@ function handleHandClick(event) {
     addAnimationClass(cardEl, 'invalid-shake');
     return;
   }
+  if (game.canCallUno(0)) {
+    addAnimationClass(dom.btnUno, 'invalid-shake');
+    return;
+  }
   if (card.type === 'wild') {
     selectedWildCard = card;
     selectedWildCardEl = cardEl;
@@ -846,9 +1083,13 @@ function handleHandClick(event) {
 }
 
 function handleWildPick(event) {
-  const btn = event.target.closest('button[data-color]');
+  const btn = event.target.closest('.wild-swatch');
   if (!btn || !selectedWildCard) return;
   const color = btn.dataset.color;
+  if (dom.wildPicker) {
+    dom.wildPicker.dataset.color = color;
+    dom.wildPicker.style.setProperty('--wild-color', wildPalette[color] || color);
+  }
   btn.classList.add('selected');
   setTimeout(() => btn.classList.remove('selected'), 1200);
   playCard(selectedWildCard, color, selectedWildCardEl, 0);
@@ -864,7 +1105,8 @@ function handleDrawPile() {
   if (result?.drawn) {
     rewards?.recordDraw?.(0, result.drawn.length, result.wasPenalty);
   }
-  showSpeech(0, 'drawCard');
+  playSfx('cardDraw', 0.72);
+  maybeShowSpeech(0, 'drawCard');
   selectedWildCard = null;
   selectedWildCardEl = null;
   render();
@@ -877,8 +1119,11 @@ function handleDrawPile() {
 function handleUno() {
   const result = game.callUno(0);
   if (result.success) {
-    rewards?.recordUnoCall?.(0);
-    showSpeech(0, 'callUno');
+    recordRewardedAction(() => {
+      rewards?.recordUnoCall?.(0);
+    });
+    playSfx('unoAlert', 0.95);
+    maybeShowSpeech(0, 'callUno');
     render();
   }
 }
@@ -889,7 +1134,7 @@ function handleCatch() {
 }
 
 function handleNewGame() {
-  if (game.isFinished() && game.getWinnerIndex() === 0) {
+  if (game.isFinished() && isPlayerSideWinner(game.getWinnerIndex())) {
     const index = (selectedLevel - 1) * 10 + selectedStage;
     const next = Math.min(index + 1, 100);
     const current = parseInt(localStorage.getItem(progressKey) || '1', 10);
@@ -901,14 +1146,13 @@ function handleNewGame() {
   matchRecorded = false;
   lastPendingUno = null;
   opponentAvatars = pickOpponentAvatars();
+  configureModeUI();
   applyThemeFromStorage();
+  applyCardPackFromStorage();
   rewards?.startNewMatch?.();
-  for (let i = 0; i < game.playerCount; i += 1) {
-    setTimeout(() => showSpeech(i, 'gameStart'), 300 + i * 180);
-  }
-  render();
-  animateGameStart();
-  runAITurns();
+  syncRewardQueueSize();
+  setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
+  startRoundPresentation();
   tryLockOrientation();
 }
 
@@ -923,7 +1167,7 @@ function runAITurns() {
 
     if (game.canCallUno(aiPid)) {
       game.callUno(aiPid);
-      showSpeech(aiPid, 'callUno');
+      maybeShowSpeech(aiPid, 'callUno');
     }
 
     const wasPenalty = game.getPendingDraw() > 0;
@@ -934,9 +1178,10 @@ function runAITurns() {
     });
     if (move.action === 'play') {
       const projectedTarget = move.card?.value === 'skip' || move.card?.value === 'draw2' || move.card?.value === 'wild4'
-        ? game.getNextPlayerIndex(0)
+        ? game.getNextPlayerIndex(aiPid)
         : null;
       game.playCard(move.card, move.wildColor);
+      playCardSound(move.card);
       render();
       animatePlayCardFromPlayer(aiPid, move.card);
       if (move.card.value === 'reverse') addAnimationClass(dom.discardCard, 'reverse-spin');
@@ -949,16 +1194,30 @@ function runAITurns() {
       if (move.card.type === 'wild') {
         addAnimationClass(dom.discardCard, 'wild-rotate');
         addAnimationClass(dom.discardCard, 'wild-glow');
+        if (dom.wildPicker && move.wildColor) {
+          dom.wildPicker.dataset.color = move.wildColor;
+          dom.wildPicker.style.setProperty('--wild-color', wildPalette[move.wildColor] || move.wildColor);
+          dom.wildPicker.classList.remove('hidden');
+          addAnimationClass(dom.wildPicker, 'glow');
+          setTimeout(() => {
+            dom.wildPicker.classList.add('hidden');
+            dom.wildPicker.removeAttribute('data-color');
+            dom.wildPicker.style.removeProperty('--wild-color');
+          }, 1200);
+        }
       }
-      rewards?.recordCardPlayed?.(aiPid, move.card);
-      triggerCardEvents(aiPid, move.card);
+      recordRewardedAction(() => {
+        rewards?.recordCardPlayed?.(aiPid, move.card);
+      });
+      triggerCardEvents(aiPid, move.card, projectedTarget);
       handleMatchEnd();
       runAITurns();
       return;
     } else {
       const result = game.draw();
       if (!wasPenalty) recordDraw(aiPid);
-      showSpeech(aiPid, 'drawCard');
+      if (result?.drawn?.length) playSfx('cardDraw', 0.66);
+      maybeShowSpeech(aiPid, 'drawCard');
       if (result?.drawn?.length) {
         render();
         animateDrawToPlayer(aiPid, result.drawn.length, { wasPenalty });
@@ -974,22 +1233,38 @@ function runAITurns() {
 }
 
 function initPhase4UI() {
+  initGameAudio();
+  tryLockOrientation();
+  syncRewardQueueSize();
   game.init();
   matchRecorded = false;
   lastPendingUno = null;
   opponentAvatars = pickOpponentAvatars();
+  configureModeUI();
   applyThemeFromStorage();
+  applyCardPackFromStorage();
   rewards?.startNewMatch?.();
-  for (let i = 0; i < game.playerCount; i += 1) {
-    setTimeout(() => showSpeech(i, 'gameStart'), 300 + i * 180);
-  }
-  render();
-  animateGameStart();
-  runAITurns();
+  setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
+  startRoundPresentation();
   updateOrientationOverlay();
   tryLockOrientation();
-  document.body.addEventListener('click', tryLockOrientation, { once: true });
+  document.body.addEventListener('click', () => {
+    unlockAudio();
+    tryLockOrientation();
+  }, { once: true });
+  document.body.addEventListener('touchstart', () => {
+    unlockAudio();
+    tryLockOrientation();
+  }, { once: true, passive: true });
+  document.body.addEventListener('pointerdown', () => {
+    unlockAudio();
+    tryLockOrientation();
+  }, { once: true });
   window.addEventListener('resize', updateOrientationOverlay);
+  window.addEventListener('orientationchange', tryLockOrientation);
+  window.addEventListener('orientationchange', updateOrientationOverlay);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tryLockOrientation(); });
+  window.addEventListener('pageshow', tryLockOrientation);
 
   dom.handCards?.addEventListener('click', handleHandClick);
   dom.wildPicker?.addEventListener('click', handleWildPick);
@@ -997,6 +1272,24 @@ function initPhase4UI() {
   dom.btnUno?.addEventListener('click', handleUno);
   dom.btnCatch?.addEventListener('click', handleCatch);
   dom.btnNew?.addEventListener('click', handleNewGame);
+  dom.btnBackRoad?.addEventListener('click', () => {
+    stopBackgroundMusic();
+    window.location.href = `../levels.html?mode=${selectedMode}`;
+  });
+  if (dom.btnPlayAgain) dom.btnPlayAgain.addEventListener('click', () => {
+    if (dom.endModal) dom.endModal.classList.add('hidden');
+    handleNewGame();
+  });
+  if (dom.btnNextLevel) dom.btnNextLevel.addEventListener('click', () => {
+    if (dom.endModal) dom.endModal.classList.add('hidden');
+    stopBackgroundMusic();
+    handleNewGame();
+    window.location.href = `../levels.html?mode=${selectedMode}`;
+  });
+  if (dom.btnExit) dom.btnExit.addEventListener('click', () => {
+    stopBackgroundMusic();
+    window.location.href = '../index.html';
+  });
 }
 
 export { initPhase4UI };

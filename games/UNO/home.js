@@ -3,13 +3,46 @@ const avatarLabel = document.getElementById("avatar-label");
 const coinCountEl = document.getElementById("coin-count");
 const playerLevelEl = document.getElementById("player-level");
 const dailyBtn = document.querySelector('.action-icon[data-action="daily-reward"]');
+const settingsBtn = document.querySelector(".settings-btn");
 const avatars = window.GameHubAvatars || [];
 const rewards = window.GameHubRewards;
-const AVATAR_KEY = "gamehub_uno_avatar";
-const PROGRESS_KEY = "gamehub_uno_progress";
 
-document.querySelector(".play-btn").addEventListener("click", () => {
-  window.location.href = "levels.html";
+const AVATAR_KEY = "gamehub_uno_avatar";
+const MODE_KEY = "gamehub_uno_home_mode";
+const MODE_CONFIG = {
+  tournament: {
+    progressKey: "gamehub_uno_progress_tournament",
+    levelsUrl: "levels.html?mode=tournament"
+  },
+  "quick-play": {
+    progressKey: "gamehub_uno_progress_quick_play",
+    levelsUrl: "levels.html?mode=quick-play"
+  },
+  "team-battle": {
+    progressKey: "gamehub_uno_progress_team_battle",
+    levelsUrl: "levels.html?mode=team-battle"
+  }
+};
+
+function getSelectedMode() {
+  const stored = localStorage.getItem(MODE_KEY) || "tournament";
+  return MODE_CONFIG[stored] ? stored : "tournament";
+}
+
+function goToMode(mode) {
+  const safeMode = MODE_CONFIG[mode] ? mode : "tournament";
+  localStorage.setItem(MODE_KEY, safeMode);
+  window.location.href = MODE_CONFIG[safeMode].levelsUrl;
+}
+
+document.querySelector(".play-btn")?.addEventListener("click", () => {
+  goToMode("tournament");
+});
+
+document.querySelectorAll(".mode-card[data-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    goToMode(btn.dataset.mode || "tournament");
+  });
 });
 
 function getSelectedAvatar() {
@@ -47,11 +80,21 @@ if (avatarBtn) {
   });
 }
 
+if (settingsBtn) {
+  settingsBtn.addEventListener("click", () => {
+    window.location.href = "settings.html";
+  });
+}
+
 setAvatarButton();
 
 function updatePlayerLevel() {
   if (!playerLevelEl) return;
-  const progress = parseInt(localStorage.getItem(PROGRESS_KEY) || "1", 10);
+  const mode = getSelectedMode();
+  const progressKey = MODE_CONFIG[mode].progressKey;
+  const stored = localStorage.getItem(progressKey);
+  const fallback = localStorage.getItem("gamehub_uno_progress") || "1";
+  const progress = parseInt(stored || fallback, 10);
   const safe = Number.isNaN(progress) || progress < 1 ? 1 : progress;
   const level = Math.min(10, Math.ceil(safe / 10));
   playerLevelEl.textContent = `Level ${level}`;

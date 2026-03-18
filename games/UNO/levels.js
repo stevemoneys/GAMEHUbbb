@@ -1,26 +1,53 @@
 const LEVELS = 10;
 const STAGES_PER_LEVEL = 10;
 const TOTAL_STAGES = LEVELS * STAGES_PER_LEVEL;
-const PROGRESS_KEY = "gamehub_uno_progress";
+const params = new URLSearchParams(window.location.search);
+
+const MODE_CONFIG = {
+  tournament: {
+    title: "Tournament Road",
+    subtitle: "Classic 4-player UNO. Unlock levels in order and take on stronger tables.",
+    progressKey: "gamehub_uno_progress_tournament"
+  },
+  "quick-play": {
+    title: "Quick Play Road",
+    subtitle: "One-on-one against a single AI rival. Faster rounds, separate progression.",
+    progressKey: "gamehub_uno_progress_quick_play"
+  },
+  "team-battle": {
+    title: "2v2 Road",
+    subtitle: "You and an AI teammate versus two AI opponents. Win together to climb.",
+    progressKey: "gamehub_uno_progress_team_battle"
+  }
+};
+
+const selectedMode = MODE_CONFIG[params.get("mode")] ? params.get("mode") : "tournament";
+const activeConfig = MODE_CONFIG[selectedMode];
 
 const levelRoad = document.getElementById("level-road");
 const backBtn = document.getElementById("btn-back");
+const headingEl = document.querySelector(".levels-header h1");
+const subtitleEl = document.querySelector(".levels-header .subtitle");
 
 function getProgress() {
-  const stored = parseInt(localStorage.getItem(PROGRESS_KEY) || "1", 10);
+  const fallback = localStorage.getItem("gamehub_uno_progress") || "1";
+  const stored = parseInt(localStorage.getItem(activeConfig.progressKey) || fallback, 10);
   if (Number.isNaN(stored) || stored < 1) return 1;
   return Math.min(stored, TOTAL_STAGES);
 }
 
 function setProgress(value) {
   const clamped = Math.max(1, Math.min(value, TOTAL_STAGES));
-  localStorage.setItem(PROGRESS_KEY, String(clamped));
+  localStorage.setItem(activeConfig.progressKey, String(clamped));
 }
 
 function buildLevelMap() {
   if (!levelRoad) return;
   const progress = getProgress();
   levelRoad.innerHTML = '<div class="road-track"></div>';
+
+  if (headingEl) headingEl.textContent = activeConfig.title;
+  if (subtitleEl) subtitleEl.textContent = activeConfig.subtitle;
 
   const levelColors = [
     "#fbbf24",
@@ -62,7 +89,7 @@ function buildLevelMap() {
 
       node.addEventListener("click", () => {
         if (index > progress) return;
-        window.location.href = `game/index.html?level=${level}&stage=${stage}`;
+        window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}`;
       });
 
       track.appendChild(node);
@@ -79,7 +106,7 @@ if (backBtn) {
   });
 }
 
-if (!localStorage.getItem(PROGRESS_KEY)) {
+if (!localStorage.getItem(activeConfig.progressKey)) {
   setProgress(1);
 }
 

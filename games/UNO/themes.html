@@ -23,15 +23,34 @@
 
     <section class="themes-title">
       <p class="eyebrow">Theme Shop</p>
-      <h1>Playing Backgrounds</h1>
-      <p class="subtitle">Swipe to browse. Buy once, use anytime.</p>
+      <h1>Customize Your Table</h1>
+      <p class="subtitle">Buy background themes and card packs, then switch between them anytime.</p>
     </section>
 
-    <section class="theme-carousel" id="theme-carousel" aria-label="Theme list"></section>
+    <section class="shop-section">
+      <div class="section-heading">
+        <div>
+          <h2>Background Themes</h2>
+          <p>Swipe to browse. Locked themes stay blurred until you buy them.</p>
+        </div>
+      </div>
+      <section class="theme-carousel" id="theme-carousel" aria-label="Background theme list"></section>
+    </section>
+
+    <section class="shop-section">
+      <div class="section-heading">
+        <div>
+          <h2>Card Pack Themes</h2>
+          <p>Two packs per view. Use one to replace the game card backs completely.</p>
+        </div>
+      </div>
+      <section class="theme-carousel theme-carousel--packs" id="card-pack-carousel" aria-label="Card pack theme list"></section>
+    </section>
   </div>
 
   <script src="rewards-core.js"></script>
   <script src="themes-data.js"></script>
+  <script src="card-packs-data.js"></script>
   <script src="themes.js"></script>
 </body>
 </html>

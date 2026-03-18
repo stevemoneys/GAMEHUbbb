@@ -1,0 +1,74 @@
+body.settings-screen {
+  background:
+    radial-gradient(900px 500px at 15% 10%, rgba(59, 130, 246, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 85% 85%, rgba(251, 191, 36, 0.16), transparent 60%),
+    var(--gradient-bg);
+  min-height: 100vh;
+}
+
+.settings-shell {
+  max-width: 520px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 20px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.settings-header h1 {
+  font-size: 1.9rem;
+  letter-spacing: 0.04em;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setting-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(8, 12, 20, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.22);
+}
+
+.setting-card h2 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.setting-card p {
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.setting-toggle {
+  min-width: 82px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.setting-toggle.is-on {
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-warm));
+  color: #1a1a1a;
+  border-color: transparent;
+}
