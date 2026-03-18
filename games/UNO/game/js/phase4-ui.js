@@ -5,21 +5,31 @@
 
 import { GameState } from './game-state.js';
 import { getAIMove } from './ai.js';
-import { initGameAudio, playSfx, unlockAudio, stopBackgroundMusic } from './audio.js';
+import {
+  initGameAudio,
+  playSfx,
+  unlockAudio,
+  stopBackgroundMusic,
+  pauseBackgroundMusic,
+  resumeBackgroundMusic
+} from './audio.js';
 
 const params = new URLSearchParams(window.location.search);
 const MODE_CONFIG = {
   tournament: {
     playerCount: 4,
-    progressKey: 'gamehub_uno_progress_tournament'
+    progressKey: 'gamehub_uno_progress_tournament',
+    resumeKey: 'gamehub_uno_resume_tournament'
   },
   'quick-play': {
     playerCount: 2,
-    progressKey: 'gamehub_uno_progress_quick_play'
+    progressKey: 'gamehub_uno_progress_quick_play',
+    resumeKey: 'gamehub_uno_resume_quick_play'
   },
   'team-battle': {
     playerCount: 4,
-    progressKey: 'gamehub_uno_progress_team_battle'
+    progressKey: 'gamehub_uno_progress_team_battle',
+    resumeKey: 'gamehub_uno_resume_team_battle'
   }
 };
 const selectedMode = MODE_CONFIG[params.get('mode')] ? params.get('mode') : 'tournament';
@@ -27,8 +37,10 @@ const modeConfig = MODE_CONFIG[selectedMode];
 const selectedLevel = Math.min(Math.max(parseInt(params.get('level') || '1', 10), 1), 10);
 const selectedStage = Math.min(Math.max(parseInt(params.get('stage') || '1', 10), 1), 10);
 const progressKey = modeConfig.progressKey;
+const resumeKey = modeConfig.resumeKey;
 const isQuickPlay = selectedMode === 'quick-play';
 const isTeamBattle = selectedMode === 'team-battle';
+const shouldRestoreSavedMatch = params.get('resume') === '1';
 
 const game = new GameState({
   playerCount: modeConfig.playerCount,
@@ -66,6 +78,7 @@ const dom = {
   gameShell: document.querySelector('.game-shell'),
   centerZone: document.querySelector('.center-zone'),
   btnBackRoad: document.getElementById('btn-back-road'),
+  btnPause: document.getElementById('btn-pause'),
   unoArrow: document.getElementById('uno-arrow'),
   endModal: document.getElementById('end-modal'),
   endModalTitle: document.getElementById('end-modal-title'),
@@ -75,13 +88,20 @@ const dom = {
   btnExit: document.getElementById('btn-exit'),
   teamBrief: document.getElementById('team-brief'),
   teamBriefMessage: document.getElementById('team-brief-message'),
-  btnTeamBrief: document.getElementById('btn-team-brief')
+  btnTeamBrief: document.getElementById('btn-team-brief'),
+  pauseModal: document.getElementById('pause-modal'),
+  btnResume: document.getElementById('btn-resume'),
+  btnSaveExit: document.getElementById('btn-save-exit'),
+  btnRestartMatch: document.getElementById('btn-restart-match')
 };
 
 let selectedWildCard = null;
 let selectedWildCardEl = null;
 let lastPendingUno = null;
 let lastRewardQueueSize = 0;
+let isPaused = false;
+let aiTurnToken = 0;
+let fullscreenWatchdogId = null;
 const lastSpeechAt = Array.from({ length: game.playerCount }, () => 0);
 const drawAnimationSuppress = Array.from({ length: game.playerCount }, () => 0);
 const bubbleStacks = Array.from({ length: game.playerCount }, () => 0);
@@ -272,6 +292,119 @@ function applyCardPackFromStorage() {
   const resolved = resolveAssetPath(stored);
   document.body.style.setProperty('--card-pack-image', `url('${resolved}')`);
   document.body.classList.add('has-custom-card-pack');
+}
+
+function clearSavedMatch() {
+  localStorage.removeItem(resumeKey);
+}
+
+function loadSavedMatch() {
+  try {
+    const raw = localStorage.getItem(resumeKey);
+    const parsed = JSON.parse(raw || 'null');
+    if (!parsed || parsed.mode !== selectedMode || !parsed.state) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveCurrentMatch() {
+  if (game.isFinished()) {
+    clearSavedMatch();
+    return;
+  }
+  try {
+    localStorage.setItem(resumeKey, JSON.stringify({
+      version: 1,
+      mode: selectedMode,
+      level: selectedLevel,
+      stage: selectedStage,
+      savedAt: Date.now(),
+      opponentAvatars,
+      matchRecorded,
+      state: game.serialize()
+    }));
+  } catch {
+    // Ignore quota/storage failures so gameplay keeps running.
+  }
+}
+
+async function requestFullscreenMode() {
+  const target = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement || !target) return;
+  const requestMethod = target.requestFullscreen || target.webkitRequestFullscreen;
+  if (!requestMethod) return;
+  try {
+    await requestMethod.call(target);
+  } catch {
+    // Some browsers require a fresh user gesture before fullscreen.
+  }
+}
+
+function startFullscreenWatchdog() {
+  if (fullscreenWatchdogId) {
+    window.clearInterval(fullscreenWatchdogId);
+    fullscreenWatchdogId = null;
+  }
+  let tries = 0;
+  fullscreenWatchdogId = window.setInterval(() => {
+    tries += 1;
+    requestFullscreenMode();
+    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 12) {
+      window.clearInterval(fullscreenWatchdogId);
+      fullscreenWatchdogId = null;
+    }
+  }, 320);
+}
+
+function cancelAITurns() {
+  aiTurnToken += 1;
+}
+
+function setPaused(nextPaused) {
+  isPaused = nextPaused;
+  if (isPaused) {
+    cancelAITurns();
+    pauseBackgroundMusic();
+  } else {
+    resumeBackgroundMusic();
+  }
+  dom.pauseModal?.classList.toggle('hidden', !isPaused);
+  dom.gameShell?.classList.toggle('is-paused', isPaused);
+  render();
+}
+
+function restoreSavedMatch() {
+  const snapshot = loadSavedMatch();
+  if (!snapshot) return false;
+  try {
+    game.restore(snapshot.state);
+  } catch {
+    clearSavedMatch();
+    return false;
+  }
+
+  if (game.isFinished()) {
+    clearSavedMatch();
+    return false;
+  }
+
+  selectedWildCard = null;
+  selectedWildCardEl = null;
+  matchRecorded = Boolean(snapshot.matchRecorded);
+  lastPendingUno = game.getPendingUnoPlayer();
+  opponentAvatars = Array.isArray(snapshot.opponentAvatars) && snapshot.opponentAvatars.length === 3
+    ? snapshot.opponentAvatars
+    : pickOpponentAvatars();
+  configureModeUI();
+  applyThemeFromStorage();
+  applyCardPackFromStorage();
+  syncRewardQueueSize();
+  cancelAITurns();
+  render();
+  runAITurns();
+  return true;
 }
 
 function addAnimationClass(el, className) {
@@ -899,6 +1032,11 @@ function renderHand() {
 
 function renderTurn() {
   if (!dom.turnIndicator) return;
+  if (isPaused) {
+    dom.turnIndicator.textContent = 'Paused';
+    dom.turnIndicator.classList.remove('hidden');
+    return;
+  }
   const current = game.getCurrentPlayerIndex();
   let text = 'Your turn';
   if (current !== 0) {
@@ -921,11 +1059,20 @@ function getPlacements() {
   return placements;
 }
 
+function unlockNextStageProgress() {
+  const index = (selectedLevel - 1) * 10 + selectedStage;
+  const next = Math.min(index + 1, 100);
+  const current = parseInt(localStorage.getItem(progressKey) || '1', 10);
+  if (next > current) localStorage.setItem(progressKey, String(next));
+}
+
 function handleMatchEnd() {
   if (!game.isFinished() || matchRecorded) return;
   matchRecorded = true;
+  clearSavedMatch();
   const winner = game.getWinnerIndex();
   const playerSideWon = isPlayerSideWinner(winner);
+  if (playerSideWon) unlockNextStageProgress();
   for (let i = 0; i < game.playerCount; i += 1) {
     if (i === winner) maybeShowSpeech(i, 'winGame');
     else maybeShowSpeech(i, 'loseGame');
@@ -979,7 +1126,7 @@ function render() {
   if (dom.unoArrow) dom.unoArrow.classList.toggle('hidden', !canCallUno);
   if (dom.btnCatch) dom.btnCatch.disabled = !game.canCatchUno(0);
   if (dom.wildPicker) {
-    const showPicker = Boolean(selectedWildCard);
+    const showPicker = Boolean(selectedWildCard) && !isPaused;
     dom.wildPicker.classList.toggle('hidden', !showPicker);
     if (showPicker) {
       addAnimationClass(dom.wildPicker, 'glow');
@@ -997,6 +1144,8 @@ function render() {
     lastPendingUno = pendingUno;
   }
   if (pendingUno === null && lastPendingUno !== null) lastPendingUno = null;
+
+  saveCurrentMatch();
 }
 
 function triggerCardEvents(playerIndex, card, targetIndex = null) {
@@ -1028,6 +1177,7 @@ function triggerCardEvents(playerIndex, card, targetIndex = null) {
 }
 
 function playCard(card, wildColor = null, sourceEl = null, sourcePlayer = null) {
+  if (isPaused) return;
   const projectedTarget = card?.value === 'skip' || card?.value === 'draw2' || card?.value === 'wild4'
     ? game.getNextPlayerIndex(0)
     : null;
@@ -1061,7 +1211,7 @@ function playCard(card, wildColor = null, sourceEl = null, sourcePlayer = null) 
 
 function handleHandClick(event) {
   const cardEl = event.target.closest('.uno-card[data-card-id]');
-  if (!cardEl || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
+  if (!cardEl || isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
   const cardId = cardEl.dataset.cardId;
   const hand = game.getHand(0);
   const card = hand.find((c) => c.id === cardId);
@@ -1083,6 +1233,7 @@ function handleHandClick(event) {
 }
 
 function handleWildPick(event) {
+  if (isPaused) return;
   const btn = event.target.closest('.wild-swatch');
   if (!btn || !selectedWildCard) return;
   const color = btn.dataset.color;
@@ -1096,7 +1247,7 @@ function handleWildPick(event) {
 }
 
 function handleDrawPile() {
-  if (game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
+  if (isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
   const mustDraw = game.getPendingDraw() > 0 || game.getValidMoves(0).length === 0;
   if (!mustDraw) return;
   const wasPenalty = game.getPendingDraw() > 0;
@@ -1117,6 +1268,7 @@ function handleDrawPile() {
 }
 
 function handleUno() {
+  if (isPaused) return;
   const result = game.callUno(0);
   if (result.success) {
     recordRewardedAction(() => {
@@ -1129,17 +1281,17 @@ function handleUno() {
 }
 
 function handleCatch() {
+  if (isPaused) return;
   const result = game.catchUno(0);
   if (result.success) render();
 }
 
 function handleNewGame() {
-  if (game.isFinished() && isPlayerSideWinner(game.getWinnerIndex())) {
-    const index = (selectedLevel - 1) * 10 + selectedStage;
-    const next = Math.min(index + 1, 100);
-    const current = parseInt(localStorage.getItem(progressKey) || '1', 10);
-    if (next > current) localStorage.setItem(progressKey, String(next));
-  }
+  clearSavedMatch();
+  cancelAITurns();
+  isPaused = false;
+  dom.pauseModal?.classList.add('hidden');
+  dom.gameShell?.classList.remove('is-paused');
   game.init();
   selectedWildCard = null;
   selectedWildCardEl = null;
@@ -1157,12 +1309,13 @@ function handleNewGame() {
 }
 
 function runAITurns() {
-  if (game.isFinished()) return;
+  if (isPaused || game.isFinished()) return;
   const pid = game.getCurrentPlayerIndex();
   if (pid === 0) return;
 
+  const turnToken = ++aiTurnToken;
   setTimeout(() => {
-    if (game.isFinished() || game.getCurrentPlayerIndex() === 0) return;
+    if (turnToken !== aiTurnToken || isPaused || game.isFinished() || game.getCurrentPlayerIndex() === 0) return;
     const aiPid = game.getCurrentPlayerIndex();
 
     if (game.canCallUno(aiPid)) {
@@ -1234,37 +1387,58 @@ function runAITurns() {
 
 function initPhase4UI() {
   initGameAudio();
+  requestFullscreenMode();
+  startFullscreenWatchdog();
   tryLockOrientation();
   syncRewardQueueSize();
-  game.init();
-  matchRecorded = false;
-  lastPendingUno = null;
-  opponentAvatars = pickOpponentAvatars();
-  configureModeUI();
-  applyThemeFromStorage();
-  applyCardPackFromStorage();
-  rewards?.startNewMatch?.();
-  setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
-  startRoundPresentation();
+  if (!shouldRestoreSavedMatch || !restoreSavedMatch()) {
+    game.init();
+    matchRecorded = false;
+    lastPendingUno = null;
+    opponentAvatars = pickOpponentAvatars();
+    configureModeUI();
+    applyThemeFromStorage();
+    applyCardPackFromStorage();
+    rewards?.startNewMatch?.();
+    setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
+    startRoundPresentation();
+  }
   updateOrientationOverlay();
   tryLockOrientation();
   document.body.addEventListener('click', () => {
     unlockAudio();
     tryLockOrientation();
+    requestFullscreenMode();
   }, { once: true });
   document.body.addEventListener('touchstart', () => {
     unlockAudio();
     tryLockOrientation();
+    requestFullscreenMode();
   }, { once: true, passive: true });
   document.body.addEventListener('pointerdown', () => {
     unlockAudio();
     tryLockOrientation();
+    requestFullscreenMode();
   }, { once: true });
   window.addEventListener('resize', updateOrientationOverlay);
   window.addEventListener('orientationchange', tryLockOrientation);
   window.addEventListener('orientationchange', updateOrientationOverlay);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) tryLockOrientation(); });
-  window.addEventListener('pageshow', tryLockOrientation);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      saveCurrentMatch();
+      return;
+    }
+    tryLockOrientation();
+    requestFullscreenMode();
+    startFullscreenWatchdog();
+  });
+  window.addEventListener('pageshow', () => {
+    tryLockOrientation();
+    requestFullscreenMode();
+    startFullscreenWatchdog();
+  });
+  window.addEventListener('beforeunload', saveCurrentMatch);
+  window.addEventListener('pagehide', saveCurrentMatch);
 
   dom.handCards?.addEventListener('click', handleHandClick);
   dom.wildPicker?.addEventListener('click', handleWildPick);
@@ -1272,7 +1446,25 @@ function initPhase4UI() {
   dom.btnUno?.addEventListener('click', handleUno);
   dom.btnCatch?.addEventListener('click', handleCatch);
   dom.btnNew?.addEventListener('click', handleNewGame);
+  dom.btnPause?.addEventListener('click', () => {
+    if (game.isFinished()) return;
+    setPaused(true);
+  });
+  dom.btnResume?.addEventListener('click', () => {
+    setPaused(false);
+    runAITurns();
+  });
+  dom.btnSaveExit?.addEventListener('click', () => {
+    saveCurrentMatch();
+    stopBackgroundMusic();
+    window.location.href = `../levels.html?mode=${selectedMode}`;
+  });
+  dom.btnRestartMatch?.addEventListener('click', () => {
+    setPaused(false);
+    handleNewGame();
+  });
   dom.btnBackRoad?.addEventListener('click', () => {
+    saveCurrentMatch();
     stopBackgroundMusic();
     window.location.href = `../levels.html?mode=${selectedMode}`;
   });
@@ -1283,7 +1475,7 @@ function initPhase4UI() {
   if (dom.btnNextLevel) dom.btnNextLevel.addEventListener('click', () => {
     if (dom.endModal) dom.endModal.classList.add('hidden');
     stopBackgroundMusic();
-    handleNewGame();
+    clearSavedMatch();
     window.location.href = `../levels.html?mode=${selectedMode}`;
   });
   if (dom.btnExit) dom.btnExit.addEventListener('click', () => {

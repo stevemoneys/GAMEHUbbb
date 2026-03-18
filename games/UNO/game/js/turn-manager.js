@@ -71,6 +71,28 @@ class TurnManager {
   isFinished() {
     return this.phase === GAME_PHASE.FINISHED;
   }
+
+  toJSON() {
+    return {
+      currentPlayerIndex: this.currentPlayerIndex,
+      direction: this.direction,
+      phase: this.phase,
+      winnerIndex: this.winnerIndex
+    };
+  }
+
+  restore(snapshot = {}) {
+    this.currentPlayerIndex = Number.isInteger(snapshot.currentPlayerIndex)
+      ? snapshot.currentPlayerIndex
+      : 0;
+    this.direction = snapshot.direction === TURN_DIRECTION.COUNTER_CLOCKWISE
+      ? TURN_DIRECTION.COUNTER_CLOCKWISE
+      : TURN_DIRECTION.CLOCKWISE;
+    this.phase = Object.values(GAME_PHASE).includes(snapshot.phase)
+      ? snapshot.phase
+      : GAME_PHASE.PLAYING;
+    this.winnerIndex = Number.isInteger(snapshot.winnerIndex) ? snapshot.winnerIndex : null;
+  }
 }
 
 export { TurnManager, GAME_PHASE, TURN_DIRECTION };

@@ -29,6 +29,14 @@ body {
   flex-wrap: wrap;
 }
 
+.levels-header__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.24em;
@@ -54,6 +62,49 @@ body {
   padding: 10px 16px;
   border-radius: 999px;
   font-weight: 600;
+}
+
+.resume-panel {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.2);
+}
+
+.resume-panel.hidden {
+  display: none;
+}
+
+.resume-panel__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resume-panel__label {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.resume-panel__text {
+  font-size: 0.88rem;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.resume-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #eff6ff;
+  cursor: pointer;
 }
 
 .road-map {
@@ -120,6 +171,21 @@ body {
   align-items: center;
   width: max-content;
   z-index: 1;
+}
+
+.fullscreen-note {
+  font-size: 0.78rem;
+  color: rgba(248, 250, 252, 0.62);
+  text-align: center;
+}
+
+kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  font-family: inherit;
 }
 
 .level-group {
@@ -210,4 +276,8 @@ body {
   .levels-header h1 {
     font-size: 2.6rem;
   }
+}
+
+:fullscreen .levels-shell {
+  padding: 14px 16px 20px;
 }

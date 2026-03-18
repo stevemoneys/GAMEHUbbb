@@ -16,6 +16,7 @@ const SETTING_KEYS = {
 const audioState = {
   unlocked: false,
   musicStarted: false,
+  musicPaused: false,
   music: null,
   sfx: new Map()
 };
@@ -62,10 +63,26 @@ function startBackgroundMusic() {
     audioState.music = createAudio(AUDIO_PATHS.music, { loop: true, volume: 0.32 });
   }
   audioState.musicStarted = true;
+  audioState.musicPaused = false;
   audioState.music.currentTime = 0;
   audioState.music.play().catch(() => {
     audioState.musicStarted = false;
   });
+}
+
+function pauseBackgroundMusic() {
+  if (!audioState.music || audioState.music.paused) return;
+  audioState.music.pause();
+  audioState.musicPaused = true;
+}
+
+function resumeBackgroundMusic() {
+  if (!audioState.music || !isEnabled(SETTING_KEYS.music) || !audioState.unlocked) return;
+  if (!audioState.musicPaused && !audioState.music.paused) return;
+  audioState.music.play().then(() => {
+    audioState.musicStarted = true;
+    audioState.musicPaused = false;
+  }).catch(() => {});
 }
 
 function stopBackgroundMusic() {
@@ -73,6 +90,7 @@ function stopBackgroundMusic() {
   audioState.music.pause();
   audioState.music.currentTime = 0;
   audioState.musicStarted = false;
+  audioState.musicPaused = false;
 }
 
 function playSfx(name, volume = 1) {
@@ -100,6 +118,8 @@ export {
   initGameAudio,
   unlockAudio,
   startBackgroundMusic,
+  pauseBackgroundMusic,
+  resumeBackgroundMusic,
   stopBackgroundMusic,
   playSfx,
   getAudioPaths

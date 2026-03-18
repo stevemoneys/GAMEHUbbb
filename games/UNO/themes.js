@@ -56,6 +56,7 @@ function setCoinBalance(value) {
 
 function buildCardMarkup(item, options) {
   const { type, isOwned, isSelected, canAfford, compact = false } = options;
+  const isPack = type === "card-pack";
   const cardClass = compact ? "theme-card theme-card--compact" : "theme-card";
   const previewClass = compact ? "theme-preview theme-preview--pack" : "theme-preview";
   const statusLabel = isSelected ? "Active" : isOwned ? "Owned" : "Locked";
@@ -67,11 +68,20 @@ function buildCardMarkup(item, options) {
         </div>
       `
     : "";
+  const previewMarkup = isPack
+    ? `
+        <div class="theme-pack-bundle" style="--theme-pack-image: url('${resolveAssetPath(item.src)}')">
+          <span class="theme-pack-card theme-pack-card--left"></span>
+          <span class="theme-pack-card theme-pack-card--middle"></span>
+          <span class="theme-pack-card theme-pack-card--right"></span>
+        </div>
+      `
+    : `<img src="${resolveAssetPath(item.src)}" alt="${item.name}" loading="lazy">`;
 
   return `
     <div class="${cardClass} ${!isOwned ? "is-locked" : ""}">
       <div class="${previewClass}">
-        <img src="${resolveAssetPath(item.src)}" alt="${item.name}" loading="lazy">
+        ${previewMarkup}
         ${lockMarkup}
       </div>
       <div class="theme-info">

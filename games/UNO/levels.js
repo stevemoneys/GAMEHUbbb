@@ -7,17 +7,20 @@ const MODE_CONFIG = {
   tournament: {
     title: "Tournament Road",
     subtitle: "Classic 4-player UNO. Unlock levels in order and take on stronger tables.",
-    progressKey: "gamehub_uno_progress_tournament"
+    progressKey: "gamehub_uno_progress_tournament",
+    resumeKey: "gamehub_uno_resume_tournament"
   },
   "quick-play": {
     title: "Quick Play Road",
     subtitle: "One-on-one against a single AI rival. Faster rounds, separate progression.",
-    progressKey: "gamehub_uno_progress_quick_play"
+    progressKey: "gamehub_uno_progress_quick_play",
+    resumeKey: "gamehub_uno_resume_quick_play"
   },
   "team-battle": {
     title: "2v2 Road",
     subtitle: "You and an AI teammate versus two AI opponents. Win together to climb.",
-    progressKey: "gamehub_uno_progress_team_battle"
+    progressKey: "gamehub_uno_progress_team_battle",
+    resumeKey: "gamehub_uno_resume_team_battle"
   }
 };
 
@@ -28,6 +31,10 @@ const levelRoad = document.getElementById("level-road");
 const backBtn = document.getElementById("btn-back");
 const headingEl = document.querySelector(".levels-header h1");
 const subtitleEl = document.querySelector(".levels-header .subtitle");
+const resumePanel = document.getElementById("resume-panel");
+const resumeMeta = document.getElementById("resume-meta");
+const resumeBtn = document.getElementById("btn-resume-match");
+let fullscreenWatchdogId = null;
 
 function getProgress() {
   const fallback = localStorage.getItem("gamehub_uno_progress") || "1";
@@ -39,6 +46,76 @@ function getProgress() {
 function setProgress(value) {
   const clamped = Math.max(1, Math.min(value, TOTAL_STAGES));
   localStorage.setItem(activeConfig.progressKey, String(clamped));
+}
+
+function loadResumeSnapshot() {
+  try {
+    const raw = localStorage.getItem(activeConfig.resumeKey);
+    const parsed = JSON.parse(raw || "null");
+    if (!parsed || parsed.mode !== selectedMode || !parsed.state) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clearResumeSnapshot() {
+  localStorage.removeItem(activeConfig.resumeKey);
+}
+
+async function requestFullscreenMode() {
+  const target = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement || !target) return;
+  const requestMethod = target.requestFullscreen || target.webkitRequestFullscreen;
+  if (!requestMethod) return;
+  try {
+    await requestMethod.call(target);
+  } catch {
+    // Mobile browsers can reject fullscreen without a fresh gesture.
+  }
+}
+
+function startFullscreenWatchdog() {
+  if (fullscreenWatchdogId) {
+    window.clearInterval(fullscreenWatchdogId);
+    fullscreenWatchdogId = null;
+  }
+  let tries = 0;
+  fullscreenWatchdogId = window.setInterval(() => {
+    tries += 1;
+    requestFullscreenMode();
+    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 12) {
+      window.clearInterval(fullscreenWatchdogId);
+      fullscreenWatchdogId = null;
+    }
+  }, 320);
+}
+
+function goToStage(level, stage, options = {}) {
+  const { resume = false } = options;
+  requestFullscreenMode();
+  if (!resume) clearResumeSnapshot();
+  const resumeSuffix = resume ? "&resume=1" : "";
+  window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
+}
+
+function renderResumePanel() {
+  const snapshot = loadResumeSnapshot();
+  if (!resumePanel || !resumeBtn || !resumeMeta || !snapshot) {
+    resumePanel?.classList.add("hidden");
+    return;
+  }
+
+  const stageNumber = Math.max(1, parseInt(snapshot.stage || "1", 10));
+  const levelNumber = Math.max(1, parseInt(snapshot.level || "1", 10));
+  const savedAt = snapshot.savedAt ? new Date(snapshot.savedAt) : null;
+  const timeLabel = savedAt && !Number.isNaN(savedAt.getTime())
+    ? savedAt.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : "recently";
+
+  resumeMeta.textContent = `Level ${levelNumber} - Stage ${stageNumber} - saved ${timeLabel}`;
+  resumePanel.classList.remove("hidden");
+  resumeBtn.onclick = () => goToStage(levelNumber, stageNumber, { resume: true });
 }
 
 function buildLevelMap() {
@@ -89,7 +166,7 @@ function buildLevelMap() {
 
       node.addEventListener("click", () => {
         if (index > progress) return;
-        window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}`;
+        goToStage(level, stage);
       });
 
       track.appendChild(node);
@@ -110,4 +187,14 @@ if (!localStorage.getItem(activeConfig.progressKey)) {
   setProgress(1);
 }
 
+requestFullscreenMode();
+startFullscreenWatchdog();
+document.body.addEventListener("pointerdown", requestFullscreenMode, { once: true });
+document.body.addEventListener("touchstart", requestFullscreenMode, { once: true, passive: true });
+window.addEventListener("pageshow", () => {
+  requestFullscreenMode();
+  startFullscreenWatchdog();
+});
+
 buildLevelMap();
+renderResumePanel();

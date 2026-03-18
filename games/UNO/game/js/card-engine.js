@@ -101,6 +101,19 @@ function resetCardIds() {
   cardIdCounter = 0;
 }
 
+function syncCardIds(cards = []) {
+  let maxId = 0;
+  cards.forEach((card) => {
+    const match = String(card?.id || '').match(/card_(\d+)/);
+    if (!match) return;
+    const numericId = parseInt(match[1], 10);
+    if (!Number.isNaN(numericId)) {
+      maxId = Math.max(maxId, numericId);
+    }
+  });
+  cardIdCounter = maxId;
+}
+
 export {
   CARD_COLORS,
   CARD_TYPES,
@@ -108,5 +121,6 @@ export {
   shuffleDeck,
   drawCards,
   resetCardIds,
+  syncCardIds,
   createCard
 };

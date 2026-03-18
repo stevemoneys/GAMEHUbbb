@@ -7,12 +7,23 @@ import {
   createDeck,
   shuffleDeck,
   drawCards,
-  resetCardIds
+  resetCardIds,
+  syncCardIds
 } from './card-engine.js';
 import { isValidMove, getValidMoves } from './rules.js';
 import { TurnManager, GAME_PHASE, TURN_DIRECTION } from './turn-manager.js';
 
 const CARDS_PER_PLAYER = 7;
+
+function cloneCard(card) {
+  if (!card) return null;
+  return {
+    id: card.id,
+    color: card.color,
+    value: card.value,
+    type: card.type
+  };
+}
 
 /**
  * Game state manager
@@ -129,7 +140,7 @@ class GameState {
    * @returns {{ success: boolean, message?: string }}
    */
   catchUno(byPlayerIndex) {
-    if (!this.allowUnoCall || !this.pendingUnoPlayer) {
+    if (!this.allowUnoCall || this.pendingUnoPlayer === null) {
       return { success: false, message: 'No one to catch' };
     }
     if (byPlayerIndex !== this.currentPlayerIndex) {
@@ -313,6 +324,49 @@ class GameState {
       handsLengths: this.hands.map((h) => h.length),
       topCard: this.topCard
     };
+  }
+
+  serialize() {
+    return {
+      playerCount: this.playerCount,
+      allowDrawStacking: this.allowDrawStacking,
+      enforceWild4: this.enforceWild4,
+      allowUnoCall: this.allowUnoCall,
+      deck: this.deck.map(cloneCard),
+      discardPile: this.discardPile.map(cloneCard),
+      hands: this.hands.map((hand) => hand.map(cloneCard)),
+      currentWildColor: this.currentWildColor,
+      pendingDraw: this.pendingDraw,
+      pendingUnoPlayer: this.pendingUnoPlayer,
+      turnManager: this.turnManager.toJSON()
+    };
+  }
+
+  restore(snapshot = {}) {
+    if (!snapshot || !Array.isArray(snapshot.hands) || !Array.isArray(snapshot.deck)) {
+      throw new Error('Invalid game snapshot');
+    }
+
+    this.playerCount = snapshot.playerCount ?? this.playerCount;
+    this.allowDrawStacking = snapshot.allowDrawStacking ?? this.allowDrawStacking;
+    this.enforceWild4 = snapshot.enforceWild4 ?? this.enforceWild4;
+    this.allowUnoCall = snapshot.allowUnoCall ?? this.allowUnoCall;
+    this.deck = snapshot.deck.map(cloneCard);
+    this.discardPile = (snapshot.discardPile || []).map(cloneCard);
+    this.hands = snapshot.hands.map((hand) => hand.map(cloneCard));
+    this.currentWildColor = snapshot.currentWildColor ?? null;
+    this.pendingDraw = snapshot.pendingDraw ?? 0;
+    this.pendingUnoPlayer = snapshot.pendingUnoPlayer ?? null;
+    this.topCard = this.discardPile[this.discardPile.length - 1] || null;
+
+    this.turnManager = new TurnManager(this.playerCount);
+    this.turnManager.restore(snapshot.turnManager || {});
+
+    syncCardIds([
+      ...this.deck,
+      ...this.discardPile,
+      ...this.hands.flat()
+    ]);
   }
 }
 

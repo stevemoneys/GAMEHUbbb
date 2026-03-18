@@ -192,13 +192,14 @@ body.game-screen {
     var(--card-pack-image);
   background-size: cover;
   background-position: center;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 body.has-custom-card-pack .card-back-mini {
   background-image: var(--card-pack-image);
   background-size: cover;
   background-position: center;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 body.has-custom-card-pack .card-back-mini::before,
@@ -280,21 +281,13 @@ body.has-custom-card-pack .card-back-mini::after {
   cursor: pointer;
 }
 
-.pile--draw .uno-card {
-  transform: rotate(-2deg) skewX(-1deg);
-}
-
-.pile--discard .uno-card {
-  transform: rotate(4deg) translateY(-10px);
-}
-
 .pile--draw.active {
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.7);
   border-radius: 16px;
   padding: 6px 8px;
 }
 
-.pile--draw.active .draw-stack-layer--front {
+.pile--draw.active .draw-bundle-card {
   box-shadow: 0 0 18px rgba(251, 191, 36, 0.6);
 }
 
@@ -305,85 +298,42 @@ body.has-custom-card-pack .card-back-mini::after {
   filter: drop-shadow(0 16px 22px rgba(0, 0, 0, 0.34));
 }
 
-.draw-stack-layer {
-  position: absolute;
-  inset: 0;
+.pile-stack--draw {
+  perspective: 860px;
 }
 
-.draw-stack-layer--rear {
-  transform: translate(4px, 3px) rotate(0.35deg);
-  filter: brightness(0.88);
-}
-
-.draw-stack-layer--mid {
-  transform: translate(2px, 1px) rotate(0.18deg);
-  filter: brightness(0.95);
-}
-
-.draw-stack-layer--front {
-  transform: translate(0, 0) rotate(0deg);
-}
-
-.draw-stack-layer--rear::before,
-.draw-stack-layer--mid::before {
-  content: '';
-  position: absolute;
-  inset: auto -6px 5px auto;
-  width: 10px;
-  height: calc(100% - 10px);
-  border-radius: 0 10px 10px 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(203, 213, 225, 0.84));
-}
-
-.draw-stack-layer--front::before {
-  content: '';
-  position: absolute;
-  inset: auto -8px 6px auto;
-  width: 12px;
-  height: calc(100% - 12px);
-  border-radius: 0 10px 10px 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(203, 213, 225, 0.88)),
-    repeating-linear-gradient(
-      180deg,
-      rgba(148, 163, 184, 0.16) 0,
-      rgba(148, 163, 184, 0.16) 2px,
-      rgba(255, 255, 255, 0.02) 2px,
-      rgba(255, 255, 255, 0.02) 4px
-    );
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.2);
-}
-
-.draw-stack-layer--front::after {
-  content: '';
-  position: absolute;
-  left: 4px;
-  right: 10px;
-  bottom: -8px;
-  height: 18px;
-  border-radius: 999px;
-  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0));
-  filter: blur(3px);
-  z-index: -1;
+.draw-bundle-card {
+  transform: rotateX(52deg) rotateZ(-5deg) translateY(2px);
+  transform-origin: center bottom;
+  box-shadow:
+    0 16px 22px rgba(0, 0, 0, 0.32),
+    2px 2px 0 rgba(248, 250, 252, 0.9),
+    4px 4px 0 rgba(241, 245, 249, 0.88),
+    6px 6px 0 rgba(226, 232, 240, 0.82);
 }
 
 .discard-surface {
   position: absolute;
   left: 50%;
-  top: calc(50% + 34px);
-  width: clamp(92px, 14vw, 130px);
-  height: 24px;
+  top: calc(50% + 44px);
+  width: clamp(98px, 14vw, 136px);
+  height: 28px;
   border-radius: 999px;
   transform: translateX(-50%);
   background: radial-gradient(circle at center, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0));
   filter: blur(2px);
 }
 
+.pile--discard {
+  perspective: 980px;
+}
+
 .discard-base-card {
   position: absolute;
-  inset: auto auto 26px 50%;
+  inset: auto auto 24px 50%;
   width: clamp(60px, 10vw, 96px);
-  transform: translateX(-50%) rotate(-8deg);
+  transform: translateX(-50%) rotateX(56deg) rotateZ(-10deg) translateY(8px);
+  transform-origin: center bottom;
   filter: brightness(0.92) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
 }
 
@@ -402,6 +352,9 @@ body.has-custom-card-pack .card-back-mini::after {
 .pile--discard #discard-card {
   position: relative;
   z-index: 2;
+  --discard-card-tilt: rotateX(56deg) rotateZ(8deg);
+  transform: var(--discard-card-tilt) translateY(2px);
+  transform-origin: center bottom;
 }
 
 .turn-indicator {
@@ -754,6 +707,8 @@ body.has-custom-card-pack .uno-card--back {
   background-image: var(--card-pack-image);
   background-size: cover;
   background-position: center;
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
 .uno-card--back::after {
@@ -867,6 +822,14 @@ body.has-custom-card-pack .uno-card--back {
   z-index: 25;
 }
 
+.pause-btn {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right));
+  top: calc(12px + env(safe-area-inset-top));
+  z-index: 25;
+  min-width: 88px;
+}
+
 .value-wild4 .uno-card__oval {
   background: rgba(255, 255, 255, 0.97);
   border: 4px solid rgba(255, 255, 255, 0.92);
@@ -917,6 +880,14 @@ body.has-custom-card-pack .uno-card--back {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.game-shell.is-paused .game-table,
+.game-shell.is-paused .action-bar,
+.game-shell.is-paused .uno-float,
+.game-shell.is-paused .uno-arrow {
+  filter: blur(5px) saturate(0.82);
+  pointer-events: none;
 }
 
 .hidden-player {
@@ -978,6 +949,64 @@ body.has-custom-card-pack .uno-card--back {
   color: var(--text-muted);
   margin-bottom: 16px;
   line-height: 1.5;
+}
+
+.pause-modal {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 75;
+  background: radial-gradient(circle at center, rgba(15, 23, 42, 0.78), rgba(2, 6, 23, 0.92));
+  backdrop-filter: blur(12px);
+}
+
+.pause-modal.hidden {
+  display: none;
+}
+
+.pause-modal__panel {
+  width: min(430px, 90vw);
+  padding: 24px 22px 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(251, 191, 36, 0.16), transparent 48%),
+    rgba(8, 12, 20, 0.94);
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+
+.pause-modal__eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #fcd34d;
+  margin-bottom: 8px;
+}
+
+.pause-modal__title {
+  font-size: 1.45rem;
+  margin-bottom: 10px;
+}
+
+.pause-modal__message {
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.pause-modal__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 720px) {
+  .pause-modal__actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .btn {
@@ -1274,10 +1303,10 @@ body.has-custom-card-pack .uno-card--back {
 }
 
 @keyframes discard-slam {
-  0% { transform: scale(1) rotate(2deg); }
-  35% { transform: scale(1.12) rotate(-1deg); }
-  60% { transform: scale(0.98) rotate(2deg); }
-  100% { transform: scale(1) rotate(2deg); }
+  0% { transform: var(--discard-card-tilt) scale(1) translateY(2px); }
+  35% { transform: var(--discard-card-tilt) scale(1.1) translateY(0); }
+  60% { transform: var(--discard-card-tilt) scale(0.98) translateY(2px); }
+  100% { transform: var(--discard-card-tilt) scale(1) translateY(2px); }
 }
 
 @keyframes reverse-spin {
@@ -1442,6 +1471,14 @@ body.has-custom-card-pack .uno-card--back {
   .uno-card {
     width: clamp(64px, 6vw, 110px);
   }
+}
+
+:fullscreen .game-shell {
+  padding: calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+}
+
+:fullscreen .game-table {
+  gap: 8px;
 }
 
 body.mode-quick-play .game-table {
