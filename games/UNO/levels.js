@@ -91,12 +91,15 @@ function startFullscreenWatchdog() {
   }, 320);
 }
 
-function goToStage(level, stage, options = {}) {
+async function goToStage(level, stage, options = {}) {
   const { resume = false } = options;
-  requestFullscreenMode();
+  await requestFullscreenMode();
+  startFullscreenWatchdog();
   if (!resume) clearResumeSnapshot();
   const resumeSuffix = resume ? "&resume=1" : "";
-  window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
+  window.setTimeout(() => {
+    window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
+  }, 80);
 }
 
 function renderResumePanel() {
