@@ -39,6 +39,8 @@ button:disabled {
   --square-highlight-outline: rgba(255, 255, 255, 0.65);
   --piece-ring: rgba(255, 255, 255, 0.75);
   --piece-ring-glow: rgba(255, 255, 255, 0.35);
+  --landscape-board-size: min(calc(100svh - 28px), calc(100vw - 176px));
+  --landscape-tray-width: clamp(34px, 4vw, 48px);
 }
 
 /* Body */
@@ -2138,5 +2140,38 @@ body.landscape-game-active {
 
   body.landscape-game-active #shop-screen .piece-grid {
     gap: 10px;
+  }
+}
+
+/* ===== Deterministic Landscape Board Sizing (Single Source of Truth) ===== */
+@media (orientation: landscape) {
+  body.landscape-game-active #game-screen .game-shell {
+    width: 100vw !important;
+    max-width: none !important;
+    display: grid;
+    grid-template-columns: var(--landscape-tray-width) var(--landscape-board-size) var(--landscape-tray-width) !important;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding: 0 2px;
+  }
+
+  body.landscape-game-active #game-screen .game-container {
+    width: var(--landscape-board-size) !important;
+    height: var(--landscape-board-size) !important;
+    max-width: var(--landscape-board-size) !important;
+    max-height: var(--landscape-board-size) !important;
+    aspect-ratio: 1 / 1;
+    justify-self: center;
+    align-self: center;
+  }
+
+  body.landscape-game-active #game-screen .captured-tray {
+    width: var(--landscape-tray-width) !important;
+    min-width: var(--landscape-tray-width) !important;
+    max-width: var(--landscape-tray-width) !important;
+    height: var(--landscape-board-size) !important;
+    max-height: var(--landscape-board-size) !important;
+    min-height: 0;
   }
 }

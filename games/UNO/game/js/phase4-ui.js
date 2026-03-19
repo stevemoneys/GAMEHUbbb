@@ -1032,18 +1032,7 @@ function renderHand() {
 
 function renderTurn() {
   if (!dom.turnIndicator) return;
-  if (isPaused) {
-    dom.turnIndicator.textContent = 'Paused';
-    dom.turnIndicator.classList.remove('hidden');
-    return;
-  }
-  const current = game.getCurrentPlayerIndex();
-  let text = 'Your turn';
-  if (current !== 0) {
-    text = isTeamBattle && current === 2 ? 'Teammate thinking' : 'Opponent turn';
-  }
-  dom.turnIndicator.textContent = text;
-  dom.turnIndicator.classList.remove('hidden');
+  dom.turnIndicator.classList.add('hidden');
 }
 
 function getPlacements() {

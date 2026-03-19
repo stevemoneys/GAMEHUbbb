@@ -4,6 +4,8 @@ const coinCountEl = document.getElementById("coin-count");
 const playerLevelEl = document.getElementById("player-level");
 const dailyBtn = document.querySelector('.action-icon[data-action="daily-reward"]');
 const settingsBtn = document.querySelector(".settings-btn");
+const guideModal = document.getElementById("guide-modal");
+const guideCloseBtn = document.getElementById("guide-close");
 const avatars = window.GameHubAvatars || [];
 const rewards = window.GameHubRewards;
 
@@ -86,6 +88,29 @@ if (settingsBtn) {
   });
 }
 
+function openGuideModal() {
+  guideModal?.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeGuideModal() {
+  guideModal?.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+guideCloseBtn?.addEventListener("click", closeGuideModal);
+guideModal?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  if (target.dataset.closeGuide === "true") closeGuideModal();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!guideModal || guideModal.classList.contains("hidden")) return;
+  closeGuideModal();
+});
+
 setAvatarButton();
 
 function updatePlayerLevel() {
@@ -128,6 +153,7 @@ document.querySelectorAll(".action-icon").forEach((btn) => {
     const action = btn.getAttribute("data-action");
     if (action === "daily-reward") window.location.href = "rewards.html";
     if (action === "customize") window.location.href = "themes.html";
+    if (action === "how-to-play") openGuideModal();
     if (action === "stats") window.location.href = "stats.html";
   });
 });

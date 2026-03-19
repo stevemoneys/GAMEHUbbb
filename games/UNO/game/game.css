@@ -90,7 +90,7 @@ body.game-screen {
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(120px, 1fr) minmax(240px, 2fr) minmax(120px, 1fr);
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: minmax(56px, auto) minmax(0, 1fr) minmax(96px, auto);
   grid-template-areas:
     "top top top"
     "left center right"
@@ -251,6 +251,7 @@ body.has-custom-card-pack .card-back-mini::after {
   backdrop-filter: blur(10px);
   padding: 18px 14px 20px;
   position: relative;
+  min-height: 0;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 28px 42px rgba(0, 0, 0, 0.38);
@@ -306,21 +307,21 @@ body.has-custom-card-pack .card-back-mini::after {
 }
 
 .draw-bundle-card {
-  transform: rotateX(52deg) rotateZ(-5deg) translateY(2px);
-  transform-origin: center bottom;
-  box-shadow:
-    0 16px 22px rgba(0, 0, 0, 0.32),
-    2px 2px 0 rgba(248, 250, 252, 0.9),
-    4px 4px 0 rgba(241, 245, 249, 0.88),
-    6px 6px 0 rgba(226, 232, 240, 0.82);
+  transform: rotate(-2deg);
+  transform-origin: center;
+  box-shadow: 0 14px 20px rgba(0, 0, 0, 0.35);
+}
+
+.draw-bundle-card::before {
+  display: none;
 }
 
 .discard-surface {
   position: absolute;
   left: 50%;
-  top: calc(50% + 44px);
-  width: clamp(98px, 14vw, 136px);
-  height: 28px;
+  top: calc(50% + 30px);
+  width: clamp(88px, 12vw, 118px);
+  height: 18px;
   border-radius: 999px;
   transform: translateX(-50%);
   background: radial-gradient(circle at center, rgba(15, 23, 42, 0.52), rgba(15, 23, 42, 0));
@@ -333,10 +334,10 @@ body.has-custom-card-pack .card-back-mini::after {
 
 .discard-base-card {
   position: absolute;
-  inset: auto auto 24px 50%;
+  inset: auto auto 16px 50%;
   width: clamp(60px, 10vw, 96px);
-  transform: translateX(-50%) rotateX(56deg) rotateZ(-10deg) translateY(8px);
-  transform-origin: center bottom;
+  transform: translateX(-50%) rotate(-8deg);
+  transform-origin: center;
   filter: brightness(0.92) drop-shadow(0 8px 12px rgba(0, 0, 0, 0.28));
 }
 
@@ -355,9 +356,9 @@ body.has-custom-card-pack .card-back-mini::after {
 .pile--discard #discard-card {
   position: relative;
   z-index: 2;
-  --discard-card-tilt: rotateX(56deg) rotateZ(8deg);
-  transform: var(--discard-card-tilt) translateY(2px);
-  transform-origin: center bottom;
+  --discard-card-tilt: rotate(6deg);
+  transform: translateY(-4px) var(--discard-card-tilt);
+  transform-origin: center;
 }
 
 .turn-indicator {
@@ -371,6 +372,7 @@ body.has-custom-card-pack .card-back-mini::after {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+  display: none;
 }
 
 .turn-indicator.hidden {
@@ -1040,7 +1042,7 @@ body.has-custom-card-pack .uno-card--back {
 .uno-float {
   position: absolute;
   right: 14px;
-  top: 50%;
+  top: 47%;
   transform: translateY(-50%);
   width: 72px;
   height: 72px;
@@ -1058,7 +1060,7 @@ body.has-custom-card-pack .uno-card--back {
 .uno-arrow {
   position: absolute;
   right: 26px;
-  top: 32%;
+  top: 30%;
   width: 0;
   height: 0;
   border-left: 10px solid transparent;
@@ -1519,7 +1521,7 @@ body.mode-quick-play .center-zone {
   .game-table {
     gap: 6px;
     grid-template-columns: minmax(72px, 0.8fr) minmax(160px, 2fr) minmax(72px, 0.8fr);
-    grid-template-rows: minmax(44px, auto) minmax(0, 1fr) minmax(88px, auto);
+    grid-template-rows: minmax(40px, auto) minmax(0, 1fr) minmax(82px, auto);
   }
 
   .player-zone {
@@ -1568,6 +1570,14 @@ body.mode-quick-play .center-zone {
     width: clamp(42px, 8vh, 66px);
   }
 
+  .discard-base-card {
+    inset: auto auto 10px 50%;
+  }
+
+  .pile--discard #discard-card {
+    transform: translateY(-2px) var(--discard-card-tilt);
+  }
+
   .pile-count {
     font-size: 0.68rem;
     padding: 2px 6px;
@@ -1598,13 +1608,13 @@ body.mode-quick-play .center-zone {
     width: 54px;
     height: 54px;
     right: 8px;
-    top: 58%;
+    top: 46%;
     font-size: 0.62rem;
   }
 
   .uno-arrow {
     right: 20px;
-    top: 39%;
+    top: 30%;
   }
 
   .pause-btn,

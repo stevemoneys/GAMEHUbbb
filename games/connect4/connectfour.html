@@ -35,11 +35,21 @@
                     </button>
                 </div>
 
-                <button class="icon-btn icon-btn--restart" id="restartBtn" type="button" aria-label="Restart">
-                    <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                        <path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z"/>
-                    </svg>
-                </button>
+                <div class="topbar-actions" aria-label="Game controls">
+                    <button class="icon-btn icon-btn--restart" id="restartBtn" type="button" aria-label="Restart">
+                        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7Z"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn icon-btn--pause" id="pauseToggleBtn" type="button" aria-label="Pause game" aria-pressed="false">
+                        <svg class="pause-icon pause-icon--pause" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M7 4h4v16H7Zm6 0h4v16h-4Z"/>
+                        </svg>
+                        <svg class="pause-icon pause-icon--resume" viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                            <path d="M8 5v14l11-7Z"/>
+                        </svg>
+                    </button>
+                </div>
             </header>
 
             <div id="turnTimer" class="turn-timer" aria-live="polite" aria-label="Turn timer">

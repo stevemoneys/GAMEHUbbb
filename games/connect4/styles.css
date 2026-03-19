@@ -17,6 +17,8 @@
     --p2-skin-image: none;
     --icon-surface: rgba(6, 11, 25, 0.22);
     --icon-border: rgba(195, 212, 255, 0.16);
+    --top-icon-size: 2.2rem;
+    --effect-btn-size: 2.05rem;
 }
 
 * {
@@ -33,12 +35,11 @@ body.game-page {
     display: flex;
     justify-content: center;
     background-color: #040919;
-    background-image:
-        linear-gradient(180deg, rgba(4, 9, 23, 0.2) 0%, rgba(4, 9, 23, 0.8) 78%),
-        var(--play-bg-image, url("./assets/plbg.png"));
+    background-image: var(--play-bg-image, url("./assets/plbg.png"));
     background-repeat: no-repeat;
-    background-position: center top;
-    background-size: contain;
+    background-position: center center;
+    background-size: cover;
+    background-attachment: fixed;
 }
 
 .app {
@@ -62,22 +63,31 @@ body.game-page {
     left: 0.28rem;
     right: 0.28rem;
     z-index: 20;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    column-gap: 0.32rem;
     align-items: center;
 }
 
 .effects-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.28rem;
+    justify-content: center;
+    min-width: 0;
+}
+
+.topbar-actions {
     display: inline-flex;
     align-items: center;
     gap: 0.28rem;
-    margin: 0 auto;
+    justify-self: end;
 }
 
 .effect-btn {
     position: relative;
-    width: 2.05rem;
-    height: 2.05rem;
+    width: var(--effect-btn-size);
+    height: var(--effect-btn-size);
     border-radius: 0.62rem;
     border: 1px solid rgba(188, 209, 255, 0.32);
     background: rgba(8, 15, 34, 0.72);
@@ -116,8 +126,8 @@ body.game-page {
 }
 
 .icon-btn {
-    width: 2.2rem;
-    height: 2.2rem;
+    width: var(--top-icon-size);
+    height: var(--top-icon-size);
     border-radius: 999px;
     border: 1px solid var(--icon-border);
     background: var(--icon-surface);
@@ -139,6 +149,18 @@ body.game-page {
     width: 1.18rem;
     height: 1.18rem;
     fill: currentColor;
+}
+
+.pause-icon--resume {
+    display: none;
+}
+
+.icon-btn--pause.is-paused .pause-icon--pause {
+    display: none;
+}
+
+.icon-btn--pause.is-paused .pause-icon--resume {
+    display: block;
 }
 
 .icon-btn:focus-visible,
@@ -436,13 +458,11 @@ body.game-page {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background-image:
-        linear-gradient(180deg, rgba(4, 9, 23, 0.2) 0%, rgba(4, 9, 23, 0.8) 78%),
-        var(--play-bg-image, url("./assets/plbg.png"));
+    background-image: var(--play-bg-image, url("./assets/plbg.png"));
     background-repeat: no-repeat;
-    background-position: center top;
-    background-size: contain;
-    background-attachment: fixed, fixed;
+    background-position: center center;
+    background-size: cover;
+    background-attachment: fixed;
 }
 
 .cell.red {
@@ -639,6 +659,64 @@ body.game-page {
     100% {
         opacity: 0;
         transform: translate3d(var(--drift), 120%, 0) scale(0.38);
+    }
+}
+
+@media (max-width: 430px) {
+    :root {
+        --top-icon-size: 1.95rem;
+        --effect-btn-size: 1.82rem;
+    }
+
+    .game-topbar {
+        left: 0.2rem;
+        right: 0.2rem;
+        column-gap: 0.2rem;
+    }
+
+    .effects-bar {
+        gap: 0.18rem;
+    }
+
+    .topbar-actions {
+        gap: 0.18rem;
+    }
+
+    .effect-btn svg {
+        width: 0.9rem;
+        height: 0.9rem;
+    }
+
+    .icon-btn svg {
+        width: 1.03rem;
+        height: 1.03rem;
+    }
+
+    .effect-count-badge {
+        min-width: 0.9rem;
+        height: 0.9rem;
+        font-size: 0.52rem;
+        top: -0.17rem;
+        right: -0.1rem;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --top-icon-size: 1.82rem;
+        --effect-btn-size: 1.7rem;
+    }
+
+    .effects-bar {
+        gap: 0.14rem;
+    }
+
+    .topbar-actions {
+        gap: 0.14rem;
+    }
+
+    .game-topbar {
+        top: calc(0.3rem + env(safe-area-inset-top));
     }
 }
 

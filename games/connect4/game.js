@@ -266,6 +266,7 @@ const Connect4View = (() => {
     const redPlayerElement = document.getElementById("playerRed");
     const yellowPlayerElement = document.getElementById("playerYellow");
     const restartButtonElement = document.getElementById("restartBtn");
+    const pauseToggleButtonElement = document.getElementById("pauseToggleBtn");
     const statusElement = document.getElementById("statusMessage");
     const turnTimerElement = document.getElementById("turnTimer");
     const turnTimerValueElement = document.getElementById("turnTimerValue");
@@ -645,6 +646,22 @@ const Connect4View = (() => {
         restartButtonElement.addEventListener("click", handler);
     }
 
+    function bindPauseToggle(handler) {
+        if (!pauseToggleButtonElement) {
+            return;
+        }
+        pauseToggleButtonElement.addEventListener("click", handler);
+    }
+
+    function setPausedState(paused) {
+        if (!pauseToggleButtonElement) {
+            return;
+        }
+        pauseToggleButtonElement.classList.toggle("is-paused", paused);
+        pauseToggleButtonElement.setAttribute("aria-pressed", paused ? "true" : "false");
+        pauseToggleButtonElement.setAttribute("aria-label", paused ? "Resume game" : "Pause game");
+    }
+
     function animateDrop(column, targetRow, player) {
         const targetCell = boardElement.querySelector(`.cell[data-row="${targetRow}"][data-col="${column}"]`);
         if (!targetCell) {
@@ -717,6 +734,8 @@ const Connect4View = (() => {
         showResultModal,
         hideResultModal,
         bindRestart,
+        bindPauseToggle,
+        setPausedState,
         animateDrop,
     };
 })();
@@ -744,6 +763,12 @@ const Connect4Controller = (() => {
     let playerMistakes = 0;
     let aiThreatSeen = false;
     let humanMovesThisGame = 0;
+    let paused = false;
+    let lifecyclePersistenceBound = false;
+    let pendingResultModalTimeoutId = 0;
+
+    const SAVE_KEY = "connect4:active-game:v1";
+    const WIN_RESULT_MODAL_DELAY_MS = 950;
 
     function clamp(value, min, max) {
         return Math.max(min, Math.min(max, value));
@@ -755,6 +780,177 @@ const Connect4Controller = (() => {
             return fallback;
         }
         return clamp(parsed, min, max);
+    }
+
+    function syncBoardLockState() {
+        Connect4View.lockBoard(animating || paused || state.gameOver || modalOpen || isAITurn());
+    }
+
+    function setPausedState(nextPaused) {
+        paused = nextPaused;
+        Connect4View.setPausedState(paused);
+        syncBoardLockState();
+    }
+
+    function getStorage() {
+        try {
+            return window.localStorage;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function clearSavedGame() {
+        const storage = getStorage();
+        if (!storage) {
+            return;
+        }
+        storage.removeItem(SAVE_KEY);
+    }
+
+    function isValidBoard(board) {
+        if (!Array.isArray(board) || board.length !== state.rows) {
+            return false;
+        }
+        return board.every((row) => (
+            Array.isArray(row) &&
+            row.length === state.cols &&
+            row.every((cell) => Number.isInteger(cell) && cell >= 0 && cell <= 2)
+        ));
+    }
+
+    function saveGameSnapshot() {
+        const storage = getStorage();
+        if (!storage) {
+            return;
+        }
+        if (!state || state.gameOver || modalOpen) {
+            storage.removeItem(SAVE_KEY);
+            return;
+        }
+
+        const payload = {
+            version: 1,
+            savedAt: Date.now(),
+            mode: state.mode,
+            level: state.level,
+            stage: state.stage,
+            board: state.board.map((row) => row.slice()),
+            currentPlayer: state.currentPlayer,
+            humanPlayer: state.humanPlayer,
+            aiPlayer: state.aiPlayer,
+            moveHistory: moveHistory.map((move) => ({ row: move.row, col: move.col, player: move.player })),
+            activeColumn,
+            paused,
+            stageStartTime,
+            stageAttemptTracked,
+            playerMistakes,
+            aiThreatSeen,
+            humanMovesThisGame,
+        };
+
+        storage.setItem(SAVE_KEY, JSON.stringify(payload));
+    }
+
+    function loadSavedGame() {
+        const storage = getStorage();
+        if (!storage) {
+            return null;
+        }
+        const raw = storage.getItem(SAVE_KEY);
+        if (!raw) {
+            return null;
+        }
+        try {
+            return JSON.parse(raw);
+        } catch (_) {
+            storage.removeItem(SAVE_KEY);
+            return null;
+        }
+    }
+
+    function restoreSavedGameIfAvailable() {
+        const saved = loadSavedGame();
+        if (!saved) {
+            return false;
+        }
+
+        const sameMode = saved.mode === state.mode;
+        const sameStage = state.mode !== "one" || (saved.level === state.level && saved.stage === state.stage);
+        if (!sameMode || !sameStage || !isValidBoard(saved.board)) {
+            return false;
+        }
+
+        state.board = saved.board.map((row) => row.slice());
+        state.currentPlayer = saved.currentPlayer === 2 ? 2 : 1;
+        state.humanPlayer = saved.humanPlayer === 2 ? 2 : 1;
+        state.aiPlayer = state.mode === "one"
+            ? (state.humanPlayer === 1 ? 2 : 1)
+            : (saved.aiPlayer === 1 ? 1 : 2);
+        state.gameOver = false;
+
+        moveHistory = Array.isArray(saved.moveHistory)
+            ? saved.moveHistory
+                .filter((move) => (
+                    Number.isInteger(move.row) &&
+                    Number.isInteger(move.col) &&
+                    (move.player === 1 || move.player === 2) &&
+                    move.row >= 0 &&
+                    move.row < state.rows &&
+                    move.col >= 0 &&
+                    move.col < state.cols
+                ))
+                .map((move) => ({ row: move.row, col: move.col, player: move.player }))
+            : [];
+
+        activeColumn = Number.isInteger(saved.activeColumn) ? clamp(saved.activeColumn, -1, state.cols - 1) : -1;
+        stageStartTime = Number.isFinite(saved.stageStartTime) ? saved.stageStartTime : Date.now();
+        stageAttemptTracked = Boolean(saved.stageAttemptTracked);
+        playerMistakes = Number.isFinite(saved.playerMistakes) ? Math.max(0, saved.playerMistakes) : 0;
+        aiThreatSeen = Boolean(saved.aiThreatSeen);
+        humanMovesThisGame = Number.isFinite(saved.humanMovesThisGame) ? Math.max(0, saved.humanMovesThisGame) : 0;
+        paused = Boolean(saved.paused);
+        return true;
+    }
+
+    function bindLifecyclePersistence() {
+        if (lifecyclePersistenceBound) {
+            return;
+        }
+        lifecyclePersistenceBound = true;
+
+        window.addEventListener("pagehide", () => {
+            saveGameSnapshot();
+        });
+
+        window.addEventListener("beforeunload", () => {
+            saveGameSnapshot();
+        });
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "hidden") {
+                saveGameSnapshot();
+            }
+        });
+    }
+
+    function clearPendingResultModal() {
+        if (!pendingResultModalTimeoutId) {
+            return;
+        }
+        window.clearTimeout(pendingResultModalTimeoutId);
+        pendingResultModalTimeoutId = 0;
+    }
+
+    function openResultModalAfterDelay(payload, delayMs = WIN_RESULT_MODAL_DELAY_MS) {
+        clearPendingResultModal();
+        pendingResultModalTimeoutId = window.setTimeout(() => {
+            pendingResultModalTimeoutId = 0;
+            if (!state || modalOpen || !state.gameOver) {
+                return;
+            }
+            openResultModal(payload);
+        }, delayMs);
     }
 
     function isOnePlayerMode() { return state.mode === "one"; }
@@ -868,7 +1064,7 @@ const Connect4Controller = (() => {
 
     function refreshTurnTimer() {
         clearTurnTimer();
-        if (state.gameOver || modalOpen || !isTimedStage() || state.currentPlayer !== state.humanPlayer) {
+        if (paused || state.gameOver || modalOpen || !isTimedStage() || state.currentPlayer !== state.humanPlayer) {
             return;
         }
 
@@ -889,7 +1085,7 @@ const Connect4Controller = (() => {
     }
 
     function applyPreview(column) {
-        if (animating || state.gameOver || modalOpen || isAITurn()) {
+        if (paused || animating || state.gameOver || modalOpen || isAITurn()) {
             return;
         }
         activeColumn = column;
@@ -906,7 +1102,7 @@ const Connect4Controller = (() => {
     function popMove() { return moveHistory.pop() || null; }
 
     function applyUndo() {
-        if (animating || moveHistory.length === 0) {
+        if (paused || animating || moveHistory.length === 0) {
             return;
         }
         if (!consumeEffect("undo")) {
@@ -915,6 +1111,7 @@ const Connect4Controller = (() => {
         }
 
         Connect4Sound.playEffect();
+        clearPendingResultModal();
         Connect4View.hideResultModal();
         modalOpen = false;
         state.gameOver = false;
@@ -945,12 +1142,13 @@ const Connect4Controller = (() => {
 
         Connect4View.renderBoard(state.board);
         Connect4View.setTurnGlow(state.currentPlayer);
-        Connect4View.lockBoard(false);
+        syncBoardLockState();
         refreshTurnTimer();
+        saveGameSnapshot();
     }
 
     function applyHint() {
-        if (animating || state.gameOver || modalOpen) {
+        if (paused || animating || state.gameOver || modalOpen) {
             return;
         }
         if (!consumeEffect("hint")) {
@@ -984,7 +1182,7 @@ const Connect4Controller = (() => {
     }
 
     function applyThreatAlert() {
-        if (animating || state.gameOver || modalOpen) {
+        if (paused || animating || state.gameOver || modalOpen) {
             return;
         }
         if (!consumeEffect("threat_alert")) {
@@ -1003,7 +1201,7 @@ const Connect4Controller = (() => {
     }
 
     function applySafeMove() {
-        if (animating || state.gameOver || modalOpen) {
+        if (paused || animating || state.gameOver || modalOpen) {
             return;
         }
         if (!consumeEffect("safe_move")) {
@@ -1022,8 +1220,11 @@ const Connect4Controller = (() => {
     }
 
     function openResultModal({ title, body, showNext }) {
+        clearPendingResultModal();
+        setPausedState(false);
         modalOpen = true;
-        Connect4View.lockBoard(true);
+        syncBoardLockState();
+        clearSavedGame();
         Connect4View.showResultModal({
             title,
             body,
@@ -1052,8 +1253,47 @@ const Connect4Controller = (() => {
         });
     }
 
+    function pauseGame() {
+        if (paused || animating || modalOpen || state.gameOver) {
+            return;
+        }
+        clearTurnTimer();
+        clearPreview();
+        setPausedState(true);
+        saveGameSnapshot();
+    }
+
+    function resumeGame() {
+        if (!paused || modalOpen) {
+            return;
+        }
+        setPausedState(false);
+        if (state.gameOver) {
+            return;
+        }
+        if (isAITurn()) {
+            void runAIIfNeeded();
+        } else {
+            refreshTurnTimer();
+            if (activeColumn >= 0) {
+                applyPreview(activeColumn);
+            }
+        }
+        saveGameSnapshot();
+    }
+
+    function handlePauseToggle() {
+        Connect4Sound.unlock();
+        Connect4Music.refresh();
+        if (paused) {
+            resumeGame();
+            return;
+        }
+        pauseGame();
+    }
+
     async function handleTurnTimeout() {
-        if (timeoutInProgress || state.gameOver || modalOpen || animating) {
+        if (paused || timeoutInProgress || state.gameOver || modalOpen || animating) {
             return;
         }
         if (!isTimedStage() || state.currentPlayer !== state.humanPlayer) {
@@ -1068,19 +1308,23 @@ const Connect4Controller = (() => {
 
         try {
             animating = true;
-            Connect4View.lockBoard(true);
+            syncBoardLockState();
             Connect4Model.togglePlayer(state);
             Connect4View.setTurnGlow(state.currentPlayer);
             await runAIIfNeeded();
         } finally {
             animating = false;
             timeoutInProgress = false;
-            Connect4View.lockBoard(state.gameOver || isAITurn() || modalOpen);
+            syncBoardLockState();
             refreshTurnTimer();
+            saveGameSnapshot();
         }
     }
 
     async function playTurn(column, fromAI = false) {
+        if (paused) {
+            return false;
+        }
         let landingRow = Connect4Model.getLowestOpenRow(state.board, column);
 
         if (landingRow === -1) {
@@ -1152,14 +1396,26 @@ const Connect4Controller = (() => {
 
             if (isOnePlayerMode()) {
                 if (player === state.humanPlayer) {
-                    openResultModal({ title: "Victory", body: `Level ${state.level} Stage ${state.stage} cleared.`, showNext: true });
+                    openResultModalAfterDelay({
+                        title: "Victory",
+                        body: `Level ${state.level} Stage ${state.stage} cleared.`,
+                        showNext: true
+                    });
                     Connect4Sound.playWin();
                 } else {
-                    openResultModal({ title: "Defeat", body: "You lost this stage. Try again.", showNext: false });
+                    openResultModalAfterDelay({
+                        title: "Defeat",
+                        body: "You lost this stage. Try again.",
+                        showNext: false
+                    });
                     Connect4Sound.playLose();
                 }
             } else {
-                openResultModal({ title: player === 1 ? "Player 1 Wins" : "Player 2 Wins", body: "Match complete.", showNext: false });
+                openResultModalAfterDelay({
+                    title: player === 1 ? "Player 1 Wins" : "Player 2 Wins",
+                    body: "Match complete.",
+                    showNext: false
+                });
                 Connect4Sound.playWin();
             }
 
@@ -1182,6 +1438,7 @@ const Connect4Controller = (() => {
         Connect4View.setTurnGlow(state.currentPlayer);
         Connect4View.setStatus("Tap or hover a column, then drop.");
         refreshTurnTimer();
+        saveGameSnapshot();
         return true;
     }
 
@@ -1207,20 +1464,20 @@ const Connect4Controller = (() => {
     }
 
     async function runAIIfNeeded() {
-        if (!isAITurn() || state.gameOver || modalOpen) {
+        if (paused || !isAITurn() || state.gameOver || modalOpen) {
             return;
         }
 
         const ownsAnimationLock = !animating;
         if (ownsAnimationLock) {
             animating = true;
-            Connect4View.lockBoard(true);
+            syncBoardLockState();
         }
 
         try {
             await new Promise((resolve) => window.setTimeout(resolve, state.aiDelayMs));
 
-            if (state.gameOver || modalOpen || !isAITurn()) {
+            if (paused || state.gameOver || modalOpen || !isAITurn()) {
                 return;
             }
 
@@ -1233,7 +1490,7 @@ const Connect4Controller = (() => {
         } finally {
             if (ownsAnimationLock) {
                 animating = false;
-                Connect4View.lockBoard(state.gameOver || modalOpen);
+                syncBoardLockState();
                 if (!state.gameOver && !isAITurn() && activeColumn >= 0) {
                     applyPreview(activeColumn);
                 }
@@ -1242,7 +1499,7 @@ const Connect4Controller = (() => {
     }
 
     async function handleSelect(column) {
-        if (animating || state.gameOver || modalOpen || isAITurn()) {
+        if (paused || animating || state.gameOver || modalOpen || isAITurn()) {
             return;
         }
 
@@ -1251,7 +1508,7 @@ const Connect4Controller = (() => {
 
         try {
             animating = true;
-            Connect4View.lockBoard(true);
+            syncBoardLockState();
             const moved = await playTurn(column, false);
 
             if (moved && !state.gameOver) {
@@ -1259,7 +1516,7 @@ const Connect4Controller = (() => {
             }
         } finally {
             animating = false;
-            Connect4View.lockBoard(state.gameOver || modalOpen);
+            syncBoardLockState();
             if (!state.gameOver && !isAITurn() && activeColumn >= 0) {
                 applyPreview(activeColumn);
             }
@@ -1275,9 +1532,11 @@ const Connect4Controller = (() => {
         Connect4Sound.playRestart();
         Connect4Music.refresh();
 
+        clearPendingResultModal();
         clearTurnTimer();
         Connect4View.hideResultModal();
         modalOpen = false;
+        setPausedState(false);
 
         const mode = state.mode;
         const level = state.level;
@@ -1303,7 +1562,7 @@ const Connect4Controller = (() => {
         moveHistory = [];
         startStageAttemptIfNeeded();
 
-        Connect4View.lockBoard(false);
+        syncBoardLockState();
         Connect4View.renderBoard(state.board);
         Connect4View.clearEffects();
         Connect4View.clearPreview();
@@ -1316,6 +1575,7 @@ const Connect4Controller = (() => {
         } else {
             refreshTurnTimer();
         }
+        saveGameSnapshot();
     }
 
     function setupModeFromQuery() {
@@ -1379,6 +1639,9 @@ const Connect4Controller = (() => {
         humanMovesThisGame = 0;
         timeoutInProgress = false;
         moveHistory = [];
+        paused = false;
+        pendingResultModalTimeoutId = 0;
+        const restored = restoreSavedGameIfAvailable();
         startStageAttemptIfNeeded();
 
         Connect4Music.init();
@@ -1390,17 +1653,28 @@ const Connect4Controller = (() => {
         });
 
         Connect4View.bindRestart(restart);
+        Connect4View.bindPauseToggle(handlePauseToggle);
         bindEffects();
+        bindLifecyclePersistence();
         Connect4View.renderBoard(state.board);
+        Connect4View.clearEffects();
+        Connect4View.clearPreview();
         Connect4View.setPlayerLabels(state.mode, state.humanPlayer);
         Connect4View.setTurnGlow(state.currentPlayer);
+        setPausedState(paused);
+        if (restored) {
+            Connect4View.showRewardToast("Saved game restored.");
+        }
         loadEffectCounts();
 
-        if (isAITurn() && !state.gameOver) {
+        if (paused) {
+            clearTurnTimer();
+        } else if (isAITurn() && !state.gameOver) {
             void runAIIfNeeded();
         } else {
             refreshTurnTimer();
         }
+        saveGameSnapshot();
     }
 
     return { init };

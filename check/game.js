@@ -1706,7 +1706,7 @@ const BOARD_THEME_IMAGES = [
   "assets/boards/board6_result.webp",
   "assets/boards/board7_result.webp",
   "assets/boards/board8_result.webp",
-  "assets/boards/board9_result.wepb",
+  "assets/boards/board9_result.webp",
   "assets/boards/board10_result.webp",
   "assets/boards/board11_result.webp"
 ];
@@ -1754,7 +1754,7 @@ const SOUND_URLS = {
   hint6: "assets/audio/sfx/hint6.wav"
 };
 
-const BGM_URL = "assets/audio/background.mp3";
+const BGM_URL = "assets/audio/backgroundloop.mp3";
 
 const EFFECT_ITEMS = [
   { id: "undo", name: "Undo", desc: "Undo your last move.", price: 0, image: "assets/effects/effect01_result.webp" },
@@ -2757,10 +2757,43 @@ function updateRotateLockOverlay() {
   rotateLockOverlayElement.classList.toggle("active", activeGameplay && inPortrait);
 }
 
+function updateLandscapeBoardMetrics() {
+  const root = document.documentElement;
+  const viewportWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const isLandscape = window.matchMedia("(orientation: landscape)").matches;
+  const gameplayActive = document.body.classList.contains("landscape-game-active");
+
+  if (!isLandscape || !gameplayActive) {
+    root.style.removeProperty("--landscape-board-size");
+    root.style.removeProperty("--landscape-tray-width");
+    return;
+  }
+
+  const isMobileLandscape = viewportWidth <= 950;
+  const trayWidth = isMobileLandscape ? 34 : 44;
+  const rightUiReserve = isMobileLandscape ? 96 : 112;
+  const leftUiReserve = isMobileLandscape ? 64 : 76;
+  const shellReserve = isMobileLandscape ? 14 : 20;
+  const verticalReserve = isMobileLandscape ? 28 : 54;
+
+  const maxByWidth = viewportWidth - (trayWidth * 2 + rightUiReserve + leftUiReserve + shellReserve);
+  const maxByHeight = viewportHeight - verticalReserve;
+  const fallbackSquare = Math.max(180, Math.floor(Math.min(viewportWidth, viewportHeight) - 24));
+
+  let boardSize = Math.floor(Math.min(maxByWidth, maxByHeight));
+  if (!Number.isFinite(boardSize) || boardSize <= 0) boardSize = fallbackSquare;
+  boardSize = Math.max(180, Math.min(boardSize, fallbackSquare));
+
+  root.style.setProperty("--landscape-board-size", `${boardSize}px`);
+  root.style.setProperty("--landscape-tray-width", `${trayWidth}px`);
+}
+
 async function requestLandscapeGameplay() {
   document.body.classList.add("landscape-game-active");
   ensureRotateLockOverlay();
   updateRotateLockOverlay();
+  updateLandscapeBoardMetrics();
 
   if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
     try {
@@ -2773,11 +2806,13 @@ async function requestLandscapeGameplay() {
       await screen.orientation.lock("landscape");
     } catch (_) {}
   }
+  updateLandscapeBoardMetrics();
 }
 
 function releaseLandscapeGameplay() {
   document.body.classList.remove("landscape-game-active");
   updateRotateLockOverlay();
+  updateLandscapeBoardMetrics();
 
   if (document.fullscreenElement && document.exitFullscreen) {
     document.exitFullscreen().catch(() => {});
@@ -2787,6 +2822,12 @@ function releaseLandscapeGameplay() {
 window.addEventListener("resize", updateRotateLockOverlay);
 window.addEventListener("orientationchange", updateRotateLockOverlay);
 document.addEventListener("fullscreenchange", updateRotateLockOverlay);
+window.addEventListener("resize", updateLandscapeBoardMetrics);
+window.addEventListener("orientationchange", updateLandscapeBoardMetrics);
+document.addEventListener("fullscreenchange", updateLandscapeBoardMetrics);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", updateLandscapeBoardMetrics);
+}
 
 function showScreen(screen) {
   if (homeScreenElement) homeScreenElement.classList.add("hidden");
@@ -2809,6 +2850,7 @@ function showScreen(screen) {
   } else {
     releaseLandscapeGameplay();
   }
+  updateLandscapeBoardMetrics();
 }
 
 function renderMode() {
@@ -3382,4 +3424,3 @@ applyEquippedPieceSkin();
 applyEquippedBackground();
 applyEquippedBoardTheme();
 initializeHome();
-

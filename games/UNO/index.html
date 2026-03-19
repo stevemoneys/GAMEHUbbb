@@ -55,6 +55,14 @@
 </svg>
 <span class="action-icon-label"></span>
 </button>
+<button class="action-icon" data-action="how-to-play" aria-label="How To Play UNO">
+<svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="12" cy="12" r="10"/>
+<path d="M9.2 9.1a2.8 2.8 0 1 1 4.6 2.2c-.8.6-1.3 1.1-1.3 2"/>
+<line x1="12" y1="17" x2="12" y2="17"/>
+</svg>
+<span class="action-icon-label"></span>
+</button>
 <button class="action-icon" data-action="stats" aria-label="Stats">
 <svg class="action-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 <line x1="18" y1="20" x2="18" y2="10"/>
@@ -90,6 +98,76 @@
 </button>
 </div>
 </section>
+
+<div id="guide-modal" class="guide-modal hidden" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+  <div class="guide-modal__backdrop" data-close-guide="true"></div>
+  <div class="guide-modal__panel">
+    <header class="guide-modal__header">
+      <div>
+        <p class="guide-modal__eyebrow">UNO Master Guide</p>
+        <h2 id="guide-title">How To Play</h2>
+      </div>
+      <button type="button" id="guide-close" class="guide-close" aria-label="Close guide">Close</button>
+    </header>
+    <div class="guide-modal__content">
+      <section class="guide-block">
+        <h3>1. Goal Of UNO</h3>
+        <p>Your objective is to be the first player to get rid of all cards in your hand. You do this by matching the top discard card by color or value, while using action cards to control turns and pressure opponents.</p>
+      </section>
+
+      <section class="guide-block">
+        <h3>2. Match Setup</h3>
+        <p>Every player starts with seven cards. One card is placed face up as the first discard card. The remaining cards form the draw pile in the center.</p>
+      </section>
+
+      <section class="guide-block">
+        <h3>3. Core Turn Rules</h3>
+        <p>On your turn, play one valid card that matches either the discard color or value. If you have no valid move, draw from the draw pile. Turn order normally moves to the next player unless altered by action cards.</p>
+      </section>
+
+      <section class="guide-block">
+        <h3>4. Action Cards</h3>
+        <ul>
+          <li><strong>Skip:</strong> Next player loses their turn.</li>
+          <li><strong>Reverse:</strong> Turn direction changes. In 1v1 flow, Reverse behaves like an extra skip effect.</li>
+          <li><strong>Draw Two (+2):</strong> Next player draws two and loses turn unless stack rules continue it.</li>
+          <li><strong>Wild:</strong> You choose the next active color.</li>
+          <li><strong>Wild Draw Four (+4):</strong> You choose color and the next player draws four unless stacking continues.</li>
+        </ul>
+      </section>
+
+      <section class="guide-block">
+        <h3>5. UNO Call And Catch</h3>
+        <p>When you drop to one card, press UNO before the round advances. If a player forgets, the current player can use Catch to punish that player with two extra cards.</p>
+      </section>
+
+      <section class="guide-block">
+        <h3>6. Game Modes In This App</h3>
+        <ul>
+          <li><strong>Tournament:</strong> Classic four-player table with its own progression road.</li>
+          <li><strong>Quick Play:</strong> Fast 1v1 match against one AI rival.</li>
+          <li><strong>2V2:</strong> You and an AI teammate versus two AI opponents. Your side wins if either teammate finishes first.</li>
+        </ul>
+      </section>
+
+      <section class="guide-block">
+        <h3>7. Winning And Progression</h3>
+        <p>A round ends when one side empties its hand. Winning advances level progression for the active mode and unlocks harder tables over time.</p>
+      </section>
+
+      <section class="guide-block">
+        <h3>8. Practical Strategy Tips</h3>
+        <ul>
+          <li>Keep at least one flexible color option whenever possible.</li>
+          <li>Use action cards to protect yourself when an opponent is low on cards.</li>
+          <li>Delay wild cards if you still have natural matches available.</li>
+          <li>Watch card counts and save disruption cards for final turns.</li>
+          <li>In 2V2, prioritize team survival over individual hand speed.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
 
 </div>
 <script src="rewards-core.js"></script>
