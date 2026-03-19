@@ -11,6 +11,8 @@ const rewards = window.GameHubRewards;
 
 const AVATAR_KEY = "gamehub_uno_avatar";
 const MODE_KEY = "gamehub_uno_home_mode";
+const LANDSCAPE_INTENT_KEY = "gamehub_uno_landscape_intent";
+const AVATAR_UNLOCK_STAGE_INTERVAL = 5;
 const MODE_CONFIG = {
   tournament: {
     progressKey: "gamehub_uno_progress_tournament",
@@ -25,15 +27,67 @@ const MODE_CONFIG = {
     levelsUrl: "levels.html?mode=team-battle"
   }
 };
+const PROGRESS_KEYS = [
+  "gamehub_uno_progress",
+  MODE_CONFIG.tournament.progressKey,
+  MODE_CONFIG["quick-play"].progressKey,
+  MODE_CONFIG["team-battle"].progressKey
+];
 
 function getSelectedMode() {
   const stored = localStorage.getItem(MODE_KEY) || "tournament";
   return MODE_CONFIG[stored] ? stored : "tournament";
 }
 
-function goToMode(mode) {
+function parseProgressValue(value) {
+  const parsed = parseInt(value || "1", 10);
+  if (Number.isNaN(parsed) || parsed < 1) return 1;
+  return parsed;
+}
+
+function getUnlockedAvatarCount() {
+  const bestProgress = Math.min(
+    Math.max(...PROGRESS_KEYS.map((key) => parseProgressValue(localStorage.getItem(key)))),
+    100
+  );
+  const stagesWon = Math.max(0, bestProgress - 1);
+  const unlocked = 1 + Math.floor(stagesWon / AVATAR_UNLOCK_STAGE_INTERVAL);
+  const maxAvatars = avatars.length || 20;
+  return Math.min(maxAvatars, Math.max(1, unlocked));
+}
+
+async function requestLandscapeExperience() {
+  const target = document.documentElement;
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && target) {
+      if (target.requestFullscreen) {
+        await target.requestFullscreen({ navigationUI: "hide" });
+      } else if (target.webkitRequestFullscreen) {
+        await target.webkitRequestFullscreen();
+      }
+    }
+  } catch {
+    // Fullscreen can be rejected on some browsers.
+  }
+
+  try {
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch {
+    // Orientation lock can fail without fullscreen permission.
+  }
+}
+
+async function goToMode(mode) {
   const safeMode = MODE_CONFIG[mode] ? mode : "tournament";
   localStorage.setItem(MODE_KEY, safeMode);
+  try {
+    sessionStorage.setItem(LANDSCAPE_INTENT_KEY, "1");
+  } catch {
+    // Ignore storage failures.
+  }
+  await requestLandscapeExperience();
   window.location.href = MODE_CONFIG[safeMode].levelsUrl;
 }
 
@@ -49,8 +103,18 @@ document.querySelectorAll(".mode-card[data-mode]").forEach((btn) => {
 
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || "1", 10);
-  if (Number.isNaN(stored)) return 1;
-  return stored;
+  const unlockedAvatars = avatars.slice(0, getUnlockedAvatarCount());
+  const fallbackId = unlockedAvatars[0]?.id || avatars[0]?.id || 1;
+  if (Number.isNaN(stored)) {
+    localStorage.setItem(AVATAR_KEY, String(fallbackId));
+    return fallbackId;
+  }
+  const isUnlocked = unlockedAvatars.some((avatar) => avatar.id === stored);
+  const safeId = isUnlocked ? stored : fallbackId;
+  if (safeId !== stored) {
+    localStorage.setItem(AVATAR_KEY, String(safeId));
+  }
+  return safeId;
 }
 
 function setAvatarButton() {

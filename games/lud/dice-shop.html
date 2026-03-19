@@ -89,7 +89,7 @@
       15: { price: 17000, effect: "After 10 rolls, guaranteed one 6" },
       16: { price: 22000, effect: "Once per match, double movement of a roll" },
       17: { price: 28000, effect: "Bring 2 tokens home to gain one bonus turn" },
-      18: { price: 30000, effect: "10% chance any roll repeats automatically" },
+      18: { price: 35000, effect: "10% chance any roll repeats automatically" },
       19: { price: 35000, effect: "10% chance any roll repeats automatically" },
       20: { price: 50000, effect: "1 guaranteed 6 +15% win coin bonus + once per match shield" }
     };
@@ -165,7 +165,7 @@
       preview.src = `dice/skins/${key}/6_result.webp`;
       preview.alt = `Dice skin ${id}`;
       preview.onerror = () => {
-        preview.src = "dice/5.png";
+        preview.src = "dice/5_result.webp";
       };
 
       const title = document.createElement("h3");
@@ -261,6 +261,4 @@
   </script>
 </body>
 </html>
-
-
 

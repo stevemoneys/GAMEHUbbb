@@ -46,10 +46,25 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const mode = (params.get("mode") || "vs-computer").toLowerCase();
+    const MODE_LABELS = {
+      classic: "classic",
+      chaos: "chaos",
+      power: "power",
+      battle: "battle",
+      arena: "arena"
+    };
+    let selectedGameMode = (params.get("gm") || localStorage.getItem("ludo_game_mode") || "classic").toLowerCase();
+    if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
+    localStorage.setItem("ludo_game_mode", selectedGameMode);
     const LUDO_RESUME_KEY = "ludo_saved_match_v1";
     const titleEl = document.querySelector(".vs-head h1");
     if (titleEl) {
       titleEl.textContent = mode === "pass-play" ? "Pass And Play" : "VS Computer";
+    }
+    const closeBtnEl = document.querySelector(".close-btn");
+    if (closeBtnEl) {
+      const closeQuery = new URLSearchParams({ gm: selectedGameMode });
+      closeBtnEl.href = `index.html?${closeQuery.toString()}`;
     }
 
     const playerButtons = Array.from(document.querySelectorAll("[data-players]"));
@@ -77,7 +92,8 @@
       const query = new URLSearchParams({
         mode,
         players: String(selectedPlayers),
-        human: selectedColor
+        human: selectedColor,
+        gm: selectedGameMode
       });
       if (mode === "pass-play") return `ludo.html?${query.toString()}`;
       return `level-select.html?${query.toString()}`;
@@ -120,9 +136,13 @@
     document.getElementById("play-btn").addEventListener("click", () => {
       const startUrl = buildStartUrl();
       const saved = getSavedMatch();
+      const savedRuleMode = saved && MODE_LABELS[(saved.ruleMode || saved.gameMode || "").toLowerCase()]
+        ? (saved.ruleMode || saved.gameMode || "").toLowerCase()
+        : "classic";
       if (
         saved &&
-        saved.gameMode === mode &&
+        (saved.matchMode || saved.gameMode) === mode &&
+        savedRuleMode === selectedGameMode &&
         Number(saved.playerCount) === selectedPlayers &&
         typeof saved.returnUrl === "string" &&
         saved.returnUrl

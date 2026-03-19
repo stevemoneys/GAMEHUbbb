@@ -1,6 +1,7 @@
 const LEVELS = 10;
 const STAGES_PER_LEVEL = 10;
 const TOTAL_STAGES = LEVELS * STAGES_PER_LEVEL;
+const LANDSCAPE_INTENT_KEY = "gamehub_uno_landscape_intent";
 const params = new URLSearchParams(window.location.search);
 
 const MODE_CONFIG = {
@@ -34,7 +35,25 @@ const subtitleEl = document.querySelector(".levels-header .subtitle");
 const resumePanel = document.getElementById("resume-panel");
 const resumeMeta = document.getElementById("resume-meta");
 const resumeBtn = document.getElementById("btn-resume-match");
+const rotateOverlay = document.getElementById("rotate-overlay");
 let fullscreenWatchdogId = null;
+
+function markLandscapeIntent() {
+  try {
+    sessionStorage.setItem(LANDSCAPE_INTENT_KEY, "1");
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function isPortraitOrientation() {
+  return window.matchMedia("(orientation: portrait)").matches;
+}
+
+function updateRotateOverlay() {
+  if (!rotateOverlay) return;
+  rotateOverlay.classList.toggle("hidden", !isPortraitOrientation());
+}
 
 function getProgress() {
   const fallback = localStorage.getItem("gamehub_uno_progress") || "1";
@@ -79,6 +98,21 @@ async function requestFullscreenMode() {
   }
 }
 
+async function tryLockOrientation() {
+  if (!screen.orientation?.lock) return;
+  try {
+    await screen.orientation.lock("landscape");
+  } catch {
+    // Orientation lock can fail on some devices or without user gesture.
+  }
+}
+
+async function activateLandscapeMode() {
+  await requestFullscreenMode();
+  await tryLockOrientation();
+  updateRotateOverlay();
+}
+
 function startFullscreenWatchdog() {
   if (fullscreenWatchdogId) {
     window.clearInterval(fullscreenWatchdogId);
@@ -87,8 +121,10 @@ function startFullscreenWatchdog() {
   let tries = 0;
   fullscreenWatchdogId = window.setInterval(() => {
     tries += 1;
-    requestFullscreenMode();
-    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 20) {
+    activateLandscapeMode();
+    const fullscreenReady = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    const landscapeReady = !isPortraitOrientation();
+    if ((fullscreenReady && landscapeReady) || tries >= 28) {
       window.clearInterval(fullscreenWatchdogId);
       fullscreenWatchdogId = null;
     }
@@ -97,13 +133,12 @@ function startFullscreenWatchdog() {
 
 async function goToStage(level, stage, options = {}) {
   const { resume = false } = options;
-  await requestFullscreenMode();
+  markLandscapeIntent();
+  await activateLandscapeMode();
   startFullscreenWatchdog();
   if (!resume) clearResumeSnapshot();
   const resumeSuffix = resume ? "&resume=1" : "";
-  window.setTimeout(() => {
-    window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
-  }, 80);
+  window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
 }
 
 function renderResumePanel() {
@@ -194,12 +229,22 @@ if (!localStorage.getItem(activeConfig.progressKey)) {
   setProgress(1);
 }
 
-requestFullscreenMode();
+markLandscapeIntent();
+updateRotateOverlay();
+activateLandscapeMode();
 startFullscreenWatchdog();
-document.body.addEventListener("pointerdown", requestFullscreenMode, { once: true });
-document.body.addEventListener("touchstart", requestFullscreenMode, { once: true, passive: true });
+document.body.addEventListener("touchstart", activateLandscapeMode, { once: true, passive: true });
+document.body.addEventListener("pointerdown", activateLandscapeMode, { once: true });
 window.addEventListener("pageshow", () => {
-  requestFullscreenMode();
+  activateLandscapeMode();
+  startFullscreenWatchdog();
+});
+window.addEventListener("orientationchange", updateRotateOverlay);
+window.addEventListener("resize", updateRotateOverlay);
+document.addEventListener("fullscreenchange", updateRotateOverlay);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  activateLandscapeMode();
   startFullscreenWatchdog();
 });
 

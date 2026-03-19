@@ -8,24 +8,41 @@ const PROGRESS_KEYS = [
   "gamehub_uno_progress_team_battle"
 ];
 const AVATAR_KEY = "gamehub_uno_avatar";
+const AVATAR_UNLOCK_STAGE_INTERVAL = 5;
+
+function parseProgress(value) {
+  const parsed = parseInt(value || "1", 10);
+  if (Number.isNaN(parsed) || parsed < 1) return 1;
+  return parsed;
+}
 
 function getProgress() {
-  const values = PROGRESS_KEYS.map((key) => {
-    const parsed = parseInt(localStorage.getItem(key) || "1", 10);
-    if (Number.isNaN(parsed) || parsed < 1) return 1;
-    return parsed;
-  });
+  const values = PROGRESS_KEYS.map((key) => parseProgress(localStorage.getItem(key)));
   return Math.min(Math.max(...values), 100);
 }
 
 function getUnlockedCount() {
   const progress = getProgress();
-  return Math.min(20, progress);
+  const stagesWon = Math.max(0, progress - 1);
+  const unlocked = 1 + Math.floor(stagesWon / AVATAR_UNLOCK_STAGE_INTERVAL);
+  const maxAvatars = avatars.length || 20;
+  return Math.min(maxAvatars, Math.max(1, unlocked));
 }
 
-function getSelectedAvatar() {
+function getSelectedAvatar(unlockedCount = getUnlockedCount()) {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || "1", 10);
-  return Number.isNaN(stored) ? 1 : stored;
+  const unlockedAvatars = avatars.slice(0, unlockedCount);
+  const fallbackId = unlockedAvatars[0]?.id || avatars[0]?.id || 1;
+  if (Number.isNaN(stored)) {
+    localStorage.setItem(AVATAR_KEY, String(fallbackId));
+    return fallbackId;
+  }
+  const isUnlocked = unlockedAvatars.some((avatar) => avatar.id === stored);
+  const safeId = isUnlocked ? stored : fallbackId;
+  if (safeId !== stored) {
+    localStorage.setItem(AVATAR_KEY, String(safeId));
+  }
+  return safeId;
 }
 
 function setSelectedAvatar(id) {
@@ -35,7 +52,7 @@ function setSelectedAvatar(id) {
 function renderAvatars() {
   if (!avatarGrid) return;
   const unlockedCount = getUnlockedCount();
-  const selected = getSelectedAvatar();
+  const selected = getSelectedAvatar(unlockedCount);
   avatarGrid.innerHTML = "";
 
   avatars.forEach((avatar, index) => {

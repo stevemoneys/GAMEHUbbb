@@ -124,6 +124,14 @@ const playerZoneMap = {
 
 const avatars = window.GameHubAvatars || [];
 const AVATAR_KEY = 'gamehub_uno_avatar';
+const LANDSCAPE_INTENT_KEY = 'gamehub_uno_landscape_intent';
+const PROGRESS_KEYS = [
+  'gamehub_uno_progress',
+  MODE_CONFIG.tournament.progressKey,
+  MODE_CONFIG['quick-play'].progressKey,
+  MODE_CONFIG['team-battle'].progressKey
+];
+const AVATAR_UNLOCK_STAGE_INTERVAL = 5;
 const rewards = window.GameHubRewards;
 const THEME_PATH_KEY = 'gamehub_uno_theme_path';
 const CARD_PACK_PATH_KEY = 'gamehub_uno_card_pack_path';
@@ -132,6 +140,14 @@ const REACTIONS_SETTING_KEY = 'gamehub_uno_setting_reactions';
 const wildPalette = { red: '#e03b3b', blue: '#2b6df7', green: '#22c55e', yellow: '#f4c430' };
 let matchRecorded = false;
 let opponentAvatars = [];
+
+function markLandscapeIntent() {
+  try {
+    sessionStorage.setItem(LANDSCAPE_INTENT_KEY, '1');
+  } catch {
+    // Ignore storage failures on restricted browser modes.
+  }
+}
 
 function isPlayerSideWinner(winnerIndex) {
   if (isTeamBattle) return winnerIndex === 0 || winnerIndex === 2;
@@ -259,10 +275,37 @@ function announceRoundStartSpeech() {
   }
 }
 
+function parseProgressValue(value) {
+  const parsed = parseInt(value || '1', 10);
+  if (Number.isNaN(parsed) || parsed < 1) return 1;
+  return parsed;
+}
+
+function getUnlockedAvatarCount() {
+  const bestProgress = Math.min(
+    Math.max(...PROGRESS_KEYS.map((key) => parseProgressValue(localStorage.getItem(key)))),
+    100
+  );
+  const stagesWon = Math.max(0, bestProgress - 1);
+  const unlocked = 1 + Math.floor(stagesWon / AVATAR_UNLOCK_STAGE_INTERVAL);
+  const maxAvatars = avatars.length || 20;
+  return Math.min(maxAvatars, Math.max(1, unlocked));
+}
+
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || '1', 10);
-  if (Number.isNaN(stored)) return 1;
-  return stored;
+  const unlockedAvatars = avatars.slice(0, getUnlockedAvatarCount());
+  const fallbackId = unlockedAvatars[0]?.id || avatars[0]?.id || 1;
+  if (Number.isNaN(stored)) {
+    localStorage.setItem(AVATAR_KEY, String(fallbackId));
+    return fallbackId;
+  }
+  const isUnlocked = unlockedAvatars.some((avatar) => avatar.id === stored);
+  const safeId = isUnlocked ? stored : fallbackId;
+  if (safeId !== stored) {
+    localStorage.setItem(AVATAR_KEY, String(safeId));
+  }
+  return safeId;
 }
 
 function applyAvatar(el, avatar) {
@@ -364,8 +407,9 @@ function startFullscreenWatchdog() {
   let tries = 0;
   fullscreenWatchdogId = window.setInterval(() => {
     tries += 1;
-    requestFullscreenMode();
-    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 20) {
+    activateLandscapeMode();
+    const fullscreenReady = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    if ((fullscreenReady && !isPortraitOrientation()) || tries >= 28) {
       window.clearInterval(fullscreenWatchdogId);
       fullscreenWatchdogId = null;
     }
@@ -826,16 +870,23 @@ function showSpeech(playerIndex, eventKey, phraseKey = eventKey) {
 
   const avatarRect = avatarEl.getBoundingClientRect();
   const shellRect = dom.gameShell.getBoundingClientRect();
+  const compactLayout = shellRect.height <= 430 || shellRect.width <= 760;
+  if (compactLayout) bubble.classList.add('speech-bubble--compact');
   const startX = avatarRect.left - shellRect.left + avatarRect.width / 2;
   const startY = avatarRect.top - shellRect.top + avatarRect.height / 2;
-  const bubbleWidth = bubble.offsetWidth || 160;
+  const bubbleWidth = bubble.offsetWidth || (compactLayout ? 140 : 160);
   const clampedStartX = Math.min(
     Math.max(startX, bubbleWidth / 2 + 10),
     shellRect.width - bubbleWidth / 2 - 10
   );
-  const baseMargin = playerIndex === 0 ? 150 : playerIndex === 2 ? 230 : 190;
-  const stackOffset = stackIndex * 70;
-  const targetY = shellRect.height - baseMargin - stackOffset;
+  const baseMargin = compactLayout
+    ? (playerIndex === 0 ? 96 : playerIndex === 2 ? 136 : 116)
+    : (playerIndex === 0 ? 150 : playerIndex === 2 ? 230 : 190);
+  const stackOffset = stackIndex * (compactLayout ? 48 : 70);
+  const rawTargetY = shellRect.height - baseMargin - stackOffset;
+  const minTargetY = compactLayout ? 18 : 28;
+  const maxTargetY = shellRect.height - (compactLayout ? 56 : 72);
+  const targetY = Math.min(Math.max(rawTargetY, minTargetY), maxTargetY);
   const laneX = playerIndex === 1
     ? shellRect.width * 0.24
     : playerIndex === 3
@@ -850,18 +901,38 @@ function showSpeech(playerIndex, eventKey, phraseKey = eventKey) {
 
   bubble.style.left = `${clampedStartX}px`;
   bubble.style.top = `${startY}px`;
-  bubble.animate(
-    [
-      { transform: 'translate(0px, 0px) scale(0.9)', opacity: 0 },
-      { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1, offset: 0.28 },
-      { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1, offset: 0.8 },
-      { transform: `translate(${dx}px, ${dy + 24}px) scale(0.95)`, opacity: 0, offset: 1 }
-    ],
-    { duration: 7600, easing: 'ease-in-out', fill: 'forwards' }
-  ).onfinish = () => {
+  const cleanup = () => {
     bubble.remove();
     bubbleStacks[playerIndex] = Math.max(0, bubbleStacks[playerIndex] - 1);
   };
+  const keyframes = [
+    { transform: 'translate(0px, 0px) scale(0.9)', opacity: 0 },
+    { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1, offset: 0.28 },
+    { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1, offset: 0.8 },
+    { transform: `translate(${dx}px, ${dy + 24}px) scale(0.95)`, opacity: 0, offset: 1 }
+  ];
+
+  if (typeof bubble.animate === 'function') {
+    bubble.animate(
+      keyframes,
+      { duration: 7600, easing: 'ease-in-out', fill: 'forwards' }
+    ).onfinish = cleanup;
+    return;
+  }
+
+  bubble.style.opacity = '0';
+  bubble.style.transform = 'translate(0px, 0px) scale(0.9)';
+  bubble.style.transition = 'transform 540ms ease, opacity 540ms ease';
+  window.requestAnimationFrame(() => {
+    bubble.style.opacity = '1';
+    bubble.style.transform = `translate(${dx}px, ${dy}px) scale(1)`;
+  });
+  window.setTimeout(() => {
+    bubble.style.transition = 'transform 620ms ease, opacity 620ms ease';
+    bubble.style.opacity = '0';
+    bubble.style.transform = `translate(${dx}px, ${dy + 24}px) scale(0.95)`;
+  }, 5200);
+  window.setTimeout(cleanup, 6000);
 }
 
 function getCardDisplay(card) {
@@ -976,7 +1047,8 @@ function getValueClass(card) {
 }
 
 function updateOrientationOverlay() {
-  dom.rotateOverlay?.classList.add('hidden');
+  const shouldShow = isPortraitOrientation();
+  dom.rotateOverlay?.classList.toggle('hidden', !shouldShow);
 }
 
 async function tryLockOrientation() {
@@ -986,6 +1058,17 @@ async function tryLockOrientation() {
   } catch {
     // Orientation lock can fail on some devices or without user gesture.
   }
+}
+
+function isPortraitOrientation() {
+  return window.matchMedia('(orientation: portrait)').matches;
+}
+
+async function activateLandscapeMode() {
+  markLandscapeIntent();
+  await requestFullscreenMode();
+  await tryLockOrientation();
+  updateOrientationOverlay();
 }
 
 function setActivePlayer(currentIndex) {
@@ -1395,9 +1478,9 @@ function runAITurns() {
 
 function initPhase4UI() {
   initGameAudio();
-  requestFullscreenMode();
+  markLandscapeIntent();
+  activateLandscapeMode();
   startFullscreenWatchdog();
-  tryLockOrientation();
   syncRewardQueueSize();
   if (!shouldRestoreSavedMatch || !restoreSavedMatch()) {
     game.init();
@@ -1412,37 +1495,31 @@ function initPhase4UI() {
     startRoundPresentation();
   }
   updateOrientationOverlay();
-  tryLockOrientation();
   document.body.addEventListener('click', () => {
     unlockAudio();
-    tryLockOrientation();
-    requestFullscreenMode();
+    activateLandscapeMode();
   }, { once: true });
   document.body.addEventListener('touchstart', () => {
     unlockAudio();
-    tryLockOrientation();
-    requestFullscreenMode();
+    activateLandscapeMode();
   }, { once: true, passive: true });
   document.body.addEventListener('pointerdown', () => {
     unlockAudio();
-    tryLockOrientation();
-    requestFullscreenMode();
+    activateLandscapeMode();
   }, { once: true });
   window.addEventListener('resize', updateOrientationOverlay);
-  window.addEventListener('orientationchange', tryLockOrientation);
   window.addEventListener('orientationchange', updateOrientationOverlay);
+  document.addEventListener('fullscreenchange', updateOrientationOverlay);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       saveCurrentMatch();
       return;
     }
-    tryLockOrientation();
-    requestFullscreenMode();
+    activateLandscapeMode();
     startFullscreenWatchdog();
   });
   window.addEventListener('pageshow', () => {
-    tryLockOrientation();
-    requestFullscreenMode();
+    activateLandscapeMode();
     startFullscreenWatchdog();
   });
   window.addEventListener('beforeunload', saveCurrentMatch);

@@ -12,13 +12,32 @@ generatePaths(boardEl);
 const ALL_COLORS_CLOCKWISE = ["red", "green", "yellow", "blue"];
 
 const params = new URLSearchParams(window.location.search);
-const gameMode = (params.get("mode") || "vs-computer").toLowerCase();
+const matchMode = (params.get("mode") || "vs-computer").toLowerCase();
 const requestedPlayers = Number(params.get("players")) || 4;
 const requestedHumanColor = (params.get("human") || "red").toLowerCase();
 const currentLevel = Math.max(1, Number(params.get("level")) || 1);
 const playerCount = Math.min(4, Math.max(2, requestedPlayers));
 const humanColor = ALL_COLORS_CLOCKWISE.includes(requestedHumanColor) ? requestedHumanColor : "red";
 const aiDifficulty = Math.min(3, Math.floor((currentLevel - 1) / 5) + 1);
+
+let gameMode = (params.get("gm") || localStorage.getItem("ludo_game_mode") || "classic").toLowerCase();
+const MODES = {
+  classic: {},
+  chaos: { snakes: true, ladders: true },
+  power: { powerTiles: true },
+  battle: { aggressive: true },
+  arena: { allEvents: true }
+};
+if (!Object.prototype.hasOwnProperty.call(MODES, gameMode)) {
+  gameMode = "classic";
+}
+
+const LADDERS = { 5: 15, 22: 41 };
+const SNAKES = { 17: 7, 45: 30 };
+const SPEED_TILES = [8, 21];
+const TELEPORT_TILES = [12];
+const TELEPORT_TARGETS = { 12: 36 };
+const SHIELD_TILES = [30];
 
 const humanIndexInCycle = ALL_COLORS_CLOCKWISE.indexOf(humanColor);
 const activeColors = playerCount === 2
@@ -47,9 +66,9 @@ const HOME_PATH_KEY_BY_COLOR = {
 
 const STAR_COORDS = [
   [9, 3],
-  [3, 9],
+  [3, 7],
   [9, 13],
-  [13, 7]
+  [13, 9]
 ];
 
 const ENTRY_INDEX_BY_COLOR = {};
@@ -109,6 +128,9 @@ const backLevelsBtnEl = document.getElementById("back-levels-btn");
 const restartBtnEl = document.getElementById("restart-btn");
 const coinTotalEl = document.getElementById("coin-total");
 const toastLayerEl = document.getElementById("toast-layer");
+const coinHudEl = document.getElementById("coin-hud");
+const coinFxLayerEl = document.getElementById("coin-fx-layer");
+const sparkLayerEl = document.getElementById("spark-layer");
 
 const BACKGROUND_IMAGES = Array.from({ length: 20 }, (_, i) => {
   return `backgrounds/bg${i + 1}_result.webp`;
@@ -131,6 +153,24 @@ const BGM_ENABLED_KEY = "ludo_bgm_enabled";
 const SFX_ENABLED_KEY = "ludo_sfx_enabled";
 let isBgmEnabled = localStorage.getItem(BGM_ENABLED_KEY) !== "0";
 let isSfxEnabled = localStorage.getItem(SFX_ENABLED_KEY) !== "0";
+
+const EVENT_COIN_REWARDS = {
+  rollSix: 2,
+  capture: 9,
+  blockade: 6,
+  home: 15
+};
+
+const REACTION_LINES = {
+  rollSix: ["Perfect!", "Great Roll!", "Lucky 6!"],
+  capture: ["Nice Move!", "Clean Capture!", "Sharp Play!"],
+  blockade: ["Solid Blockade!", "Great Defense!", "Board Control!"],
+  home: ["Perfect Finish!", "Token Home!", "Excellent Push!"],
+  unlucky: ["Unlucky!", "Tough Break!", "So Close!"],
+  almost: ["Almost There!", "Final Push!", "One More!"]
+};
+
+const nearWinAnnounced = new Set();
 
 const DAILY_LOGIN_COINS = 25;
 const DAILY_LOGIN_KEY = "ludo_last_login_date";
@@ -162,6 +202,82 @@ function addCoins(amount) {
   totalCoins += safeAmount;
   localStorage.setItem("ludo_coins", String(totalCoins));
   if (coinTotalEl) coinTotalEl.textContent = String(totalCoins);
+}
+
+function pickReactionLine(type) {
+  const list = REACTION_LINES[type];
+  if (!Array.isArray(list) || list.length === 0) return "";
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function getElementCenter(el) {
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top)) return null;
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2
+  };
+}
+
+function pulseCoinHud() {
+  const el = coinTotalEl || coinHudEl;
+  if (!el) return;
+  el.classList.remove("coin-hud-pop");
+  // Force restart so repeated rewards can retrigger animation.
+  void el.offsetWidth;
+  el.classList.add("coin-hud-pop");
+}
+
+function animateCoinGain(amount, sourceEl = null, sourcePoint = null) {
+  if (!coinFxLayerEl) return;
+  const safeAmount = Math.floor(Number(amount) || 0);
+  if (safeAmount <= 0) return;
+
+  const target = getElementCenter(coinHudEl || coinTotalEl);
+  if (!target) return;
+
+  const fromPoint = sourcePoint || getElementCenter(sourceEl) || getElementCenter(boardEl) || target;
+  const coinCount = Math.max(4, Math.min(16, Math.ceil(safeAmount / 2)));
+  let finished = 0;
+
+  for (let i = 0; i < coinCount; i++) {
+    const coin = document.createElement("span");
+    coin.className = "coin-fly";
+
+    const spread = 18 + Math.random() * 26;
+    const angle = (Math.PI * 2 * i) / coinCount;
+    const sx = fromPoint.x + Math.cos(angle) * spread + (Math.random() * 12 - 6);
+    const sy = fromPoint.y + Math.sin(angle) * spread + (Math.random() * 10 - 5);
+    const duration = 560 + Math.floor(Math.random() * 260);
+    const delay = i * 36;
+
+    coin.style.setProperty("--x0", `${sx}px`);
+    coin.style.setProperty("--y0", `${sy}px`);
+    coin.style.setProperty("--x1", `${target.x}px`);
+    coin.style.setProperty("--y1", `${target.y}px`);
+    coin.style.setProperty("--duration", `${duration}ms`);
+    coin.style.setProperty("--delay", `${delay}ms`);
+    coin.style.setProperty("--spin", `${540 + Math.floor(Math.random() * 720)}deg`);
+
+    coin.addEventListener("animationend", () => {
+      coin.remove();
+      finished += 1;
+      if (finished >= coinCount) pulseCoinHud();
+    });
+    coinFxLayerEl.appendChild(coin);
+  }
+}
+
+function rewardHumanEvent(type, sourceEl = null, sourcePoint = null, multiplier = 1) {
+  const amount = Math.floor((EVENT_COIN_REWARDS[type] || 0) * Math.max(1, Number(multiplier) || 1));
+  if (amount <= 0) return;
+  addCoins(amount);
+  animateCoinGain(amount, sourceEl, sourcePoint);
+  const line = pickReactionLine(type);
+  if (line) {
+    showToast(`${line} +${amount}`);
+  }
 }
 
 const rotations = {
@@ -272,7 +388,7 @@ function getActiveTokenSkin() {
 
 function getTokenImageSrc(color) {
   const skin = getActiveTokenSkin();
-  if (skin === "classic") return `tokens/${color}.png`;
+  if (skin === "classic") return `tokens/${color}_result.webp`;
   return `tokens/skins/${skin}/${color}_result.webp`;
 }
 
@@ -283,11 +399,16 @@ const state = {
     color,
     tokens: [-1, -1, -1, -1],
     finished: [false, false, false, false],
-    isAI: gameMode === "vs-computer" ? color !== humanColor : false,
+    shields: [0, 0, 0, 0],
+    isAI: matchMode === "vs-computer" ? color !== humanColor : false,
     sixStreak: 0
   }))
 };
 let pendingBonusTurn = false;
+let activeRollMultiplier = 1;
+let arenaTurns = 0;
+let arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
+let arenaDoubleRollColor = null;
 
 function saveResumeSnapshot() {
   const players = state.players.map(player => {
@@ -303,11 +424,14 @@ function saveResumeSnapshot() {
       color: player.color,
       isAI: Boolean(player.isAI),
       sixStreak: Number(player.sixStreak || 0),
+      shields: Array.isArray(player.shields) ? player.shields.slice(0, 4) : [0, 0, 0, 0],
       tokens
     };
   });
 
   const payload = {
+    matchMode,
+    ruleMode: gameMode,
     gameMode,
     playerCount,
     humanColor,
@@ -369,8 +493,12 @@ function maybeRestoreSavedGame() {
   }
 
   if (!parsed || typeof parsed !== "object") return;
+  const savedRuleMode = Object.prototype.hasOwnProperty.call(MODES, parsed.ruleMode)
+    ? parsed.ruleMode
+    : (Object.prototype.hasOwnProperty.call(MODES, parsed.gameMode) ? parsed.gameMode : "classic");
   if (
-    parsed.gameMode !== gameMode ||
+    (parsed.matchMode || parsed.gameMode) !== matchMode ||
+    savedRuleMode !== gameMode ||
     Number(parsed.playerCount) !== playerCount ||
     parsed.humanColor !== humanColor ||
     Number(parsed.currentLevel) !== currentLevel
@@ -385,6 +513,10 @@ function maybeRestoreSavedGame() {
     if (!savedPlayer || !Array.isArray(savedPlayer.tokens)) return;
 
     player.sixStreak = Number(savedPlayer.sixStreak || 0);
+    player.shields = Array.isArray(savedPlayer.shields)
+      ? savedPlayer.shields.map(v => Math.max(0, Number(v) || 0)).slice(0, 4)
+      : [0, 0, 0, 0];
+    while (player.shields.length < 4) player.shields.push(0);
 
     savedPlayer.tokens.forEach((tokenState, tokenIndex) => {
       if (!tokenState) return;
@@ -406,9 +538,16 @@ function maybeRestoreSavedGame() {
   hasRolledThisTurn = false;
   waitingForTokenMove = false;
   clearHighlights();
+  activeRollMultiplier = 1;
+  arenaTurns = 0;
+  arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
+  arenaDoubleRollColor = null;
+  refreshNearWinEffects();
 }
 
 document.body.classList.add(`orient-${humanColor}`);
+document.body.classList.add(`mode-${gameMode}`);
+localStorage.setItem("ludo_game_mode", gameMode);
 
 const DICE_SLOTS = ["top-left", "top-right", "bottom-right", "bottom-left"];
 ALL_COLORS_CLOCKWISE.forEach((_, offset) => {
@@ -462,7 +601,7 @@ state.players.forEach(player => {
       if (player.color !== activePlayer.color) return;
       if (state.diceValue === null) return;
       if (!waitingForTokenMove) return;
-      if (!canTokenMove(state.currentPlayer, i, state.diceValue)) return;
+      if (!canTokenMove(state.currentPlayer, i, getCurrentMoveSteps(state.currentPlayer))) return;
 
       if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return;
       if (state.diceValue !== 6 && !token.classList.contains("selectable-black")) return;
@@ -490,6 +629,8 @@ function loadDiceSkin(skin) {
 }
 
 loadDiceSkin(getActiveDiceSkin());
+setupTileGlowSeeds();
+setupSparkParticles();
 setupBackgroundSlideshow();
 setupSoundBootstrap();
 
@@ -503,10 +644,16 @@ if (restartBtnEl) {
 if (backLevelsBtnEl) {
   backLevelsBtnEl.addEventListener("click", () => {
     saveResumeSnapshot();
+    if (matchMode === "pass-play") {
+      const query = new URLSearchParams({ mode: "pass-play", gm: gameMode });
+      window.location.href = `vs-computer.html?${query.toString()}`;
+      return;
+    }
     const query = new URLSearchParams({
-      mode: gameMode,
+      mode: matchMode,
       players: String(playerCount),
-      human: humanColor
+      human: humanColor,
+      gm: gameMode
     });
     window.location.href = `level-select.html?${query.toString()}`;
   });
@@ -522,7 +669,8 @@ if (btnPlayAgainEl) {
 if (btnCancelEl) {
   btnCancelEl.addEventListener("click", () => {
     saveResumeSnapshot();
-    window.location.href = "index.html";
+    const query = new URLSearchParams({ gm: gameMode });
+    window.location.href = `index.html?${query.toString()}`;
   });
 }
 
@@ -533,6 +681,7 @@ if (btnNextLevelEl) {
       mode: "vs-computer",
       players: String(playerCount),
       human: humanColor,
+      gm: gameMode,
       level: String(currentLevel + 1)
     });
     window.location.href = `ludo.html?${query.toString()}`;
@@ -547,7 +696,7 @@ function clearHighlights() {
 }
 
 function isHumanVsComputerTurn(color) {
-  return gameMode === "vs-computer" && color === humanColor;
+  return matchMode === "vs-computer" && color === humanColor;
 }
 
 function consumeBonusTurn(baseTurn) {
@@ -559,10 +708,11 @@ function consumeBonusTurn(baseTurn) {
 }
 
 function computeRollValue(color) {
+  activeRollMultiplier = 1;
   let value = Math.ceil(Math.random() * 6);
-  if (!isHumanVsComputerTurn(color)) return value;
+  if (isHumanVsComputerTurn(color)) {
 
-  matchEffectState.totalRolls += 1;
+    matchEffectState.totalRolls += 1;
 
   if (activeSkinEffects.guaranteedSixOnce && !matchEffectState.guaranteedSixUsed) {
     value = 6;
@@ -609,34 +759,41 @@ function computeRollValue(color) {
     pendingBonusTurn = true;
   }
 
-  if (matchEffectState.capturedTokenPendingReentry !== null && matchEffectState.reentryTurnsLeft > 0) {
-    if (value === 6) {
-      const tokenIndex = matchEffectState.capturedTokenPendingReentry;
-      const human = state.players.find(p => p.color === humanColor);
-      if (human && human.tokens[tokenIndex] === -1) {
-        const token = tokenEls[humanColor][tokenIndex];
-        const entryCell = ENTRY_CELLS[humanColor];
-        entryCell.appendChild(token);
-        token.style.position = "";
-        token.style.transform = "";
-        token.dataset.path = "common";
-        human.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
-        human.finished[tokenIndex] = false;
-      }
-      matchEffectState.capturedTokenPendingReentry = null;
-      matchEffectState.reentryTurnsLeft = 0;
-    } else {
-      matchEffectState.reentryTurnsLeft -= 1;
-      if (matchEffectState.reentryTurnsLeft <= 0) {
+    if (matchEffectState.capturedTokenPendingReentry !== null && matchEffectState.reentryTurnsLeft > 0) {
+      if (value === 6) {
+        const tokenIndex = matchEffectState.capturedTokenPendingReentry;
+        const human = state.players.find(p => p.color === humanColor);
+        if (human && human.tokens[tokenIndex] === -1) {
+          const token = tokenEls[humanColor][tokenIndex];
+          const entryCell = ENTRY_CELLS[humanColor];
+          entryCell.appendChild(token);
+          token.style.position = "";
+          token.style.transform = "";
+          token.dataset.path = "common";
+          human.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
+          human.finished[tokenIndex] = false;
+        }
         matchEffectState.capturedTokenPendingReentry = null;
+        matchEffectState.reentryTurnsLeft = 0;
+      } else {
+        matchEffectState.reentryTurnsLeft -= 1;
+        if (matchEffectState.reentryTurnsLeft <= 0) {
+          matchEffectState.capturedTokenPendingReentry = null;
+        }
       }
     }
+  }
+
+  if (gameMode === "arena" && arenaDoubleRollColor === color) {
+    activeRollMultiplier = 2;
+    arenaDoubleRollColor = null;
+    showToast("Arena Surge x2");
   }
 
   return value;
 }
 
-function canTokenMove(playerIndex, tokenIndex, dice) {
+function canTokenMove(playerIndex, tokenIndex, dice, rawDice = state.diceValue) {
   const player = state.players[playerIndex];
   const color = player.color;
   const pos = player.tokens[tokenIndex];
@@ -647,7 +804,7 @@ function canTokenMove(playerIndex, tokenIndex, dice) {
   if (player.finished[tokenIndex]) return false;
   if (pathKey === "goal") return false;
   if (pos === -1) {
-    if (dice !== 6) return false;
+    if (rawDice !== 6) return false;
     const entryIndex = ENTRY_INDEX_BY_COLOR[color];
     return !isBlockedByEnemyBlockade(entryIndex, color);
   }
@@ -794,12 +951,18 @@ function getFreeHomeSlotEl(color) {
   return HOME_SLOTS[color][0].el;
 }
 
-function sendTokenHome(tokenEl, color) {
+function sendTokenHome(tokenEl, color, attackerColor = "") {
   const owner = findTokenOwner(tokenEl);
   if (!owner) return;
+  const ownerPlayer = state.players[owner.playerIndex];
+  if (ownerPlayer && (ownerPlayer.shields?.[owner.tokenIndex] || 0) > 0) {
+    ownerPlayer.shields[owner.tokenIndex] = Math.max(0, ownerPlayer.shields[owner.tokenIndex] - 1);
+    if (color === humanColor) showToast("Shield Blocked Capture");
+    return;
+  }
 
   if (
-    gameMode === "vs-computer" &&
+    matchMode === "vs-computer" &&
     color === humanColor &&
     activeSkinEffects.shieldOnce &&
     !matchEffectState.shieldUsed
@@ -809,7 +972,7 @@ function sendTokenHome(tokenEl, color) {
   }
 
   if (
-    gameMode === "vs-computer" &&
+    matchMode === "vs-computer" &&
     color === humanColor &&
     activeSkinEffects.reenterAfterCapture
   ) {
@@ -830,6 +993,12 @@ function sendTokenHome(tokenEl, color) {
   player.tokens[owner.tokenIndex] = -1;
   player.finished[owner.tokenIndex] = false;
   tokenEl.dataset.path = "common";
+
+  if (color === humanColor && attackerColor && attackerColor !== humanColor) {
+    const line = pickReactionLine("unlucky");
+    if (line) showToast(line);
+  }
+  refreshNearWinEffects();
 }
 
 function handleCaptureAt(index, movingToken) {
@@ -846,7 +1015,7 @@ function handleCaptureAt(index, movingToken) {
     const color = t.dataset.color;
     if (color && color !== movingColor) {
       captures += 1;
-      sendTokenHome(t, color);
+      sendTokenHome(t, color, movingColor);
     }
   });
   return captures;
@@ -925,6 +1094,251 @@ function isBlockedByEnemyBlockade(index, movingColor) {
   return !!blockadeColor && blockadeColor !== movingColor;
 }
 
+function countColorTokensOnCommonAt(index, color) {
+  if (index < 0) return 0;
+  const player = state.players.find(p => p.color === color);
+  if (!player) return 0;
+
+  let count = 0;
+  for (let tokenIndex = 0; tokenIndex < player.tokens.length; tokenIndex++) {
+    const token = tokenEls[color]?.[tokenIndex];
+    if (!token) continue;
+    if ((token.dataset.path || "common") !== "common") continue;
+    if (player.tokens[tokenIndex] === index && !player.finished[tokenIndex]) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function getModeConfig() {
+  return MODES[gameMode] || MODES.classic;
+}
+
+function toCommonIndex(tileNumber) {
+  const len = PATHS.common.length || 1;
+  const normalized = ((Number(tileNumber) || 1) - 1) % len;
+  return (normalized + len) % len;
+}
+
+function moveTokenToCommonIndex(playerIndex, tokenIndex, index, toast = "") {
+  const player = state.players[playerIndex];
+  if (!player) return false;
+  const token = tokenEls[player.color]?.[tokenIndex];
+  if (!token) return false;
+  if (index < 0 || index >= PATHS.common.length) return false;
+  if ((token.dataset.path || "common") !== "common") return false;
+  if (player.tokens[tokenIndex] < 0) return false;
+
+  PATHS.common[index].el.appendChild(token);
+  token.dataset.path = "common";
+  player.tokens[tokenIndex] = index;
+  if (toast) showToast(toast);
+  return true;
+}
+
+function getCurrentMoveSteps(playerIndex) {
+  if (state.diceValue === null) return 0;
+  return state.diceValue * activeRollMultiplier;
+}
+
+function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
+  const { skipSafeBonus = false } = options;
+  const player = state.players[playerIndex];
+  if (!player) return;
+  const color = player.color;
+  const token = tokenEls[color]?.[tokenIndex];
+  if (!token) return;
+
+  const finalPath = token.dataset.path || "common";
+  const finalPos = player.tokens[tokenIndex];
+  if (finalPath !== "common" || finalPos < 0) return;
+
+  const captures = handleCaptureAt(finalPos, token);
+  if (color === humanColor && captures > 0) {
+    rewardHumanEvent("capture", PATHS.common[finalPos].el, null, captures);
+  }
+  if (color === humanColor && countColorTokensOnCommonAt(finalPos, color) === 2) {
+    rewardHumanEvent("blockade", PATHS.common[finalPos].el);
+  }
+
+  if ((gameMode === "battle" || gameMode === "arena") && captures > 0) {
+    if (color === humanColor) {
+      addCoins(4 * captures);
+      animateCoinGain(4 * captures, PATHS.common[finalPos].el);
+    }
+    showToast("Battle Bonus");
+  }
+
+  if (isHumanVsComputerTurn(color) && captures > 0) {
+    if (activeSkinEffects.bonusCaptureCoins) {
+      addCoins(activeSkinEffects.bonusCaptureCoins * captures);
+    }
+    if (activeSkinEffects.nextRollBoostAfterCapture) {
+      matchEffectState.nextRollBoost = 1;
+    }
+  }
+  if (!skipSafeBonus && isHumanVsComputerTurn(color) && activeSkinEffects.safeSquareExtraTurn && SAFE_INDICES.has(finalPos)) {
+    pendingBonusTurn = true;
+  }
+}
+
+async function handleTileEvent(playerIndex, tokenIndex) {
+  const modeConfig = getModeConfig();
+  if (!modeConfig || gameMode === "classic") return;
+
+  const player = state.players[playerIndex];
+  if (!player) return;
+  const token = tokenEls[player.color]?.[tokenIndex];
+  if (!token) return;
+  if ((token.dataset.path || "common") !== "common") return;
+  if (player.tokens[tokenIndex] < 0) return;
+
+  let currentPos = player.tokens[tokenIndex];
+  let currentTile = currentPos + 1;
+  let iterations = 0;
+
+  while (iterations < 5) {
+    iterations += 1;
+    let moved = false;
+
+    if ((modeConfig.ladders || modeConfig.allEvents) && LADDERS[currentTile]) {
+      const target = toCommonIndex(LADDERS[currentTile]);
+      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Ladder Boost");
+      if (moved) playSfx("entry", 0.46);
+    } else if ((modeConfig.snakes || modeConfig.allEvents) && SNAKES[currentTile]) {
+      const target = toCommonIndex(SNAKES[currentTile]);
+      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Snake Drop");
+      if (moved) playSfx("goal", 0.24);
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && SPEED_TILES.includes(currentTile)) {
+      const target = (currentPos + 3) % PATHS.common.length;
+      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Speed +3");
+      if (moved) playSfx("step", 0.4);
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && TELEPORT_TILES.includes(currentTile)) {
+      const toTile = TELEPORT_TARGETS[currentTile];
+      if (toTile) {
+        moved = moveTokenToCommonIndex(playerIndex, tokenIndex, toCommonIndex(toTile), "Teleport");
+        if (moved) playSfx("entry", 0.6);
+      }
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && SHIELD_TILES.includes(currentTile)) {
+      player.shields[tokenIndex] = 1;
+      showToast("Shield Ready");
+      break;
+    }
+
+    if (!moved) break;
+
+    await new Promise(resolve => setTimeout(resolve, 160));
+    currentPos = player.tokens[tokenIndex];
+    currentTile = currentPos + 1;
+  }
+}
+
+function triggerRandomEvent() {
+  if (gameMode !== "arena") return;
+  const events = ["all_step_two", "double_next_roll", "random_teleport"];
+  const selected = events[Math.floor(Math.random() * events.length)];
+
+  if (selected === "all_step_two") {
+    state.players.forEach((player, playerIndex) => {
+      const tokenIndex = player.tokens.findIndex((pos, idx) => {
+        if (pos < 0 || player.finished[idx]) return false;
+        const token = tokenEls[player.color]?.[idx];
+        return !!token && (token.dataset.path || "common") === "common";
+      });
+      if (tokenIndex < 0) return;
+      const target = (player.tokens[tokenIndex] + 2) % PATHS.common.length;
+      moveTokenToCommonIndex(playerIndex, tokenIndex, target);
+      applyPostLandingEffects(playerIndex, tokenIndex, { skipSafeBonus: true });
+    });
+    showToast("Arena Event: All +2");
+  }
+
+  if (selected === "double_next_roll") {
+    const current = state.players[state.currentPlayer];
+    if (current) {
+      arenaDoubleRollColor = current.color;
+      showToast("Arena Event: Next Roll x2");
+    }
+  }
+
+  if (selected === "random_teleport") {
+    const movable = [];
+    state.players.forEach((player, playerIndex) => {
+      player.tokens.forEach((pos, tokenIndex) => {
+        const token = tokenEls[player.color]?.[tokenIndex];
+        if (pos < 0 || player.finished[tokenIndex]) return;
+        if (!token || (token.dataset.path || "common") !== "common") return;
+        movable.push({ playerIndex, tokenIndex });
+      });
+    });
+    if (movable.length > 0) {
+      const chosen = movable[Math.floor(Math.random() * movable.length)];
+      const target = Math.floor(Math.random() * PATHS.common.length);
+      moveTokenToCommonIndex(chosen.playerIndex, chosen.tokenIndex, target);
+      applyPostLandingEffects(chosen.playerIndex, chosen.tokenIndex, { skipSafeBonus: true });
+      showToast("Arena Event: Teleport");
+    }
+  }
+
+  refreshNearWinEffects();
+}
+
+function clearNearWinEffects() {
+  Object.values(tokenEls).flat().forEach(token => {
+    token.classList.remove("near-win-heartbeat");
+  });
+
+  Object.values(HOME_PATH_KEY_BY_COLOR).forEach(pathKey => {
+    const path = PATHS[pathKey] || [];
+    path.forEach(node => node.el.classList.remove("near-win-glow"));
+  });
+}
+
+function refreshNearWinEffects() {
+  clearNearWinEffects();
+  const activeNearWin = new Set();
+
+  state.players.forEach(player => {
+    const finishedCount = player.finished.filter(Boolean).length;
+    if (finishedCount !== 3) return;
+
+    const tokenIndex = player.finished.findIndex(done => !done);
+    if (tokenIndex < 0) return;
+
+    const token = tokenEls[player.color]?.[tokenIndex];
+    if (!token) return;
+
+    const pathKey = token.dataset.path || "common";
+    const pos = player.tokens[tokenIndex];
+    const homePathKey = HOME_PATH_KEY_BY_COLOR[player.color];
+    const homePath = PATHS[homePathKey] || [];
+    if (pathKey !== homePathKey || pos < 0 || homePath.length === 0) return;
+
+    const nearStart = Math.max(0, homePath.length - 3);
+    if (pos < nearStart) return;
+
+    activeNearWin.add(player.color);
+    token.classList.add("near-win-heartbeat");
+    for (let i = nearStart; i < homePath.length; i++) {
+      homePath[i].el.classList.add("near-win-glow");
+    }
+
+    if (!nearWinAnnounced.has(player.color)) {
+      nearWinAnnounced.add(player.color);
+      if (player.color === humanColor) {
+        const line = pickReactionLine("almost");
+        if (line) showToast(line);
+        playSfx("goal", 0.24);
+      }
+    }
+  });
+
+  Array.from(nearWinAnnounced).forEach(color => {
+    if (!activeNearWin.has(color)) nearWinAnnounced.delete(color);
+  });
+}
+
 function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
   const player = state.players[playerIndex];
   const color = player.color;
@@ -967,6 +1381,59 @@ function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
   }
 
   return !isBlockedByEnemyBlockade(commonPos, color);
+}
+
+function setupTileGlowSeeds() {
+  const paths = [
+    ...PATHS.common,
+    ...PATHS.redHome,
+    ...PATHS.greenHome,
+    ...PATHS.yellowHome,
+    ...PATHS.blueHome
+  ];
+
+  paths.forEach(node => {
+    if (!node?.el) return;
+    const delay = (Math.random() * 2.8).toFixed(2);
+    node.el.style.setProperty("--glow-delay", `${delay}s`);
+  });
+}
+
+function setupSparkParticles() {
+  if (!sparkLayerEl || !boardEl) return;
+
+  function spawnSpark() {
+    if (document.hidden) return;
+    if (sparkLayerEl.childElementCount > 28) return;
+
+    const layerRect = sparkLayerEl.getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+    const offsetX = boardRect.left - layerRect.left;
+    const offsetY = boardRect.top - layerRect.top;
+
+    const spark = document.createElement("span");
+    spark.className = "spark-particle";
+
+    const x = offsetX + Math.random() * boardRect.width;
+    const y = offsetY + Math.random() * boardRect.height;
+    const driftX = (Math.random() - 0.5) * 36;
+    const driftY = -26 - Math.random() * 36;
+    const size = 3 + Math.random() * 4;
+    const duration = 900 + Math.floor(Math.random() * 900);
+
+    spark.style.left = `${x}px`;
+    spark.style.top = `${y}px`;
+    spark.style.width = `${size}px`;
+    spark.style.height = `${size}px`;
+    spark.style.setProperty("--drift-x", `${driftX}px`);
+    spark.style.setProperty("--drift-y", `${driftY}px`);
+    spark.style.setProperty("--spark-duration", `${duration}ms`);
+
+    spark.addEventListener("animationend", () => spark.remove());
+    sparkLayerEl.appendChild(spark);
+  }
+
+  setInterval(spawnSpark, 220);
 }
 
 function setupBackgroundSlideshow() {
@@ -1039,7 +1506,7 @@ function checkAndShowWinner(playerIndex) {
     if (panel) panel.classList.remove("dice-active");
   });
 
-  if (gameMode === "vs-computer" && player.color === humanColor) {
+  if (matchMode === "vs-computer" && player.color === humanColor) {
     let winCoins = 100;
     winCoins += activeSkinEffects.bonusWinCoins || 0;
     if (activeSkinEffects.winBonusPercent) {
@@ -1048,18 +1515,18 @@ function checkAndShowWinner(playerIndex) {
     addCoins(winCoins);
   }
 
-  if (gameMode === "vs-computer" && activeSkinEffects.bonusMatchCoins) {
+  if (matchMode === "vs-computer" && activeSkinEffects.bonusMatchCoins) {
     addCoins(activeSkinEffects.bonusMatchCoins);
   }
 
-  if (gameMode === "vs-computer" && player.color === humanColor) {
+  if (matchMode === "vs-computer" && player.color === humanColor) {
     const storageKey = "ludo_unlocked_level";
     const unlocked = Math.max(1, Number(localStorage.getItem(storageKey) || "1"));
     const nextUnlocked = Math.max(unlocked, currentLevel + 1);
     localStorage.setItem(storageKey, String(nextUnlocked));
   }
 
-  if (gameMode === "pass-play") {
+  if (matchMode === "pass-play") {
     playSfx("win", 0.8);
     openResultModal({
       title: `${player.color.toUpperCase()} WINS`,
@@ -1086,12 +1553,12 @@ function checkAndShowWinner(playerIndex) {
   return true;
 }
 
-function highlightMoves(playerIndex, dice) {
+function highlightMoves(playerIndex, dice, moveSteps = dice) {
   clearHighlights();
   const player = state.players[playerIndex];
   if (player.isAI) return 0;
 
-  const moves = getValidMovesForPlayer(playerIndex, dice);
+  const moves = getValidMovesForPlayer(playerIndex, moveSteps);
   moves.forEach(({ tokenIndex }) => {
     const token = tokenEls[player.color][tokenIndex];
     if (dice === 6) token.classList.add("selectable-gold");
@@ -1112,7 +1579,11 @@ function animateDiceRoll(color, onDone) {
     const value = computeRollValue(color);
     state.diceValue = value;
 
-     const player = state.players[state.currentPlayer];
+    const player = state.players[state.currentPlayer];
+    if (player && color === humanColor && value === 6) {
+      rewardHumanEvent("rollSix", diceEl);
+    }
+
     if (player) {
       if (value === 6) {
         player.sixStreak += 1;
@@ -1148,10 +1619,27 @@ function nextTurn(extraTurn = false) {
   }
 
   state.diceValue = null;
+  activeRollMultiplier = 1;
   hasRolledThisTurn = false;
   waitingForTokenMove = false;
   isMoving = false;
   clearHighlights();
+  refreshNearWinEffects();
+
+  if (!extraTurn) {
+    const player = state.players[state.currentPlayer];
+    if (player && Array.isArray(player.shields)) {
+      player.shields = player.shields.map(value => Math.max(0, (Number(value) || 0) - 1));
+    }
+    if (gameMode === "arena") {
+      arenaTurns += 1;
+      if (arenaTurns >= arenaNextEventAt) {
+        arenaTurns = 0;
+        arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
+        triggerRandomEvent();
+      }
+    }
+  }
   resetDiceInteractivity();
 
   if (state.players[state.currentPlayer].isAI) {
@@ -1170,10 +1658,12 @@ function handleTurn() {
     return;
   }
 
-  const movesCount = highlightMoves(playerIndex, state.diceValue);
+  const movesCount = highlightMoves(playerIndex, state.diceValue, getCurrentMoveSteps(playerIndex));
   waitingForTokenMove = movesCount > 0;
   resetDiceInteractivity();
   if (movesCount === 0) {
+    const line = pickReactionLine("unlucky");
+    if (line) showToast(line);
     waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
     setTimeout(() => nextTurn(false), 400);
@@ -1206,27 +1696,46 @@ function runAITurn() {
   if (!player || !player.isAI) return;
 
   isMoving = true;
-  animateDiceRoll(player.color, () => {
-    resetDiceInteractivity();
-    if (state.diceValue === null) {
-      player.sixStreak = 0;
+  const panel = dicePanelsByColor[player.color];
+  const anticipationDelay = 360 + Math.floor(Math.random() * 540);
+  if (panel) panel.classList.add("ai-anticipation");
+
+  setTimeout(() => {
+    if (panel) panel.classList.remove("ai-anticipation");
+    if (gameOver) {
       isMoving = false;
-      nextTurn(false);
       return;
     }
-    const moves = getValidMovesForPlayer(playerIndex, state.diceValue);
-    if (moves.length === 0) {
-      player.sixStreak = 0;
+
+    const current = state.players[state.currentPlayer];
+    if (!current || !current.isAI || current.color !== player.color) {
       isMoving = false;
-      nextTurn(false);
       return;
     }
-    const chosen = pickAiMove(playerIndex, moves, state.diceValue);
-    executeMove(chosen || moves[0]).catch(() => {
-      isMoving = false;
-      nextTurn(false);
+
+    animateDiceRoll(player.color, () => {
+      resetDiceInteractivity();
+      if (state.diceValue === null) {
+        player.sixStreak = 0;
+        isMoving = false;
+        nextTurn(false);
+        return;
+      }
+      const moveSteps = getCurrentMoveSteps(playerIndex);
+      const moves = getValidMovesForPlayer(playerIndex, moveSteps);
+      if (moves.length === 0) {
+        player.sixStreak = 0;
+        isMoving = false;
+        nextTurn(false);
+        return;
+      }
+      const chosen = pickAiMove(playerIndex, moves, moveSteps);
+      executeMove(chosen || moves[0]).catch(() => {
+        isMoving = false;
+        nextTurn(false);
+      });
     });
-  });
+  }, anticipationDelay);
 }
 
 async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
@@ -1236,6 +1745,10 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
   player.tokens[tokenIndex] = -2;
   player.finished[tokenIndex] = true;
 
+  if (color === humanColor) {
+    rewardHumanEvent("home", goalEls[color]);
+  }
+
   if (isHumanVsComputerTurn(color) && activeSkinEffects.extraTurnEveryTwoHomes) {
     matchEffectState.homesCount += 1;
     if (matchEffectState.homesCount % 2 === 0) {
@@ -1243,6 +1756,7 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
     }
   }
 
+  refreshNearWinEffects();
   if (checkAndShowWinner(state.currentPlayer)) return;
   isMoving = false;
   nextTurn(consumeBonusTurn(extraTurn));
@@ -1270,11 +1784,17 @@ async function executeMove(move) {
     const color = player.color;
     const token = tokenEls[color][tokenIndex];
     const dice = state.diceValue;
+    const baseMoveSteps = getCurrentMoveSteps(playerIndex);
+    if (!Number.isFinite(baseMoveSteps) || baseMoveSteps <= 0) {
+      isMoving = false;
+      nextTurn(false);
+      return;
+    }
     let moveSteps = (
       isHumanVsComputerTurn(color) &&
       activeSkinEffects.doubleMoveOnce &&
       !matchEffectState.doubleMoveUsed
-    ) ? dice * 2 : dice;
+    ) ? baseMoveSteps * 2 : baseMoveSteps;
     if (
       isHumanVsComputerTurn(color) &&
       activeSkinEffects.doubleMoveOnce &&
@@ -1282,7 +1802,7 @@ async function executeMove(move) {
     ) {
       matchEffectState.doubleMoveUsed = true;
       if (!canTokenMove(playerIndex, tokenIndex, moveSteps)) {
-        moveSteps = dice;
+        moveSteps = baseMoveSteps;
         matchEffectState.doubleMoveUsed = false;
       }
     }
@@ -1301,47 +1821,53 @@ async function executeMove(move) {
     }
 
     if (pos === -1) {
-    if (dice !== 6) {
+      if (dice !== 6) {
+        isMoving = false;
+        nextTurn(false);
+        return;
+      }
+
+      const entryCell = ENTRY_CELLS[color];
+      entryCell.appendChild(token);
+      token.style.position = "";
+      token.style.transform = "";
+      token.dataset.path = "common";
+      playSfx("entry", 0.75);
+      player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
+      player.finished[tokenIndex] = false;
+      await handleTileEvent(playerIndex, tokenIndex);
+      applyPostLandingEffects(playerIndex, tokenIndex);
+      refreshNearWinEffects();
       isMoving = false;
-      nextTurn(false);
+      nextTurn(consumeBonusTurn(true));
       return;
     }
 
-    const entryCell = ENTRY_CELLS[color];
-    entryCell.appendChild(token);
-    token.style.position = "";
-    token.style.transform = "";
-    token.dataset.path = "common";
-    playSfx("entry", 0.75);
-    player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
-    player.finished[tokenIndex] = false;
-    isMoving = false;
-    nextTurn(consumeBonusTurn(true));
-    return;
-  }
-
     if (pathKey !== "common") {
-    const remainingToGoal = path.length - pos;
-    if (moveSteps === remainingToGoal) {
-      for (let i = 1; i < moveSteps; i++) {
+      const remainingToGoal = path.length - pos;
+      if (moveSteps === remainingToGoal) {
+        for (let i = 1; i < moveSteps; i++) {
+          path[pos + i].el.appendChild(token);
+          playSfx("step", 0.35);
+          await new Promise(r => setTimeout(r, 180));
+        }
+        await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
+        return;
+      }
+
+      for (let i = 1; i <= moveSteps; i++) {
         path[pos + i].el.appendChild(token);
         playSfx("step", 0.35);
         await new Promise(r => setTimeout(r, 180));
       }
-      await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
+      player.tokens[tokenIndex] += moveSteps;
+      await handleTileEvent(playerIndex, tokenIndex);
+      applyPostLandingEffects(playerIndex, tokenIndex);
+      refreshNearWinEffects();
+      isMoving = false;
+      nextTurn(consumeBonusTurn(dice === 6));
       return;
     }
-
-    for (let i = 1; i <= moveSteps; i++) {
-      path[pos + i].el.appendChild(token);
-      playSfx("step", 0.35);
-      await new Promise(r => setTimeout(r, 180));
-    }
-    player.tokens[tokenIndex] += moveSteps;
-    isMoving = false;
-    nextTurn(consumeBonusTurn(dice === 6));
-    return;
-  }
 
     const turnIndex = TURN_INDEX_BY_COLOR[color];
     if (pos === turnIndex && dice === 6) {
@@ -1357,61 +1883,52 @@ async function executeMove(move) {
     let homePos = -1;
 
     for (let step = 1; step <= moveSteps; step++) {
-    if (!enteredHome && commonPos === turnIndex) {
-      enteredHome = true;
-      homePos = 0;
-      if (homePath[homePos]) {
-        homePath[homePos].el.appendChild(token);
+      if (!enteredHome && commonPos === turnIndex) {
+        enteredHome = true;
+        homePos = 0;
+        if (homePath[homePos]) {
+          homePath[homePos].el.appendChild(token);
+        }
+        playSfx("step", 0.35);
+        await new Promise(r => setTimeout(r, 180));
+        continue;
       }
+
+      if (!enteredHome) {
+        commonPos = (commonPos + 1) % commonLen;
+        PATHS.common[commonPos].el.appendChild(token);
+        playSfx("step", 0.35);
+        await new Promise(r => setTimeout(r, 180));
+        continue;
+      }
+
+      homePos += 1;
+      if (homePos === homePath.length) {
+        await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
+        return;
+      }
+
+      if (!homePath[homePos]) {
+        isMoving = false;
+        nextTurn(false);
+        return;
+      }
+
+      homePath[homePos].el.appendChild(token);
       playSfx("step", 0.35);
       await new Promise(r => setTimeout(r, 180));
-      continue;
     }
-
-    if (!enteredHome) {
-      commonPos = (commonPos + 1) % commonLen;
-      PATHS.common[commonPos].el.appendChild(token);
-      playSfx("step", 0.35);
-      await new Promise(r => setTimeout(r, 180));
-      continue;
-    }
-
-    homePos += 1;
-    if (homePos === homePath.length) {
-      await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
-      return;
-    }
-
-    if (!homePath[homePos]) {
-      isMoving = false;
-      nextTurn(false);
-      return;
-    }
-
-    homePath[homePos].el.appendChild(token);
-    playSfx("step", 0.35);
-    await new Promise(r => setTimeout(r, 180));
-  }
 
     if (enteredHome) {
       token.dataset.path = homePathKey;
       player.tokens[tokenIndex] = homePos;
     } else {
       player.tokens[tokenIndex] = commonPos;
-      const captures = handleCaptureAt(commonPos, token);
-      if (isHumanVsComputerTurn(color) && captures > 0) {
-        if (activeSkinEffects.bonusCaptureCoins) {
-          addCoins(activeSkinEffects.bonusCaptureCoins * captures);
-        }
-        if (activeSkinEffects.nextRollBoostAfterCapture) {
-          matchEffectState.nextRollBoost = 1;
-        }
-      }
-      if (isHumanVsComputerTurn(color) && activeSkinEffects.safeSquareExtraTurn && SAFE_INDICES.has(commonPos)) {
-        pendingBonusTurn = true;
-      }
+      await handleTileEvent(playerIndex, tokenIndex);
+      applyPostLandingEffects(playerIndex, tokenIndex);
     }
 
+    refreshNearWinEffects();
     isMoving = false;
     nextTurn(consumeBonusTurn(dice === 6));
   } catch (error) {
@@ -1431,4 +1948,5 @@ activeColors.forEach(color => {
     die.addEventListener("click", rollDice);
   }
 });
+refreshNearWinEffects();
 resetDiceInteractivity();

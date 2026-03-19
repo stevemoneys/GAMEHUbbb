@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ludo Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@400;500;700;800&display=swap"
+    rel="stylesheet"
+  />
   <link rel="stylesheet" href="home.css" />
 </head>
 <body>
@@ -11,20 +17,34 @@
   <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu">
     <span></span><span></span><span></span>
   </button>
+  <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode">
+    <span class="mode-switch-glyph" aria-hidden="true"></span>
+    <span class="mode-switch-value" id="mode-switch-value">Classic</span>
+  </button>
+  <section class="mode-switch-panel" id="mode-switch-panel" aria-hidden="true">
+    <h3>Select Rule Mode</h3>
+    <div class="mode-switch-grid">
+      <button class="mode-switch-card active" data-game-mode="classic" type="button">Classic</button>
+      <button class="mode-switch-card" data-game-mode="chaos" type="button">Chaos</button>
+      <button class="mode-switch-card" data-game-mode="power" type="button">Power</button>
+      <button class="mode-switch-card" data-game-mode="battle" type="button">Battle</button>
+      <button class="mode-switch-card" data-game-mode="arena" type="button">Arena</button>
+    </div>
+  </section>
 
   <aside class="side-menu" id="side-menu" aria-hidden="true">
     <div class="side-menu-head">
-      <h2>Menu</h2>
+      <h2>Command Center</h2>
       <button class="close-menu" id="close-menu" type="button" aria-label="Close menu">X</button>
     </div>
 
-    <nav class="menu-tabs">
-      <button class="menu-tab active" data-tab="settings" type="button">Settings</button>
-      <button class="menu-tab" data-tab="rules" type="button">Rules</button>
-      <button class="menu-tab" data-tab="shop" type="button">Shop</button>
+    <nav class="menu-tabs" aria-label="Menu Sections">
+      <button class="menu-tab active" data-tab="settings" type="button" aria-selected="true">Settings</button>
+      <button class="menu-tab" data-tab="rules" type="button" aria-selected="false">Rules</button>
+      <button class="menu-tab" data-tab="shop" type="button" aria-selected="false">Shop</button>
     </nav>
 
-    <section class="menu-panel active" id="panel-settings">
+    <section class="menu-panel active" id="panel-settings" aria-label="Audio Settings">
       <div class="setting-row">
         <span>Background Music</span>
         <button class="toggle-btn" id="toggle-bgm" type="button">ON</button>
@@ -35,40 +55,76 @@
       </div>
     </section>
 
-    <section class="menu-panel" id="panel-rules">
+    <section class="menu-panel" id="panel-rules" aria-label="Rules">
       <h3>How To Play</h3>
-      <p>Roll 6 to bring a token out from home to the entry square.</p>
-      <p>Move tokens clockwise by exactly the dice number.</p>
-      <p>Landing on opponent token captures it (except safe/star squares).</p>
-      <p>Use your arrow turn square to enter your home lane.</p>
-      <p>Reach the center with all 4 tokens to win.</p>
-      <h3>Classic Rules</h3>
-      <p>Three 6 rolls in a row can trigger bonus/penalty depending on your game mode rules.</p>
-      <p>A token in the center triangle is finished and cannot move again.</p>
-      <p>You need exact steps inside home lane to finish a token.</p>
+      <p>Roll a 6 to bring a token from home to entry.</p>
+      <p>Move clockwise by the exact dice value.</p>
+      <p>Capture opponents on non-safe squares.</p>
+      <p>Reach center with all 4 tokens to win.</p>
+      <h3>Classic Notes</h3>
+      <p>Three 6s in a row loses the turn.</p>
+      <p>Exact movement is needed in the home lane.</p>
     </section>
 
-    <section class="menu-panel" id="panel-shop">
-      <h3>Shop</h3>
-      <button class="shop-link-btn" id="open-dice-shop" type="button">Dice Skins</button>
-      <button class="shop-link-btn" id="open-token-shop" type="button">Token Skins</button>
+    <section class="menu-panel" id="panel-shop" aria-label="Shop">
+      <h3>Customization</h3>
+      <p>Upgrade visuals and unlock gameplay effects.</p>
+      <button class="shop-link-btn" id="open-dice-shop" type="button">Open Dice Shop</button>
+      <button class="shop-link-btn" id="open-token-shop" type="button">Open Token Shop</button>
     </section>
   </aside>
   <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
 
-  <main class="home-wrap">
+  <main class="home-shell">
     <section class="home-card">
-      <h1>Classic Ludo</h1>
-      <p>Select game mode</p>
+      <div class="home-intro">
+        <p class="eyebrow">Classic Board Arena</p>
+        <h1>Lead Every Roll. Own The Board.</h1>
+        <p class="lead">
+          Choose your mode and jump in. Same classic Ludo rules, upgraded flow, sharper visuals.
+        </p>
+        <div class="meta-strip">
+          <div class="meta-item">
+            <strong>60</strong>
+            <span>Levels</span>
+          </div>
+          <div class="meta-item">
+            <strong>2-4</strong>
+            <span>Players</span>
+          </div>
+          <div class="meta-item">
+            <strong>20</strong>
+            <span>Dice Skins</span>
+          </div>
+        </div>
+      </div>
 
-      <button class="mode-btn primary" id="play-vs-computer-btn" type="button">PLAY VS COMPUTER</button>
-      <button class="mode-btn secondary" id="pass-play-btn" type="button">PASS AND PLAY</button>
+      <div class="home-actions">
+        <h2>Select Match Type</h2>
+        <p class="mode-current" id="mode-current">Rule Mode: Classic</p>
+        <button class="mode-btn primary" id="play-vs-computer-btn" type="button">
+          <span class="mode-title">Play Vs Computer</span>
+          <span class="mode-sub">Climb levels and outplay adaptive AI</span>
+        </button>
+        <button class="mode-btn secondary" id="pass-play-btn" type="button">
+          <span class="mode-title">Pass And Play</span>
+          <span class="mode-sub">Local multiplayer on one device</span>
+        </button>
+      </div>
     </section>
   </main>
 
   <script>
     const MUSIC_KEY = "ludo_bgm_enabled";
     const SFX_KEY = "ludo_sfx_enabled";
+    const GAME_MODE_KEY = "ludo_game_mode";
+    const MODE_LABELS = {
+      classic: "Classic",
+      chaos: "Chaos",
+      power: "Power",
+      battle: "Battle",
+      arena: "Arena"
+    };
 
     const menuBtn = document.getElementById("menu-btn");
     const closeBtn = document.getElementById("close-menu");
@@ -87,6 +143,46 @@
     const openTokenShopBtn = document.getElementById("open-token-shop");
     const playVsComputerBtn = document.getElementById("play-vs-computer-btn");
     const passPlayBtn = document.getElementById("pass-play-btn");
+    const modeSwitchBtn = document.getElementById("mode-switch-btn");
+    const modeSwitchValueEl = document.getElementById("mode-switch-value");
+    const modeSwitchPanel = document.getElementById("mode-switch-panel");
+    const modeCurrentEl = document.getElementById("mode-current");
+    const modeCards = Array.from(document.querySelectorAll("[data-game-mode]"));
+
+    const pageParams = new URLSearchParams(window.location.search);
+    let selectedGameMode = (pageParams.get("gm") || localStorage.getItem(GAME_MODE_KEY) || "classic").toLowerCase();
+    if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
+
+    function setGameMode(mode) {
+      if (!MODE_LABELS[mode]) return;
+      selectedGameMode = mode;
+      localStorage.setItem(GAME_MODE_KEY, mode);
+      if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
+      if (modeCurrentEl) modeCurrentEl.textContent = `Rule Mode: ${MODE_LABELS[mode]}`;
+      modeCards.forEach(card => {
+        card.classList.toggle("active", card.dataset.gameMode === mode);
+      });
+    }
+
+    function openModePanel() {
+      if (!modeSwitchPanel) return;
+      modeSwitchPanel.classList.add("show");
+      modeSwitchPanel.setAttribute("aria-hidden", "false");
+    }
+
+    function closeModePanel() {
+      if (!modeSwitchPanel) return;
+      modeSwitchPanel.classList.remove("show");
+      modeSwitchPanel.setAttribute("aria-hidden", "true");
+    }
+
+    function toggleModePanel() {
+      if (!modeSwitchPanel) return;
+      if (modeSwitchPanel.classList.contains("show")) closeModePanel();
+      else openModePanel();
+    }
+
+    setGameMode(selectedGameMode);
 
     function getEnabled(key, fallback = true) {
       const raw = localStorage.getItem(key);
@@ -98,35 +194,42 @@
       localStorage.setItem(key, enabled ? "1" : "0");
     }
 
-    function maybeResumeOr(startUrl) {
-      window.location.href = startUrl;
-    }
-
     function renderToggle(btn, enabled) {
+      if (!btn) return;
       btn.textContent = enabled ? "ON" : "OFF";
       btn.classList.toggle("off", !enabled);
     }
 
     function openMenu() {
+      if (!sideMenu || !backdrop) return;
       sideMenu.classList.add("open");
       backdrop.classList.add("show");
       sideMenu.setAttribute("aria-hidden", "false");
+      document.body.classList.add("menu-open");
     }
 
     function closeMenu() {
+      if (!sideMenu || !backdrop) return;
       sideMenu.classList.remove("open");
       backdrop.classList.remove("show");
       sideMenu.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("menu-open");
+    }
+
+    function activateTab(key) {
+      tabs.forEach(tab => {
+        const isActive = tab.dataset.tab === key;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+
+      Object.keys(panels).forEach(panelKey => {
+        panels[panelKey]?.classList.toggle("active", panelKey === key);
+      });
     }
 
     tabs.forEach(tab => {
-      tab.addEventListener("click", () => {
-        const key = tab.dataset.tab;
-        tabs.forEach(t => t.classList.toggle("active", t === tab));
-        Object.keys(panels).forEach(p => {
-          panels[p].classList.toggle("active", p === key);
-        });
-      });
+      tab.addEventListener("click", () => activateTab(tab.dataset.tab));
     });
 
     let bgmEnabled = getEnabled(MUSIC_KEY, true);
@@ -134,34 +237,64 @@
     renderToggle(bgmToggle, bgmEnabled);
     renderToggle(sfxToggle, sfxEnabled);
 
-    bgmToggle.addEventListener("click", () => {
+    bgmToggle?.addEventListener("click", () => {
       bgmEnabled = !bgmEnabled;
       setEnabled(MUSIC_KEY, bgmEnabled);
       renderToggle(bgmToggle, bgmEnabled);
     });
 
-    sfxToggle.addEventListener("click", () => {
+    sfxToggle?.addEventListener("click", () => {
       sfxEnabled = !sfxEnabled;
       setEnabled(SFX_KEY, sfxEnabled);
       renderToggle(sfxToggle, sfxEnabled);
     });
 
-    menuBtn.addEventListener("click", openMenu);
-    closeBtn.addEventListener("click", closeMenu);
-    backdrop.addEventListener("click", closeMenu);
-    openDiceShopBtn.addEventListener("click", () => {
+    menuBtn?.addEventListener("click", openMenu);
+    closeBtn?.addEventListener("click", closeMenu);
+    backdrop?.addEventListener("click", closeMenu);
+    modeSwitchBtn?.addEventListener("click", toggleModePanel);
+    modeCards.forEach(card => {
+      card.addEventListener("click", () => {
+        setGameMode(card.dataset.gameMode);
+        closeModePanel();
+      });
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeMenu();
+        closeModePanel();
+      }
+    });
+    document.addEventListener("click", event => {
+      if (!modeSwitchPanel || !modeSwitchBtn) return;
+      if (!modeSwitchPanel.classList.contains("show")) return;
+      const target = event.target;
+      if (modeSwitchPanel.contains(target) || modeSwitchBtn.contains(target)) return;
+      closeModePanel();
+    });
+
+    openDiceShopBtn?.addEventListener("click", () => {
       window.location.href = "dice-shop.html";
     });
-    openTokenShopBtn.addEventListener("click", () => {
+
+    openTokenShopBtn?.addEventListener("click", () => {
       window.location.href = "token-shop.html";
     });
 
-    playVsComputerBtn.addEventListener("click", () => {
-      maybeResumeOr("vs-computer.html");
+    playVsComputerBtn?.addEventListener("click", () => {
+      const query = new URLSearchParams({
+        mode: "vs-computer",
+        gm: selectedGameMode
+      });
+      window.location.href = `vs-computer.html?${query.toString()}`;
     });
 
-    passPlayBtn.addEventListener("click", () => {
-      maybeResumeOr("vs-computer.html?mode=pass-play");
+    passPlayBtn?.addEventListener("click", () => {
+      const query = new URLSearchParams({
+        mode: "pass-play",
+        gm: selectedGameMode
+      });
+      window.location.href = `vs-computer.html?${query.toString()}`;
     });
   </script>
 </body>

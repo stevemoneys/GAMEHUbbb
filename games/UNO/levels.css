@@ -11,6 +11,45 @@ body {
     radial-gradient(900px 500px at 85% 85%, rgba(34, 197, 94, 0.18), transparent 60%),
     linear-gradient(180deg, #0b1020, #05070d);
   color: #f8fafc;
+  position: relative;
+  overflow: hidden;
+}
+
+.rotate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(5, 9, 18, 0.9);
+}
+
+.rotate-overlay.hidden {
+  display: none;
+}
+
+.rotate-card {
+  width: min(100%, 320px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.94);
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.4);
+}
+
+.rotate-card h2 {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rotate-card p {
+  margin-top: 8px;
+  font-size: 0.84rem;
+  color: rgba(248, 250, 252, 0.82);
 }
 
 .levels-shell {
