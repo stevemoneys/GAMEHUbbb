@@ -23,6 +23,12 @@
         <path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></path>
       </svg>
     </button>
+    <button type="button" id="btn-new-icon" class="back-btn newgame-btn" aria-label="Start New Game">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        <polyline points="21 3 21 9 15 9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+      </svg>
+    </button>
     <button type="button" id="btn-pause" class="back-btn pause-btn" aria-label="Pause match">Pause</button>
     <div id="rotate-overlay" class="rotate-overlay hidden">
       <div class="rotate-card">
@@ -62,30 +68,31 @@
       </section>
 
       <section class="center-zone">
-        <div id="draw-pile" class="pile pile--draw" role="button" aria-label="Draw pile">
-          <div class="pile-stack pile-stack--draw" aria-hidden="true">
-            <div class="uno-card uno-card--back draw-bundle-card"></div>
-          </div>
-          <span id="deck-count" class="pile-count">0</span>
-          <span class="pile-label">Draw</span>
-        </div>
-
-        <div class="pile pile--discard">
-          <span class="discard-surface" aria-hidden="true"></span>
-          <div class="uno-card uno-card--back discard-base-card" aria-hidden="true"></div>
-          <div id="discard-card" class="uno-card uno-card--wild">
-            <div class="uno-card__inner">
-              <div class="uno-card__oval">
-                <span class="uno-card__center">--</span>
-              </div>
-              <span class="uno-card__corner uno-card__corner--tl">--</span>
-              <span class="uno-card__corner uno-card__corner--br">--</span>
+        <div class="center-piles">
+          <div id="draw-pile" class="pile pile--draw" role="button" aria-label="Draw pile">
+            <div class="pile-stack pile-stack--draw" aria-hidden="true">
+              <div class="uno-card uno-card--back draw-bundle-card"></div>
             </div>
+            <span id="deck-count" class="pile-count">0</span>
+            <span class="pile-label">Draw</span>
           </div>
-          <span class="pile-label">Discard</span>
+
+          <div class="pile pile--discard">
+            <span class="discard-surface" aria-hidden="true"></span>
+            <div class="uno-card uno-card--back discard-base-card" aria-hidden="true"></div>
+            <div id="discard-card" class="uno-card uno-card--wild">
+              <div class="uno-card__inner">
+                <div class="uno-card__oval">
+                  <span class="uno-card__center">--</span>
+                </div>
+                <span class="uno-card__corner uno-card__corner--tl">--</span>
+                <span class="uno-card__corner uno-card__corner--br">--</span>
+              </div>
+            </div>
+            <span class="pile-label">Discard</span>
+          </div>
         </div>
 
-        <div id="turn-indicator" class="turn-indicator">Your turn</div>
       </section>
 
       <section id="player-right" class="player-zone player-zone--right">
@@ -147,10 +154,17 @@
     <button type="button" id="btn-uno" class="uno-float" aria-label="UNO">UNO</button>
     <div id="uno-arrow" class="uno-arrow hidden" aria-hidden="true"></div>
 
-    <footer class="action-bar">
-      <button type="button" id="btn-catch" class="btn">Catch</button>
-      <button type="button" id="btn-new" class="btn ghost">New Game</button>
-    </footer>
+    <div id="newgame-modal" class="confirm-modal hidden" role="dialog" aria-modal="true" aria-labelledby="newgame-title">
+      <div class="confirm-modal__backdrop"></div>
+      <div class="confirm-modal__panel">
+        <h2 id="newgame-title" class="confirm-modal__title">Start New Game?</h2>
+        <p class="confirm-modal__message">Your current round will reset. Do you want to continue?</p>
+        <div class="confirm-modal__actions">
+          <button type="button" id="btn-confirm-new-yes" class="btn primary">Yes</button>
+          <button type="button" id="btn-confirm-new-no" class="btn ghost">No</button>
+        </div>
+      </div>
+    </div>
 
     <div id="end-modal" class="end-modal hidden" role="dialog" aria-modal="true" aria-labelledby="end-modal-title">
       <div class="end-modal__backdrop"></div>

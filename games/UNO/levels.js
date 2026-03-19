@@ -66,10 +66,14 @@ function clearResumeSnapshot() {
 async function requestFullscreenMode() {
   const target = document.documentElement;
   if (document.fullscreenElement || document.webkitFullscreenElement || !target) return;
-  const requestMethod = target.requestFullscreen || target.webkitRequestFullscreen;
-  if (!requestMethod) return;
   try {
-    await requestMethod.call(target);
+    if (target.requestFullscreen) {
+      await target.requestFullscreen({ navigationUI: "hide" });
+      return;
+    }
+    if (target.webkitRequestFullscreen) {
+      await target.webkitRequestFullscreen();
+    }
   } catch {
     // Mobile browsers can reject fullscreen without a fresh gesture.
   }
@@ -84,7 +88,7 @@ function startFullscreenWatchdog() {
   fullscreenWatchdogId = window.setInterval(() => {
     tries += 1;
     requestFullscreenMode();
-    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 12) {
+    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 20) {
       window.clearInterval(fullscreenWatchdogId);
       fullscreenWatchdogId = null;
     }

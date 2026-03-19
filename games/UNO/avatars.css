@@ -103,6 +103,14 @@ body {
   filter: blur(6px);
 }
 
+.avatar-card:not(.locked) {
+  opacity: 1;
+}
+
+.avatar-card:not(.locked) .avatar-circle {
+  filter: none;
+}
+
 .avatar-card.selected {
   border-color: rgba(251, 191, 36, 0.8);
   box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.4);

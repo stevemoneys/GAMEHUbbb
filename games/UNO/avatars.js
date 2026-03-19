@@ -1,18 +1,26 @@
 const avatarGrid = document.getElementById("avatar-grid");
 const backBtn = document.getElementById("btn-back");
 const avatars = window.GameHubAvatars || [];
-const PROGRESS_KEY = "gamehub_uno_progress";
+const PROGRESS_KEYS = [
+  "gamehub_uno_progress",
+  "gamehub_uno_progress_tournament",
+  "gamehub_uno_progress_quick_play",
+  "gamehub_uno_progress_team_battle"
+];
 const AVATAR_KEY = "gamehub_uno_avatar";
 
 function getProgress() {
-  const stored = parseInt(localStorage.getItem(PROGRESS_KEY) || "1", 10);
-  if (Number.isNaN(stored) || stored < 1) return 1;
-  return Math.min(stored, 100);
+  const values = PROGRESS_KEYS.map((key) => {
+    const parsed = parseInt(localStorage.getItem(key) || "1", 10);
+    if (Number.isNaN(parsed) || parsed < 1) return 1;
+    return parsed;
+  });
+  return Math.min(Math.max(...values), 100);
 }
 
 function getUnlockedCount() {
   const progress = getProgress();
-  return Math.min(20, 1 + Math.floor((progress - 1) / 5));
+  return Math.min(20, progress);
 }
 
 function getSelectedAvatar() {

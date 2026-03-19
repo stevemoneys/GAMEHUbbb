@@ -69,11 +69,9 @@ const dom = {
   deckCount: document.getElementById('deck-count'),
   drawPile: document.getElementById('draw-pile'),
   discardCard: document.getElementById('discard-card'),
-  turnIndicator: document.getElementById('turn-indicator'),
   wildPicker: document.getElementById('wild-picker'),
   btnUno: document.getElementById('btn-uno'),
-  btnCatch: document.getElementById('btn-catch'),
-  btnNew: document.getElementById('btn-new'),
+  btnNewIcon: document.getElementById('btn-new-icon'),
   rotateOverlay: document.getElementById('rotate-overlay'),
   gameShell: document.querySelector('.game-shell'),
   centerZone: document.querySelector('.center-zone'),
@@ -92,7 +90,10 @@ const dom = {
   pauseModal: document.getElementById('pause-modal'),
   btnResume: document.getElementById('btn-resume'),
   btnSaveExit: document.getElementById('btn-save-exit'),
-  btnRestartMatch: document.getElementById('btn-restart-match')
+  btnRestartMatch: document.getElementById('btn-restart-match'),
+  newgameModal: document.getElementById('newgame-modal'),
+  btnConfirmNewYes: document.getElementById('btn-confirm-new-yes'),
+  btnConfirmNewNo: document.getElementById('btn-confirm-new-no')
 };
 
 let selectedWildCard = null;
@@ -249,6 +250,15 @@ function startRoundPresentation() {
   runAITurns();
 }
 
+function announceRoundStartSpeech() {
+  for (let pid = 0; pid < game.playerCount; pid += 1) {
+    const delay = 260 + pid * 320;
+    setTimeout(() => {
+      maybeShowSpeech(pid, 'gameStart', 'gameStart', 0);
+    }, delay);
+  }
+}
+
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || '1', 10);
   if (Number.isNaN(stored)) return 1;
@@ -333,10 +343,14 @@ function saveCurrentMatch() {
 async function requestFullscreenMode() {
   const target = document.documentElement;
   if (document.fullscreenElement || document.webkitFullscreenElement || !target) return;
-  const requestMethod = target.requestFullscreen || target.webkitRequestFullscreen;
-  if (!requestMethod) return;
   try {
-    await requestMethod.call(target);
+    if (target.requestFullscreen) {
+      await target.requestFullscreen({ navigationUI: 'hide' });
+      return;
+    }
+    if (target.webkitRequestFullscreen) {
+      await target.webkitRequestFullscreen();
+    }
   } catch {
     // Some browsers require a fresh user gesture before fullscreen.
   }
@@ -351,7 +365,7 @@ function startFullscreenWatchdog() {
   fullscreenWatchdogId = window.setInterval(() => {
     tries += 1;
     requestFullscreenMode();
-    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 12) {
+    if (document.fullscreenElement || document.webkitFullscreenElement || tries >= 20) {
       window.clearInterval(fullscreenWatchdogId);
       fullscreenWatchdogId = null;
     }
@@ -712,16 +726,16 @@ function getPersonaForPlayer(playerIndex) {
 }
 
 const reactions = {
-  gameStart: '🙂',
-  drawCard: '😒',
-  playCard: '😏',
-  playDraw2: '😈',
-  playDraw4: '🔥',
-  skipOpponent: '😜',
-  callUno: '😎',
-  opponentUno: '😱',
-  winGame: '🏆',
-  loseGame: '😭'
+  gameStart: '\u{1F642}',
+  drawCard: '\u{1F914}',
+  playCard: '\u{1F60F}',
+  playDraw2: '\u{1F608}',
+  playDraw4: '\u{1F525}',
+  skipOpponent: '\u{1F61C}',
+  callUno: '\u{1F4E3}',
+  opponentUno: '\u{1F631}',
+  winGame: '\u{1F3C6}',
+  loseGame: '\u{1F62D}'
 };
 
 const catchphrases = {
@@ -762,6 +776,9 @@ function pickCatchphrase(playerIndex, eventKey) {
 }
 
 function shouldOpponentSpeak(eventKey, targetIndex) {
+  if (eventKey === 'gameStart') return true;
+  if (eventKey === 'drawCard' || eventKey === 'playCard') return Math.random() < 0.55;
+  if (eventKey === 'callUno') return true;
   if (eventKey === 'winGame' || eventKey === 'loseGame') return true;
   return targetIndex === 0;
 }
@@ -780,7 +797,7 @@ function showSpeech(playerIndex, eventKey, phraseKey = eventKey) {
   if (!isSpeechEnabled()) return;
   const now = Date.now();
   if (eventKey !== 'winGame' && eventKey !== 'loseGame') {
-    if (now - lastSpeechAt[playerIndex] < 5200) return;
+    if (now - lastSpeechAt[playerIndex] < 2800) return;
     lastSpeechAt[playerIndex] = now;
   }
 
@@ -959,9 +976,7 @@ function getValueClass(card) {
 }
 
 function updateOrientationOverlay() {
-  if (!dom.rotateOverlay) return;
-  const isPortrait = window.matchMedia('(orientation: portrait)').matches;
-  dom.rotateOverlay.classList.toggle('hidden', !isPortrait);
+  dom.rotateOverlay?.classList.add('hidden');
 }
 
 async function tryLockOrientation() {
@@ -1030,11 +1045,6 @@ function renderHand() {
     .join('');
 }
 
-function renderTurn() {
-  if (!dom.turnIndicator) return;
-  dom.turnIndicator.classList.add('hidden');
-}
-
 function getPlacements() {
   const standings = Array.from({ length: game.playerCount }, (_, index) => ({
     index,
@@ -1081,7 +1091,7 @@ function handleMatchEnd() {
     dom.endModalTitle.textContent = playerSideWon ? 'You Win!' : 'You Lost';
     dom.endModalMessage.textContent = playerSideWon
       ? 'Great job! Ready for the next challenge?'
-      : 'Don’t give up—shuffle again and try once more.';
+      : 'Do not give up. Shuffle again and try once more.';
     if (isTeamBattle && playerSideWon && winner === 2) {
       dom.endModalMessage.textContent = 'Your teammate finished the round. Your side still takes the win.';
     }
@@ -1098,7 +1108,6 @@ function render() {
   renderOpponentCounts();
   renderDiscard();
   renderHand();
-  renderTurn();
   setActivePlayer(game.getCurrentPlayerIndex());
 
   rewards?.recordHandSnapshot?.(
@@ -1113,7 +1122,6 @@ function render() {
   const canCallUno = game.canCallUno(0);
   if (dom.btnUno) dom.btnUno.disabled = !canCallUno;
   if (dom.unoArrow) dom.unoArrow.classList.toggle('hidden', !canCallUno);
-  if (dom.btnCatch) dom.btnCatch.disabled = !game.canCatchUno(0);
   if (dom.wildPicker) {
     const showPicker = Boolean(selectedWildCard) && !isPaused;
     dom.wildPicker.classList.toggle('hidden', !showPicker);
@@ -1269,10 +1277,21 @@ function handleUno() {
   }
 }
 
-function handleCatch() {
-  if (isPaused) return;
-  const result = game.catchUno(0);
-  if (result.success) render();
+function openNewGameConfirm() {
+  if (game.isFinished()) return;
+  isPaused = true;
+  cancelAITurns();
+  dom.gameShell?.classList.add('is-paused');
+  dom.newgameModal?.classList.remove('hidden');
+  render();
+}
+
+function closeNewGameConfirm(resumeTurns = true) {
+  dom.newgameModal?.classList.add('hidden');
+  dom.gameShell?.classList.remove('is-paused');
+  isPaused = false;
+  render();
+  if (resumeTurns) runAITurns();
 }
 
 function handleNewGame() {
@@ -1292,7 +1311,7 @@ function handleNewGame() {
   applyCardPackFromStorage();
   rewards?.startNewMatch?.();
   syncRewardQueueSize();
-  setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
+  announceRoundStartSpeech();
   startRoundPresentation();
   tryLockOrientation();
 }
@@ -1389,7 +1408,7 @@ function initPhase4UI() {
     applyThemeFromStorage();
     applyCardPackFromStorage();
     rewards?.startNewMatch?.();
-    setTimeout(() => maybeShowSpeech(0, 'gameStart'), 360);
+    announceRoundStartSpeech();
     startRoundPresentation();
   }
   updateOrientationOverlay();
@@ -1433,8 +1452,7 @@ function initPhase4UI() {
   dom.wildPicker?.addEventListener('click', handleWildPick);
   dom.drawPile?.addEventListener('click', handleDrawPile);
   dom.btnUno?.addEventListener('click', handleUno);
-  dom.btnCatch?.addEventListener('click', handleCatch);
-  dom.btnNew?.addEventListener('click', handleNewGame);
+  dom.btnNewIcon?.addEventListener('click', openNewGameConfirm);
   dom.btnPause?.addEventListener('click', () => {
     if (game.isFinished()) return;
     setPaused(true);
@@ -1451,6 +1469,20 @@ function initPhase4UI() {
   dom.btnRestartMatch?.addEventListener('click', () => {
     setPaused(false);
     handleNewGame();
+  });
+  dom.btnConfirmNewNo?.addEventListener('click', () => {
+    closeNewGameConfirm(true);
+  });
+  dom.btnConfirmNewYes?.addEventListener('click', () => {
+    closeNewGameConfirm(false);
+    handleNewGame();
+  });
+  dom.newgameModal?.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.classList.contains('confirm-modal__backdrop')) {
+      closeNewGameConfirm(true);
+    }
   });
   dom.btnBackRoad?.addEventListener('click', () => {
     saveCurrentMatch();
