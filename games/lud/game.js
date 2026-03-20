@@ -7,6 +7,7 @@ let hasRolledThisTurn = false;
 let waitingForTokenMove = false;
 const LUDO_RESUME_KEY = "ludo_saved_match_v1";
 
+const stageEl = document.querySelector(".ludo-stage");
 const boardEl = document.querySelector(".ludo-board");
 generatePaths(boardEl);
 const ALL_COLORS_CLOCKWISE = ["red", "green", "yellow", "blue"];
@@ -32,12 +33,37 @@ if (!Object.prototype.hasOwnProperty.call(MODES, gameMode)) {
   gameMode = "classic";
 }
 
-const LADDERS = { 5: 15, 22: 41 };
-const SNAKES = { 17: 7, 45: 30 };
+const CHAOS_LADDER_PAIRS = [
+  { start: 46, end: 52, side: "left" },
+  { start: 20, end: 26, side: "right" }
+];
+const CHAOS_SNAKE_PAIRS = [
+  { mouth: 14, tail: 8, side: "top" },
+  { mouth: 40, tail: 34, side: "bottom" }
+];
+const CHAOS_ENDPOINT_TILES = new Set([
+  ...CHAOS_LADDER_PAIRS.flatMap(({ start, end }) => [start, end]),
+  ...CHAOS_SNAKE_PAIRS.flatMap(({ mouth, tail }) => [mouth, tail])
+]);
+const CHAOS_REWARD_COINS = 200;
+const SVG_NS = "http://www.w3.org/2000/svg";
 const SPEED_TILES = [8, 21];
 const TELEPORT_TILES = [12];
-const TELEPORT_TARGETS = { 12: 36 };
 const SHIELD_TILES = [30];
+const POWER_TILE_COUNTS = {
+  speed: 2,
+  shield: 2,
+  teleport: 1
+};
+const BATTLE_TILE_COUNTS = {
+  risk: 3,
+  block: 2
+};
+const BATTLE_CAPTURE_COINS = 12;
+const BATTLE_STREAK_STEP_COINS = 6;
+const ARENA_REWARD_COINS = 400;
+const ARENA_WIN_MULTIPLIER = 5;
+const ARENA_REWARD_TILE_COUNT = 2;
 
 const humanIndexInCycle = ALL_COLORS_CLOCKWISE.indexOf(humanColor);
 const activeColors = playerCount === 2
@@ -67,7 +93,7 @@ const HOME_PATH_KEY_BY_COLOR = {
 const STAR_COORDS = [
   [9, 3],
   [3, 7],
-  [9, 13],
+  [7, 13],
   [13, 9]
 ];
 
@@ -80,9 +106,6 @@ Object.keys(HOME_PATH_KEY_BY_COLOR).forEach(color => {
 
   const [r, c] = TURN_COORD_BY_COLOR[color];
   TURN_INDEX_BY_COLOR[color] = PATHS.common.findIndex(p => p.row === r && p.col === c);
-
-  SAFE_INDICES.add(ENTRY_INDEX_BY_COLOR[color]);
-  SAFE_INDICES.add(TURN_INDEX_BY_COLOR[color]);
 });
 
 STAR_COORDS.forEach(([r, c]) => {
@@ -126,11 +149,16 @@ const btnNextLevelEl = document.getElementById("btn-next-level");
 const levelBadgeEl = document.getElementById("level-badge");
 const backLevelsBtnEl = document.getElementById("back-levels-btn");
 const restartBtnEl = document.getElementById("restart-btn");
+const pauseBtnEl = document.getElementById("pause-btn");
 const coinTotalEl = document.getElementById("coin-total");
 const toastLayerEl = document.getElementById("toast-layer");
 const coinHudEl = document.getElementById("coin-hud");
 const coinFxLayerEl = document.getElementById("coin-fx-layer");
 const sparkLayerEl = document.getElementById("spark-layer");
+const chaosOverlayEl = document.getElementById("chaos-overlay");
+const pauseModalEl = document.getElementById("pause-modal");
+const pauseResumeBtnEl = document.getElementById("pause-resume-btn");
+const pauseExitBtnEl = document.getElementById("pause-exit-btn");
 
 const BACKGROUND_IMAGES = Array.from({ length: 20 }, (_, i) => {
   return `backgrounds/bg${i + 1}_result.webp`;
@@ -146,7 +174,7 @@ const SOUND_FILES = {
 
 const bgMusic = new Audio(SOUND_FILES.bgm);
 bgMusic.loop = true;
-bgMusic.volume = 0.45;
+bgMusic.volume = 0.22;
 
 let bgMusicStarted = false;
 const BGM_ENABLED_KEY = "ludo_bgm_enabled";
@@ -400,8 +428,11 @@ const state = {
     tokens: [-1, -1, -1, -1],
     finished: [false, false, false, false],
     shields: [0, 0, 0, 0],
+    riskVulnerable: [0, 0, 0, 0],
     isAI: matchMode === "vs-computer" ? color !== humanColor : false,
-    sixStreak: 0
+    sixStreak: 0,
+    battleStreak: 0,
+    battleCapturedThisTurn: false
   }))
 };
 let pendingBonusTurn = false;
@@ -409,6 +440,23 @@ let activeRollMultiplier = 1;
 let arenaTurns = 0;
 let arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
 let arenaDoubleRollColor = null;
+let chaosRewardTile = null;
+let chaosRenderRaf = null;
+let powerTileState = {
+  speed: [],
+  shield: [],
+  teleport: []
+};
+let battleTileState = {
+  risk: [],
+  block: []
+};
+const battleActiveBlocks = new Map();
+let arenaTileState = {
+  reward: []
+};
+let isPaused = false;
+let bgmWasPlayingBeforePause = false;
 
 function saveResumeSnapshot() {
   const players = state.players.map(player => {
@@ -425,6 +473,8 @@ function saveResumeSnapshot() {
       isAI: Boolean(player.isAI),
       sixStreak: Number(player.sixStreak || 0),
       shields: Array.isArray(player.shields) ? player.shields.slice(0, 4) : [0, 0, 0, 0],
+      riskVulnerable: Array.isArray(player.riskVulnerable) ? player.riskVulnerable.slice(0, 4) : [0, 0, 0, 0],
+      battleStreak: Number(player.battleStreak || 0),
       tokens
     };
   });
@@ -517,6 +567,12 @@ function maybeRestoreSavedGame() {
       ? savedPlayer.shields.map(v => Math.max(0, Number(v) || 0)).slice(0, 4)
       : [0, 0, 0, 0];
     while (player.shields.length < 4) player.shields.push(0);
+    player.riskVulnerable = Array.isArray(savedPlayer.riskVulnerable)
+      ? savedPlayer.riskVulnerable.map(v => Math.max(0, Number(v) || 0)).slice(0, 4)
+      : [0, 0, 0, 0];
+    while (player.riskVulnerable.length < 4) player.riskVulnerable.push(0);
+    player.battleStreak = Math.max(0, Number(savedPlayer.battleStreak || 0));
+    player.battleCapturedThisTurn = false;
 
     savedPlayer.tokens.forEach((tokenState, tokenIndex) => {
       if (!tokenState) return;
@@ -595,6 +651,7 @@ state.players.forEach(player => {
 
     token.addEventListener("click", () => {
       if (gameOver) return;
+      if (isPaused) return;
       const activePlayer = state.players[state.currentPlayer];
       if (!activePlayer) return;
       if (activePlayer.isAI) return;
@@ -633,9 +690,33 @@ setupTileGlowSeeds();
 setupSparkParticles();
 setupBackgroundSlideshow();
 setupSoundBootstrap();
+setupChaosMode();
+setupPowerMode();
+setupBattleMode();
+setupArenaMode();
+window.addEventListener("resize", scheduleChaosOverlayRender);
+window.addEventListener("orientationchange", scheduleChaosOverlayRender);
+
+if (pauseBtnEl) {
+  pauseBtnEl.addEventListener("click", () => {
+    togglePause();
+  });
+}
+pauseResumeBtnEl?.addEventListener("click", () => {
+  setPaused(false);
+});
+pauseExitBtnEl?.addEventListener("click", () => {
+  exitPausedMatch();
+});
+window.addEventListener("keydown", event => {
+  if (event.key !== "Escape") return;
+  if (gameOver) return;
+  togglePause();
+});
 
 if (restartBtnEl) {
   restartBtnEl.addEventListener("click", () => {
+    setPaused(false);
     clearResumeSnapshot();
     window.location.reload();
   });
@@ -643,6 +724,7 @@ if (restartBtnEl) {
 
 if (backLevelsBtnEl) {
   backLevelsBtnEl.addEventListener("click", () => {
+    setPaused(false);
     saveResumeSnapshot();
     if (matchMode === "pass-play") {
       const query = new URLSearchParams({ mode: "pass-play", gm: gameMode });
@@ -661,6 +743,7 @@ if (backLevelsBtnEl) {
 
 if (btnPlayAgainEl) {
   btnPlayAgainEl.addEventListener("click", () => {
+    setPaused(false);
     clearResumeSnapshot();
     window.location.reload();
   });
@@ -668,6 +751,7 @@ if (btnPlayAgainEl) {
 
 if (btnCancelEl) {
   btnCancelEl.addEventListener("click", () => {
+    setPaused(false);
     saveResumeSnapshot();
     const query = new URLSearchParams({ gm: gameMode });
     window.location.href = `index.html?${query.toString()}`;
@@ -676,6 +760,7 @@ if (btnCancelEl) {
 
 if (btnNextLevelEl) {
   btnNextLevelEl.addEventListener("click", () => {
+    setPaused(false);
     clearResumeSnapshot();
     const query = new URLSearchParams({
       mode: "vs-computer",
@@ -806,7 +891,7 @@ function canTokenMove(playerIndex, tokenIndex, dice, rawDice = state.diceValue) 
   if (pos === -1) {
     if (rawDice !== 6) return false;
     const entryIndex = ENTRY_INDEX_BY_COLOR[color];
-    return !isBlockedByEnemyBlockade(entryIndex, color);
+    return !isBlockedByEnemyBlockade(entryIndex, color) && !isBlockedByBattleTile(entryIndex, color);
   }
 
   if (pathKey !== "common") {
@@ -889,11 +974,15 @@ function simulateLanding(playerIndex, tokenIndex, dice) {
 }
 
 function getCaptureAt(index, movingColor) {
-  if (SAFE_INDICES.has(index)) return false;
   if (isBlockedByEnemyBlockade(index, movingColor)) return false;
   const cell = PATHS.common[index].el;
   const tokens = Array.from(cell.querySelectorAll(".token"));
-  return tokens.some(t => t.dataset.color && t.dataset.color !== movingColor);
+  if (tokens.length <= 1) return false;
+  return tokens.some(t => {
+    if (!t.dataset.color || t.dataset.color === movingColor) return false;
+    if (SAFE_INDICES.has(index) && !isTokenRiskVulnerable(t)) return false;
+    return true;
+  });
 }
 
 function pickAiMove(playerIndex, moves, dice) {
@@ -955,7 +1044,10 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
   const owner = findTokenOwner(tokenEl);
   if (!owner) return;
   const ownerPlayer = state.players[owner.playerIndex];
-  if (ownerPlayer && (ownerPlayer.shields?.[owner.tokenIndex] || 0) > 0) {
+  const riskyTarget = ownerPlayer && Array.isArray(ownerPlayer.riskVulnerable)
+    ? (Number(ownerPlayer.riskVulnerable[owner.tokenIndex]) || 0) > 0
+    : false;
+  if (ownerPlayer && !riskyTarget && (ownerPlayer.shields?.[owner.tokenIndex] || 0) > 0) {
     ownerPlayer.shields[owner.tokenIndex] = Math.max(0, ownerPlayer.shields[owner.tokenIndex] - 1);
     if (color === humanColor) showToast("Shield Blocked Capture");
     return;
@@ -992,7 +1084,11 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
   const player = state.players[owner.playerIndex];
   player.tokens[owner.tokenIndex] = -1;
   player.finished[owner.tokenIndex] = false;
+  if (Array.isArray(player.riskVulnerable)) {
+    player.riskVulnerable[owner.tokenIndex] = 0;
+  }
   tokenEl.dataset.path = "common";
+  refreshRiskTokenVisuals();
 
   if (color === humanColor && attackerColor && attackerColor !== humanColor) {
     const line = pickReactionLine("unlucky");
@@ -1002,7 +1098,6 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
 }
 
 function handleCaptureAt(index, movingToken) {
-  if (SAFE_INDICES.has(index)) return 0;
   if (isBlockedByEnemyBlockade(index, movingToken.dataset.color)) return 0;
   const cell = PATHS.common[index].el;
   const tokens = Array.from(cell.querySelectorAll(".token"));
@@ -1013,6 +1108,7 @@ function handleCaptureAt(index, movingToken) {
   tokens.forEach(t => {
     if (t === movingToken) return;
     const color = t.dataset.color;
+    if (SAFE_INDICES.has(index) && !isTokenRiskVulnerable(t)) return;
     if (color && color !== movingColor) {
       captures += 1;
       sendTokenHome(t, color, movingColor);
@@ -1028,6 +1124,7 @@ function setActiveDieGlow(color) {
     const isActiveColor = c === color;
     const canGlow =
       isActiveColor &&
+      !isPaused &&
       !isMoving &&
       state.diceValue === null &&
       !hasRolledThisTurn &&
@@ -1057,6 +1154,7 @@ function resetDiceInteractivity() {
     if (!die) return;
     const canRoll =
       color === activeColor &&
+      !isPaused &&
       !isMoving &&
       state.diceValue === null &&
       !hasRolledThisTurn &&
@@ -1137,6 +1235,864 @@ function moveTokenToCommonIndex(playerIndex, tokenIndex, index, toast = "") {
   return true;
 }
 
+function createSvgNode(tagName, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tagName);
+  Object.entries(attrs).forEach(([key, value]) => {
+    node.setAttribute(key, String(value));
+  });
+  return node;
+}
+
+function getCommonPointForTile(tileNumber, stageRect) {
+  const index = toCommonIndex(tileNumber);
+  const cell = PATHS.common[index]?.el;
+  if (!cell || !stageRect) return null;
+  const rect = cell.getBoundingClientRect();
+  return {
+    x: rect.left - stageRect.left + rect.width / 2,
+    y: rect.top - stageRect.top + rect.height / 2
+  };
+}
+
+function clearChaosRewardTileMarker() {
+  PATHS.common.forEach(node => {
+    if (node?.el) node.el.classList.remove("chaos-reward-tile");
+  });
+}
+
+function isChaosRewardCandidate(tileNumber) {
+  const index = toCommonIndex(tileNumber);
+  const cell = PATHS.common[index]?.el;
+  if (!cell) return false;
+  if (SAFE_INDICES.has(index)) return false;
+  if (CHAOS_ENDPOINT_TILES.has(tileNumber)) return false;
+  if (cell.classList.contains("safe-star")) return false;
+  if (cell.classList.contains("red") || cell.classList.contains("green") || cell.classList.contains("yellow") || cell.classList.contains("blue")) {
+    return false;
+  }
+  return true;
+}
+
+function pickChaosRewardTile() {
+  const candidates = [];
+  for (let tile = 1; tile <= PATHS.common.length; tile++) {
+    if (isChaosRewardCandidate(tile)) candidates.push(tile);
+  }
+  if (candidates.length === 0) {
+    chaosRewardTile = null;
+    return null;
+  }
+  chaosRewardTile = candidates[Math.floor(Math.random() * candidates.length)];
+  return chaosRewardTile;
+}
+
+function applyChaosRewardTileMarker() {
+  clearChaosRewardTileMarker();
+  if (chaosRewardTile === null) return;
+  const index = toCommonIndex(chaosRewardTile);
+  const rewardCell = PATHS.common[index]?.el;
+  if (!rewardCell) return;
+  rewardCell.classList.add("chaos-reward-tile");
+}
+
+function buildPolylinePath(points) {
+  if (!Array.isArray(points) || points.length === 0) return "";
+  return points
+    .map((point, i) => `${i === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+}
+
+function drawChaosLadder(overlay, startPoint, endPoint, side = "left") {
+  const dx = endPoint.x - startPoint.x;
+  const dy = endPoint.y - startPoint.y;
+  const len = Math.hypot(dx, dy);
+  if (!Number.isFinite(len) || len < 2) return;
+
+  const sideBias = side === "left" ? -1 : 1;
+  const px = -dy / len;
+  const py = dx / len;
+  const railGap = Math.max(6, Math.min(12, len / 5));
+  const rungCount = Math.max(3, Math.min(8, Math.round(len / 30)));
+
+  const railAStart = { x: startPoint.x + px * railGap, y: startPoint.y + py * railGap };
+  const railAEnd = { x: endPoint.x + px * railGap, y: endPoint.y + py * railGap };
+  const railBStart = { x: startPoint.x - px * railGap, y: startPoint.y - py * railGap };
+  const railBEnd = { x: endPoint.x - px * railGap, y: endPoint.y - py * railGap };
+
+  overlay.appendChild(createSvgNode("line", {
+    class: "chaos-ladder-rail",
+    x1: railAStart.x.toFixed(2),
+    y1: railAStart.y.toFixed(2),
+    x2: railAEnd.x.toFixed(2),
+    y2: railAEnd.y.toFixed(2)
+  }));
+  overlay.appendChild(createSvgNode("line", {
+    class: "chaos-ladder-rail",
+    x1: railBStart.x.toFixed(2),
+    y1: railBStart.y.toFixed(2),
+    x2: railBEnd.x.toFixed(2),
+    y2: railBEnd.y.toFixed(2)
+  }));
+
+  for (let i = 1; i <= rungCount; i++) {
+    const t = i / (rungCount + 1);
+    const shift = sideBias * (i % 2 === 0 ? 0.9 : -0.9);
+    const ax = railAStart.x + (railAEnd.x - railAStart.x) * t;
+    const ay = railAStart.y + (railAEnd.y - railAStart.y) * t;
+    const bx = railBStart.x + (railBEnd.x - railBStart.x) * t;
+    const by = railBStart.y + (railBEnd.y - railBStart.y) * t;
+    overlay.appendChild(createSvgNode("line", {
+      class: "chaos-ladder-rung",
+      x1: (ax + shift).toFixed(2),
+      y1: (ay + shift).toFixed(2),
+      x2: (bx + shift).toFixed(2),
+      y2: (by + shift).toFixed(2)
+    }));
+  }
+}
+
+function drawChaosSnake(overlay, mouthPoint, tailPoint, side) {
+  const dx = tailPoint.x - mouthPoint.x;
+  const dy = tailPoint.y - mouthPoint.y;
+  const len = Math.hypot(dx, dy);
+  if (!Number.isFinite(len) || len < 2) return;
+
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+  const sideBias = side === "top" ? -1 : 1;
+  const waveCount = 4;
+  const segments = 24;
+  const amplitude = Math.max(4, Math.min(10, len / 10));
+
+  const points = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const baseX = mouthPoint.x + dx * t;
+    const baseY = mouthPoint.y + dy * t;
+    const envelope = Math.sin(Math.PI * t);
+    const wiggle = Math.sin(t * Math.PI * waveCount * 2) * amplitude * envelope * sideBias;
+    points.push({
+      x: baseX + px * wiggle,
+      y: baseY + py * wiggle
+    });
+  }
+
+  const pathD = buildPolylinePath(points);
+  if (!pathD) return;
+  overlay.appendChild(createSvgNode("path", {
+    class: "chaos-snake-body",
+    d: pathD
+  }));
+  overlay.appendChild(createSvgNode("path", {
+    class: "chaos-snake-highlight",
+    d: pathD
+  }));
+
+  const eyeForward = 3.2;
+  const eyeSide = 3.4;
+  const eyeCenterX = mouthPoint.x + ux * eyeForward;
+  const eyeCenterY = mouthPoint.y + uy * eyeForward;
+
+  overlay.appendChild(createSvgNode("circle", {
+    class: "chaos-snake-head",
+    "data-side": side,
+    cx: mouthPoint.x.toFixed(2),
+    cy: mouthPoint.y.toFixed(2),
+    r: "8.4"
+  }));
+  overlay.appendChild(createSvgNode("circle", {
+    class: "chaos-snake-eye",
+    cx: (eyeCenterX + px * eyeSide).toFixed(2),
+    cy: (eyeCenterY + py * eyeSide).toFixed(2),
+    r: "1.8"
+  }));
+  overlay.appendChild(createSvgNode("circle", {
+    class: "chaos-snake-eye",
+    cx: (eyeCenterX - px * eyeSide).toFixed(2),
+    cy: (eyeCenterY - py * eyeSide).toFixed(2),
+    r: "1.8"
+  }));
+  overlay.appendChild(createSvgNode("circle", {
+    class: "chaos-snake-tail",
+    cx: tailPoint.x.toFixed(2),
+    cy: tailPoint.y.toFixed(2),
+    r: "5.4"
+  }));
+}
+
+function renderChaosOverlay() {
+  if (!chaosOverlayEl || !stageEl) return;
+
+  const isChaosMode = gameMode === "chaos";
+  chaosOverlayEl.classList.toggle("active", isChaosMode);
+  if (!isChaosMode) {
+    chaosOverlayEl.replaceChildren();
+    clearChaosRewardTileMarker();
+    return;
+  }
+
+  if (chaosRewardTile === null) pickChaosRewardTile();
+  applyChaosRewardTileMarker();
+
+  const stageRect = stageEl.getBoundingClientRect();
+  if (stageRect.width <= 0 || stageRect.height <= 0) return;
+
+  chaosOverlayEl.setAttribute("width", stageRect.width.toFixed(2));
+  chaosOverlayEl.setAttribute("height", stageRect.height.toFixed(2));
+  chaosOverlayEl.setAttribute("viewBox", `0 0 ${stageRect.width.toFixed(2)} ${stageRect.height.toFixed(2)}`);
+  chaosOverlayEl.replaceChildren();
+
+  CHAOS_LADDER_PAIRS.forEach(pair => {
+    const startPoint = getCommonPointForTile(pair.start, stageRect);
+    const endPoint = getCommonPointForTile(pair.end, stageRect);
+    if (!startPoint || !endPoint) return;
+    drawChaosLadder(chaosOverlayEl, startPoint, endPoint, pair.side);
+  });
+
+  CHAOS_SNAKE_PAIRS.forEach(pair => {
+    const mouthPoint = getCommonPointForTile(pair.mouth, stageRect);
+    const tailPoint = getCommonPointForTile(pair.tail, stageRect);
+    if (!mouthPoint || !tailPoint) return;
+    drawChaosSnake(chaosOverlayEl, mouthPoint, tailPoint, pair.side);
+  });
+}
+
+function scheduleChaosOverlayRender() {
+  if (chaosRenderRaf !== null) return;
+  chaosRenderRaf = requestAnimationFrame(() => {
+    chaosRenderRaf = null;
+    renderChaosOverlay();
+  });
+}
+
+function setupChaosMode() {
+  if (gameMode !== "chaos") {
+    chaosRewardTile = null;
+    renderChaosOverlay();
+    return;
+  }
+  if (chaosRewardTile === null) pickChaosRewardTile();
+  applyChaosRewardTileMarker();
+  scheduleChaosOverlayRender();
+}
+
+async function wait(ms) {
+  let remaining = Math.max(0, Number(ms) || 0);
+  while (remaining > 0) {
+    if (isPaused) {
+      await new Promise(resolve => setTimeout(resolve, 70));
+      continue;
+    }
+    const slice = Math.min(remaining, 70);
+    await new Promise(resolve => setTimeout(resolve, slice));
+    remaining -= slice;
+  }
+}
+
+function animateWithFallback(el, keyframes, options = {}) {
+  const duration = Math.max(0, Number(options.duration) || 0);
+  return new Promise(resolve => {
+    if (!el || typeof el.animate !== "function") {
+      setTimeout(resolve, duration);
+      return;
+    }
+    const animation = el.animate(keyframes, options);
+    let finished = false;
+    let elapsed = 0;
+    let tickerId = null;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      if (tickerId !== null) {
+        clearInterval(tickerId);
+        tickerId = null;
+      }
+      resolve();
+    };
+    const syncPauseState = () => {
+      if (finished) return;
+      if (isPaused && animation.playState === "running") {
+        animation.pause();
+      } else if (!isPaused && animation.playState === "paused") {
+        animation.play();
+      }
+    };
+    tickerId = setInterval(() => {
+      syncPauseState();
+      if (isPaused) return;
+      elapsed += 50;
+      if (duration > 0 && elapsed >= duration + 140) {
+        done();
+      }
+    }, 50);
+    syncPauseState();
+    animation.addEventListener("finish", done, { once: true });
+    animation.addEventListener("cancel", done, { once: true });
+    if (duration <= 0) setTimeout(done, 120);
+  });
+}
+
+function createTransitTrail(fromPoint, toPoint, type = "ladder") {
+  if (!fromPoint || !toPoint) return;
+  const dx = toPoint.x - fromPoint.x;
+  const dy = toPoint.y - fromPoint.y;
+  const length = Math.hypot(dx, dy);
+  if (!Number.isFinite(length) || length < 8) return;
+
+  const trail = document.createElement("span");
+  trail.className = `event-transit-trail ${type === "snake" ? "snake" : "ladder"}`;
+  trail.style.setProperty("--trail-x", `${fromPoint.x}px`);
+  trail.style.setProperty("--trail-y", `${fromPoint.y}px`);
+  trail.style.setProperty("--trail-angle", `${Math.atan2(dy, dx) * (180 / Math.PI)}deg`);
+  trail.style.setProperty("--trail-len", `${length}px`);
+  document.body.appendChild(trail);
+  trail.addEventListener("animationend", () => trail.remove(), { once: true });
+}
+
+function createImpactPulse(point, type = "ladder") {
+  if (!point) return;
+  const pulse = document.createElement("span");
+  const pulseType = type === "snake" || type === "battle" ? type : "ladder";
+  pulse.className = `event-impact-pulse ${pulseType}`;
+  pulse.style.left = `${point.x}px`;
+  pulse.style.top = `${point.y}px`;
+  document.body.appendChild(pulse);
+  pulse.addEventListener("animationend", () => pulse.remove(), { once: true });
+}
+
+function createTokenGhost(token, sourcePoint = null) {
+  if (!token) return null;
+  const rect = token.getBoundingClientRect();
+  const fallbackPoint = {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2
+  };
+  const point = sourcePoint || fallbackPoint;
+  if (!point) return null;
+
+  const ghost = token.cloneNode(true);
+  ghost.classList.add("event-token-ghost");
+  ghost.classList.remove("selectable-black", "selectable-gold", "near-win-heartbeat", "event-hidden");
+  ghost.style.width = `${Math.max(22, rect.width)}px`;
+  ghost.style.height = `${Math.max(22, rect.height)}px`;
+  ghost.style.left = `${point.x - Math.max(22, rect.width) / 2}px`;
+  ghost.style.top = `${point.y - Math.max(22, rect.height) / 2}px`;
+  document.body.appendChild(ghost);
+  return ghost;
+}
+
+function triggerSnakeHeadChomp(side) {
+  if (!chaosOverlayEl) return;
+  const head = chaosOverlayEl.querySelector(`.chaos-snake-head[data-side="${side}"]`);
+  if (!head) return;
+  head.classList.remove("is-chomp");
+  // Restart animation so repeated hits always play.
+  void head.getBoundingClientRect();
+  head.classList.add("is-chomp");
+  setTimeout(() => {
+    head.classList.remove("is-chomp");
+  }, 520);
+}
+
+async function animateLadderTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "left") {
+  const player = state.players[playerIndex];
+  if (!player) return;
+  const token = tokenEls[player.color]?.[tokenIndex];
+  if (!token) return;
+
+  const fromPoint = getElementCenter(PATHS.common[fromIndex]?.el);
+  const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
+  if (!fromPoint || !toPoint) return;
+
+  token.classList.add("event-hidden");
+  const ghost = createTokenGhost(token, fromPoint);
+  if (!ghost) {
+    token.classList.remove("event-hidden");
+    return;
+  }
+
+  createTransitTrail(fromPoint, toPoint, "ladder");
+
+  const dx = toPoint.x - fromPoint.x;
+  const dy = toPoint.y - fromPoint.y;
+  const arcY = Math.max(26, Math.min(70, Math.abs(dx) * 0.22 + 20));
+  const arcX = side === "left" ? -16 : 16;
+
+  await animateWithFallback(ghost, [
+    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
+    { transform: `translate3d(${dx * 0.55 + arcX}px, ${dy * 0.42 - arcY}px, 0) scale(1.12) rotate(${side === "left" ? -8 : 8}deg)`, opacity: 1, offset: 0.56 },
+    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.98) rotate(${side === "left" ? -4 : 4}deg)`, opacity: 0.96, offset: 1 }
+  ], {
+    duration: 460,
+    easing: "cubic-bezier(.16,.86,.2,1)",
+    fill: "forwards"
+  });
+
+  ghost.remove();
+  token.classList.remove("event-hidden");
+  createImpactPulse(toPoint, "ladder");
+}
+
+async function animateSnakeTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "top") {
+  const player = state.players[playerIndex];
+  if (!player) return;
+  const token = tokenEls[player.color]?.[tokenIndex];
+  if (!token) return;
+
+  const fromPoint = getElementCenter(PATHS.common[fromIndex]?.el);
+  const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
+  if (!fromPoint || !toPoint) return;
+
+  triggerSnakeHeadChomp(side);
+  token.classList.add("event-hidden");
+  const ghost = createTokenGhost(token, fromPoint);
+  if (!ghost) {
+    token.classList.remove("event-hidden");
+    return;
+  }
+
+  createTransitTrail(fromPoint, toPoint, "snake");
+
+  const dx = toPoint.x - fromPoint.x;
+  const dy = toPoint.y - fromPoint.y;
+  const sideBias = side === "top" ? -1 : 1;
+  const bendX = sideBias * 22;
+  const bendY = sideBias * 14;
+
+  await animateWithFallback(ghost, [
+    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
+    { transform: "translate3d(-5px, -2px, 0) scale(1.04) rotate(-10deg)", opacity: 1, offset: 0.14 },
+    { transform: "translate3d(5px, 1px, 0) scale(0.8) rotate(8deg)", opacity: 0.96, offset: 0.27 },
+    { transform: `translate3d(${dx * 0.52 + bendX}px, ${dy * 0.46 + bendY}px, 0) scale(0.72) rotate(${sideBias * 16}deg)`, opacity: 0.94, offset: 0.58 },
+    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.98) rotate(0deg)`, opacity: 0.96, offset: 1 }
+  ], {
+    duration: 560,
+    easing: "cubic-bezier(.22,.74,.2,1)",
+    fill: "forwards"
+  });
+
+  ghost.remove();
+  token.classList.remove("event-hidden");
+  createImpactPulse(toPoint, "snake");
+}
+
+function clearPowerTileMarkers() {
+  PATHS.common.forEach(node => {
+    const cell = node?.el;
+    if (!cell) return;
+    cell.classList.remove("power-tile", "power-speed", "power-shield", "power-teleport");
+    delete cell.dataset.powerType;
+  });
+}
+
+function isPowerTileCandidate(tileNumber, blocked = new Set()) {
+  const index = toCommonIndex(tileNumber);
+  const cell = PATHS.common[index]?.el;
+  if (!cell) return false;
+  if (blocked.has(tileNumber)) return false;
+  if (SAFE_INDICES.has(index)) return false;
+  if (CHAOS_ENDPOINT_TILES.has(tileNumber)) return false;
+  if (cell.classList.contains("safe-star")) return false;
+  if (cell.classList.contains("red-home-turn") || cell.classList.contains("green-home-turn") || cell.classList.contains("yellow-home-turn") || cell.classList.contains("blue-home-turn")) {
+    return false;
+  }
+  if (cell.classList.contains("red") || cell.classList.contains("green") || cell.classList.contains("yellow") || cell.classList.contains("blue")) {
+    return false;
+  }
+  return true;
+}
+
+function pickRandomPowerTile(blocked = new Set()) {
+  const candidates = [];
+  for (let tile = 1; tile <= PATHS.common.length; tile++) {
+    if (isPowerTileCandidate(tile, blocked)) candidates.push(tile);
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function randomizePowerTiles() {
+  const used = new Set();
+  const speed = [];
+  const shield = [];
+  const teleport = [];
+
+  for (let i = 0; i < POWER_TILE_COUNTS.speed; i++) {
+    const tile = pickRandomPowerTile(used);
+    if (tile === null) break;
+    speed.push(tile);
+    used.add(tile);
+  }
+  for (let i = 0; i < POWER_TILE_COUNTS.shield; i++) {
+    const tile = pickRandomPowerTile(used);
+    if (tile === null) break;
+    shield.push(tile);
+    used.add(tile);
+  }
+  for (let i = 0; i < POWER_TILE_COUNTS.teleport; i++) {
+    const tile = pickRandomPowerTile(used);
+    if (tile === null) break;
+    teleport.push(tile);
+    used.add(tile);
+  }
+
+  powerTileState = {
+    speed,
+    shield,
+    teleport
+  };
+}
+
+function getActivePowerTiles() {
+  const speed = powerTileState.speed.length > 0 ? powerTileState.speed : SPEED_TILES;
+  const shield = powerTileState.shield.length > 0 ? powerTileState.shield : SHIELD_TILES;
+  const teleport = powerTileState.teleport.length > 0 ? powerTileState.teleport : TELEPORT_TILES;
+  return { speed, shield, teleport };
+}
+
+function pickRandomTeleportDestination(currentTile) {
+  const blocked = new Set([currentTile]);
+  const activePowerTiles = getActivePowerTiles();
+  activePowerTiles.speed.forEach(tile => blocked.add(tile));
+  activePowerTiles.shield.forEach(tile => blocked.add(tile));
+  activePowerTiles.teleport.forEach(tile => blocked.add(tile));
+  return pickRandomPowerTile(blocked);
+}
+
+function applyPowerTileMarkers() {
+  clearPowerTileMarkers();
+  if (gameMode !== "power") return;
+  const activePowerTiles = getActivePowerTiles();
+
+  activePowerTiles.speed.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("power-tile", "power-speed");
+    cell.dataset.powerType = "speed";
+  });
+  activePowerTiles.shield.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("power-tile", "power-shield");
+    cell.dataset.powerType = "shield";
+  });
+  activePowerTiles.teleport.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("power-tile", "power-teleport");
+    cell.dataset.powerType = "teleport";
+  });
+}
+
+function setupPowerMode() {
+  if (gameMode !== "power") {
+    powerTileState = { speed: [], shield: [], teleport: [] };
+    clearPowerTileMarkers();
+    return;
+  }
+  randomizePowerTiles();
+  applyPowerTileMarkers();
+}
+
+function clearBattleTileMarkers() {
+  PATHS.common.forEach(node => {
+    const cell = node?.el;
+    if (!cell) return;
+    cell.classList.remove("battle-tile", "battle-risk", "battle-block", "battle-block-active", "battle-block-owner-red", "battle-block-owner-green", "battle-block-owner-yellow", "battle-block-owner-blue");
+    delete cell.dataset.blockOwner;
+  });
+}
+
+function isBattleTileCandidate(tileNumber, blocked = new Set()) {
+  const index = toCommonIndex(tileNumber);
+  const cell = PATHS.common[index]?.el;
+  if (!cell) return false;
+  if (blocked.has(tileNumber)) return false;
+  if (SAFE_INDICES.has(index)) return false;
+  if (CHAOS_ENDPOINT_TILES.has(tileNumber)) return false;
+  if (cell.classList.contains("safe-star")) return false;
+  if (cell.classList.contains("red-home-turn") || cell.classList.contains("green-home-turn") || cell.classList.contains("yellow-home-turn") || cell.classList.contains("blue-home-turn")) {
+    return false;
+  }
+  if (cell.classList.contains("red") || cell.classList.contains("green") || cell.classList.contains("yellow") || cell.classList.contains("blue")) {
+    return false;
+  }
+  return true;
+}
+
+function pickRandomBattleTile(blocked = new Set()) {
+  const candidates = [];
+  for (let tile = 1; tile <= PATHS.common.length; tile++) {
+    if (isBattleTileCandidate(tile, blocked)) candidates.push(tile);
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function randomizeBattleTiles() {
+  const used = new Set();
+  const risk = [];
+  const block = [];
+
+  for (let i = 0; i < BATTLE_TILE_COUNTS.risk; i++) {
+    const tile = pickRandomBattleTile(used);
+    if (tile === null) break;
+    risk.push(tile);
+    used.add(tile);
+  }
+  for (let i = 0; i < BATTLE_TILE_COUNTS.block; i++) {
+    const tile = pickRandomBattleTile(used);
+    if (tile === null) break;
+    block.push(tile);
+    used.add(tile);
+  }
+
+  battleTileState = { risk, block };
+}
+
+function getActiveBattleTiles() {
+  const fallbackRisk = [11, 21, 37];
+  const fallbackBlock = [6, 30];
+  return {
+    risk: battleTileState.risk.length > 0 ? battleTileState.risk : fallbackRisk,
+    block: battleTileState.block.length > 0 ? battleTileState.block : fallbackBlock
+  };
+}
+
+function applyBattleTileMarkers() {
+  clearBattleTileMarkers();
+  if (gameMode !== "battle") return;
+  const activeBattleTiles = getActiveBattleTiles();
+
+  activeBattleTiles.risk.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("battle-tile", "battle-risk");
+  });
+  activeBattleTiles.block.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("battle-tile", "battle-block");
+  });
+}
+
+function setupBattleMode() {
+  battleActiveBlocks.clear();
+  if (gameMode !== "battle") {
+    battleTileState = { risk: [], block: [] };
+    clearBattleTileMarkers();
+    refreshRiskTokenVisuals();
+    return;
+  }
+  randomizeBattleTiles();
+  applyBattleTileMarkers();
+  refreshRiskTokenVisuals();
+}
+
+function activateBattleBlockTile(index, ownerColor) {
+  if (gameMode !== "battle") return;
+  if (!Number.isInteger(index) || index < 0 || index >= PATHS.common.length) return;
+  const cell = PATHS.common[index]?.el;
+  if (!cell) return;
+  cell.classList.remove("battle-block-owner-red", "battle-block-owner-green", "battle-block-owner-yellow", "battle-block-owner-blue");
+  battleActiveBlocks.set(index, {
+    ownerColor,
+    turnsLeft: 2
+  });
+  cell.classList.add("battle-block-active", `battle-block-owner-${ownerColor}`);
+  cell.dataset.blockOwner = ownerColor;
+}
+
+function tickBattleBlocks() {
+  if (battleActiveBlocks.size === 0) return;
+  Array.from(battleActiveBlocks.entries()).forEach(([index, blockState]) => {
+    const nextTurns = (Number(blockState.turnsLeft) || 0) - 1;
+    const cell = PATHS.common[index]?.el;
+    if (nextTurns <= 0) {
+      battleActiveBlocks.delete(index);
+      if (cell) {
+        cell.classList.remove("battle-block-active", "battle-block-owner-red", "battle-block-owner-green", "battle-block-owner-yellow", "battle-block-owner-blue");
+        delete cell.dataset.blockOwner;
+      }
+      return;
+    }
+    battleActiveBlocks.set(index, {
+      ownerColor: blockState.ownerColor,
+      turnsLeft: nextTurns
+    });
+  });
+}
+
+function isBlockedByBattleTile(index, movingColor) {
+  if (gameMode !== "battle") return false;
+  const blockState = battleActiveBlocks.get(index);
+  if (!blockState) return false;
+  return blockState.ownerColor !== movingColor;
+}
+
+function isTokenRiskVulnerable(tokenEl) {
+  const owner = findTokenOwner(tokenEl);
+  if (!owner) return false;
+  const player = state.players[owner.playerIndex];
+  if (!player || !Array.isArray(player.riskVulnerable)) return false;
+  return (Number(player.riskVulnerable[owner.tokenIndex]) || 0) > 0;
+}
+
+function refreshRiskTokenVisuals() {
+  state.players.forEach(player => {
+    if (!player || !Array.isArray(player.riskVulnerable)) return;
+    player.riskVulnerable.forEach((value, tokenIndex) => {
+      const token = tokenEls[player.color]?.[tokenIndex];
+      if (!token) return;
+      const isVulnerable = (Number(value) || 0) > 0;
+      token.classList.toggle("battle-risk-vulnerable", isVulnerable);
+    });
+  });
+}
+
+function handleBattleCaptureBonus(playerIndex, captures, sourceEl = null) {
+  const player = state.players[playerIndex];
+  if (!player || captures <= 0) return;
+
+  player.battleCapturedThisTurn = true;
+  player.battleStreak = Math.max(1, Number(player.battleStreak || 0) + captures);
+
+  let coinBonus = BATTLE_CAPTURE_COINS * captures;
+  if (player.battleStreak >= 2) {
+    coinBonus += (player.battleStreak - 1) * BATTLE_STREAK_STEP_COINS;
+    showToast(`Kill Streak x${player.battleStreak}`);
+  } else {
+    showToast("Capture Bonus");
+  }
+  createImpactPulse(getElementCenter(sourceEl), "battle");
+
+  if (player.color === humanColor) {
+    addCoins(coinBonus);
+    animateCoinGain(coinBonus, sourceEl);
+  }
+}
+
+function clearArenaTileMarkers() {
+  PATHS.common.forEach(node => {
+    const cell = node?.el;
+    if (!cell) return;
+    cell.classList.remove("arena-reward-tile");
+  });
+}
+
+function isArenaTileCandidate(tileNumber, blocked = new Set()) {
+  const index = toCommonIndex(tileNumber);
+  const cell = PATHS.common[index]?.el;
+  if (!cell) return false;
+  if (blocked.has(tileNumber)) return false;
+  if (SAFE_INDICES.has(index)) return false;
+  if (CHAOS_ENDPOINT_TILES.has(tileNumber)) return false;
+  if (cell.classList.contains("safe-star")) return false;
+  if (cell.classList.contains("red-home-turn") || cell.classList.contains("green-home-turn") || cell.classList.contains("yellow-home-turn") || cell.classList.contains("blue-home-turn")) {
+    return false;
+  }
+  if (cell.classList.contains("red") || cell.classList.contains("green") || cell.classList.contains("yellow") || cell.classList.contains("blue")) {
+    return false;
+  }
+  return true;
+}
+
+function pickRandomArenaTile(blocked = new Set()) {
+  const candidates = [];
+  for (let tile = 1; tile <= PATHS.common.length; tile++) {
+    if (isArenaTileCandidate(tile, blocked)) candidates.push(tile);
+  }
+  if (candidates.length === 0) return null;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function randomizeArenaTiles() {
+  const blocked = new Set();
+  const reward = [];
+  for (let i = 0; i < ARENA_REWARD_TILE_COUNT; i++) {
+    const tile = pickRandomArenaTile(blocked);
+    if (tile === null) break;
+    reward.push(tile);
+    blocked.add(tile);
+  }
+  arenaTileState = { reward };
+}
+
+function getActiveArenaTiles() {
+  return {
+    reward: arenaTileState.reward.length > 0 ? arenaTileState.reward : [18, 44]
+  };
+}
+
+function applyArenaTileMarkers() {
+  clearArenaTileMarkers();
+  if (gameMode !== "arena") return;
+  const activeArenaTiles = getActiveArenaTiles();
+  activeArenaTiles.reward.forEach(tile => {
+    const cell = PATHS.common[toCommonIndex(tile)]?.el;
+    if (!cell) return;
+    cell.classList.add("arena-reward-tile");
+  });
+}
+
+function setupArenaMode() {
+  if (gameMode !== "arena") {
+    arenaTileState = { reward: [] };
+    clearArenaTileMarkers();
+    return;
+  }
+  randomizeArenaTiles();
+  applyArenaTileMarkers();
+}
+
+function setPaused(nextPaused) {
+  const paused = Boolean(nextPaused);
+  if (paused === isPaused) return;
+  if (gameOver && paused) return;
+  isPaused = paused;
+  document.body.classList.toggle("game-paused", isPaused);
+
+  if (pauseModalEl) {
+    pauseModalEl.classList.toggle("show", isPaused);
+    pauseModalEl.setAttribute("aria-hidden", isPaused ? "false" : "true");
+  }
+  if (pauseBtnEl) {
+    pauseBtnEl.textContent = isPaused ? "Paused" : "Pause";
+    pauseBtnEl.setAttribute("aria-pressed", isPaused ? "true" : "false");
+  }
+  Object.values(dicePanelsByColor).forEach(panel => {
+    panel?.classList.remove("ai-anticipation");
+  });
+
+  if (isPaused) {
+    bgmWasPlayingBeforePause = !bgMusic.paused;
+    bgMusic.pause();
+  } else if (bgmWasPlayingBeforePause && isBgmEnabled && !gameOver) {
+    bgMusic.play().catch(() => {});
+  }
+
+  resetDiceInteractivity();
+  if (!isPaused && !gameOver) {
+    const current = state.players[state.currentPlayer];
+    if (current && current.isAI && !isMoving) {
+      setTimeout(runAITurn, 140);
+    }
+  }
+}
+
+function togglePause() {
+  setPaused(!isPaused);
+}
+
+function exitPausedMatch() {
+  setPaused(false);
+  clearResumeSnapshot();
+  const query = new URLSearchParams({ gm: gameMode });
+  window.location.href = `index.html?${query.toString()}`;
+}
+
 function getCurrentMoveSteps(playerIndex) {
   if (state.diceValue === null) return 0;
   return state.diceValue * activeRollMultiplier;
@@ -1162,7 +2118,9 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
     rewardHumanEvent("blockade", PATHS.common[finalPos].el);
   }
 
-  if ((gameMode === "battle" || gameMode === "arena") && captures > 0) {
+  if (gameMode === "battle" && captures > 0) {
+    handleBattleCaptureBonus(playerIndex, captures, PATHS.common[finalPos].el);
+  } else if (gameMode === "arena" && captures > 0) {
     if (color === humanColor) {
       addCoins(4 * captures);
       animateCoinGain(4 * captures, PATHS.common[finalPos].el);
@@ -1197,46 +2155,101 @@ async function handleTileEvent(playerIndex, tokenIndex) {
   let currentPos = player.tokens[tokenIndex];
   let currentTile = currentPos + 1;
   let iterations = 0;
+  const activePowerTiles = getActivePowerTiles();
+  const activeBattleTiles = getActiveBattleTiles();
 
   while (iterations < 5) {
     iterations += 1;
     let moved = false;
+    const ladderPair = (modeConfig.ladders || modeConfig.allEvents)
+      ? CHAOS_LADDER_PAIRS.find(pair => pair.start === currentTile)
+      : null;
+    const snakePair = (modeConfig.snakes || modeConfig.allEvents)
+      ? CHAOS_SNAKE_PAIRS.find(pair => pair.mouth === currentTile)
+      : null;
 
-    if ((modeConfig.ladders || modeConfig.allEvents) && LADDERS[currentTile]) {
-      const target = toCommonIndex(LADDERS[currentTile]);
+    if (ladderPair) {
+      const fromPos = currentPos;
+      const target = toCommonIndex(ladderPair.end);
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Ladder Boost");
-      if (moved) playSfx("entry", 0.46);
-    } else if ((modeConfig.snakes || modeConfig.allEvents) && SNAKES[currentTile]) {
-      const target = toCommonIndex(SNAKES[currentTile]);
+      if (moved) {
+        await animateLadderTransfer(playerIndex, tokenIndex, fromPos, target, ladderPair.side);
+        playSfx("entry", 0.46);
+      }
+    } else if (snakePair) {
+      const fromPos = currentPos;
+      const target = toCommonIndex(snakePair.tail);
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Snake Drop");
-      if (moved) playSfx("goal", 0.24);
-    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && SPEED_TILES.includes(currentTile)) {
+      if (moved) {
+        await animateSnakeTransfer(playerIndex, tokenIndex, fromPos, target, snakePair.side);
+        playSfx("goal", 0.24);
+      }
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.speed.includes(currentTile)) {
       const target = (currentPos + 3) % PATHS.common.length;
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Speed +3");
       if (moved) playSfx("step", 0.4);
-    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && TELEPORT_TILES.includes(currentTile)) {
-      const toTile = TELEPORT_TARGETS[currentTile];
-      if (toTile) {
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.teleport.includes(currentTile)) {
+      const toTile = pickRandomTeleportDestination(currentTile);
+      if (toTile !== null) {
         moved = moveTokenToCommonIndex(playerIndex, tokenIndex, toCommonIndex(toTile), "Teleport");
         if (moved) playSfx("entry", 0.6);
       }
-    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && SHIELD_TILES.includes(currentTile)) {
+    } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.shield.includes(currentTile)) {
       player.shields[tokenIndex] = 1;
       showToast("Shield Ready");
+      break;
+    } else if (modeConfig.aggressive && activeBattleTiles.risk.includes(currentTile)) {
+      player.riskVulnerable[tokenIndex] = 2;
+      refreshRiskTokenVisuals();
+      const target = (currentPos + 2) % PATHS.common.length;
+      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Risk Dash +2");
+      if (moved) {
+        showToast("Risk Tile: Fast but Exposed");
+        playSfx("step", 0.44);
+      }
+    } else if (modeConfig.aggressive && activeBattleTiles.block.includes(currentTile)) {
+      activateBattleBlockTile(currentPos, player.color);
+      showToast("Block Tile Armed");
+      playSfx("entry", 0.48);
       break;
     }
 
     if (!moved) break;
 
-    await new Promise(resolve => setTimeout(resolve, 160));
+    await wait(110);
     currentPos = player.tokens[tokenIndex];
     currentTile = currentPos + 1;
+  }
+
+  if (gameMode === "chaos" && chaosRewardTile === null) {
+    pickChaosRewardTile();
+    applyChaosRewardTileMarker();
+  }
+
+  if (gameMode === "chaos" && player.color === humanColor && chaosRewardTile !== null && currentTile === chaosRewardTile) {
+    const rewardCell = PATHS.common[currentPos]?.el || null;
+    addCoins(CHAOS_REWARD_COINS);
+    animateCoinGain(CHAOS_REWARD_COINS, rewardCell);
+    showToast(`Chaos Reward +${CHAOS_REWARD_COINS}`);
+    playSfx("entry", 0.54);
+  }
+
+  if (gameMode === "arena") {
+    const activeArenaTiles = getActiveArenaTiles();
+    if (player.color === humanColor && activeArenaTiles.reward.includes(currentTile)) {
+      const rewardCell = PATHS.common[currentPos]?.el || null;
+      addCoins(ARENA_REWARD_COINS);
+      animateCoinGain(ARENA_REWARD_COINS, rewardCell);
+      showToast(`Arena Reward +${ARENA_REWARD_COINS}`);
+      playSfx("entry", 0.62);
+    }
   }
 }
 
 function triggerRandomEvent() {
   if (gameMode !== "arena") return;
-  const events = ["all_step_two", "double_next_roll", "random_teleport"];
+  if (isPaused) return;
+  const events = ["all_step_two", "double_next_roll"];
   const selected = events[Math.floor(Math.random() * events.length)];
 
   if (selected === "all_step_two") {
@@ -1259,25 +2272,6 @@ function triggerRandomEvent() {
     if (current) {
       arenaDoubleRollColor = current.color;
       showToast("Arena Event: Next Roll x2");
-    }
-  }
-
-  if (selected === "random_teleport") {
-    const movable = [];
-    state.players.forEach((player, playerIndex) => {
-      player.tokens.forEach((pos, tokenIndex) => {
-        const token = tokenEls[player.color]?.[tokenIndex];
-        if (pos < 0 || player.finished[tokenIndex]) return;
-        if (!token || (token.dataset.path || "common") !== "common") return;
-        movable.push({ playerIndex, tokenIndex });
-      });
-    });
-    if (movable.length > 0) {
-      const chosen = movable[Math.floor(Math.random() * movable.length)];
-      const target = Math.floor(Math.random() * PATHS.common.length);
-      moveTokenToCommonIndex(chosen.playerIndex, chosen.tokenIndex, target);
-      applyPostLandingEffects(chosen.playerIndex, chosen.tokenIndex, { skipSafeBonus: true });
-      showToast("Arena Event: Teleport");
     }
   }
 
@@ -1368,6 +2362,7 @@ function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
     if (!enteredHome) {
       const nextCommon = (commonPos + 1) % PATHS.common.length;
       if (isBlockedByEnemyBlockade(nextCommon, color)) return false;
+      if (isBlockedByBattleTile(nextCommon, color)) return false;
       commonPos = nextCommon;
       continue;
     }
@@ -1380,7 +2375,7 @@ function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
     return homePos <= homeLen;
   }
 
-  return !isBlockedByEnemyBlockade(commonPos, color);
+  return !isBlockedByEnemyBlockade(commonPos, color) && !isBlockedByBattleTile(commonPos, color);
 }
 
 function setupTileGlowSeeds() {
@@ -1404,6 +2399,7 @@ function setupSparkParticles() {
 
   function spawnSpark() {
     if (document.hidden) return;
+    if (isPaused) return;
     if (sparkLayerEl.childElementCount > 28) return;
 
     const layerRect = sparkLayerEl.getBoundingClientRect();
@@ -1448,6 +2444,7 @@ function setupBackgroundSlideshow() {
   active.style.backgroundImage = `url("${BACKGROUND_IMAGES[index]}")`;
 
   setInterval(() => {
+    if (isPaused) return;
     index = (index + 1) % BACKGROUND_IMAGES.length;
     inactive.style.backgroundImage = `url("${BACKGROUND_IMAGES[index]}")`;
     inactive.style.opacity = "1";
@@ -1459,11 +2456,12 @@ function setupBackgroundSlideshow() {
 }
 
 function playSfx(type, volume = 0.7) {
+  if (isPaused) return;
   if (!isSfxEnabled) return;
   const src = SOUND_FILES[type];
   if (!src) return;
   const sound = new Audio(src);
-  sound.volume = volume;
+  sound.volume = Math.min(1, Math.max(0, (Number(volume) || 0) * 1.35));
   sound.play().catch(() => {});
 }
 
@@ -1496,6 +2494,7 @@ function checkAndShowWinner(playerIndex) {
   if (!player.finished.every(Boolean)) return false;
 
   gameOver = true;
+  if (isPaused) setPaused(false);
   clearResumeSnapshot();
   isMoving = false;
   clearHighlights();
@@ -1507,7 +2506,7 @@ function checkAndShowWinner(playerIndex) {
   });
 
   if (matchMode === "vs-computer" && player.color === humanColor) {
-    let winCoins = 100;
+    let winCoins = 100 * (gameMode === "arena" ? ARENA_WIN_MULTIPLIER : 1);
     winCoins += activeSkinEffects.bonusWinCoins || 0;
     if (activeSkinEffects.winBonusPercent) {
       winCoins += Math.floor(winCoins * activeSkinEffects.winBonusPercent);
@@ -1575,7 +2574,11 @@ function animateDiceRoll(color, onDone) {
   diceEl.style.transition = "transform 560ms cubic-bezier(.18,.78,.2,1)";
   diceEl.style.transform = `rotateX(${spinX}deg) rotateY(${spinY}deg)`;
 
-  setTimeout(() => {
+  setTimeout(function finishDiceRoll() {
+    if (isPaused) {
+      setTimeout(finishDiceRoll, 90);
+      return;
+    }
     const value = computeRollValue(color);
     state.diceValue = value;
 
@@ -1610,7 +2613,19 @@ function animateDiceRoll(color, onDone) {
 
 function nextTurn(extraTurn = false) {
   if (gameOver) return;
+  if (isPaused) {
+    setTimeout(() => nextTurn(extraTurn), 120);
+    return;
+  }
+  const previousPlayerIndex = state.currentPlayer;
   if (!extraTurn) {
+    const previous = state.players[previousPlayerIndex];
+    if (previous) {
+      if (!previous.battleCapturedThisTurn) {
+        previous.battleStreak = 0;
+      }
+      previous.battleCapturedThisTurn = false;
+    }
     state.currentPlayer = (state.currentPlayer + 1) % state.players.length;
   }
   if (!extraTurn) {
@@ -1628,8 +2643,17 @@ function nextTurn(extraTurn = false) {
 
   if (!extraTurn) {
     const player = state.players[state.currentPlayer];
-    if (player && Array.isArray(player.shields)) {
-      player.shields = player.shields.map(value => Math.max(0, (Number(value) || 0) - 1));
+    if (player) {
+      if (Array.isArray(player.shields)) {
+        player.shields = player.shields.map(value => Math.max(0, (Number(value) || 0) - 1));
+      }
+      if (Array.isArray(player.riskVulnerable)) {
+        player.riskVulnerable = player.riskVulnerable.map(value => Math.max(0, (Number(value) || 0) - 1));
+      }
+    }
+    refreshRiskTokenVisuals();
+    if (gameMode === "battle") {
+      tickBattleBlocks();
     }
     if (gameMode === "arena") {
       arenaTurns += 1;
@@ -1649,6 +2673,7 @@ function nextTurn(extraTurn = false) {
 
 function handleTurn() {
   if (gameOver) return;
+  if (isPaused) return;
   const playerIndex = state.currentPlayer;
   if (state.players[playerIndex].isAI) return;
   if (state.diceValue === null) {
@@ -1672,6 +2697,7 @@ function handleTurn() {
 
 function rollDice() {
   if (gameOver) return;
+  if (isPaused) return;
   if (isMoving) return;
   if (state.players[state.currentPlayer].isAI) return;
   if (state.diceValue !== null) return;
@@ -1689,6 +2715,7 @@ function rollDice() {
 
 function runAITurn() {
   if (gameOver) return;
+  if (isPaused) return;
   if (isMoving) return;
 
   const playerIndex = state.currentPlayer;
@@ -1701,6 +2728,11 @@ function runAITurn() {
   if (panel) panel.classList.add("ai-anticipation");
 
   setTimeout(() => {
+    if (isPaused) {
+      if (panel) panel.classList.remove("ai-anticipation");
+      isMoving = false;
+      return;
+    }
     if (panel) panel.classList.remove("ai-anticipation");
     if (gameOver) {
       isMoving = false;
@@ -1744,6 +2776,10 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
   token.dataset.path = "goal";
   player.tokens[tokenIndex] = -2;
   player.finished[tokenIndex] = true;
+  if (Array.isArray(player.riskVulnerable)) {
+    player.riskVulnerable[tokenIndex] = 0;
+  }
+  refreshRiskTokenVisuals();
 
   if (color === humanColor) {
     rewardHumanEvent("home", goalEls[color]);
@@ -1765,6 +2801,7 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
 async function executeMove(move) {
   try {
     if (gameOver) return;
+    if (isPaused) return;
     isMoving = true;
     waitingForTokenMove = false;
     if (!move) {
@@ -1849,7 +2886,7 @@ async function executeMove(move) {
         for (let i = 1; i < moveSteps; i++) {
           path[pos + i].el.appendChild(token);
           playSfx("step", 0.35);
-          await new Promise(r => setTimeout(r, 180));
+          await wait(180);
         }
         await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
         return;
@@ -1858,7 +2895,7 @@ async function executeMove(move) {
       for (let i = 1; i <= moveSteps; i++) {
         path[pos + i].el.appendChild(token);
         playSfx("step", 0.35);
-        await new Promise(r => setTimeout(r, 180));
+        await wait(180);
       }
       player.tokens[tokenIndex] += moveSteps;
       await handleTileEvent(playerIndex, tokenIndex);
@@ -1890,7 +2927,7 @@ async function executeMove(move) {
           homePath[homePos].el.appendChild(token);
         }
         playSfx("step", 0.35);
-        await new Promise(r => setTimeout(r, 180));
+        await wait(180);
         continue;
       }
 
@@ -1898,7 +2935,7 @@ async function executeMove(move) {
         commonPos = (commonPos + 1) % commonLen;
         PATHS.common[commonPos].el.appendChild(token);
         playSfx("step", 0.35);
-        await new Promise(r => setTimeout(r, 180));
+        await wait(180);
         continue;
       }
 
@@ -1916,7 +2953,7 @@ async function executeMove(move) {
 
       homePath[homePos].el.appendChild(token);
       playSfx("step", 0.35);
-      await new Promise(r => setTimeout(r, 180));
+      await wait(180);
     }
 
     if (enteredHome) {
@@ -1950,3 +2987,5 @@ activeColors.forEach(color => {
 });
 refreshNearWinEffects();
 resetDiceInteractivity();
+scheduleChaosOverlayRender();
+refreshRiskTokenVisuals();

@@ -154,11 +154,21 @@ body.menu-open {
 }
 
 .mode-switch-glyph {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, #fff9d5 0%, #ffd069 45%, #ff9a36 100%);
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ffe7a0, #ffb25e);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
+  display: grid;
+  place-items: center;
+}
+
+.mode-switch-glyph::before {
+  content: "\1F3AE";
+  font-size: 12px;
+  font-weight: 900;
+  color: #1e3446;
+  line-height: 1;
 }
 
 .mode-switch-panel {
@@ -589,6 +599,10 @@ body.menu-open {
   .mode-switch-glyph {
     width: 14px;
     height: 14px;
+  }
+
+  .mode-switch-glyph::before {
+    font-size: 10px;
   }
 
   .mode-switch-panel {

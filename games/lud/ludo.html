@@ -22,6 +22,7 @@
     <div class="ludo-stage">
       <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels">Back</button>
       <button class="restart-btn" id="restart-btn" type="button">Restart</button>
+      <button class="pause-btn" id="pause-btn" type="button">Pause</button>
       <div class="ludo-board">
         <div class="center-triangle center-red"></div>
         <div class="center-triangle center-green"></div>
@@ -51,6 +52,7 @@
           <div class="token-slot"></div><div class="token-slot"></div>
         </div></div>
       </div>
+      <svg class="chaos-overlay" id="chaos-overlay" aria-hidden="true"></svg>
       <div class="spark-layer" id="spark-layer" aria-hidden="true"></div>
 
       <div class="dice-panel top-left" data-color="red">
@@ -108,10 +110,18 @@
       </div>
     </div>
   </div>
+  <div class="pause-modal" id="pause-modal" aria-hidden="true">
+    <div class="pause-card">
+      <h2>Game Paused</h2>
+      <p>Do you want to resume the match?</p>
+      <div class="pause-actions">
+        <button type="button" id="pause-resume-btn">Resume</button>
+        <button type="button" id="pause-exit-btn">Exit</button>
+      </div>
+    </div>
+  </div>
   <script type="module" src="game.js"></script>
 </body>
 
 </html>
-
-
 
