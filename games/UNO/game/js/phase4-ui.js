@@ -1071,6 +1071,13 @@ async function activateLandscapeMode() {
   updateOrientationOverlay();
 }
 
+function handleOrientationChange() {
+  updateOrientationOverlay();
+  if (isPortraitOrientation()) return;
+  activateLandscapeMode();
+  startFullscreenWatchdog();
+}
+
 function setActivePlayer(currentIndex) {
   Object.values(playerZoneMap).forEach((zone) => zone?.classList.remove('active'));
   playerZoneMap[currentIndex]?.classList.add('active');
@@ -1508,7 +1515,7 @@ function initPhase4UI() {
     activateLandscapeMode();
   }, { once: true });
   window.addEventListener('resize', updateOrientationOverlay);
-  window.addEventListener('orientationchange', updateOrientationOverlay);
+  window.addEventListener('orientationchange', handleOrientationChange);
   document.addEventListener('fullscreenchange', updateOrientationOverlay);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {

@@ -77,23 +77,42 @@
 <h1 class="game-title">UNO</h1>
 <p class="game-tagline">Play Your Cards Right</p>
 <button class="play-btn">
-<span class="play-btn-text">Start Tournament</span>
+<span class="play-btn-text">Choose Mode To Start</span>
 </button>
 </section>
 
 <section class="game-modes">
 <h2 class="section-label">Modes</h2>
 <div class="mode-cards">
-<button class="mode-card mode-card-featured" data-mode="tournament">
-<span class="mode-icon">Tournament</span>
+<button class="mode-card" data-mode="tournament" aria-pressed="false">
+<span class="mode-icon" aria-hidden="true">
+  <svg class="mode-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 21h8"/>
+    <path d="M12 17v4"/>
+    <path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/>
+    <path d="M7 6H4a3 3 0 0 0 3 3"/>
+    <path d="M17 6h3a3 3 0 0 1-3 3"/>
+  </svg>
+</span>
 <span class="mode-name">Tournament</span>
 </button>
-<button class="mode-card" data-mode="quick-play">
-<span class="mode-icon">Quick</span>
+<button class="mode-card" data-mode="quick-play" aria-pressed="false">
+<span class="mode-icon" aria-hidden="true">
+  <svg class="mode-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 2L4 14h6l-1 8 11-14h-6l1-6z"/>
+  </svg>
+</span>
 <span class="mode-name">Quick Play</span>
 </button>
-<button class="mode-card" data-mode="team-battle">
-<span class="mode-icon">2v2</span>
+<button class="mode-card" data-mode="team-battle" aria-pressed="false">
+<span class="mode-icon" aria-hidden="true">
+  <svg class="mode-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="8" r="3"/>
+    <circle cx="16" cy="8" r="3"/>
+    <path d="M3 20a5 5 0 0 1 10 0"/>
+    <path d="M11 20a5 5 0 0 1 10 0"/>
+  </svg>
+</span>
 <span class="mode-name">2V2</span>
 </button>
 </div>

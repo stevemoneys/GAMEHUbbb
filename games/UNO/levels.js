@@ -131,14 +131,19 @@ function startFullscreenWatchdog() {
   }, 320);
 }
 
-async function goToStage(level, stage, options = {}) {
+function goToStage(level, stage, options = {}) {
   const { resume = false } = options;
   markLandscapeIntent();
-  await activateLandscapeMode();
-  startFullscreenWatchdog();
   if (!resume) clearResumeSnapshot();
   const resumeSuffix = resume ? "&resume=1" : "";
   window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
+}
+
+function handleOrientationChange() {
+  updateRotateOverlay();
+  if (isPortraitOrientation()) return;
+  activateLandscapeMode();
+  startFullscreenWatchdog();
 }
 
 function renderResumePanel() {
@@ -239,7 +244,7 @@ window.addEventListener("pageshow", () => {
   activateLandscapeMode();
   startFullscreenWatchdog();
 });
-window.addEventListener("orientationchange", updateRotateOverlay);
+window.addEventListener("orientationchange", handleOrientationChange);
 window.addEventListener("resize", updateRotateOverlay);
 document.addEventListener("fullscreenchange", updateRotateOverlay);
 document.addEventListener("visibilitychange", () => {

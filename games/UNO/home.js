@@ -6,6 +6,9 @@ const dailyBtn = document.querySelector('.action-icon[data-action="daily-reward"
 const settingsBtn = document.querySelector(".settings-btn");
 const guideModal = document.getElementById("guide-modal");
 const guideCloseBtn = document.getElementById("guide-close");
+const playBtn = document.querySelector(".play-btn");
+const playBtnText = document.querySelector(".play-btn-text");
+const modeCards = Array.from(document.querySelectorAll(".mode-card[data-mode]"));
 const avatars = window.GameHubAvatars || [];
 const rewards = window.GameHubRewards;
 
@@ -33,6 +36,12 @@ const PROGRESS_KEYS = [
   MODE_CONFIG["quick-play"].progressKey,
   MODE_CONFIG["team-battle"].progressKey
 ];
+const MODE_UI = {
+  tournament: { startLabel: "Start Tournament" },
+  "quick-play": { startLabel: "Start Quick Play" },
+  "team-battle": { startLabel: "Start 2V2 Battle" }
+};
+let pendingModeSelection = null;
 
 function getSelectedMode() {
   const stored = localStorage.getItem(MODE_KEY) || "tournament";
@@ -56,30 +65,7 @@ function getUnlockedAvatarCount() {
   return Math.min(maxAvatars, Math.max(1, unlocked));
 }
 
-async function requestLandscapeExperience() {
-  const target = document.documentElement;
-  try {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement && target) {
-      if (target.requestFullscreen) {
-        await target.requestFullscreen({ navigationUI: "hide" });
-      } else if (target.webkitRequestFullscreen) {
-        await target.webkitRequestFullscreen();
-      }
-    }
-  } catch {
-    // Fullscreen can be rejected on some browsers.
-  }
-
-  try {
-    if (screen.orientation?.lock) {
-      await screen.orientation.lock("landscape");
-    }
-  } catch {
-    // Orientation lock can fail without fullscreen permission.
-  }
-}
-
-async function goToMode(mode) {
+function goToMode(mode) {
   const safeMode = MODE_CONFIG[mode] ? mode : "tournament";
   localStorage.setItem(MODE_KEY, safeMode);
   try {
@@ -87,19 +73,47 @@ async function goToMode(mode) {
   } catch {
     // Ignore storage failures.
   }
-  await requestLandscapeExperience();
   window.location.href = MODE_CONFIG[safeMode].levelsUrl;
 }
 
-document.querySelector(".play-btn")?.addEventListener("click", () => {
-  goToMode("tournament");
-});
+function applyModeSelectionUI(mode) {
+  modeCards.forEach((btn) => {
+    const selected = btn.dataset.mode === mode;
+    btn.classList.toggle("is-selected", selected);
+    btn.setAttribute("aria-pressed", selected ? "true" : "false");
+  });
+  const ready = Boolean(mode && MODE_CONFIG[mode]);
+  if (playBtn) playBtn.disabled = !ready;
+  if (playBtnText) {
+    playBtnText.textContent = ready
+      ? (MODE_UI[mode]?.startLabel || "Start Game")
+      : "Choose Mode To Start";
+  }
+}
 
-document.querySelectorAll(".mode-card[data-mode]").forEach((btn) => {
+function chooseMode(mode) {
+  const safeMode = MODE_CONFIG[mode] ? mode : null;
+  if (!safeMode) return;
+  pendingModeSelection = safeMode;
+  localStorage.setItem(MODE_KEY, safeMode);
+  applyModeSelectionUI(safeMode);
+  updatePlayerLevel();
+}
+
+if (playBtn) {
+  playBtn.addEventListener("click", () => {
+    if (!pendingModeSelection) return;
+    goToMode(pendingModeSelection);
+  });
+}
+
+modeCards.forEach((btn) => {
   btn.addEventListener("click", () => {
-    goToMode(btn.dataset.mode || "tournament");
+    chooseMode(btn.dataset.mode || "");
   });
 });
+
+applyModeSelectionUI(null);
 
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || "1", 10);
