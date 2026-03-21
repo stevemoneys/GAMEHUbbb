@@ -73,6 +73,26 @@ function setCoinBalance(value) {
   if (coinCountEl) coinCountEl.textContent = String(value);
 }
 
+function showSkin(previewEl, src) {
+  if (!previewEl) return;
+  previewEl.style.backgroundImage = `url('${resolveAssetPath(src)}')`;
+}
+
+function animatePreview() {
+  const previews = document.querySelectorAll(".card-preview");
+  previews.forEach((preview, index) => {
+    if (!(preview instanceof HTMLElement)) return;
+    if (preview.dataset.animated === "1") return;
+    preview.dataset.animated = "1";
+    let angle = 40 + ((index % 4) * 4);
+    setInterval(() => {
+      angle += 0.65;
+      const bob = Math.sin(angle / 12) * 6;
+      preview.style.transform = `rotateY(${angle}deg) rotateX(10deg) translateY(${bob}px)`;
+    }, 50);
+  });
+}
+
 function getPowerUpCount(id) {
   const counts = loadMap(POWERUP_COUNTS_KEY);
   const stored = parseInt(String(counts[id] ?? 0), 10);
@@ -110,21 +130,17 @@ function buildCardMarkup(item, options) {
     : (isSelected ? "Active" : isOwned ? "Owned" : "Locked");
   const buyLabel = isPowerUp ? "Buy +1" : item.price === 0 ? "Free" : "Buy";
   const useLabel = isPowerUp ? (isEquipped ? "Unequip" : "Equip") : "Use";
-  const previewMarkup = isPack
-    ? `
-        <div class="theme-pack-bundle" style="--theme-pack-image: url('${resolveAssetPath(item.src)}')">
-          <span class="theme-pack-card theme-pack-card--left"></span>
-          <span class="theme-pack-card theme-pack-card--middle"></span>
-          <span class="theme-pack-card theme-pack-card--right"></span>
-        </div>
-      `
-    : isPowerUp
+  const previewMarkup = isPowerUp
       ? `
         <div class="powerup-preview">
           <span class="powerup-icon" aria-hidden="true">${item.icon}</span>
         </div>
       `
-      : `<img src="${resolveAssetPath(item.src)}" alt="${item.name}" loading="lazy">`;
+      : `
+        <div class="skin-preview-container">
+          <div class="card-preview" id="cardPreview-${type}-${item.id}"></div>
+        </div>
+      `;
 
   return `
     <div class="${cardClass} ${!isOwned && !isPowerUp ? "is-locked" : ""} ${isEquipped ? "is-equipped" : ""}">
@@ -213,6 +229,18 @@ function renderThemes() {
       })
     );
   });
+
+  themes.forEach((theme) => {
+    const previewEl = document.getElementById(`cardPreview-theme-${theme.id}`);
+    showSkin(previewEl, theme.src);
+  });
+
+  cardPacks.forEach((pack) => {
+    const previewEl = document.getElementById(`cardPreview-card-pack-${pack.id}`);
+    showSkin(previewEl, pack.src);
+  });
+
+  animatePreview();
 }
 
 function handleBuy(itemId, type) {

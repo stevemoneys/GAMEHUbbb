@@ -897,6 +897,72 @@ body.has-custom-card-pack .uno-card--back {
   animation: powerup-toast 1200ms var(--ease-premium) forwards;
 }
 
+.timed-mode {
+  position: absolute;
+  left: calc(56px + env(safe-area-inset-left));
+  top: calc(12px + env(safe-area-inset-top));
+  z-index: 24;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.56);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.timed-mode.hidden {
+  display: none;
+}
+
+.timed-mode__label {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fecaca;
+  font-weight: 700;
+}
+
+.timed-mode__clock {
+  font-family: 'Outfit', 'Space Grotesk', system-ui, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #fee2e2;
+}
+
+.last-card-warning {
+  position: absolute;
+  left: 50%;
+  top: calc(58px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  z-index: 33;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  color: #fff;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.4);
+  animation: warning-pulse 900ms ease-in-out infinite;
+}
+
+.last-card-warning.hidden {
+  display: none;
+}
+
+body.last-card-alert::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: radial-gradient(circle at center, rgba(248, 113, 113, 0.2), transparent 62%);
+  animation: heartbeat-glow 900ms ease-in-out infinite;
+}
+
 .value-wild4 .uno-card__oval {
   background: rgba(255, 255, 255, 0.97);
   border: 4px solid rgba(255, 255, 255, 0.92);
@@ -1591,6 +1657,18 @@ body.has-custom-card-pack .uno-card--back {
   100% { opacity: 0; transform: translate(-50%, -8px) scale(0.95); }
 }
 
+@keyframes warning-pulse {
+  0% { transform: translateX(-50%) scale(0.95); opacity: 0.82; }
+  50% { transform: translateX(-50%) scale(1.06); opacity: 1; }
+  100% { transform: translateX(-50%) scale(0.95); opacity: 0.82; }
+}
+
+@keyframes heartbeat-glow {
+  0% { opacity: 0.2; }
+  45% { opacity: 0.72; }
+  100% { opacity: 0.2; }
+}
+
 .uno-float::before {
   content: '';
   position: absolute;
@@ -1790,6 +1868,22 @@ body.mode-quick-play .center-zone {
     padding: 8px 10px;
     font-size: 0.62rem;
   }
+
+  .timed-mode {
+    left: calc(48px + env(safe-area-inset-left));
+    top: calc(8px + env(safe-area-inset-top));
+    padding: 5px 8px;
+  }
+
+  .timed-mode__clock {
+    font-size: 0.76rem;
+  }
+
+  .last-card-warning {
+    top: calc(44px + env(safe-area-inset-top));
+    font-size: 0.62rem;
+    padding: 5px 10px;
+  }
 }
 
 @media (max-width: 960px) and (orientation: landscape) {
@@ -1924,6 +2018,10 @@ body.mode-quick-play .center-zone {
 
   .powerup-dock {
     max-width: 52vw;
+  }
+
+  .timed-mode {
+    left: calc(44px + env(safe-area-inset-left));
   }
 
   .player-label {

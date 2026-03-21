@@ -31,6 +31,11 @@
     </button>
     <button type="button" id="btn-pause" class="back-btn pause-btn" aria-label="Pause match">Pause</button>
     <section class="powerup-dock" id="powerup-dock" aria-label="Equipped power-ups"></section>
+    <section id="timed-mode-banner" class="timed-mode hidden" aria-live="polite">
+      <span class="timed-mode__label">Timed Mode</span>
+      <span id="timed-mode-clock" class="timed-mode__clock">03:00</span>
+    </section>
+    <div id="last-card-warning" class="last-card-warning hidden" aria-live="assertive">LAST CARD!</div>
     <div id="rotate-overlay" class="rotate-overlay hidden">
       <div class="rotate-card">
         <p>On mobile, tap your screen to enter landscape fullscreen.</p>

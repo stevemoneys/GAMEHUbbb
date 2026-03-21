@@ -41,6 +41,10 @@ const resumeKey = modeConfig.resumeKey;
 const isQuickPlay = selectedMode === 'quick-play';
 const isTeamBattle = selectedMode === 'team-battle';
 const shouldRestoreSavedMatch = params.get('resume') === '1';
+const selectedStageIndex = ((selectedLevel - 1) * 10) + selectedStage;
+const TIMED_MODE_INTERVAL = 5;
+const TIMED_MODE_SECONDS = 180;
+const isTimedModeStage = selectedStageIndex % TIMED_MODE_INTERVAL === 0;
 
 const game = new GameState({
   playerCount: modeConfig.playerCount,
@@ -70,6 +74,9 @@ const dom = {
   drawPile: document.getElementById('draw-pile'),
   discardCard: document.getElementById('discard-card'),
   powerupDock: document.getElementById('powerup-dock'),
+  timedModeBanner: document.getElementById('timed-mode-banner'),
+  timedModeClock: document.getElementById('timed-mode-clock'),
+  lastCardWarning: document.getElementById('last-card-warning'),
   wildPicker: document.getElementById('wild-picker'),
   btnUno: document.getElementById('btn-uno'),
   btnNewIcon: document.getElementById('btn-new-icon'),
@@ -160,6 +167,12 @@ let shieldActive = false;
 let freezeAiTurns = 0;
 let doubleEffectActive = false;
 let destroySelectionMode = false;
+let timedSecondsLeft = TIMED_MODE_SECONDS;
+let timedTickId = null;
+let timedLossTriggered = false;
+let lastCardAlertActive = false;
+let heartbeatTickId = null;
+let heartbeatAudioCtx = null;
 
 function markLandscapeIntent() {
   try {
@@ -563,6 +576,129 @@ function handleUsePowerup(event) {
   }
 }
 
+function formatTimer(seconds) {
+  const safe = Math.max(0, seconds);
+  const mm = String(Math.floor(safe / 60)).padStart(2, '0');
+  const ss = String(safe % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+function renderTimedMode() {
+  if (!dom.timedModeBanner || !dom.timedModeClock) return;
+  const visible = isTimedModeStage && !game.isFinished();
+  dom.timedModeBanner.classList.toggle('hidden', !visible);
+  dom.timedModeClock.textContent = formatTimer(timedSecondsLeft);
+  if (timedSecondsLeft <= 30 && visible) {
+    dom.timedModeBanner.style.borderColor = 'rgba(239, 68, 68, 0.75)';
+  } else {
+    dom.timedModeBanner.style.borderColor = 'rgba(248, 113, 113, 0.35)';
+  }
+}
+
+function stopTimedMode() {
+  if (!timedTickId) return;
+  window.clearInterval(timedTickId);
+  timedTickId = null;
+}
+
+function triggerTimedLoss() {
+  if (timedLossTriggered || game.isFinished()) return;
+  timedLossTriggered = true;
+  stopTimedMode();
+  timedSecondsLeft = 0;
+  game.turnManager.setFinished(1);
+  render();
+  handleMatchEnd();
+}
+
+function startTimedMode() {
+  stopTimedMode();
+  if (!isTimedModeStage || game.isFinished()) {
+    renderTimedMode();
+    return;
+  }
+  if (timedSecondsLeft <= 0) {
+    triggerTimedLoss();
+    return;
+  }
+  timedTickId = window.setInterval(() => {
+    if (isPaused || game.isFinished()) return;
+    timedSecondsLeft -= 1;
+    if (timedSecondsLeft <= 0) {
+      triggerTimedLoss();
+      return;
+    }
+    renderTimedMode();
+  }, 1000);
+  renderTimedMode();
+}
+
+function ensureHeartbeatContext() {
+  if (heartbeatAudioCtx) return heartbeatAudioCtx;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  heartbeatAudioCtx = new Ctx();
+  return heartbeatAudioCtx;
+}
+
+function playHeartbeatPulse() {
+  const ctx = ensureHeartbeatContext();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  const pulse = (start, frequency, gainValue, duration) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  };
+
+  const now = ctx.currentTime;
+  pulse(now, 54, 0.05, 0.12);
+  pulse(now + 0.2, 46, 0.04, 0.14);
+}
+
+function startLastCardAlert() {
+  if (lastCardAlertActive) return;
+  lastCardAlertActive = true;
+  document.body.classList.add('last-card-alert');
+  dom.lastCardWarning?.classList.remove('hidden');
+  playHeartbeatPulse();
+  heartbeatTickId = window.setInterval(playHeartbeatPulse, 920);
+}
+
+function stopLastCardAlert() {
+  if (!lastCardAlertActive) return;
+  lastCardAlertActive = false;
+  document.body.classList.remove('last-card-alert');
+  dom.lastCardWarning?.classList.add('hidden');
+  if (heartbeatTickId) {
+    window.clearInterval(heartbeatTickId);
+    heartbeatTickId = null;
+  }
+}
+
+function updateLastCardAlert() {
+  if (game.isFinished()) {
+    stopLastCardAlert();
+    return;
+  }
+  const anyoneLastCard = Array.from({ length: game.playerCount }, (_, index) => game.getHand(index).length === 1)
+    .some(Boolean);
+  if (anyoneLastCard) {
+    startLastCardAlert();
+  } else {
+    stopLastCardAlert();
+  }
+}
+
 function clearSavedMatch() {
   localStorage.removeItem(resumeKey);
 }
@@ -598,6 +734,10 @@ function saveCurrentMatch() {
         freezeAiTurns,
         doubleEffectActive,
         destroySelectionMode
+      },
+      timedRuntime: {
+        timedSecondsLeft,
+        timedLossTriggered
       },
       state: game.serialize()
     }));
@@ -688,6 +828,8 @@ function restoreSavedMatch() {
   freezeAiTurns = snapshot.powerupRuntime?.freezeAiTurns || 0;
   doubleEffectActive = Boolean(snapshot.powerupRuntime?.doubleEffectActive);
   destroySelectionMode = Boolean(snapshot.powerupRuntime?.destroySelectionMode);
+  timedSecondsLeft = Math.max(0, snapshot.timedRuntime?.timedSecondsLeft ?? TIMED_MODE_SECONDS);
+  timedLossTriggered = Boolean(snapshot.timedRuntime?.timedLossTriggered);
   lastPendingUno = game.getPendingUnoPlayer();
   opponentAvatars = Array.isArray(snapshot.opponentAvatars) && snapshot.opponentAvatars.length === 3
     ? snapshot.opponentAvatars
@@ -697,6 +839,7 @@ function restoreSavedMatch() {
   applyCardPackFromStorage();
   syncRewardQueueSize();
   cancelAITurns();
+  startTimedMode();
   render();
   runAITurns();
   return true;
@@ -1408,6 +1551,8 @@ function unlockNextStageProgress() {
 
 function handleMatchEnd() {
   if (!game.isFinished() || matchRecorded) return;
+  stopTimedMode();
+  stopLastCardAlert();
   matchRecorded = true;
   clearSavedMatch();
   const winner = game.getWinnerIndex();
@@ -1433,6 +1578,9 @@ function handleMatchEnd() {
     dom.endModalMessage.textContent = playerSideWon
       ? 'Great job! Ready for the next challenge?'
       : 'Do not give up. Shuffle again and try once more.';
+    if (!playerSideWon && isTimedModeStage && timedSecondsLeft <= 0) {
+      dom.endModalMessage.textContent = 'Time is up. Timed Mode defeated this round.';
+    }
     if (isTeamBattle && playerSideWon && winner === 2) {
       dom.endModalMessage.textContent = 'Your teammate finished the round. Your side still takes the win.';
     }
@@ -1445,6 +1593,7 @@ function handleMatchEnd() {
 
 function render() {
   if (dom.deckCount) dom.deckCount.textContent = game.getDeckLength();
+  renderTimedMode();
   renderAvatars();
   renderOpponentCounts();
   renderDiscard();
@@ -1484,6 +1633,7 @@ function render() {
     lastPendingUno = pendingUno;
   }
   if (pendingUno === null && lastPendingUno !== null) lastPendingUno = null;
+  updateLastCardAlert();
 
   saveCurrentMatch();
 }
@@ -1670,6 +1820,8 @@ function closeNewGameConfirm(resumeTurns = true) {
 function handleNewGame() {
   clearSavedMatch();
   cancelAITurns();
+  stopTimedMode();
+  stopLastCardAlert();
   isPaused = false;
   dom.pauseModal?.classList.add('hidden');
   dom.gameShell?.classList.remove('is-paused');
@@ -1682,6 +1834,8 @@ function handleNewGame() {
   freezeAiTurns = 0;
   doubleEffectActive = false;
   destroySelectionMode = false;
+  timedSecondsLeft = TIMED_MODE_SECONDS;
+  timedLossTriggered = false;
   matchRecorded = false;
   lastPendingUno = null;
   opponentAvatars = pickOpponentAvatars();
@@ -1690,6 +1844,7 @@ function handleNewGame() {
   applyCardPackFromStorage();
   rewards?.startNewMatch?.();
   syncRewardQueueSize();
+  startTimedMode();
   announceRoundStartSpeech();
   startRoundPresentation();
   tryLockOrientation();
@@ -1783,6 +1938,9 @@ function runAITurns() {
 function initPhase4UI() {
   initGameAudio();
   loadPowerupState();
+  timedSecondsLeft = TIMED_MODE_SECONDS;
+  timedLossTriggered = false;
+  stopLastCardAlert();
   markLandscapeIntent();
   activateLandscapeMode();
   syncRewardQueueSize();
@@ -1795,6 +1953,7 @@ function initPhase4UI() {
     applyThemeFromStorage();
     applyCardPackFromStorage();
     rewards?.startNewMatch?.();
+    startTimedMode();
     announceRoundStartSpeech();
     startRoundPresentation();
   }
@@ -1827,10 +1986,14 @@ function initPhase4UI() {
     activateLandscapeMode();
   });
   window.addEventListener('beforeunload', () => {
+    stopTimedMode();
+    stopLastCardAlert();
     saveCurrentMatch();
     stopLandscapeRetry();
   });
   window.addEventListener('pagehide', () => {
+    stopTimedMode();
+    stopLastCardAlert();
     saveCurrentMatch();
     stopLandscapeRetry();
   });
