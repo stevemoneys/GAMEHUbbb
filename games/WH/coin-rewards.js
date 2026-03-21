@@ -1,5 +1,6 @@
-const rewards = window.GameHubRewards;
+const rewards = window.WHRewards;
 const coinCountEl = document.getElementById("coin-count");
+const balanceCardEl = document.getElementById("balance-card");
 const rewardListEl = document.getElementById("reward-list");
 const emptyStateEl = document.getElementById("empty-state");
 const coinFxLayer = document.getElementById("coin-fx-layer");
@@ -8,7 +9,7 @@ const dailySubtitleEl = document.getElementById("daily-subtitle");
 const dailyAmountEl = document.getElementById("daily-amount");
 const dailyClaimBtn = document.getElementById("daily-claim");
 const dailyScheduleEl = document.getElementById("daily-schedule");
-const backBtn = document.getElementById("btn-back");
+const missionListEl = document.getElementById("mission-list");
 
 function setCoinBalance(value) {
   if (coinCountEl) coinCountEl.textContent = String(value);
@@ -30,12 +31,9 @@ function animateCoinCount(fromValue, toValue) {
 }
 
 function spawnCoinBurst(originEl, amount) {
-  if (!coinFxLayer || !originEl || !coinCountEl) return;
-  const targetEl = document.querySelector(".balance-card");
-  if (!targetEl) return;
-
+  if (!coinFxLayer || !originEl || !balanceCardEl) return;
   const startRect = originEl.getBoundingClientRect();
-  const targetRect = targetEl.getBoundingClientRect();
+  const targetRect = balanceCardEl.getBoundingClientRect();
   const startX = startRect.left + startRect.width / 2;
   const startY = startRect.top + startRect.height / 2;
   const endX = targetRect.left + targetRect.width / 2;
@@ -47,13 +45,10 @@ function spawnCoinBurst(originEl, amount) {
     coin.className = "coin-fx";
     const jitterX = (Math.random() - 0.5) * 32;
     const jitterY = (Math.random() - 0.5) * 32;
-    const dx = endX - startX + jitterX;
-    const dy = endY - startY + jitterY;
-
     coin.style.left = `${startX}px`;
     coin.style.top = `${startY}px`;
-    coin.style.setProperty("--dx", `${dx}px`);
-    coin.style.setProperty("--dy", `${dy}px`);
+    coin.style.setProperty("--dx", `${endX - startX + jitterX}px`);
+    coin.style.setProperty("--dy", `${endY - startY + jitterY}px`);
     coinFxLayer.appendChild(coin);
     coin.addEventListener("animationend", () => coin.remove());
   }
@@ -110,16 +105,32 @@ function renderRewardQueue() {
         <div class="reward-subtitle">Reward earned</div>
       </div>
       <button class="reward-claim-btn" type="button" data-entry-id="${entry.entryId}">
-        <span class="coin-icon" aria-hidden="true"></span>
+        <span class="coin-dot" aria-hidden="true"></span>
         <span>${entry.amount}</span>
       </button>
     `;
     rewardListEl.appendChild(card);
   });
 
-  if (emptyStateEl) {
-    emptyStateEl.classList.toggle("hidden", list.length > 0);
-  }
+  emptyStateEl?.classList.toggle("hidden", list.length > 0);
+}
+
+function renderMissions() {
+  if (!missionListEl || !rewards?.getMissionProgress) return;
+  const missions = rewards.getMissionProgress();
+  missionListEl.innerHTML = "";
+  missions.forEach((mission) => {
+    const card = document.createElement("div");
+    card.className = `mission-card${mission.completed ? " completed" : ""}`;
+    card.innerHTML = `
+      <div>
+        <div class="mission-title">${mission.title}</div>
+        <div class="mission-meta">${mission.progress}/${mission.target}</div>
+      </div>
+      <div class="mission-reward">+${mission.reward}</div>
+    `;
+    missionListEl.appendChild(card);
+  });
 }
 
 function handleClaim(entryId, originEl) {
@@ -131,35 +142,26 @@ function handleClaim(entryId, originEl) {
   renderRewardQueue();
 }
 
-if (dailyClaimBtn) {
-  dailyClaimBtn.addEventListener("click", (event) => {
-    if (!rewards) return;
-    const result = rewards.claimDailyReward();
-    if (!result) return;
-    spawnCoinBurst(event.currentTarget, result.amount);
-    animateCoinCount(result.current, result.next);
-    updateDailyCard();
-  });
-}
+dailyClaimBtn?.addEventListener("click", (event) => {
+  if (!rewards) return;
+  const result = rewards.claimDailyReward();
+  if (!result) return;
+  spawnCoinBurst(event.currentTarget, result.amount);
+  animateCoinCount(result.current, result.next);
+  updateDailyCard();
+});
 
-if (rewardListEl) {
-  rewardListEl.addEventListener("click", (event) => {
-    const target = event.target.closest(".reward-claim-btn");
-    if (!target) return;
-    const entryId = target.getAttribute("data-entry-id");
-    if (!entryId) return;
-    handleClaim(entryId, target);
-  });
-}
-
-if (backBtn) {
-  backBtn.addEventListener("click", () => {
-    window.location.href = "index.html";
-  });
-}
+rewardListEl?.addEventListener("click", (event) => {
+  const target = event.target.closest(".reward-claim-btn");
+  if (!target) return;
+  const entryId = target.getAttribute("data-entry-id");
+  if (!entryId) return;
+  handleClaim(entryId, target);
+});
 
 if (rewards) {
   setCoinBalance(rewards.getCoinBalance());
   updateDailyCard();
   renderRewardQueue();
+  renderMissions();
 }

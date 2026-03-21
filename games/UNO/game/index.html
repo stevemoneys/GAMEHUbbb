@@ -9,31 +9,6 @@
   <meta name="full-screen" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <script>
-    (() => {
-      const root = document.documentElement;
-      try {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (root.requestFullscreen) {
-            const fullscreenResult = root.requestFullscreen({ navigationUI: "hide" });
-            if (fullscreenResult && typeof fullscreenResult.catch === "function") {
-              fullscreenResult.catch(() => {});
-            }
-          } else if (root.webkitRequestFullscreen) {
-            root.webkitRequestFullscreen();
-          }
-        }
-      } catch {}
-      try {
-        if (screen.orientation && screen.orientation.lock) {
-          const lockResult = screen.orientation.lock("landscape");
-          if (lockResult && typeof lockResult.catch === "function") {
-            lockResult.catch(() => {});
-          }
-        }
-      } catch {}
-    })();
-  </script>
   <title>UNO - GameHub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,6 +30,7 @@
       </svg>
     </button>
     <button type="button" id="btn-pause" class="back-btn pause-btn" aria-label="Pause match">Pause</button>
+    <section class="powerup-dock" id="powerup-dock" aria-label="Equipped power-ups"></section>
     <div id="rotate-overlay" class="rotate-overlay hidden">
       <div class="rotate-card">
         <p>On mobile, tap your screen to enter landscape fullscreen.</p>

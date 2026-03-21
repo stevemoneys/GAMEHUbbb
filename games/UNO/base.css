@@ -1,60 +1,68 @@
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
 :root {
-  /* Professional UNO palette - elegant & enticing */
-  --bg-deep: #0a0e17;
-  --bg-primary: #0f1629;
-  --bg-secondary: #151d2e;
-  --bg-card: #1a2332;
-  --bg-card-hover: #222d40;
-  --border-subtle: rgba(248, 250, 252, 0.06);
-  --border-accent: rgba(251, 191, 36, 0.25);
+  --bg-deep: #050911;
+  --bg-primary: #0b1220;
+  --bg-secondary: #111b2f;
+  --bg-card: rgba(11, 18, 32, 0.8);
+  --bg-card-hover: rgba(20, 31, 53, 0.92);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+  --border-accent: rgba(251, 191, 36, 0.45);
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
   --accent-gold: #fbbf24;
   --accent-gold-dim: #f59e0b;
   --accent-warm: #f97316;
-  --accent-coral: #fb923c;
-  --uno-red: #ef4444;
-  --uno-blue: #3b82f6;
-  --uno-green: #22c55e;
-  --uno-yellow: #eab308;
-  --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.3);
-  --shadow-glow: 0 0 40px rgba(251, 191, 36, 0.08);
-  --gradient-hero: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #f97316 100%);
-  --gradient-bg: linear-gradient(180deg, #0f1629 0%, #0a0e17 100%);
-  --home-bg-image: url('assets/home-bg.png');
-  --game-bg-image: url('assets/game-bg.png');
+  --accent-blue: #38bdf8;
+  --accent-emerald: #10b981;
+  --surface-glass: linear-gradient(155deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+  --surface-panel: linear-gradient(160deg, rgba(8, 14, 26, 0.9), rgba(6, 10, 20, 0.88));
+  --gradient-hero: linear-gradient(125deg, #fcd34d 0%, #f59e0b 50%, #ea580c 100%);
+  --gradient-bg: linear-gradient(180deg, #0d1527 0%, #050911 100%);
+  --home-bg-image: url("assets/home-bg.png");
+  --game-bg-image: url("assets/game-bg.png");
+  --shadow-soft: 0 10px 30px rgba(2, 6, 23, 0.35);
+  --shadow-raised: 0 18px 40px rgba(2, 6, 23, 0.45);
+  --shadow-glow: 0 0 40px rgba(251, 191, 36, 0.22);
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
-  --radius-xl: 24px;
+  --radius-xl: 26px;
 }
 
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
-  background: var(--gradient-bg);
+  font-family: "Outfit", system-ui, -apple-system, sans-serif;
+  min-height: 100dvh;
+  background:
+    radial-gradient(1150px 650px at 12% 8%, rgba(56, 189, 248, 0.14), transparent 56%),
+    radial-gradient(1150px 650px at 86% 84%, rgba(251, 191, 36, 0.14), transparent 55%),
+    var(--gradient-bg);
   color: var(--text-primary);
-  min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 body.home-screen {
   background:
-    linear-gradient(180deg, rgba(10, 14, 23, 0.85), rgba(10, 14, 23, 0.6)),
+    linear-gradient(180deg, rgba(5, 9, 17, 0.7), rgba(5, 9, 17, 0.78)),
+    radial-gradient(1000px 560px at 18% 8%, rgba(56, 189, 248, 0.22), transparent 60%),
+    radial-gradient(1000px 520px at 84% 78%, rgba(251, 146, 60, 0.22), transparent 60%),
     var(--home-bg-image);
-  background-size: cover;
-  background-position: center;
+  background-size: auto, auto, auto, cover;
+  background-position: center, center, center, center;
   background-repeat: no-repeat;
 }
 

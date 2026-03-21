@@ -69,6 +69,7 @@ const dom = {
   deckCount: document.getElementById('deck-count'),
   drawPile: document.getElementById('draw-pile'),
   discardCard: document.getElementById('discard-card'),
+  powerupDock: document.getElementById('powerup-dock'),
   wildPicker: document.getElementById('wild-picker'),
   btnUno: document.getElementById('btn-uno'),
   btnNewIcon: document.getElementById('btn-new-icon'),
@@ -102,7 +103,7 @@ let lastPendingUno = null;
 let lastRewardQueueSize = 0;
 let isPaused = false;
 let aiTurnToken = 0;
-let fullscreenWatchdogId = null;
+let landscapeRetryId = null;
 const lastSpeechAt = Array.from({ length: game.playerCount }, () => 0);
 const drawAnimationSuppress = Array.from({ length: game.playerCount }, () => 0);
 const bubbleStacks = Array.from({ length: game.playerCount }, () => 0);
@@ -133,13 +134,32 @@ const PROGRESS_KEYS = [
 ];
 const AVATAR_UNLOCK_STAGE_INTERVAL = 5;
 const rewards = window.GameHubRewards;
+const powerUpsCatalog = window.GameHubPowerUps || [
+  { id: 'second-chance', name: 'Second Chance', icon: '🔄' },
+  { id: 'peek-ai', name: 'Peek AI Cards', icon: '🔍' },
+  { id: 'shield', name: 'Shield', icon: '🛡' },
+  { id: 'magnet-draw', name: 'Magnet Draw', icon: '🧲' },
+  { id: 'destroy-card', name: 'Destroy Card', icon: '💥' },
+  { id: 'freeze-ai', name: 'Freeze AI', icon: '⏸' },
+  { id: 'double-effect', name: 'Double Effect', icon: '🔥' }
+];
 const THEME_PATH_KEY = 'gamehub_uno_theme_path';
 const CARD_PACK_PATH_KEY = 'gamehub_uno_card_pack_path';
+const POWERUP_COUNTS_KEY = 'gamehub_uno_powerup_counts';
+const POWERUP_EQUIPPED_KEY = 'gamehub_uno_powerup_equipped';
+const MAX_EQUIPPED_POWERUPS = 4;
 const SPEECH_SETTING_KEY = 'gamehub_uno_setting_speech';
 const REACTIONS_SETTING_KEY = 'gamehub_uno_setting_reactions';
 const wildPalette = { red: '#e03b3b', blue: '#2b6df7', green: '#22c55e', yellow: '#f4c430' };
 let matchRecorded = false;
 let opponentAvatars = [];
+let powerUpCounts = {};
+let equippedPowerUpIds = [];
+let bonusTurnPlaysRemaining = 0;
+let shieldActive = false;
+let freezeAiTurns = 0;
+let doubleEffectActive = false;
+let destroySelectionMode = false;
 
 function markLandscapeIntent() {
   try {
@@ -347,6 +367,202 @@ function applyCardPackFromStorage() {
   document.body.classList.add('has-custom-card-pack');
 }
 
+function loadPowerupState() {
+  try {
+    const rawCounts = JSON.parse(localStorage.getItem(POWERUP_COUNTS_KEY) || '{}');
+    powerUpCounts = rawCounts && typeof rawCounts === 'object' ? rawCounts : {};
+  } catch {
+    powerUpCounts = {};
+  }
+  try {
+    const rawEquipped = JSON.parse(localStorage.getItem(POWERUP_EQUIPPED_KEY) || '[]');
+    equippedPowerUpIds = Array.isArray(rawEquipped) ? rawEquipped.slice(0, MAX_EQUIPPED_POWERUPS) : [];
+  } catch {
+    equippedPowerUpIds = [];
+  }
+}
+
+function savePowerupState() {
+  localStorage.setItem(POWERUP_COUNTS_KEY, JSON.stringify(powerUpCounts));
+  localStorage.setItem(POWERUP_EQUIPPED_KEY, JSON.stringify(equippedPowerUpIds.slice(0, MAX_EQUIPPED_POWERUPS)));
+}
+
+function getPowerupCount(id) {
+  const parsed = parseInt(String(powerUpCounts[id] ?? 0), 10);
+  return Number.isNaN(parsed) ? 0 : Math.max(0, parsed);
+}
+
+function consumePowerupCharge(id) {
+  const count = getPowerupCount(id);
+  if (count < 1) return false;
+  powerUpCounts[id] = count - 1;
+  savePowerupState();
+  return true;
+}
+
+function findPowerup(id) {
+  return powerUpsCatalog.find((item) => item.id === id);
+}
+
+function showPowerupToast(text) {
+  if (!dom.gameShell) return;
+  const toast = document.createElement('div');
+  toast.className = 'powerup-toast';
+  toast.textContent = text;
+  dom.gameShell.appendChild(toast);
+  setTimeout(() => toast.remove(), 1200);
+}
+
+function getPrimaryAiIndex() {
+  if (isQuickPlay) return 1;
+  if (isTeamBattle) return 1;
+  return 1;
+}
+
+function findGuaranteedPlayableFromDeck() {
+  const top = game.getTopCard();
+  if (!top) return -1;
+  const effectiveColor = top.type === 'wild' ? game.getCurrentWildColor() : top.color;
+  for (let i = 0; i < game.deck.length; i += 1) {
+    const candidate = game.deck[i];
+    if (!candidate) continue;
+    if (candidate.type === 'wild') return i;
+    if (effectiveColor && candidate.color === effectiveColor) return i;
+    if (candidate.type === top.type && candidate.value === top.value) return i;
+    if (top.type === 'number' && candidate.type === 'number' && candidate.value === top.value) return i;
+    if (top.type === 'action' && candidate.type === 'action' && candidate.value === top.value) return i;
+  }
+  return -1;
+}
+
+function renderPowerupDock() {
+  if (!dom.powerupDock) return;
+  const usable = equippedPowerUpIds.filter((id) => getPowerupCount(id) > 0).slice(0, MAX_EQUIPPED_POWERUPS);
+  if (usable.length === 0) {
+    dom.powerupDock.innerHTML = '';
+    dom.powerupDock.style.display = 'none';
+    return;
+  }
+  dom.powerupDock.style.display = 'flex';
+  dom.powerupDock.innerHTML = usable
+    .map((id) => {
+      const meta = findPowerup(id);
+      const count = getPowerupCount(id);
+      const disabled = isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0;
+      return `
+        <button type="button" class="powerup-pill" data-powerup-id="${id}" title="${meta?.name || id}" ${disabled ? 'disabled' : ''}>
+          <span aria-hidden="true">${meta?.icon || '⭐'}</span>
+          <span class="powerup-pill__count">${count}</span>
+        </button>
+      `;
+    })
+    .join('');
+}
+
+function consumeDoubleIfNeeded(card) {
+  if (!doubleEffectActive || !card) return false;
+  const affected = card.value === 'draw2' || card.value === 'wild4' || card.value === 'skip';
+  if (!affected) return false;
+
+  if (card.value === 'draw2') {
+    game.pendingDraw += 2;
+  } else if (card.value === 'wild4') {
+    game.pendingDraw += 4;
+  } else if (card.value === 'skip') {
+    game.turnManager.advance(1);
+  }
+  doubleEffectActive = false;
+  showPowerupToast('Double Effect x2');
+  return true;
+}
+
+function handleUsePowerup(event) {
+  const button = event.target.closest('.powerup-pill');
+  if (!button || isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
+  const powerupId = button.dataset.powerupId;
+  if (!powerupId || !consumePowerupCharge(powerupId)) return;
+
+  if (powerupId === 'second-chance') {
+    bonusTurnPlaysRemaining = Math.max(bonusTurnPlaysRemaining, 1);
+    showPowerupToast('Second Chance Ready');
+    render();
+    return;
+  }
+
+  if (powerupId === 'peek-ai') {
+    const aiIndex = getPrimaryAiIndex();
+    const aiHand = game.getHand(aiIndex);
+    if (!aiHand.length) {
+      showPowerupToast('No AI card to peek');
+      render();
+      return;
+    }
+    const reveal = aiHand[Math.floor(Math.random() * aiHand.length)];
+    maybeShowSpeech(0, `Peek: ${getCardDisplay(reveal)} ${reveal.color || 'wild'}`);
+    showPowerupToast('Peeked AI Card');
+    render();
+    return;
+  }
+
+  if (powerupId === 'shield') {
+    shieldActive = true;
+    showPowerupToast('Shield Active');
+    render();
+    return;
+  }
+
+  if (powerupId === 'magnet-draw') {
+    if (game.getPendingDraw() > 0) {
+      showPowerupToast('Cannot use during penalty');
+      powerUpCounts[powerupId] = getPowerupCount(powerupId) + 1;
+      savePowerupState();
+      render();
+      return;
+    }
+    const playableIndex = findGuaranteedPlayableFromDeck();
+    if (playableIndex > 0) {
+      const [picked] = game.deck.splice(playableIndex, 1);
+      game.deck.unshift(picked);
+    }
+    const drawn = game.drawForPlayer(0, 1);
+    if (drawn.length > 0) {
+      rewards?.recordDraw?.(0, 1, false);
+      playSfx('cardDraw', 0.7);
+      animateDrawToPlayer(0, 1, { wasPenalty: false });
+      showPowerupToast('Magnet Draw');
+    }
+    render();
+    return;
+  }
+
+  if (powerupId === 'destroy-card') {
+    if (game.getHand(0).length <= 1) {
+      showPowerupToast('Need at least 2 cards');
+      powerUpCounts[powerupId] = getPowerupCount(powerupId) + 1;
+      savePowerupState();
+      render();
+      return;
+    }
+    destroySelectionMode = true;
+    showPowerupToast('Tap a card to destroy');
+    render();
+    return;
+  }
+
+  if (powerupId === 'freeze-ai') {
+    freezeAiTurns += 1;
+    showPowerupToast('AI Frozen');
+    render();
+    return;
+  }
+
+  if (powerupId === 'double-effect') {
+    doubleEffectActive = true;
+    showPowerupToast('Double Effect Armed');
+    render();
+  }
+}
+
 function clearSavedMatch() {
   localStorage.removeItem(resumeKey);
 }
@@ -376,6 +592,13 @@ function saveCurrentMatch() {
       savedAt: Date.now(),
       opponentAvatars,
       matchRecorded,
+      powerupRuntime: {
+        bonusTurnPlaysRemaining,
+        shieldActive,
+        freezeAiTurns,
+        doubleEffectActive,
+        destroySelectionMode
+      },
       state: game.serialize()
     }));
   } catch {
@@ -399,21 +622,29 @@ async function requestFullscreenMode() {
   }
 }
 
-function startFullscreenWatchdog() {
-  if (fullscreenWatchdogId) {
-    window.clearInterval(fullscreenWatchdogId);
-    fullscreenWatchdogId = null;
-  }
+function stopLandscapeRetry() {
+  if (!landscapeRetryId) return;
+  window.clearInterval(landscapeRetryId);
+  landscapeRetryId = null;
+}
+
+function markLandscapeGameActive() {
+  document.body.classList.add('landscape-game-active');
+  updateOrientationOverlay();
+}
+
+function startLandscapeRetry() {
+  stopLandscapeRetry();
   let tries = 0;
-  fullscreenWatchdogId = window.setInterval(() => {
+  landscapeRetryId = window.setInterval(() => {
     tries += 1;
-    activateLandscapeMode();
+    requestLandscapeMode();
     const fullscreenReady = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
-    if ((fullscreenReady && !isPortraitOrientation()) || tries >= 28) {
-      window.clearInterval(fullscreenWatchdogId);
-      fullscreenWatchdogId = null;
+    const landscapeReady = !isPortraitOrientation();
+    if ((fullscreenReady && landscapeReady) || tries >= 24) {
+      stopLandscapeRetry();
     }
-  }, 320);
+  }, 360);
 }
 
 function cancelAITurns() {
@@ -450,7 +681,13 @@ function restoreSavedMatch() {
 
   selectedWildCard = null;
   selectedWildCardEl = null;
+  loadPowerupState();
   matchRecorded = Boolean(snapshot.matchRecorded);
+  bonusTurnPlaysRemaining = snapshot.powerupRuntime?.bonusTurnPlaysRemaining || 0;
+  shieldActive = Boolean(snapshot.powerupRuntime?.shieldActive);
+  freezeAiTurns = snapshot.powerupRuntime?.freezeAiTurns || 0;
+  doubleEffectActive = Boolean(snapshot.powerupRuntime?.doubleEffectActive);
+  destroySelectionMode = Boolean(snapshot.powerupRuntime?.destroySelectionMode);
   lastPendingUno = game.getPendingUnoPlayer();
   opponentAvatars = Array.isArray(snapshot.opponentAvatars) && snapshot.opponentAvatars.length === 3
     ? snapshot.opponentAvatars
@@ -1047,7 +1284,8 @@ function getValueClass(card) {
 }
 
 function updateOrientationOverlay() {
-  const shouldShow = isPortraitOrientation();
+  const gameplayActive = document.body.classList.contains('landscape-game-active');
+  const shouldShow = gameplayActive && isPortraitOrientation();
   dom.rotateOverlay?.classList.toggle('hidden', !shouldShow);
 }
 
@@ -1066,6 +1304,12 @@ function isPortraitOrientation() {
 
 async function activateLandscapeMode() {
   markLandscapeIntent();
+  markLandscapeGameActive();
+  await requestLandscapeMode();
+  startLandscapeRetry();
+}
+
+async function requestLandscapeMode() {
   await requestFullscreenMode();
   await tryLockOrientation();
   updateOrientationOverlay();
@@ -1073,9 +1317,16 @@ async function activateLandscapeMode() {
 
 function handleOrientationChange() {
   updateOrientationOverlay();
-  if (isPortraitOrientation()) return;
-  activateLandscapeMode();
-  startFullscreenWatchdog();
+  if (isPortraitOrientation() || document.hidden) return;
+  requestLandscapeMode();
+  startLandscapeRetry();
+}
+
+function handleFullscreenChange() {
+  updateOrientationOverlay();
+  if (document.hidden || isPortraitOrientation()) return;
+  requestLandscapeMode();
+  startLandscapeRetry();
 }
 
 function setActivePlayer(currentIndex) {
@@ -1198,6 +1449,7 @@ function render() {
   renderOpponentCounts();
   renderDiscard();
   renderHand();
+  renderPowerupDock();
   setActivePlayer(game.getCurrentPlayerIndex());
 
   rewards?.recordHandSnapshot?.(
@@ -1223,6 +1475,7 @@ function render() {
     }
   }
   if (dom.handCards) dom.handCards.classList.toggle('hand-glow', isHumanTurn);
+  if (dom.handCards) dom.handCards.classList.toggle('destroy-select', destroySelectionMode);
 
   const pendingUno = game.getPendingUnoPlayer();
   if (pendingUno !== null && pendingUno !== lastPendingUno) {
@@ -1271,6 +1524,12 @@ function playCard(card, wildColor = null, sourceEl = null, sourcePlayer = null) 
   const sourceRect = sourceEl ? sourceEl.getBoundingClientRect() : null;
   const result = game.playCard(card, wildColor);
   if (!result.success) return;
+  consumeDoubleIfNeeded(card);
+  if (bonusTurnPlaysRemaining > 0 && !game.isFinished()) {
+    game.turnManager.currentPlayerIndex = 0;
+    bonusTurnPlaysRemaining -= 1;
+    showPowerupToast('Second Chance');
+  }
   recordRewardedAction(() => {
     rewards?.recordCardPlayed?.(0, card);
   });
@@ -1302,6 +1561,23 @@ function handleHandClick(event) {
   const cardId = cardEl.dataset.cardId;
   const hand = game.getHand(0);
   const card = hand.find((c) => c.id === cardId);
+  if (destroySelectionMode) {
+    if (!card || hand.length <= 1) {
+      destroySelectionMode = false;
+      render();
+      return;
+    }
+    const idx = hand.findIndex((c) => c.id === card.id);
+    if (idx >= 0) {
+      hand.splice(idx, 1);
+      destroySelectionMode = false;
+      addAnimationClass(cardEl, 'invalid-shake');
+      playSfx('actionCard', 0.8);
+      showPowerupToast('Card Destroyed');
+      render();
+    }
+    return;
+  }
   if (!card || !game.isValidPlay(card)) {
     addAnimationClass(cardEl, 'invalid-shake');
     return;
@@ -1335,6 +1611,13 @@ function handleWildPick(event) {
 
 function handleDrawPile() {
   if (isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
+  if (shieldActive && game.getPendingDraw() > 0) {
+    game.pendingDraw = 0;
+    shieldActive = false;
+    showPowerupToast('Shield Blocked Penalty');
+    render();
+    return;
+  }
   const mustDraw = game.getPendingDraw() > 0 || game.getValidMoves(0).length === 0;
   if (!mustDraw) return;
   const wasPenalty = game.getPendingDraw() > 0;
@@ -1391,8 +1674,14 @@ function handleNewGame() {
   dom.pauseModal?.classList.add('hidden');
   dom.gameShell?.classList.remove('is-paused');
   game.init();
+  loadPowerupState();
   selectedWildCard = null;
   selectedWildCardEl = null;
+  bonusTurnPlaysRemaining = 0;
+  shieldActive = false;
+  freezeAiTurns = 0;
+  doubleEffectActive = false;
+  destroySelectionMode = false;
   matchRecorded = false;
   lastPendingUno = null;
   opponentAvatars = pickOpponentAvatars();
@@ -1415,6 +1704,14 @@ function runAITurns() {
   setTimeout(() => {
     if (turnToken !== aiTurnToken || isPaused || game.isFinished() || game.getCurrentPlayerIndex() === 0) return;
     const aiPid = game.getCurrentPlayerIndex();
+    if (freezeAiTurns > 0) {
+      freezeAiTurns -= 1;
+      game.turnManager.advance(0);
+      showPowerupToast('Freeze AI Triggered');
+      render();
+      runAITurns();
+      return;
+    }
 
     if (game.canCallUno(aiPid)) {
       game.callUno(aiPid);
@@ -1485,9 +1782,9 @@ function runAITurns() {
 
 function initPhase4UI() {
   initGameAudio();
+  loadPowerupState();
   markLandscapeIntent();
   activateLandscapeMode();
-  startFullscreenWatchdog();
   syncRewardQueueSize();
   if (!shouldRestoreSavedMatch || !restoreSavedMatch()) {
     game.init();
@@ -1505,34 +1802,41 @@ function initPhase4UI() {
   document.body.addEventListener('click', () => {
     unlockAudio();
     activateLandscapeMode();
-  }, { once: true });
+  }, { passive: true });
   document.body.addEventListener('touchstart', () => {
     unlockAudio();
     activateLandscapeMode();
-  }, { once: true, passive: true });
+  }, { passive: true });
   document.body.addEventListener('pointerdown', () => {
     unlockAudio();
     activateLandscapeMode();
-  }, { once: true });
-  window.addEventListener('resize', updateOrientationOverlay);
+  }, { passive: true });
+  window.addEventListener('resize', handleOrientationChange);
   window.addEventListener('orientationchange', handleOrientationChange);
-  document.addEventListener('fullscreenchange', updateOrientationOverlay);
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       saveCurrentMatch();
+      stopLandscapeRetry();
       return;
     }
     activateLandscapeMode();
-    startFullscreenWatchdog();
   });
   window.addEventListener('pageshow', () => {
+    if (document.hidden) return;
     activateLandscapeMode();
-    startFullscreenWatchdog();
   });
-  window.addEventListener('beforeunload', saveCurrentMatch);
-  window.addEventListener('pagehide', saveCurrentMatch);
+  window.addEventListener('beforeunload', () => {
+    saveCurrentMatch();
+    stopLandscapeRetry();
+  });
+  window.addEventListener('pagehide', () => {
+    saveCurrentMatch();
+    stopLandscapeRetry();
+  });
 
   dom.handCards?.addEventListener('click', handleHandClick);
+  dom.powerupDock?.addEventListener('click', handleUsePowerup);
   dom.wildPicker?.addEventListener('click', handleWildPick);
   dom.drawPile?.addEventListener('click', handleDrawPile);
   dom.btnUno?.addEventListener('click', handleUno);

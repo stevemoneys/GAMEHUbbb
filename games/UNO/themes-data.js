@@ -20,3 +20,55 @@ window.GameHubThemes = [
   { id: 19, name: "Liquid Light", price: 1300, src: "assets/themes/theme19.webp", url: "assets/themes/theme19.webp" },
   { id: 20, name: "Infinity Core", price: 1500, src: "assets/themes/theme20.webp", url: "assets/themes/theme20.webp" }
 ];
+
+window.GameHubPowerUps = [
+  {
+    id: "second-chance",
+    name: "Second Chance",
+    icon: "🔄",
+    description: "Play 2 cards in one turn.",
+    price: 420
+  },
+  {
+    id: "peek-ai",
+    name: "Peek AI Cards",
+    icon: "🔍",
+    description: "See one AI card briefly.",
+    price: 360
+  },
+  {
+    id: "shield",
+    name: "Shield",
+    icon: "🛡",
+    description: "Blocks the next Draw penalty.",
+    price: 520
+  },
+  {
+    id: "magnet-draw",
+    name: "Magnet Draw",
+    icon: "🧲",
+    description: "Draw a guaranteed playable card.",
+    price: 460
+  },
+  {
+    id: "destroy-card",
+    name: "Destroy Card",
+    icon: "💥",
+    description: "Remove 1 bad card from your hand.",
+    price: 580
+  },
+  {
+    id: "freeze-ai",
+    name: "Freeze AI",
+    icon: "⏸",
+    description: "AI skips next turn.",
+    price: 500
+  },
+  {
+    id: "double-effect",
+    name: "Double Effect",
+    icon: "🔥",
+    description: "Next special card effect becomes x2.",
+    price: 640
+  }
+];

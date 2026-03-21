@@ -26,12 +26,17 @@ const backgroundImages = [
 
 const SHAPES = ["\u2B24", "\u25B2", "\u25A0", "\u2716", "\u2605"];
 const ANIMATION_SPEED = 850;
+const PLAY_FLIGHT_MS = 540;
+const DRAW_FLIGHT_MS = 460;
+const OPENING_DEAL_FLIGHT_MS = 430;
+const OPENING_DEAL_STAGGER_MS = 86;
 
 let currentLevel = 1;
 let skipAiTurns = 0;
 let skipAllAIs = false;
 let skipPlayerTurns = 0;
 let playAnimationLocked = false;
+let openingDealToken = 0;
 let aiTurnTimer = null;
 
 let bgIndex = 0;
@@ -52,6 +57,30 @@ bgMusic.volume = 0.5;
 
 let rotateLockOverlayElement = null;
 const WH_RESUME_KEY = "whot_saved_match_v1";
+const WH_THEME_CLASS_KEY = "wh_theme_selected_class";
+const WH_THEME_BACK_KEY = "wh_theme_selected_back";
+const ALL_THEME_CLASSES = [
+  "theme-minimal",
+  "theme-wood",
+  "theme-leather",
+  "theme-tribal",
+  "theme-gold",
+  "theme-royal",
+  "theme-neon",
+  "theme-magic",
+  "theme-glass",
+  "theme-fire",
+  "theme-galaxy",
+  "theme-shadow",
+  "theme-diamond",
+  "theme-hypnotic",
+  "theme-ancient",
+  "theme-energy",
+  "theme-esports",
+  "theme-metal",
+  "theme-mythic",
+  "theme-god"
+];
 
 function saveSettings() {
   localStorage.setItem("whotSettings", JSON.stringify(state.settings));
@@ -65,7 +94,6 @@ function loadSettings() {
 }
 
 document.addEventListener("click", () => {
-  Object.values(sounds).forEach((sound) => sound.play().catch(() => {}));
   updateBackgroundMusic();
 }, { once: true });
 
@@ -123,6 +151,20 @@ function updateRotateLockOverlay() {
   const inPortrait = window.matchMedia("(orientation: portrait)").matches;
   const activeGameplay = document.body.classList.contains("landscape-game-active");
   rotateLockOverlayElement.classList.toggle("active", activeGameplay && inPortrait);
+}
+
+function applySelectedCardTheme() {
+  const selectedClass = localStorage.getItem(WH_THEME_CLASS_KEY) || "theme-minimal";
+  const selectedBack = localStorage.getItem(WH_THEME_BACK_KEY) || "";
+  document.body.classList.remove(...ALL_THEME_CLASSES);
+  document.body.classList.add(selectedClass);
+  if (selectedBack) {
+    document.body.classList.add("has-custom-card-skin");
+    document.documentElement.style.setProperty("--wh-card-back-image", `url('${selectedBack}')`);
+  } else {
+    document.body.classList.remove("has-custom-card-skin");
+    document.documentElement.style.removeProperty("--wh-card-back-image");
+  }
 }
 
 async function requestLandscapeGameplay() {
@@ -216,6 +258,8 @@ function applySavedMatch(saved) {
 
   hideModal();
   clearAiTurnSchedule();
+  openingDealToken += 1;
+  playAnimationLocked = false;
   requestLandscapeGameplay();
   render();
   updateBackgroundMusic();
@@ -264,64 +308,226 @@ function showToast(msg) {
   setTimeout(() => toast.remove(), 1200);
 }
 
-function animateDrawCard(targetSelector) {
-  const market = document.getElementById("market");
-  const target = document.querySelector(targetSelector);
-  if (!market || !target) return;
-
-  const m = market.getBoundingClientRect();
-  const t = target.getBoundingClientRect();
-
-  const ghost = document.createElement("div");
-  ghost.className = "card back flying";
-  document.body.appendChild(ghost);
-
-  ghost.style.left = `${m.left}px`;
-  ghost.style.top = `${m.top}px`;
-
-  requestAnimationFrame(() => {
-    ghost.style.transform = `translate(${t.left - m.left}px, ${t.top - m.top}px) scale(0.8)`;
-    ghost.style.opacity = "0";
-  });
-
-  setTimeout(() => ghost.remove(), ANIMATION_SPEED);
+function pulseClass(selector, className, duration = 620) {
+  const node = typeof selector === "string" ? document.querySelector(selector) : selector;
+  if (!node) return;
+  node.classList.remove(className);
+  void node.offsetWidth;
+  node.classList.add(className);
+  setTimeout(() => node.classList.remove(className), duration);
 }
 
-function animatePlayCard(sourceRef, card) {
+function flashWhotScreen() {
+  pulseClass(document.body, "whot-flash", 520);
+}
+
+function shakeScreen() {
+  pulseClass(document.body, "screen-shake", 520);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveElement(ref) {
+  if (!ref) return null;
+  return typeof ref === "string" ? document.querySelector(ref) : ref;
+}
+
+function getRectCenter(rect) {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2
+  };
+}
+
+function animateCardFlight({
+  fromRef,
+  toRef = null,
+  toPoint = null,
+  card = null,
+  isBack = false,
+  flightClass = "",
+  duration = DRAW_FLIGHT_MS,
+  endScale = 0.82,
+  endOpacity = 0.12
+}) {
   return new Promise((resolve) => {
-    const discard = document.querySelector(".pile.discard");
-    const source = typeof sourceRef === "string" ? document.querySelector(sourceRef) : sourceRef;
-    if (!discard || !source || !card) {
+    const source = resolveElement(fromRef);
+    const target = resolveElement(toRef);
+    if (!source || (!target && !toPoint)) {
       resolve();
       return;
     }
 
     const from = source.getBoundingClientRect();
-    const to = discard.getBoundingClientRect();
+    const fromCenter = getRectCenter(from);
+    const toCenter = toPoint || getRectCenter(target.getBoundingClientRect());
     const cardWidth = Math.max(38, Math.min(72, Math.round(from.width || 62)));
     const cardHeight = Math.max(56, Math.min(104, Math.round(from.height || 90)));
 
     const ghost = document.createElement("div");
-    ghost.className = `card flying play-flight ${card.shape === "WHOT" ? "whot" : ""}`;
+    ghost.className = ["card", "flying", flightClass, isBack ? "back" : "", card?.shape === "WHOT" ? "whot" : ""]
+      .filter(Boolean)
+      .join(" ");
     ghost.style.width = `${cardWidth}px`;
     ghost.style.height = `${cardHeight}px`;
-    ghost.style.left = `${from.left + (from.width - cardWidth) / 2}px`;
-    ghost.style.top = `${from.top + (from.height - cardHeight) / 2}px`;
-    ghost.innerHTML = display(card);
+    ghost.style.left = `${fromCenter.x - cardWidth / 2}px`;
+    ghost.style.top = `${fromCenter.y - cardHeight / 2}px`;
+    ghost.style.transition = `transform ${duration}ms cubic-bezier(0.2, 0.78, 0.26, 1), opacity ${duration}ms ease`;
+    ghost.style.opacity = "0.98";
+    if (!isBack && card) {
+      ghost.innerHTML = display(card);
+    }
     document.body.appendChild(ghost);
 
-    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
-    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    const dx = toCenter.x - fromCenter.x;
+    const dy = toCenter.y - fromCenter.y;
 
     requestAnimationFrame(() => {
-      ghost.style.transform = `translate(${dx}px, ${dy}px) scale(0.9)`;
-      ghost.style.opacity = "0.22";
+      ghost.style.transform = `translate(${dx}px, ${dy}px) scale(${endScale})`;
+      ghost.style.opacity = String(endOpacity);
     });
 
     setTimeout(() => {
       ghost.remove();
       resolve();
-    }, 540);
+    }, duration + 34);
+  });
+}
+
+function getOpeningDealRecipients() {
+  if (state.mode === "quick") {
+    return [
+      { selector: "#ai-stack-0", seat: "top" },
+      { selector: "#playerHand", seat: "bottom", player: true }
+    ];
+  }
+
+  if (state.mode === "tournament") {
+    return [
+      { selector: "#ai-stack-0", seat: "top" },
+      { selector: "#ai-stack-1", seat: "right" },
+      { selector: "#playerHand", seat: "bottom", player: true }
+    ];
+  }
+
+  return [
+    { selector: "#ai-stack-0", seat: "top" },
+    { selector: "#ai-stack-1", seat: "left" },
+    { selector: "#ai-stack-2", seat: "right" },
+    { selector: "#playerHand", seat: "bottom", player: true }
+  ];
+}
+
+function getOpeningDealTargetPoint(recipient, roundIndex) {
+  const target = document.querySelector(recipient.selector);
+  if (!target) return null;
+
+  if (recipient.player) {
+    const handCard = document.querySelector(`#playerHand .card[data-i="${roundIndex}"]`) ||
+      document.querySelector("#playerHand .card:last-child");
+    if (handCard) {
+      return getRectCenter(handCard.getBoundingClientRect());
+    }
+    const rect = target.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width * (0.16 + roundIndex * 0.16),
+      y: rect.top + rect.height * 0.52
+    };
+  }
+
+  const rect = target.getBoundingClientRect();
+  const drift = (roundIndex - 2) * 4;
+  let x = rect.left + rect.width / 2;
+  let y = rect.top + rect.height / 2;
+
+  if (recipient.seat === "top") {
+    x += drift;
+    y -= 10 + roundIndex * 1.2;
+  } else if (recipient.seat === "left") {
+    x -= 12 + roundIndex * 1.2;
+    y += drift;
+  } else if (recipient.seat === "right") {
+    x += 12 + roundIndex * 1.2;
+    y += drift;
+  } else {
+    x += drift;
+    y += 8 + roundIndex;
+  }
+
+  return { x, y };
+}
+
+async function animateOpeningDeal() {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const market = document.getElementById("market");
+  if (!market) return;
+
+  const recipients = getOpeningDealRecipients();
+  if (recipients.length === 0) return;
+
+  const flights = [];
+  let launchOrder = 0;
+
+  for (let round = 0; round < 5; round += 1) {
+    for (const recipient of recipients) {
+      const launchDelay = launchOrder * OPENING_DEAL_STAGGER_MS;
+      flights.push((async () => {
+        await wait(launchDelay);
+        const targetPoint = getOpeningDealTargetPoint(recipient, round);
+        if (!targetPoint) return;
+        await animateCardFlight({
+          fromRef: market,
+          toPoint: targetPoint,
+          isBack: true,
+          flightClass: "deal-flight",
+          duration: OPENING_DEAL_FLIGHT_MS,
+          endScale: 0.72,
+          endOpacity: 0.08
+        });
+      })());
+      launchOrder += 1;
+    }
+  }
+
+  await Promise.all(flights);
+  await wait(80);
+}
+
+function runOpeningDealAnimation() {
+  const token = ++openingDealToken;
+  playAnimationLocked = true;
+  animateOpeningDeal()
+    .catch(() => {})
+    .finally(() => {
+      if (token !== openingDealToken) return;
+      playAnimationLocked = false;
+    });
+}
+
+function animateDrawCard(targetSelector) {
+  return animateCardFlight({
+    fromRef: "#market",
+    toRef: targetSelector,
+    isBack: true,
+    flightClass: "draw-flight",
+    duration: DRAW_FLIGHT_MS,
+    endScale: 0.78,
+    endOpacity: 0.1
+  });
+}
+
+function animatePlayCard(sourceRef, card) {
+  return animateCardFlight({
+    fromRef: sourceRef,
+    toRef: ".pile.discard",
+    card,
+    isBack: false,
+    flightClass: "play-flight",
+    duration: PLAY_FLIGHT_MS,
+    endScale: 0.9,
+    endOpacity: 0.22
   });
 }
 
@@ -363,6 +569,7 @@ function aiCountForMode() {
 }
 
 export function initGame(level = 1) {
+  const rewards = window.WHRewards;
   loadSettings();
 
   if (!state.mode) {
@@ -415,13 +622,19 @@ export function initGame(level = 1) {
   hideModal();
   clearSavedMatch();
   clearAiTurnSchedule();
+  openingDealToken += 1;
+  playAnimationLocked = false;
   requestLandscapeGameplay();
+  applySelectedCardTheme();
   render();
+  runOpeningDealAnimation();
   updateBackgroundMusic();
 
   if (!usingImages) {
     startBackgroundImages();
   }
+
+  rewards?.startMatch?.();
 }
 
 function renderAiFan(count, id, side = "right") {
@@ -488,6 +701,7 @@ function renderAiArea() {
 }
 
 function render() {
+  applySelectedCardTheme();
   const game = document.getElementById("game");
 
   game.innerHTML = `
@@ -515,7 +729,7 @@ function render() {
       <h3 class="player-title">Your Hand</h3>
       <div class="hand" id="playerHand" style="--hand-count:${Math.max(1, state.player.length)};">
         ${state.player.map((card, i) => `
-          <div class="card ${card.shape === "WHOT" ? "whot" : ""}" data-i="${i}">
+          <div class="card ${card.shape === "WHOT" ? "whot" : ""} ${state.turn === "player" && isValid(card, state.discard[state.discard.length - 1]) ? "valid-move" : ""}" data-i="${i}">
             ${display(card)}
           </div>
         `).join("")}
@@ -553,6 +767,8 @@ function isValid(card, top) {
 }
 
 function draw(target, count) {
+  const rewards = window.WHRewards;
+  let drawnForPlayer = 0;
   for (let i = 0; i < count; i += 1) {
     refillMarketIfNeeded();
     const card = state.market.pop();
@@ -560,6 +776,7 @@ function draw(target, count) {
 
     if (target === "player") {
       state.player.push(card);
+      drawnForPlayer += 1;
     } else if (target === "ai") {
       if (state.mode === "quick") {
         state.ai.push(card);
@@ -570,6 +787,9 @@ function draw(target, count) {
     }
 
     playSound("pick");
+  }
+  if (drawnForPlayer > 0) {
+    rewards?.recordPlayerDraw?.(drawnForPlayer);
   }
 }
 
@@ -586,6 +806,7 @@ function applySpecial(card, target) {
 
   if (card.number === 5 && state.settings.pick3) {
     draw(target, 3);
+    shakeScreen();
     if (isAgainstAi) {
       skipAiTurns += 1;
     }
@@ -629,11 +850,17 @@ function clearChosenShapeIfSatisfied(card) {
 }
 
 async function playCard(index, el) {
+  const rewards = window.WHRewards;
   if (state.gameOver || state.turn !== "player" || playAnimationLocked) return;
 
   const card = state.player[index];
   const top = state.discard[state.discard.length - 1];
   if (!isValid(card, top)) return;
+  const playMeta = rewards?.recordPlayerCardPlayed?.(card) || { comboTriggered: false };
+  if (playMeta.comboTriggered) {
+    showToast("Combo!");
+    shakeScreen();
+  }
 
   playAnimationLocked = true;
 
@@ -642,11 +869,13 @@ async function playCard(index, el) {
 
     state.player.splice(index, 1);
     state.discard.push(card);
+    pulseClass(".pile.discard", "card-slam", 520);
     playSound("play");
     clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
       playSound("whot");
+      flashWhotScreen();
       showWhotChoice();
       render();
       checkWinLose();
@@ -664,16 +893,23 @@ async function playCard(index, el) {
   }
 }
 
-function drawFromMarket() {
-  if (state.gameOver || state.turn !== "player") return;
+async function drawFromMarket() {
+  const rewards = window.WHRewards;
+  if (state.gameOver || state.turn !== "player" || playAnimationLocked) return;
 
   refillMarketIfNeeded();
   const card = state.market.pop();
 
   if (card) {
-    animateDrawCard("#playerHand");
-    state.player.push(card);
-    playSound("pick");
+    playAnimationLocked = true;
+    try {
+      await animateDrawCard("#playerHand");
+      state.player.push(card);
+      playSound("pick");
+      rewards?.recordPlayerDraw?.(1);
+    } finally {
+      playAnimationLocked = false;
+    }
   }
 
   state.turn = "ai";
@@ -711,10 +947,12 @@ async function aiTurn() {
     await animatePlayCard("#ai-stack-0", card);
     state.ai.splice(idx, 1);
     state.discard.push(card);
+    pulseClass(".pile.discard", "card-slam", 520);
     clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
       playSound("whot");
+      flashWhotScreen();
       aiWhotChoice();
     } else {
       applySpecial(card, "player");
@@ -723,7 +961,7 @@ async function aiTurn() {
     refillMarketIfNeeded();
     const card = state.market.pop();
     if (card) {
-      animateDrawCard("#ai-stack-0");
+      await animateDrawCard("#ai-stack-0");
       state.ai.push(card);
       playSound("pick");
     }
@@ -785,9 +1023,11 @@ async function aiGroupTurn() {
     await animatePlayCard(`#ai-stack-${state.currentAIIndex}`, card);
     ai.hand.splice(idx, 1);
     state.discard.push(card);
+    pulseClass(".pile.discard", "card-slam", 520);
     clearChosenShapeIfSatisfied(card);
 
     if (card.shape === "WHOT") {
+      flashWhotScreen();
       aiWhotChoice();
     } else {
       applySpecial(card, "player");
@@ -796,7 +1036,7 @@ async function aiGroupTurn() {
     refillMarketIfNeeded();
     const card = state.market.pop();
     if (card) {
-      animateDrawCard(`#ai-stack-${state.currentAIIndex}`);
+      await animateDrawCard(`#ai-stack-${state.currentAIIndex}`);
       ai.hand.push(card);
       playSound("pick");
     }
@@ -808,10 +1048,17 @@ async function aiGroupTurn() {
 }
 
 function checkWinLose() {
+  const rewards = window.WHRewards;
   if (state.player.length === 0 && !state.gameOver) {
     clearSavedMatch();
     state.gameOver = true;
     playSound("win");
+
+    const rewardResult = rewards?.recordMatchResult?.({ won: true }) || { events: [] };
+    if (rewardResult.events?.includes("streak3")) {
+      showToast("Win Streak!");
+      shakeScreen();
+    }
 
     if (state.mode === "quick") {
       unlockNextLevel(state.quickLevel);
@@ -839,6 +1086,8 @@ function checkWinLose() {
     state.gameOver = true;
     playSound("lose");
 
+    rewards?.recordMatchResult?.({ won: false });
+
     showModal(
       "You Lose",
       `
@@ -855,6 +1104,8 @@ function checkWinLose() {
     clearSavedMatch();
     state.gameOver = true;
     playSound("lose");
+
+    rewards?.recordMatchResult?.({ won: false });
 
     showModal(
       "You Lose",

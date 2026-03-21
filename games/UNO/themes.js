@@ -1,10 +1,12 @@
 const rewards = window.GameHubRewards;
 const themes = window.GameHubThemes || [];
 const cardPacks = window.GameHubCardPacks || [];
+const powerUps = window.GameHubPowerUps || [];
 
 const coinCountEl = document.getElementById("coin-count");
 const carouselEl = document.getElementById("theme-carousel");
 const cardPackCarouselEl = document.getElementById("card-pack-carousel");
+const powerUpCarouselEl = document.getElementById("powerup-carousel");
 const backBtn = document.getElementById("btn-back");
 
 const OWNED_KEY = "gamehub_uno_themes_owned";
@@ -13,6 +15,9 @@ const SELECTED_PATH_KEY = "gamehub_uno_theme_path";
 const CARD_PACK_OWNED_KEY = "gamehub_uno_card_packs_owned";
 const CARD_PACK_SELECTED_KEY = "gamehub_uno_card_pack";
 const CARD_PACK_SELECTED_PATH_KEY = "gamehub_uno_card_pack_path";
+const POWERUP_COUNTS_KEY = "gamehub_uno_powerup_counts";
+const POWERUP_EQUIPPED_KEY = "gamehub_uno_powerup_equipped";
+const MAX_EQUIPPED_POWERUPS = 4;
 
 function resolveAssetPath(path) {
   if (!path) return path;
@@ -35,6 +40,20 @@ function saveList(key, list) {
   localStorage.setItem(key, JSON.stringify(list));
 }
 
+function loadMap(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveMap(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
 function getSelectedId(key, fallback = 1) {
   const stored = parseInt(localStorage.getItem(key) || String(fallback), 10);
   return Number.isNaN(stored) ? fallback : stored;
@@ -54,20 +73,43 @@ function setCoinBalance(value) {
   if (coinCountEl) coinCountEl.textContent = String(value);
 }
 
+function getPowerUpCount(id) {
+  const counts = loadMap(POWERUP_COUNTS_KEY);
+  const stored = parseInt(String(counts[id] ?? 0), 10);
+  return Number.isNaN(stored) ? 0 : Math.max(0, stored);
+}
+
+function getEquippedPowerUps() {
+  return loadList(POWERUP_EQUIPPED_KEY).slice(0, MAX_EQUIPPED_POWERUPS);
+}
+
 function buildCardMarkup(item, options) {
-  const { type, isOwned, isSelected, canAfford, compact = false } = options;
+  const {
+    type,
+    isOwned,
+    isSelected,
+    canAfford,
+    compact = false,
+    count = 0,
+    isEquipped = false
+  } = options;
   const isPack = type === "card-pack";
+  const isPowerUp = type === "power-up";
   const cardClass = compact ? "theme-card theme-card--compact" : "theme-card";
   const previewClass = compact ? "theme-preview theme-preview--pack" : "theme-preview";
-  const statusLabel = isSelected ? "Active" : isOwned ? "Owned" : "Locked";
-  const buyLabel = item.price === 0 ? "Free" : "Buy";
-  const lockMarkup = !isOwned
+  const lockMarkup = !isPowerUp && !isOwned
     ? `
         <div class="theme-lock" aria-hidden="true">
           <span class="theme-lock__icon"></span>
         </div>
       `
     : "";
+
+  const statusLabel = isPowerUp
+    ? (isEquipped ? "Equipped" : count > 0 ? `Owned x${count}` : "Locked")
+    : (isSelected ? "Active" : isOwned ? "Owned" : "Locked");
+  const buyLabel = isPowerUp ? "Buy +1" : item.price === 0 ? "Free" : "Buy";
+  const useLabel = isPowerUp ? (isEquipped ? "Unequip" : "Equip") : "Use";
   const previewMarkup = isPack
     ? `
         <div class="theme-pack-bundle" style="--theme-pack-image: url('${resolveAssetPath(item.src)}')">
@@ -76,16 +118,22 @@ function buildCardMarkup(item, options) {
           <span class="theme-pack-card theme-pack-card--right"></span>
         </div>
       `
-    : `<img src="${resolveAssetPath(item.src)}" alt="${item.name}" loading="lazy">`;
+    : isPowerUp
+      ? `
+        <div class="powerup-preview">
+          <span class="powerup-icon" aria-hidden="true">${item.icon}</span>
+        </div>
+      `
+      : `<img src="${resolveAssetPath(item.src)}" alt="${item.name}" loading="lazy">`;
 
   return `
-    <div class="${cardClass} ${!isOwned ? "is-locked" : ""}">
-      <div class="${previewClass}">
+    <div class="${cardClass} ${!isOwned && !isPowerUp ? "is-locked" : ""} ${isEquipped ? "is-equipped" : ""}">
+      <div class="${isPowerUp ? "" : previewClass}">
         ${previewMarkup}
         ${lockMarkup}
       </div>
       <div class="theme-info">
-        <div>
+        <div class="theme-meta">
           <div class="theme-name">${item.name}</div>
           <div class="theme-status">${statusLabel}</div>
         </div>
@@ -95,13 +143,14 @@ function buildCardMarkup(item, options) {
         </div>
       </div>
       <div class="theme-actions">
-        <button class="theme-btn buy" type="button" data-shop-type="${type}" data-item-id="${item.id}" ${isOwned || !canAfford ? "disabled" : ""}>
+        <button class="theme-btn buy" type="button" data-shop-type="${type}" data-item-id="${item.id}" ${(isPowerUp ? false : isOwned) || !canAfford ? "disabled" : ""}>
           ${buyLabel}
         </button>
-        <button class="theme-btn use" type="button" data-shop-type="${type}" data-item-id="${item.id}" ${isOwned ? "" : "disabled"}>
-          Use
+        <button class="theme-btn use" type="button" data-shop-type="${type}" data-item-id="${item.id}" ${(isPowerUp ? count > 0 : isOwned) ? "" : "disabled"}>
+          ${useLabel}
         </button>
       </div>
+      ${isPowerUp ? `<p class="theme-status">${item.description}</p>` : ""}
     </div>
   `;
 }
@@ -109,11 +158,13 @@ function buildCardMarkup(item, options) {
 function renderThemes() {
   if (carouselEl) carouselEl.innerHTML = "";
   if (cardPackCarouselEl) cardPackCarouselEl.innerHTML = "";
+  if (powerUpCarouselEl) powerUpCarouselEl.innerHTML = "";
 
   const ownedThemes = loadList(OWNED_KEY);
   const ownedPacks = loadList(CARD_PACK_OWNED_KEY);
   const selectedThemeId = getSelectedId(SELECTED_KEY, 1);
   const selectedPackId = getSelectedId(CARD_PACK_SELECTED_KEY, 0);
+  const equippedPowerUps = getEquippedPowerUps();
   const balance = rewards?.getCoinBalance?.() ?? 0;
 
   themes.forEach((theme) => {
@@ -143,9 +194,45 @@ function renderThemes() {
       })
     );
   });
+
+  powerUps.forEach((powerUp) => {
+    if (!powerUpCarouselEl) return;
+    const count = getPowerUpCount(powerUp.id);
+    const isEquipped = equippedPowerUps.includes(powerUp.id);
+    const canAfford = balance >= powerUp.price;
+    powerUpCarouselEl.insertAdjacentHTML(
+      "beforeend",
+      buildCardMarkup(powerUp, {
+        type: "power-up",
+        isOwned: count > 0,
+        isSelected: false,
+        canAfford,
+        compact: true,
+        count,
+        isEquipped
+      })
+    );
+  });
 }
 
 function handleBuy(itemId, type) {
+  if (type === "power-up") {
+    const powerUp = powerUps.find((entry) => entry.id === itemId);
+    if (!powerUp) return;
+
+    const balance = rewards?.getCoinBalance?.() ?? 0;
+    if (balance < powerUp.price) return;
+    if (rewards?.spendCoins) rewards.spendCoins(powerUp.price);
+    else rewards?.setCoinBalance?.(balance - powerUp.price);
+
+    const counts = loadMap(POWERUP_COUNTS_KEY);
+    counts[itemId] = getPowerUpCount(itemId) + 1;
+    saveMap(POWERUP_COUNTS_KEY, counts);
+    setCoinBalance(rewards?.getCoinBalance?.() ?? balance - powerUp.price);
+    renderThemes();
+    return;
+  }
+
   const isPack = type === "card-pack";
   const list = isPack ? cardPacks : themes;
   const storageKey = isPack ? CARD_PACK_OWNED_KEY : OWNED_KEY;
@@ -168,6 +255,22 @@ function handleBuy(itemId, type) {
 }
 
 function handleUse(itemId, type) {
+  if (type === "power-up") {
+    const count = getPowerUpCount(itemId);
+    if (count < 1) return;
+    const equipped = getEquippedPowerUps();
+    const idx = equipped.indexOf(itemId);
+    if (idx >= 0) {
+      equipped.splice(idx, 1);
+    } else {
+      if (equipped.length >= MAX_EQUIPPED_POWERUPS) equipped.shift();
+      equipped.push(itemId);
+    }
+    saveList(POWERUP_EQUIPPED_KEY, equipped);
+    renderThemes();
+    return;
+  }
+
   const isPack = type === "card-pack";
   const list = isPack ? cardPacks : themes;
   const storageKey = isPack ? CARD_PACK_OWNED_KEY : OWNED_KEY;
@@ -186,7 +289,9 @@ function handleCarouselClick(event) {
   const buyBtn = event.target.closest(".theme-btn.buy");
   if (buyBtn) {
     handleBuy(
-      parseInt(buyBtn.dataset.itemId || "0", 10),
+      buyBtn.dataset.shopType === "power-up"
+        ? buyBtn.dataset.itemId || ""
+        : parseInt(buyBtn.dataset.itemId || "0", 10),
       buyBtn.dataset.shopType || "theme"
     );
     return;
@@ -195,7 +300,9 @@ function handleCarouselClick(event) {
   const useBtn = event.target.closest(".theme-btn.use");
   if (useBtn) {
     handleUse(
-      parseInt(useBtn.dataset.itemId || "0", 10),
+      useBtn.dataset.shopType === "power-up"
+        ? useBtn.dataset.itemId || ""
+        : parseInt(useBtn.dataset.itemId || "0", 10),
       useBtn.dataset.shopType || "theme"
     );
   }
@@ -207,6 +314,10 @@ if (carouselEl) {
 
 if (cardPackCarouselEl) {
   cardPackCarouselEl.addEventListener("click", handleCarouselClick);
+}
+
+if (powerUpCarouselEl) {
+  powerUpCarouselEl.addEventListener("click", handleCarouselClick);
 }
 
 if (backBtn) {

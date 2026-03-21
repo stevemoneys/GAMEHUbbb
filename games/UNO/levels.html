@@ -9,35 +9,12 @@
   <meta name="full-screen" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <script>
-    (() => {
-      const root = document.documentElement;
-      try {
-        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-          if (root.requestFullscreen) {
-            const fullscreenResult = root.requestFullscreen({ navigationUI: "hide" });
-            if (fullscreenResult && typeof fullscreenResult.catch === "function") {
-              fullscreenResult.catch(() => {});
-            }
-          } else if (root.webkitRequestFullscreen) {
-            root.webkitRequestFullscreen();
-          }
-        }
-      } catch {}
-      try {
-        if (screen.orientation && screen.orientation.lock) {
-          const lockResult = screen.orientation.lock("landscape");
-          if (lockResult && typeof lockResult.catch === "function") {
-            lockResult.catch(() => {});
-          }
-        }
-      } catch {}
-    })();
-  </script>
   <title>UNO - Level Select</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="components.css">
   <link rel="stylesheet" href="levels.css">
 </head>
 <body>

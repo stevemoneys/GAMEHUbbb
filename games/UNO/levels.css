@@ -1,17 +1,5 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
 body {
-  font-family: 'Outfit', system-ui, sans-serif;
   min-height: 100dvh;
-  background: radial-gradient(900px 500px at 15% 10%, rgba(59, 130, 246, 0.25), transparent 60%),
-    radial-gradient(900px 500px at 85% 85%, rgba(34, 197, 94, 0.18), transparent 60%),
-    linear-gradient(180deg, #0b1020, #05070d);
-  color: #f8fafc;
-  position: relative;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -24,7 +12,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 18px;
-  background: rgba(5, 9, 18, 0.9);
+  background: rgba(5, 9, 18, 0.92);
 }
 
 .rotate-overlay.hidden {
@@ -34,11 +22,11 @@ body {
 .rotate-card {
   width: min(100%, 320px);
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
   padding: 18px 16px;
   text-align: center;
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-raised);
 }
 
 .rotate-card h2 {
@@ -50,22 +38,24 @@ body {
 .rotate-card p {
   margin-top: 8px;
   font-size: 0.84rem;
-  color: rgba(248, 250, 252, 0.82);
+  color: var(--text-secondary);
 }
 
 .levels-shell {
   min-height: 100dvh;
-  padding: 20px 16px 30px;
+  width: min(100%, 1000px);
+  margin: 0 auto;
+  padding: calc(14px + env(safe-area-inset-top)) 12px calc(22px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .levels-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
@@ -74,45 +64,27 @@ body {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 12px;
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  font-size: 0.7rem;
-  color: #a5b4fc;
+  gap: 8px;
 }
 
 .levels-header h1 {
-  font-size: 2rem;
-  letter-spacing: 0.08em;
+  font-size: clamp(1.55rem, 7vw, 2.3rem);
+  letter-spacing: 0.06em;
 }
 
 .subtitle {
-  color: rgba(248, 250, 252, 0.7);
-  margin-top: 6px;
-  font-size: 0.95rem;
-}
-
-.back-btn {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-weight: 600;
+  max-width: 540px;
 }
 
 .resume-panel {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.78);
-  border: 1px solid rgba(59, 130, 246, 0.28);
-  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.2);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: rgba(8, 14, 26, 0.76);
+  border: 1px solid rgba(56, 189, 248, 0.34);
+  box-shadow: var(--shadow-soft);
 }
 
 .resume-panel.hidden {
@@ -126,21 +98,21 @@ body {
 }
 
 .resume-panel__label {
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #93c5fd;
 }
 
 .resume-panel__text {
-  font-size: 0.88rem;
-  color: rgba(248, 250, 252, 0.8);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
 }
 
 .resume-btn {
   border: none;
   border-radius: 999px;
-  padding: 10px 16px;
+  padding: 9px 13px;
   font-weight: 700;
   background: linear-gradient(135deg, #38bdf8, #2563eb);
   color: #eff6ff;
@@ -150,12 +122,12 @@ body {
 .road-map {
   position: relative;
   flex: 1;
-  padding: 20px 0 56px;
+  padding: 14px 0 32px;
   overflow-x: auto;
   overflow-y: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  min-height: clamp(280px, 52dvh, 420px);
+  min-height: clamp(260px, 50dvh, 420px);
 }
 
 .road-map::-webkit-scrollbar {
@@ -168,16 +140,16 @@ body {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  height: 200px;
-  background: linear-gradient(90deg, #2b2f3a, #181b22);
+  height: 176px;
+  background: linear-gradient(90deg, #202736, #131826);
   border-radius: 40px;
-  border: 2px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 50px rgba(2, 6, 23, 0.45);
   z-index: 0;
 }
 
 .road-track::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 12px;
   right: 12px;
@@ -186,8 +158,8 @@ body {
   height: 6px;
   background: repeating-linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.6) 0,
-    rgba(255, 255, 255, 0.6) 30px,
+    rgba(255, 255, 255, 0.62) 0,
+    rgba(255, 255, 255, 0.62) 30px,
     transparent 30px,
     transparent 60px
   );
@@ -195,7 +167,7 @@ body {
 }
 
 .road-track::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 16px;
   border-radius: 30px;
@@ -206,16 +178,16 @@ body {
   position: relative;
   display: flex;
   flex-direction: row;
-  gap: 26px;
-  padding: 80px 24px;
+  gap: 20px;
+  padding: 68px 16px;
   align-items: center;
   width: max-content;
   z-index: 1;
 }
 
 .fullscreen-note {
-  font-size: 0.78rem;
-  color: rgba(248, 250, 252, 0.62);
+  font-size: 0.74rem;
+  color: rgba(248, 250, 252, 0.66);
   text-align: center;
 }
 
@@ -229,46 +201,46 @@ kbd {
 }
 
 .level-group {
-  min-width: 420px;
+  min-width: 324px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   scroll-snap-align: center;
 }
 
 .level-group:nth-child(odd) {
-  transform: translateY(-40%);
+  transform: translateY(-28%);
 }
 
 .level-group:nth-child(even) {
-  transform: translateY(40%);
+  transform: translateY(28%);
 }
 
 .level-badge {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
   background: radial-gradient(circle at 30% 30%, #ffffff, var(--level-color) 65%);
   color: #111827;
   font-weight: 800;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.44);
   border: 3px solid rgba(255, 255, 255, 0.6);
 }
 
 .stage-track {
   position: relative;
   display: flex;
-  gap: 12px;
-  padding: 12px 8px;
+  gap: 8px;
+  padding: 10px 8px;
 }
 
 .stage-track::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 8px;
   right: 8px;
@@ -279,14 +251,14 @@ kbd {
 }
 
 .stage-node {
-  width: clamp(36px, 7vw, 54px);
-  height: clamp(36px, 7vw, 54px);
+  width: clamp(32px, 6.5vw, 48px);
+  height: clamp(32px, 6.5vw, 48px);
   border-radius: 999px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: rgba(15, 23, 42, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.86);
   color: #f8fafc;
-  font-size: 0.65rem;
-  font-weight: 600;
+  font-size: 0.62rem;
+  font-weight: 700;
   cursor: pointer;
   position: relative;
   z-index: 1;
@@ -300,36 +272,68 @@ kbd {
 }
 
 .stage-node.current {
-  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.9);
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.95);
 }
 
 .stage-node.locked {
-  opacity: 0.4;
+  opacity: 0.42;
   cursor: not-allowed;
 }
 
 @media (min-width: 720px) {
   .levels-shell {
-    padding: 28px 24px 40px;
+    padding: 24px 18px 34px;
+    gap: 16px;
   }
 
-  .levels-header h1 {
-    font-size: 2.6rem;
+  .road-map {
+    padding: 20px 0 40px;
+  }
+
+  .road-track {
+    height: 210px;
+  }
+
+  .level-road {
+    gap: 26px;
+    padding: 78px 24px;
+  }
+
+  .level-group {
+    min-width: 420px;
+  }
+
+  .level-badge {
+    width: 64px;
+    height: 64px;
+    font-size: 1.4rem;
+  }
+
+  .stage-track {
+    gap: 12px;
+    padding: 12px 8px;
+  }
+
+  .stage-node {
+    width: clamp(36px, 7vw, 54px);
+    height: clamp(36px, 7vw, 54px);
+    font-size: 0.65rem;
   }
 }
 
 @media (max-height: 760px) {
   .road-map {
-    padding: 14px 0 42px;
+    padding: 12px 0 34px;
     min-height: clamp(220px, 48dvh, 320px);
   }
 
   .level-road {
-    padding: 40px 16px;
+    padding: 34px 14px;
+    gap: 16px;
   }
 
   .road-track {
-    height: 148px;
+    height: 132px;
   }
 
   .level-group:nth-child(odd),
@@ -338,6 +342,57 @@ kbd {
   }
 }
 
+body.landscape-game-active {
+  overflow: hidden;
+}
+
+body.landscape-game-active .levels-shell {
+  min-height: 100svh;
+  height: 100svh;
+  padding: calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+  gap: 8px;
+  overflow: hidden;
+}
+
+body.landscape-game-active .road-map {
+  min-height: 0;
+  padding: 8px 0 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+body.landscape-game-active .fullscreen-note {
+  display: none;
+}
+
+@media (max-height: 560px) and (orientation: landscape) {
+  body.landscape-game-active .levels-header {
+    gap: 8px;
+  }
+
+  body.landscape-game-active .levels-header h1 {
+    font-size: clamp(1.3rem, 4.4vw, 1.8rem);
+  }
+
+  body.landscape-game-active .subtitle {
+    font-size: 0.76rem;
+    margin-top: 2px;
+  }
+
+  body.landscape-game-active .level-road {
+    padding: 24px 12px;
+    gap: 14px;
+  }
+
+  body.landscape-game-active .road-track {
+    height: 112px;
+  }
+
+  body.landscape-game-active .level-group {
+    min-width: 300px;
+  }
+}
+
 :fullscreen .levels-shell {
-  padding: 14px 16px 20px;
+  padding: 10px 12px 14px;
 }

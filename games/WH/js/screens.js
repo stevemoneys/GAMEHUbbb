@@ -21,19 +21,28 @@ export function showLevels() {
   const unlocked = Number(localStorage.getItem("whotLevel")) || 1;
 
   let html = `
-    <button class="levels-back" onclick="goHome()">Back</button>
-    <h2>Select Level</h2>
+    <div class="levels-head">
+      <button class="levels-back" onclick="goHome()">Back</button>
+      <div>
+        <p class="levels-eyebrow">Quick Play</p>
+        <h2>Select Level</h2>
+        <p class="levels-sub">Unlocked: ${unlocked}/${MAX_LEVELS}</p>
+      </div>
+    </div>
+    <div class="level-grid">
   `;
 
   for (let i = 1; i <= MAX_LEVELS; i += 1) {
     const locked = i > unlocked;
     html += `
-      <button data-level="${i}" ${locked ? "disabled class='locked'" : ""}>
-        ${locked ? "Locked" : "Play"} Level ${i}
+      <button class="level-tile ${locked ? "locked" : ""}" data-level="${i}" ${locked ? "disabled" : ""}>
+        <span class="level-id">L${i}</span>
+        <span class="level-state">${locked ? "Locked" : "Play"}</span>
       </button>
     `;
   }
 
+  html += `</div>`;
   levels.innerHTML = html;
 
   document.querySelectorAll("button[data-level]:not(.locked)").forEach((button) => {
@@ -60,19 +69,28 @@ export function showTournamentLevels() {
   const unlocked = Number(localStorage.getItem("whotTournamentLevel")) || 1;
 
   let html = `
-    <button class="levels-back" onclick="goHome()">Back</button>
-    <h2>Tournament Rounds</h2>
+    <div class="levels-head">
+      <button class="levels-back" onclick="goHome()">Back</button>
+      <div>
+        <p class="levels-eyebrow">Tournament</p>
+        <h2>Tournament Rounds</h2>
+        <p class="levels-sub">Unlocked: ${unlocked}/${MAX_TOURNAMENT_ROUNDS}</p>
+      </div>
+    </div>
+    <div class="level-grid">
   `;
 
   for (let i = 1; i <= MAX_TOURNAMENT_ROUNDS; i += 1) {
     const locked = i > unlocked;
     html += `
-      <button data-tournament="${i}" ${locked ? "disabled class='locked'" : ""}>
-        ${locked ? "Locked" : "Play"} Round ${i}
+      <button class="level-tile ${locked ? "locked" : ""}" data-tournament="${i}" ${locked ? "disabled" : ""}>
+        <span class="level-id">R${i}</span>
+        <span class="level-state">${locked ? "Locked" : "Play"}</span>
       </button>
     `;
   }
 
+  html += `</div>`;
   levels.innerHTML = html;
 
   document.querySelectorAll("button[data-tournament]:not(.locked)").forEach((button) => {
@@ -99,19 +117,28 @@ export function showMultiplayerLevels() {
   const unlocked = Number(localStorage.getItem("whotMultiplayerLevel")) || 1;
 
   let html = `
-    <button class="levels-back" onclick="goHome()">Back</button>
-    <h2>Multiplayer Rounds</h2>
+    <div class="levels-head">
+      <button class="levels-back" onclick="goHome()">Back</button>
+      <div>
+        <p class="levels-eyebrow">Multiplayer</p>
+        <h2>Multiplayer Rounds</h2>
+        <p class="levels-sub">Unlocked: ${unlocked}/${MAX_MULTIPLAYER_ROUNDS}</p>
+      </div>
+    </div>
+    <div class="level-grid">
   `;
 
   for (let i = 1; i <= MAX_MULTIPLAYER_ROUNDS; i += 1) {
     const locked = i > unlocked;
     html += `
-      <button data-multiplayer="${i}" ${locked ? "disabled class='locked'" : ""}>
-        ${locked ? "Locked" : "Play"} Round ${i}
+      <button class="level-tile ${locked ? "locked" : ""}" data-multiplayer="${i}" ${locked ? "disabled" : ""}>
+        <span class="level-id">M${i}</span>
+        <span class="level-state">${locked ? "Locked" : "Play"}</span>
       </button>
     `;
   }
 
+  html += `</div>`;
   levels.innerHTML = html;
 
   document.querySelectorAll("button[data-multiplayer]:not(.locked)").forEach((button) => {

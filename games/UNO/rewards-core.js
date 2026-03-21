@@ -5,7 +5,7 @@
   const ACH_KEY = "gamehub_uno_reward_achievements";
   const DAILY_KEY = "gamehub_uno_daily";
 
-  const DAILY_REWARDS = [50, 75, 100, 150, 200, 250, 400];
+  const DAILY_REWARDS = [200, 300, 500, 650, 800, 900, 1100];
 
   const defaultStats = {
     matchesPlayed: 0,
@@ -52,7 +52,7 @@
       const raw = localStorage.getItem(key);
       if (!raw) return fallback;
       return JSON.parse(raw);
-    } catch (err) {
+    } catch {
       return fallback;
     }
   }
@@ -304,7 +304,9 @@
     const lastClaim = state.lastClaim || "";
     const streak = typeof state.streak === "number" ? state.streak : 0;
     const alreadyClaimed = lastClaim === todayKey;
-    const nextStreak = lastClaim === yesterdayKey ? Math.min(streak + 1, DAILY_REWARDS.length) : 1;
+    const nextStreak = alreadyClaimed
+      ? Math.max(1, Math.min(streak || 1, DAILY_REWARDS.length))
+      : (lastClaim === yesterdayKey ? Math.min(streak + 1, DAILY_REWARDS.length) : 1);
     const dayIndex = Math.max(1, Math.min(nextStreak, DAILY_REWARDS.length));
 
     return {
@@ -312,6 +314,10 @@
       day: dayIndex,
       amount: DAILY_REWARDS[dayIndex - 1]
     };
+  }
+
+  function getDailySchedule() {
+    return DAILY_REWARDS.slice();
   }
 
   function claimDailyReward() {
@@ -341,6 +347,7 @@
     recordMatchResult,
     startNewMatch,
     getDailyInfo,
+    getDailySchedule,
     claimDailyReward,
     getStats: loadStats
   };

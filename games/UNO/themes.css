@@ -1,112 +1,73 @@
 body.themes-screen {
-  background:
-    radial-gradient(900px 500px at 15% 10%, rgba(249, 115, 22, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 85% 85%, rgba(59, 130, 246, 0.18), transparent 60%),
-    var(--gradient-bg);
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .themes-shell {
-  max-width: 520px;
+  width: min(100%, 560px);
   margin: 0 auto;
-  min-height: 100vh;
-  padding: 20px 20px 40px;
+  min-height: 100dvh;
+  padding: calc(16px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .themes-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-}
-
-.back-btn {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.08);
-  color: #f8fafc;
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-weight: 600;
-}
-
-.balance-card {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(251, 191, 36, 0.25);
-  font-weight: 700;
-  color: var(--accent-gold);
-}
-
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.24em;
-  font-size: 0.7rem;
-  color: #a5b4fc;
-  margin-bottom: 6px;
-}
-
-.subtitle {
-  color: rgba(248, 250, 252, 0.7);
-  margin-top: 4px;
-  font-size: 0.95rem;
+  gap: 12px;
 }
 
 .themes-title h1 {
-  font-size: 1.9rem;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
+  font-size: clamp(1.45rem, 7vw, 1.95rem);
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
 }
 
 .shop-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .section-heading h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   margin-bottom: 4px;
 }
 
 .section-heading p {
-  color: rgba(248, 250, 252, 0.68);
-  font-size: 0.88rem;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
 }
 
 .theme-carousel {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .theme-card {
   flex: 0 0 100%;
   scroll-snap-align: center;
-  background: rgba(8, 12, 20, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
   border-radius: 20px;
-  padding: 16px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .theme-card--compact {
-  flex: 0 0 calc(50% - 8px);
+  flex: 0 0 calc(50% - 6px);
 }
 
 .theme-preview {
   position: relative;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(15, 23, 42, 0.6);
   display: flex;
@@ -114,11 +75,11 @@ body.themes-screen {
   justify-content: center;
   aspect-ratio: 3 / 2;
   overflow: hidden;
-  height: 180px;
+  height: 170px;
 }
 
 .theme-preview--pack {
-  height: 132px;
+  height: 126px;
 }
 
 .theme-preview img {
@@ -176,12 +137,12 @@ body.themes-screen {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.1), rgba(2, 6, 23, 0.35));
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.12), rgba(2, 6, 23, 0.4));
 }
 
 .theme-lock__icon {
-  width: 60px;
-  height: 60px;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.58);
   backdrop-filter: blur(8px);
@@ -194,9 +155,9 @@ body.themes-screen {
   content: "";
   position: absolute;
   left: 50%;
-  top: 17px;
-  width: 18px;
-  height: 14px;
+  top: 15px;
+  width: 17px;
+  height: 13px;
   border: 3px solid rgba(255, 255, 255, 0.92);
   border-bottom: none;
   border-radius: 14px 14px 0 0;
@@ -207,9 +168,9 @@ body.themes-screen {
   content: "";
   position: absolute;
   left: 50%;
-  top: 28px;
-  width: 24px;
-  height: 18px;
+  top: 26px;
+  width: 22px;
+  height: 17px;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.92);
   transform: translateX(-50%);
@@ -223,7 +184,7 @@ body.themes-screen {
 }
 
 .theme-name {
-  font-size: 1rem;
+  font-size: 0.94rem;
   font-weight: 600;
 }
 
@@ -233,7 +194,7 @@ body.themes-screen {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(251, 191, 36, 0.25);
   color: var(--accent-gold);
   font-weight: 700;
@@ -242,7 +203,7 @@ body.themes-screen {
 .theme-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .theme-btn {
@@ -251,7 +212,7 @@ body.themes-screen {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   cursor: pointer;
 }
 
@@ -272,16 +233,77 @@ body.themes-screen {
 }
 
 .theme-status {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 
+.theme-carousel--powerups .theme-card {
+  flex: 0 0 calc(50% - 6px);
+  min-height: 256px;
+}
+
+.powerup-preview {
+  height: 132px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(251, 191, 36, 0.24), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(56, 189, 248, 0.22), transparent 52%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(30, 41, 59, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.powerup-icon {
+  font-size: clamp(2rem, 6vw, 2.8rem);
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.38);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.32));
+}
+
+.powerup-preview::after {
+  content: "";
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  box-shadow: 0 0 28px rgba(251, 191, 36, 0.22);
+}
+
+.theme-card.is-equipped {
+  border-color: rgba(251, 191, 36, 0.42);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(251, 191, 36, 0.2) inset;
+}
+
+.theme-card.is-equipped .theme-status {
+  color: var(--accent-gold);
+}
+
+.theme-meta {
+  margin-top: 2px;
+}
+
 @media (min-width: 720px) {
+  .themes-shell {
+    padding: 24px 18px 34px;
+    gap: 18px;
+  }
+
+  .theme-carousel {
+    gap: 16px;
+  }
+
   .theme-preview {
     height: 220px;
   }
 
   .theme-preview--pack {
     height: 154px;
+  }
+
+  .theme-carousel--powerups .theme-card {
+    flex: 0 0 calc(33.33% - 11px);
   }
 }

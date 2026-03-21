@@ -3,6 +3,7 @@ const avatarLabel = document.getElementById("avatar-label");
 const coinCountEl = document.getElementById("coin-count");
 const playerLevelEl = document.getElementById("player-level");
 const dailyBtn = document.querySelector('.action-icon[data-action="daily-reward"]');
+const claimCoinsBtn = document.getElementById("claim-coins-btn");
 const settingsBtn = document.querySelector(".settings-btn");
 const guideModal = document.getElementById("guide-modal");
 const guideCloseBtn = document.getElementById("guide-close");
@@ -42,6 +43,12 @@ const MODE_UI = {
   "team-battle": { startLabel: "Start 2V2 Battle" }
 };
 let pendingModeSelection = null;
+const ACTION_LABELS = {
+  "daily-reward": "Rewards",
+  customize: "Themes",
+  "how-to-play": "Guide",
+  stats: "Stats"
+};
 
 function getSelectedMode() {
   const stored = localStorage.getItem(MODE_KEY) || "tournament";
@@ -114,6 +121,7 @@ modeCards.forEach((btn) => {
 });
 
 applyModeSelectionUI(null);
+modeCards[0]?.classList.add("mode-card-featured");
 
 function getSelectedAvatar() {
   const stored = parseInt(localStorage.getItem(AVATAR_KEY) || "1", 10);
@@ -166,6 +174,12 @@ if (settingsBtn) {
   });
 }
 
+if (claimCoinsBtn) {
+  claimCoinsBtn.addEventListener("click", () => {
+    window.location.href = "coin-rewards.html";
+  });
+}
+
 function openGuideModal() {
   guideModal?.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -214,6 +228,7 @@ if (dailyBtn && rewards?.getDailyInfo) {
   const info = rewards.getDailyInfo();
   dailyBtn.classList.toggle("is-claimable", info.canClaim);
   dailyBtn.classList.toggle("is-claimed", !info.canClaim);
+  claimCoinsBtn?.classList.toggle("is-claimable", info.canClaim);
 }
 
 function updateRewardBadge() {
@@ -222,14 +237,23 @@ function updateRewardBadge() {
   const dailyInfo = rewards.getDailyInfo ? rewards.getDailyInfo() : { canClaim: false };
   const hasRewards = (queue?.length || 0) > 0 || dailyInfo.canClaim;
   dailyBtn.classList.toggle("has-badge", hasRewards);
+  claimCoinsBtn?.classList.toggle("has-badge", hasRewards);
 }
 
 updateRewardBadge();
 
 document.querySelectorAll(".action-icon").forEach((btn) => {
+  const action = btn.getAttribute("data-action");
+  const label = btn.querySelector(".action-icon-label");
+  if (label && action) {
+    label.textContent = ACTION_LABELS[action] || "Action";
+  }
+});
+
+document.querySelectorAll(".action-icon").forEach((btn) => {
   btn.addEventListener("click", () => {
     const action = btn.getAttribute("data-action");
-    if (action === "daily-reward") window.location.href = "rewards.html";
+    if (action === "daily-reward") window.location.href = "coin-rewards.html";
     if (action === "customize") window.location.href = "themes.html";
     if (action === "how-to-play") openGuideModal();
     if (action === "stats") window.location.href = "stats.html";

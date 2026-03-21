@@ -36,7 +36,7 @@ const resumePanel = document.getElementById("resume-panel");
 const resumeMeta = document.getElementById("resume-meta");
 const resumeBtn = document.getElementById("btn-resume-match");
 const rotateOverlay = document.getElementById("rotate-overlay");
-let fullscreenWatchdogId = null;
+let landscapeRetryId = null;
 
 function markLandscapeIntent() {
   try {
@@ -52,7 +52,19 @@ function isPortraitOrientation() {
 
 function updateRotateOverlay() {
   if (!rotateOverlay) return;
-  rotateOverlay.classList.toggle("hidden", !isPortraitOrientation());
+  const gameplayActive = document.body.classList.contains("landscape-game-active");
+  rotateOverlay.classList.toggle("hidden", !(gameplayActive && isPortraitOrientation()));
+}
+
+function stopLandscapeRetry() {
+  if (!landscapeRetryId) return;
+  window.clearInterval(landscapeRetryId);
+  landscapeRetryId = null;
+}
+
+function markLandscapePageActive() {
+  document.body.classList.add("landscape-game-active");
+  updateRotateOverlay();
 }
 
 function getProgress() {
@@ -107,33 +119,37 @@ async function tryLockOrientation() {
   }
 }
 
-async function activateLandscapeMode() {
+async function requestLandscapeMode() {
+  markLandscapePageActive();
   await requestFullscreenMode();
   await tryLockOrientation();
   updateRotateOverlay();
 }
 
-function startFullscreenWatchdog() {
-  if (fullscreenWatchdogId) {
-    window.clearInterval(fullscreenWatchdogId);
-    fullscreenWatchdogId = null;
-  }
+function startLandscapeRetry() {
+  stopLandscapeRetry();
   let tries = 0;
-  fullscreenWatchdogId = window.setInterval(() => {
+  landscapeRetryId = window.setInterval(() => {
     tries += 1;
-    activateLandscapeMode();
+    requestLandscapeMode();
     const fullscreenReady = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
     const landscapeReady = !isPortraitOrientation();
-    if ((fullscreenReady && landscapeReady) || tries >= 28) {
-      window.clearInterval(fullscreenWatchdogId);
-      fullscreenWatchdogId = null;
+    if ((fullscreenReady && landscapeReady) || tries >= 24) {
+      stopLandscapeRetry();
     }
-  }, 320);
+  }, 360);
+}
+
+function activateLandscapeMode() {
+  markLandscapeIntent();
+  requestLandscapeMode();
+  startLandscapeRetry();
 }
 
 function goToStage(level, stage, options = {}) {
   const { resume = false } = options;
   markLandscapeIntent();
+  requestLandscapeMode();
   if (!resume) clearResumeSnapshot();
   const resumeSuffix = resume ? "&resume=1" : "";
   window.location.href = `game/index.html?mode=${selectedMode}&level=${level}&stage=${stage}${resumeSuffix}`;
@@ -141,9 +157,16 @@ function goToStage(level, stage, options = {}) {
 
 function handleOrientationChange() {
   updateRotateOverlay();
-  if (isPortraitOrientation()) return;
-  activateLandscapeMode();
-  startFullscreenWatchdog();
+  if (isPortraitOrientation() || document.hidden) return;
+  requestLandscapeMode();
+  startLandscapeRetry();
+}
+
+function handleFullscreenChange() {
+  updateRotateOverlay();
+  if (document.hidden || isPortraitOrientation()) return;
+  requestLandscapeMode();
+  startLandscapeRetry();
 }
 
 function renderResumePanel() {
@@ -235,23 +258,26 @@ if (!localStorage.getItem(activeConfig.progressKey)) {
 }
 
 markLandscapeIntent();
-updateRotateOverlay();
 activateLandscapeMode();
-startFullscreenWatchdog();
-document.body.addEventListener("touchstart", activateLandscapeMode, { once: true, passive: true });
-document.body.addEventListener("pointerdown", activateLandscapeMode, { once: true });
+document.body.addEventListener("touchstart", activateLandscapeMode, { passive: true });
+document.body.addEventListener("pointerdown", activateLandscapeMode, { passive: true });
+document.body.addEventListener("click", activateLandscapeMode, { passive: true });
 window.addEventListener("pageshow", () => {
-  activateLandscapeMode();
-  startFullscreenWatchdog();
-});
-window.addEventListener("orientationchange", handleOrientationChange);
-window.addEventListener("resize", updateRotateOverlay);
-document.addEventListener("fullscreenchange", updateRotateOverlay);
-document.addEventListener("visibilitychange", () => {
   if (document.hidden) return;
   activateLandscapeMode();
-  startFullscreenWatchdog();
 });
+window.addEventListener("orientationchange", handleOrientationChange);
+window.addEventListener("resize", handleOrientationChange);
+document.addEventListener("fullscreenchange", handleFullscreenChange);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    stopLandscapeRetry();
+    return;
+  }
+  activateLandscapeMode();
+});
+window.addEventListener("pagehide", stopLandscapeRetry);
+window.addEventListener("beforeunload", stopLandscapeRetry);
 
 buildLevelMap();
 renderResumePanel();

@@ -13,6 +13,20 @@ const resumeTitle = document.getElementById("resume-modal-title");
 const resumeBody = document.getElementById("resume-modal-body");
 const resumeContinue = document.getElementById("resume-continue");
 const resumeNew = document.getElementById("resume-new");
+const coinCountEl = document.getElementById("whCoinCount");
+const claimBtnEl = document.getElementById("whClaimBtn");
+
+function refreshRewardUI() {
+  const rewards = window.WHRewards;
+  if (!rewards) return;
+  if (coinCountEl) {
+    coinCountEl.textContent = String(rewards.getCoinBalance());
+  }
+  const info = rewards.getDailyInfo?.();
+  const queue = rewards.getRewardQueue?.() || [];
+  const hasBadge = Boolean(info?.canClaim) || queue.length > 0;
+  claimBtnEl?.classList.toggle("has-badge", hasBadge);
+}
 
 function getSavedMode() {
   try {
@@ -93,4 +107,10 @@ Object.keys(modeByMenuId).forEach(id => {
   const button = document.getElementById(id);
   if (!button) return;
   button.onclick = () => handleModeClick(modeByMenuId[id]);
+});
+
+refreshRewardUI();
+window.addEventListener("pageshow", refreshRewardUI);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshRewardUI();
 });
