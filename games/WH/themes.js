@@ -66,6 +66,26 @@ function resolveAsset(path) {
   return path;
 }
 
+function showSkin(previewEl, path) {
+  if (!previewEl) return;
+  previewEl.style.backgroundImage = `url('${resolveAsset(path)}')`;
+}
+
+function animatePreview() {
+  const previews = document.querySelectorAll(".card-preview");
+  previews.forEach((preview, index) => {
+    if (!(preview instanceof HTMLElement)) return;
+    if (preview.dataset.animated === "1") return;
+    preview.dataset.animated = "1";
+    let angle = 40 + ((index % 5) * 3);
+    setInterval(() => {
+      angle += 0.6;
+      const bob = Math.sin(angle / 11) * 6;
+      preview.style.transform = `rotateY(${angle}deg) rotateX(10deg) translateY(${bob}px)`;
+    }, 50);
+  });
+}
+
 function updateCoinBalance() {
   if (!coinCountEl || !rewards?.getCoinBalance) return;
   coinCountEl.textContent = String(rewards.getCoinBalance());
@@ -76,7 +96,9 @@ function buildSkinCard(skin, price, ownedSet, selectedId) {
   const selected = selectedId === skin.id;
   return `
     <article class="skin-card">
-      <img class="skin-preview" src="${resolveAsset(skin.image)}" alt="${skin.name}" loading="lazy">
+      <div class="skin-preview-container">
+        <div class="card-preview" id="cardPreview-${skin.id}" aria-label="${skin.name} preview"></div>
+      </div>
       <div class="skin-name">${skin.name}</div>
       <div class="skin-price">${price === 0 ? "Free" : `${price} Coins`}</div>
       <div class="skin-actions">
@@ -95,6 +117,11 @@ function renderShop() {
   skinGridEl.innerHTML = skins
     .map((skin) => buildSkinCard(skin, prices[skin.id] || 0, ownedSet, selectedId))
     .join("");
+
+  skins.forEach((skin) => {
+    showSkin(document.getElementById(`cardPreview-${skin.id}`), skin.image);
+  });
+  animatePreview();
 }
 
 function buySkin(id) {

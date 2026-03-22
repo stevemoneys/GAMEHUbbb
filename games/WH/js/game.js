@@ -30,6 +30,8 @@ const PLAY_FLIGHT_MS = 540;
 const DRAW_FLIGHT_MS = 460;
 const OPENING_DEAL_FLIGHT_MS = 430;
 const OPENING_DEAL_STAGGER_MS = 86;
+const TIMED_MODE_EVERY_LEVELS = 5;
+const TIMED_MODE_TOTAL_SECONDS = 180;
 
 let currentLevel = 1;
 let skipAiTurns = 0;
@@ -38,6 +40,12 @@ let skipPlayerTurns = 0;
 let playAnimationLocked = false;
 let openingDealToken = 0;
 let aiTurnTimer = null;
+let timedModeActive = false;
+let timedSecondsLeft = TIMED_MODE_TOTAL_SECONDS;
+let timedModeIntervalId = null;
+let lastCardAlertActive = false;
+let heartbeatIntervalId = null;
+let heartbeatAudioContext = null;
 
 let bgIndex = 0;
 let usingImages = false;
@@ -112,6 +120,131 @@ function updateBackgroundMusic() {
   }
 
   bgMusic.play().catch(() => {});
+}
+
+function formatTime(seconds) {
+  const safe = Math.max(0, seconds);
+  const mm = String(Math.floor(safe / 60)).padStart(2, "0");
+  const ss = String(safe % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+function isTimedModeLevel() {
+  return currentLevel % TIMED_MODE_EVERY_LEVELS === 0;
+}
+
+function stopTimedMode() {
+  if (!timedModeIntervalId) return;
+  clearInterval(timedModeIntervalId);
+  timedModeIntervalId = null;
+}
+
+function triggerTimedLoss() {
+  if (state.gameOver) return;
+  stopTimedMode();
+  state.gameOver = true;
+  clearSavedMatch();
+  playSound("lose");
+  window.WHRewards?.recordMatchResult?.({ won: false });
+  showModal(
+    "Time Up",
+    `
+      <p>Timed Mode ended. You ran out of time.</p>
+      <button onclick="goHome()">Home</button>
+      <button onclick="playAgain()">Retry</button>
+    `
+  );
+}
+
+function startTimedMode() {
+  stopTimedMode();
+  timedModeActive = isTimedModeLevel();
+  timedSecondsLeft = TIMED_MODE_TOTAL_SECONDS;
+  if (!timedModeActive) return;
+
+  timedModeIntervalId = setInterval(() => {
+    if (state.gameOver) {
+      stopTimedMode();
+      return;
+    }
+    timedSecondsLeft -= 1;
+    if (timedSecondsLeft <= 0) {
+      timedSecondsLeft = 0;
+      render();
+      triggerTimedLoss();
+      return;
+    }
+    render();
+  }, 1000);
+}
+
+function ensureHeartbeatAudioContext() {
+  if (heartbeatAudioContext) return heartbeatAudioContext;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return null;
+  heartbeatAudioContext = new Ctx();
+  return heartbeatAudioContext;
+}
+
+function playHeartbeat() {
+  if (!state.settings.sounds) return;
+  const ctx = ensureHeartbeatAudioContext();
+  if (!ctx) return;
+  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+  const beat = (start, frequency, gainValue, duration) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + duration + 0.02);
+  };
+
+  const now = ctx.currentTime;
+  beat(now, 52, 0.05, 0.12);
+  beat(now + 0.2, 46, 0.04, 0.14);
+}
+
+function startLastCardAlert() {
+  if (lastCardAlertActive) return;
+  lastCardAlertActive = true;
+  document.body.classList.add("last-card-alert");
+  playHeartbeat();
+  heartbeatIntervalId = setInterval(playHeartbeat, 920);
+}
+
+function stopLastCardAlert() {
+  if (!lastCardAlertActive) return;
+  lastCardAlertActive = false;
+  document.body.classList.remove("last-card-alert");
+  if (heartbeatIntervalId) {
+    clearInterval(heartbeatIntervalId);
+    heartbeatIntervalId = null;
+  }
+}
+
+function anyPlayerAtLastCard() {
+  if (state.player.length === 1) return true;
+  if (state.mode === "quick") return state.ai.length === 1;
+  return state.ais.some((ai) => ai.hand.length === 1);
+}
+
+function updateLastCardTension() {
+  if (state.gameOver) {
+    stopLastCardAlert();
+    return;
+  }
+  if (anyPlayerAtLastCard()) {
+    startLastCardAlert();
+  } else {
+    stopLastCardAlert();
+  }
 }
 
 function showModal(title, bodyHTML, options = {}) {
@@ -206,6 +339,8 @@ function saveMatchSnapshot() {
   const payload = {
     mode: state.mode,
     currentLevel,
+    timedModeActive,
+    timedSecondsLeft,
     skipAiTurns,
     skipAllAIs,
     skipPlayerTurns,
@@ -231,6 +366,8 @@ function applySavedMatch(saved) {
 
   state.mode = saved.mode || "quick";
   currentLevel = Math.max(1, Number(saved.currentLevel) || 1);
+  timedModeActive = Boolean(saved.timedModeActive);
+  timedSecondsLeft = Math.max(0, Number(saved.timedSecondsLeft) || TIMED_MODE_TOTAL_SECONDS);
   skipAiTurns = Math.max(0, Number(saved.skipAiTurns) || 0);
   skipAllAIs = Boolean(saved.skipAllAIs);
   skipPlayerTurns = Math.max(0, Number(saved.skipPlayerTurns) || 0);
@@ -257,12 +394,30 @@ function applySavedMatch(saved) {
   document.getElementById("hubBackBtn")?.classList.add("hidden");
 
   hideModal();
+  stopTimedMode();
+  stopLastCardAlert();
   clearAiTurnSchedule();
   openingDealToken += 1;
   playAnimationLocked = false;
   requestLandscapeGameplay();
   render();
   updateBackgroundMusic();
+  if (timedModeActive) {
+    timedModeIntervalId = setInterval(() => {
+      if (state.gameOver) {
+        stopTimedMode();
+        return;
+      }
+      timedSecondsLeft -= 1;
+      if (timedSecondsLeft <= 0) {
+        timedSecondsLeft = 0;
+        render();
+        triggerTimedLoss();
+        return;
+      }
+      render();
+    }, 1000);
+  }
 
   if (!usingImages) {
     startBackgroundImages();
@@ -367,7 +522,7 @@ function animateCardFlight({
     const cardHeight = Math.max(56, Math.min(104, Math.round(from.height || 90)));
 
     const ghost = document.createElement("div");
-    ghost.className = ["card", "flying", flightClass, isBack ? "back" : "", card?.shape === "WHOT" ? "whot" : ""]
+    ghost.className = ["card", "flying", flightClass, isBack ? "back" : "", !isBack && card ? getCardToneClass(card) : "", card?.shape === "WHOT" ? "whot" : ""]
       .filter(Boolean)
       .join(" ");
     ghost.style.width = `${cardWidth}px`;
@@ -577,6 +732,8 @@ export function initGame(level = 1) {
   }
 
   currentLevel = level;
+  stopTimedMode();
+  stopLastCardAlert();
   skipAiTurns = 0;
   skipAllAIs = false;
   skipPlayerTurns = 0;
@@ -629,6 +786,7 @@ export function initGame(level = 1) {
   render();
   runOpeningDealAnimation();
   updateBackgroundMusic();
+  startTimedMode();
 
   if (!usingImages) {
     startBackgroundImages();
@@ -700,26 +858,48 @@ function renderAiArea() {
   `;
 }
 
+function getShapeToneClass(shape) {
+  if (shape === "\u2B24") return "tone-circle";
+  if (shape === "\u25B2") return "tone-triangle";
+  if (shape === "\u25A0") return "tone-square";
+  if (shape === "\u2716") return "tone-cross";
+  if (shape === "\u2605") return "tone-star";
+  if (shape === "WHOT") return "tone-whot";
+  return "tone-circle";
+}
+
+function getCardToneClass(card) {
+  if (!card) return "tone-circle";
+  if (card.shape === "WHOT" && state.chosenShape) {
+    return getShapeToneClass(state.chosenShape);
+  }
+  return getShapeToneClass(card.shape);
+}
+
 function render() {
   applySelectedCardTheme();
   const game = document.getElementById("game");
+  const topCard = state.discard[state.discard.length - 1];
+  const activeToneClass = getCardToneClass(topCard);
 
   game.innerHTML = `
     <div class="game-controls">
       <button class="back-btn" onclick="goBack()">&larr;</button>
       <button class="restart-btn" onclick="playAgain()">Restart</button>
       <button class="hint-btn" onclick="showHint()">Hint</button>
+      ${timedModeActive ? `<div class="timed-chip">Timed ${formatTime(timedSecondsLeft)}</div>` : ""}
     </div>
+    ${anyPlayerAtLastCard() ? `<div class="last-card-banner">LAST CARD!</div>` : ""}
 
     <div class="game-layout game-layout-${state.mode}">
       <h2 class="round-title">${getRoundLabel()}</h2>
       <div class="table-zone">
         ${renderAiArea()}
         <div class="center-zone">
-          <div class="board">
-            <div class="pile market" id="market"></div>
-            <div class="pile discard">
-              ${display(state.discard[state.discard.length - 1])}
+          <div class="board ${activeToneClass}">
+            <div class="pile market ${activeToneClass}" id="market"></div>
+            <div class="pile discard ${activeToneClass}">
+              ${display(topCard)}
               ${state.chosenShape ? `<div class="chosen-shape-tag">${state.chosenShape} ${getShapeName(state.chosenShape)}</div>` : ""}
             </div>
           </div>
@@ -729,7 +909,7 @@ function render() {
       <h3 class="player-title">Your Hand</h3>
       <div class="hand" id="playerHand" style="--hand-count:${Math.max(1, state.player.length)};">
         ${state.player.map((card, i) => `
-          <div class="card ${card.shape === "WHOT" ? "whot" : ""} ${state.turn === "player" && isValid(card, state.discard[state.discard.length - 1]) ? "valid-move" : ""}" data-i="${i}">
+          <div class="card ${getCardToneClass(card)} ${card.shape === "WHOT" ? "whot" : ""} ${state.turn === "player" && isValid(card, topCard) ? "valid-move" : ""}" data-i="${i}">
             ${display(card)}
           </div>
         `).join("")}
@@ -745,6 +925,8 @@ function render() {
   if (market) {
     market.onclick = drawFromMarket;
   }
+
+  updateLastCardTension();
 }
 
 function display(card) {
@@ -1050,6 +1232,8 @@ async function aiGroupTurn() {
 function checkWinLose() {
   const rewards = window.WHRewards;
   if (state.player.length === 0 && !state.gameOver) {
+    stopTimedMode();
+    stopLastCardAlert();
     clearSavedMatch();
     state.gameOver = true;
     playSound("win");
@@ -1082,6 +1266,8 @@ function checkWinLose() {
   }
 
   if (state.mode === "quick" && state.ai.length === 0 && !state.gameOver) {
+    stopTimedMode();
+    stopLastCardAlert();
     clearSavedMatch();
     state.gameOver = true;
     playSound("lose");
@@ -1101,6 +1287,8 @@ function checkWinLose() {
   }
 
   if (state.mode !== "quick" && state.ais.some((ai) => ai.hand.length === 0) && !state.gameOver) {
+    stopTimedMode();
+    stopLastCardAlert();
     clearSavedMatch();
     state.gameOver = true;
     playSound("lose");
@@ -1189,6 +1377,8 @@ function startBackgroundImages() {
 window.hideModal = hideModal;
 window.goHome = function goHome() {
   clearAiTurnSchedule();
+  stopTimedMode();
+  stopLastCardAlert();
   hideModal();
   releaseLandscapeGameplay();
   document.getElementById("game").classList.add("hidden");
@@ -1200,6 +1390,8 @@ window.goHome = function goHome() {
 
 window.playAgain = function playAgain() {
   clearAiTurnSchedule();
+  stopTimedMode();
+  stopLastCardAlert();
   hideModal();
   clearSavedMatch();
   initGame(currentLevel);
@@ -1207,6 +1399,8 @@ window.playAgain = function playAgain() {
 
 window.nextLevel = function nextLevel() {
   clearAiTurnSchedule();
+  stopTimedMode();
+  stopLastCardAlert();
   hideModal();
   clearSavedMatch();
 
@@ -1244,6 +1438,8 @@ window.chooseWhot = function chooseWhot(shape) {
 
 window.goBack = function goBack() {
   clearAiTurnSchedule();
+  stopTimedMode();
+  stopLastCardAlert();
   hideModal();
   saveMatchSnapshot();
   releaseLandscapeGameplay();

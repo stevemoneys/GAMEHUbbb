@@ -119,6 +119,7 @@ body.landscape-game-active {
   font-size: 14px;
   padding: 10px 13px;
   backdrop-filter: blur(6px);
+  z-index: 40;
 }
 
 .wh-top-utility {
@@ -128,6 +129,7 @@ body.landscape-game-active {
   display: flex;
   align-items: center;
   gap: 8px;
+  z-index: 40;
 }
 
 .wh-balance-card {
@@ -204,10 +206,11 @@ body.landscape-game-active {
 .page-shell {
   width: min(100%, 1120px);
   margin: 0 auto;
+  padding-top: 78px;
 }
 
 .menu-card {
-  min-height: calc(100svh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  min-height: calc(100svh - 104px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   display: grid;
   align-content: center;
   justify-items: center;
@@ -382,6 +385,48 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.timed-chip {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 120, 120, 0.7);
+  background: rgba(46, 8, 8, 0.72);
+  color: #ffd7d7;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  padding: 10px 12px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.last-card-banner {
+  position: fixed;
+  top: calc(58px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 18;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ef5350, #ff8f3f);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 7px 13px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.36);
+  animation: last-card-pulse 900ms ease-in-out infinite;
+}
+
+body.last-card-alert::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(239, 83, 80, 0.28), rgba(239, 83, 80, 0));
+  animation: last-card-glow 900ms ease-in-out infinite;
+}
+
 .back-btn {
   width: 40px;
   height: 40px;
@@ -410,7 +455,11 @@ button:disabled {
   margin: 14px 0;
   border-radius: 16px;
   border: 1px solid rgba(150, 208, 255, 0.24);
-  background: rgba(5, 15, 28, 0.55);
+  background:
+    linear-gradient(rgba(5, 15, 28, 0.58), rgba(5, 15, 28, 0.58)),
+    var(--wh-card-back-image);
+  background-size: cover;
+  background-position: center;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
 }
 .game-layout {
@@ -435,8 +484,8 @@ button:disabled {
 }
 
 .pile {
-  width: 76px;
-  height: 108px;
+  width: 84px;
+  height: 120px;
   border-radius: 12px;
   display: grid;
   place-items: center;
@@ -444,20 +493,25 @@ button:disabled {
 }
 
 .pile.market {
-  background: repeating-linear-gradient(
-    45deg,
-    #7a4a2e,
-    #7a4a2e 10px,
-    #5a321e 10px,
-    #5a321e 20px
-  );
+  background:
+    linear-gradient(145deg, rgba(20, 10, 4, 0.34), rgba(20, 10, 4, 0.34)),
+    var(--wh-card-back-image),
+    repeating-linear-gradient(
+      45deg,
+      #7a4a2e,
+      #7a4a2e 10px,
+      #5a321e 10px,
+      #5a321e 20px
+    );
+  background-size: cover;
+  background-position: center;
   border: 2px solid #3e2416;
   cursor: pointer;
 }
 
 .pile.discard {
-  background: #fff;
-  color: #4a2d1a;
+  background: linear-gradient(145deg, #fff6eb, #f3dfcc);
+  color: #ffffff;
   border: 2px solid #e5d2c2;
   position: relative;
 }
@@ -496,11 +550,11 @@ button:disabled {
 
 .card {
   position: relative;
-  width: 62px;
-  height: 90px;
+  width: 70px;
+  height: 102px;
   border: 2px solid #3e2416;
-  background: linear-gradient(145deg, #fff6eb, #f3dfcc);
-  color: #5a321e;
+  background: linear-gradient(145deg, #4fbcff, #2d83cf);
+  color: #ffffff;
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -516,7 +570,8 @@ button:disabled {
 }
 
 .card .shape {
-  font-size: 28px;
+  font-size: 30px;
+  color: currentColor;
 }
 
 .card .num.top {
@@ -581,6 +636,82 @@ button:disabled {
   border-color: rgba(255, 255, 255, 0.22);
   color: transparent;
 }
+
+.card.tone-circle,
+.pile.discard.tone-circle {
+  background-color: #2f6dff !important;
+  background-image: linear-gradient(145deg, #4f8eff, #2f6dff) !important;
+  border-color: #1b4fc4 !important;
+  color: #ffffff !important;
+}
+
+.card.tone-triangle,
+.pile.discard.tone-triangle {
+  background-color: #31b86b !important;
+  background-image: linear-gradient(145deg, #52d78a, #31b86b) !important;
+  border-color: #1f8e50 !important;
+  color: #ffffff !important;
+}
+
+.card.tone-square,
+.pile.discard.tone-square {
+  background-color: #f7b733 !important;
+  background-image: linear-gradient(145deg, #ffd066, #f7b733) !important;
+  border-color: #b7831f !important;
+  color: #2d1a05 !important;
+}
+
+.card.tone-cross,
+.pile.discard.tone-cross {
+  background-color: #ef5350 !important;
+  background-image: linear-gradient(145deg, #ff7774, #ef5350) !important;
+  border-color: #ba2a2a !important;
+  color: #ffffff !important;
+}
+
+.card.tone-star,
+.pile.discard.tone-star {
+  background-color: #9b5cf3 !important;
+  background-image: linear-gradient(145deg, #bc7cff, #9b5cf3) !important;
+  border-color: #7031cf !important;
+  color: #ffffff !important;
+}
+
+.card.tone-whot,
+.pile.discard.tone-whot {
+  background-color: #f08a24 !important;
+  background-image: linear-gradient(145deg, #ffb14f, #f08a24) !important;
+  border-color: #ad5e11 !important;
+  color: #ffffff !important;
+}
+
+.board.tone-circle {
+  box-shadow: 0 0 0 1px rgba(79, 142, 255, 0.45), 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.board.tone-triangle {
+  box-shadow: 0 0 0 1px rgba(82, 215, 138, 0.45), 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.board.tone-square {
+  box-shadow: 0 0 0 1px rgba(247, 183, 51, 0.45), 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.board.tone-cross {
+  box-shadow: 0 0 0 1px rgba(255, 119, 116, 0.45), 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.board.tone-star,
+.board.tone-whot {
+  box-shadow: 0 0 0 1px rgba(188, 124, 255, 0.45), 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.pile.market.tone-circle { border-color: #1b4fc4 !important; box-shadow: 0 0 0 1px rgba(79, 142, 255, 0.45) inset; }
+.pile.market.tone-triangle { border-color: #1f8e50 !important; box-shadow: 0 0 0 1px rgba(82, 215, 138, 0.45) inset; }
+.pile.market.tone-square { border-color: #b7831f !important; box-shadow: 0 0 0 1px rgba(247, 183, 51, 0.45) inset; }
+.pile.market.tone-cross { border-color: #ba2a2a !important; box-shadow: 0 0 0 1px rgba(255, 119, 116, 0.45) inset; }
+.pile.market.tone-star,
+.pile.market.tone-whot { border-color: #7031cf !important; box-shadow: 0 0 0 1px rgba(188, 124, 255, 0.45) inset; }
 
 .has-custom-card-skin .card.back::before,
 .has-custom-card-skin .card.back::after {
@@ -734,8 +865,8 @@ button:disabled {
 
 .ai-stack {
   position: relative;
-  width: 62px;
-  height: 90px;
+  width: 70px;
+  height: 102px;
   margin: 0 auto;
 }
 
@@ -796,15 +927,15 @@ button:disabled {
 
 .ai-fan-stack {
   position: relative;
-  width: 106px;
-  height: 98px;
+  width: 120px;
+  height: 112px;
 }
 
 .ai-fan-stack .fan-card {
   position: absolute;
   top: 0;
-  width: 62px;
-  height: 90px;
+  width: 70px;
+  height: 102px;
   transform-origin: bottom center;
   transform: translateX(calc(var(--i) * 7px)) rotate(calc((var(--i) - ((var(--total) - 1) / 2)) * 3deg));
 }
@@ -995,6 +1126,18 @@ body.whot-flash::before {
   60% { transform: translate(-2px, 2px); }
   80% { transform: translate(2px, -1px); }
   100% { transform: translate(0, 0); }
+}
+
+@keyframes last-card-pulse {
+  0% { transform: translateX(-50%) scale(0.94); opacity: 0.86; }
+  50% { transform: translateX(-50%) scale(1.04); opacity: 1; }
+  100% { transform: translateX(-50%) scale(0.94); opacity: 0.86; }
+}
+
+@keyframes last-card-glow {
+  0% { opacity: 0.2; }
+  50% { opacity: 0.78; }
+  100% { opacity: 0.2; }
 }
 
 #modal-body button {
@@ -1410,8 +1553,8 @@ body.whot-flash::before {
   }
 
   body.landscape-game-active .hand .card {
-    width: clamp(30px, calc((92vw - (var(--hand-count, 8) - 1) * 6px) / var(--hand-count, 8)), 50px);
-    height: clamp(46px, calc(((92vw - (var(--hand-count, 8) - 1) * 6px) / var(--hand-count, 8)) * 1.46), 74px);
+    width: clamp(34px, calc((92vw - (var(--hand-count, 8) - 1) * 6px) / var(--hand-count, 8)), 56px);
+    height: clamp(50px, calc(((92vw - (var(--hand-count, 8) - 1) * 6px) / var(--hand-count, 8)) * 1.46), 82px);
     border-radius: 8px;
     font-size: 14px;
   }
