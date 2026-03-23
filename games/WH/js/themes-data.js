@@ -3,7 +3,7 @@
     { id: "minimal", name: "Minimal Bronze", className: "theme-minimal", image: "images/card-skins/1.webp" },
     { id: "wood", name: "Royal Wood", className: "theme-wood", image: "images/card-skins/2.webp" },
     { id: "leather", name: "Dark Leather", className: "theme-leather", image: "images/card-skins/3.webp" },
-    { id: "tribal", name: "Tribal Gold", className: "theme-tribal", image: "images/card-skins/4..webp" },
+    { id: "tribal", name: "Tribal Gold", className: "theme-tribal", image: "images/card-skins/4.webp" },
     { id: "gold", name: "Gold Crest", className: "theme-gold", image: "images/card-skins/5.webp" },
     { id: "royal", name: "Royal Court", className: "theme-royal", image: "images/card-skins/6.webp" },
     { id: "neon", name: "Neon Pulse", className: "theme-neon", image: "images/card-skins/7.webp" },

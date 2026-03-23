@@ -46,6 +46,12 @@ let timedModeIntervalId = null;
 let lastCardAlertActive = false;
 let heartbeatIntervalId = null;
 let heartbeatAudioContext = null;
+let powerupCounts = {};
+let equippedPowerups = [];
+let secondChanceTurns = 0;
+let shieldActive = false;
+let destroyMode = false;
+let doubleEffectActive = false;
 
 let bgIndex = 0;
 let usingImages = false;
@@ -67,6 +73,18 @@ let rotateLockOverlayElement = null;
 const WH_RESUME_KEY = "whot_saved_match_v1";
 const WH_THEME_CLASS_KEY = "wh_theme_selected_class";
 const WH_THEME_BACK_KEY = "wh_theme_selected_back";
+const WH_POWERUP_COUNTS_KEY = "wh_powerup_counts";
+const WH_POWERUP_EQUIPPED_KEY = "wh_powerup_equipped";
+const WH_POWERUP_LIMIT = 4;
+const POWERUP_META = {
+  "second-chance": { icon: "↻", name: "Second Chance" },
+  "peek-ai": { icon: "⌕", name: "Peek AI" },
+  shield: { icon: "⛨", name: "Shield" },
+  "magnet-draw": { icon: "🧲", name: "Magnet" },
+  "destroy-card": { icon: "✦", name: "Destroy" },
+  "freeze-ai": { icon: "❚❚", name: "Freeze" },
+  "double-effect": { icon: "🔥", name: "Double" }
+};
 const ALL_THEME_CLASSES = [
   "theme-minimal",
   "theme-wood",
@@ -247,6 +265,121 @@ function updateLastCardTension() {
   }
 }
 
+function loadPowerupState() {
+  try {
+    const counts = JSON.parse(localStorage.getItem(WH_POWERUP_COUNTS_KEY) || "{}");
+    powerupCounts = counts && typeof counts === "object" ? counts : {};
+  } catch {
+    powerupCounts = {};
+  }
+  try {
+    const equipped = JSON.parse(localStorage.getItem(WH_POWERUP_EQUIPPED_KEY) || "[]");
+    equippedPowerups = Array.isArray(equipped) ? equipped.slice(0, WH_POWERUP_LIMIT) : [];
+  } catch {
+    equippedPowerups = [];
+  }
+}
+
+function savePowerupCounts() {
+  localStorage.setItem(WH_POWERUP_COUNTS_KEY, JSON.stringify(powerupCounts));
+}
+
+function getPowerupCount(id) {
+  return Math.max(0, Number(powerupCounts[id] || 0));
+}
+
+function consumePowerup(id) {
+  const count = getPowerupCount(id);
+  if (count < 1) return false;
+  powerupCounts[id] = count - 1;
+  savePowerupCounts();
+  return true;
+}
+
+function renderPowerupBar() {
+  if (!equippedPowerups.length) return "";
+  const usable = equippedPowerups.filter((id) => getPowerupCount(id) > 0);
+  if (!usable.length) return "";
+  return `
+    <div class="powerup-bar">
+      ${usable.map((id) => {
+        const meta = POWERUP_META[id] || { icon: "★", name: id };
+        const count = getPowerupCount(id);
+        return `<button class="shop-btn powerup-play-btn" data-powerup="${id}" title="${meta.name}">${meta.icon} x${count}</button>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function pickAiHand() {
+  if (state.mode === "quick") return state.ai;
+  if (state.mode === "tournament") return state.ais[0]?.hand || [];
+  return state.ais[0]?.hand || [];
+}
+
+function handlePowerupUse(id) {
+  if (state.gameOver || state.turn !== "player") return;
+  if (!consumePowerup(id)) return;
+
+  if (id === "second-chance") {
+    secondChanceTurns += 1;
+    showToast("Second Chance ready");
+    render();
+    return;
+  }
+
+  if (id === "peek-ai") {
+    const aiHand = pickAiHand();
+    const card = aiHand[Math.floor(Math.random() * Math.max(1, aiHand.length))];
+    if (card) showToast(`AI card: ${card.shape} ${card.number}`);
+    else showToast("No AI card to peek");
+    render();
+    return;
+  }
+
+  if (id === "shield") {
+    shieldActive = true;
+    showToast("Shield active");
+    render();
+    return;
+  }
+
+  if (id === "magnet-draw") {
+    const top = state.discard[state.discard.length - 1];
+    const idx = state.market.findIndex((card) => isValid(card, top));
+    if (idx >= 0) {
+      const [card] = state.market.splice(idx, 1);
+      state.player.push(card);
+      window.WHRewards?.recordPlayerDraw?.(1);
+      showToast("Magnet draw success");
+    } else {
+      showToast("No valid card found");
+    }
+    render();
+    return;
+  }
+
+  if (id === "destroy-card") {
+    destroyMode = true;
+    showToast("Tap card to destroy");
+    render();
+    return;
+  }
+
+  if (id === "freeze-ai") {
+    skipAiTurns += 1;
+    showToast("AI frozen");
+    render();
+    return;
+  }
+
+  if (id === "double-effect") {
+    doubleEffectActive = true;
+    showToast("Double effect armed");
+    render();
+  }
+}
+
 function showModal(title, bodyHTML, options = {}) {
   const modal = document.getElementById("modal");
   if (!modal) return;
@@ -363,6 +496,7 @@ function getSavedMatch() {
 
 function applySavedMatch(saved) {
   if (!saved || !saved.state || typeof saved.state !== "object") return false;
+  loadPowerupState();
 
   state.mode = saved.mode || "quick";
   currentLevel = Math.max(1, Number(saved.currentLevel) || 1);
@@ -522,7 +656,7 @@ function animateCardFlight({
     const cardHeight = Math.max(56, Math.min(104, Math.round(from.height || 90)));
 
     const ghost = document.createElement("div");
-    ghost.className = ["card", "flying", flightClass, isBack ? "back" : "", !isBack && card ? getCardToneClass(card) : "", card?.shape === "WHOT" ? "whot" : ""]
+    ghost.className = ["card", "flying", flightClass, isBack ? "back" : "", card?.shape === "WHOT" ? "whot" : ""]
       .filter(Boolean)
       .join(" ");
     ghost.style.width = `${cardWidth}px`;
@@ -726,6 +860,7 @@ function aiCountForMode() {
 export function initGame(level = 1) {
   const rewards = window.WHRewards;
   loadSettings();
+  loadPowerupState();
 
   if (!state.mode) {
     state.mode = "quick";
@@ -734,6 +869,10 @@ export function initGame(level = 1) {
   currentLevel = level;
   stopTimedMode();
   stopLastCardAlert();
+  secondChanceTurns = 0;
+  shieldActive = false;
+  destroyMode = false;
+  doubleEffectActive = false;
   skipAiTurns = 0;
   skipAllAIs = false;
   skipPlayerTurns = 0;
@@ -858,29 +997,10 @@ function renderAiArea() {
   `;
 }
 
-function getShapeToneClass(shape) {
-  if (shape === "\u2B24") return "tone-circle";
-  if (shape === "\u25B2") return "tone-triangle";
-  if (shape === "\u25A0") return "tone-square";
-  if (shape === "\u2716") return "tone-cross";
-  if (shape === "\u2605") return "tone-star";
-  if (shape === "WHOT") return "tone-whot";
-  return "tone-circle";
-}
-
-function getCardToneClass(card) {
-  if (!card) return "tone-circle";
-  if (card.shape === "WHOT" && state.chosenShape) {
-    return getShapeToneClass(state.chosenShape);
-  }
-  return getShapeToneClass(card.shape);
-}
-
 function render() {
   applySelectedCardTheme();
   const game = document.getElementById("game");
   const topCard = state.discard[state.discard.length - 1];
-  const activeToneClass = getCardToneClass(topCard);
 
   game.innerHTML = `
     <div class="game-controls">
@@ -888,6 +1008,7 @@ function render() {
       <button class="restart-btn" onclick="playAgain()">Restart</button>
       <button class="hint-btn" onclick="showHint()">Hint</button>
       ${timedModeActive ? `<div class="timed-chip">Timed ${formatTime(timedSecondsLeft)}</div>` : ""}
+      ${renderPowerupBar()}
     </div>
     ${anyPlayerAtLastCard() ? `<div class="last-card-banner">LAST CARD!</div>` : ""}
 
@@ -896,9 +1017,9 @@ function render() {
       <div class="table-zone">
         ${renderAiArea()}
         <div class="center-zone">
-          <div class="board ${activeToneClass}">
-            <div class="pile market ${activeToneClass}" id="market"></div>
-            <div class="pile discard ${activeToneClass}">
+          <div class="board">
+            <div class="pile market" id="market"></div>
+            <div class="pile discard">
               ${display(topCard)}
               ${state.chosenShape ? `<div class="chosen-shape-tag">${state.chosenShape} ${getShapeName(state.chosenShape)}</div>` : ""}
             </div>
@@ -909,7 +1030,7 @@ function render() {
       <h3 class="player-title">Your Hand</h3>
       <div class="hand" id="playerHand" style="--hand-count:${Math.max(1, state.player.length)};">
         ${state.player.map((card, i) => `
-          <div class="card ${getCardToneClass(card)} ${card.shape === "WHOT" ? "whot" : ""} ${state.turn === "player" && isValid(card, topCard) ? "valid-move" : ""}" data-i="${i}">
+          <div class="card ${card.shape === "WHOT" ? "whot" : ""} ${state.turn === "player" && isValid(card, topCard) ? "valid-move" : ""}" data-i="${i}">
             ${display(card)}
           </div>
         `).join("")}
@@ -919,6 +1040,10 @@ function render() {
 
   document.querySelectorAll(".card[data-i]").forEach((card) => {
     card.onclick = () => playCard(Number(card.dataset.i), card);
+  });
+
+  document.querySelectorAll(".powerup-play-btn").forEach((button) => {
+    button.onclick = () => handlePowerupUse(button.dataset.powerup || "");
   });
 
   const market = document.getElementById("market");
@@ -975,31 +1100,43 @@ function draw(target, count) {
   }
 }
 
-function applySpecial(card, target) {
+function applySpecial(card, target, source = "player") {
   const isAgainstAi = target === "ai";
+  const boosted = source === "player" && doubleEffectActive;
+  const drawMultiplier = boosted ? 2 : 1;
+
+  if (target === "player" && shieldActive && (card.number === 2 || card.number === 5 || card.number === 14)) {
+    shieldActive = false;
+    showToast("Shield blocked effect");
+    if (boosted) doubleEffectActive = false;
+    return;
+  }
 
   if (card.number === 2 && state.settings.pick2) {
-    draw(target, 2);
+    draw(target, 2 * drawMultiplier);
     if (isAgainstAi) {
-      skipAiTurns += 1;
+      skipAiTurns += drawMultiplier;
     }
+    if (boosted) doubleEffectActive = false;
     return;
   }
 
   if (card.number === 5 && state.settings.pick3) {
-    draw(target, 3);
+    draw(target, 3 * drawMultiplier);
     shakeScreen();
     if (isAgainstAi) {
-      skipAiTurns += 1;
+      skipAiTurns += drawMultiplier;
     }
+    if (boosted) doubleEffectActive = false;
     return;
   }
 
   if (card.number === 14 && state.settings.generalMarket) {
-    draw(target, 1);
+    draw(target, 1 * drawMultiplier);
     if (isAgainstAi) {
-      skipAiTurns += 1;
+      skipAiTurns += drawMultiplier;
     }
+    if (boosted) doubleEffectActive = false;
     return;
   }
 
@@ -1014,12 +1151,14 @@ function applySpecial(card, target) {
       if (card.number === 1 && state.settings.holdOn) {
         skipAllAIs = true;
       } else {
-        skipAiTurns += 1;
+        skipAiTurns += drawMultiplier;
       }
+      if (boosted) doubleEffectActive = false;
       return;
     }
 
-    skipPlayerTurns += 1;
+    skipPlayerTurns += drawMultiplier;
+    if (boosted) doubleEffectActive = false;
   }
 }
 
@@ -1037,6 +1176,19 @@ async function playCard(index, el) {
 
   const card = state.player[index];
   const top = state.discard[state.discard.length - 1];
+  if (destroyMode) {
+    if (state.player.length <= 1) {
+      destroyMode = false;
+      showToast("Need at least 2 cards");
+      render();
+      return;
+    }
+    state.player.splice(index, 1);
+    destroyMode = false;
+    showToast("Card destroyed");
+    render();
+    return;
+  }
   if (!isValid(card, top)) return;
   const playMeta = rewards?.recordPlayerCardPlayed?.(card) || { comboTriggered: false };
   if (playMeta.comboTriggered) {
@@ -1064,9 +1216,17 @@ async function playCard(index, el) {
       return;
     }
 
-    applySpecial(card, "ai");
+    applySpecial(card, "ai", "player");
     render();
     if (checkWinLose()) return;
+
+    if (secondChanceTurns > 0) {
+      secondChanceTurns -= 1;
+      state.turn = "player";
+      showToast("Second Chance turn");
+      render();
+      return;
+    }
 
     state.turn = "ai";
     scheduleAiTurn(ANIMATION_SPEED);
@@ -1137,7 +1297,7 @@ async function aiTurn() {
       flashWhotScreen();
       aiWhotChoice();
     } else {
-      applySpecial(card, "player");
+      applySpecial(card, "player", "ai");
     }
   } else {
     refillMarketIfNeeded();
@@ -1212,7 +1372,7 @@ async function aiGroupTurn() {
       flashWhotScreen();
       aiWhotChoice();
     } else {
-      applySpecial(card, "player");
+      applySpecial(card, "player", "ai");
     }
   } else {
     refillMarketIfNeeded();

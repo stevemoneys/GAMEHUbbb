@@ -1,12 +1,17 @@
 const rewards = window.WHRewards;
 const skins = window.WHThemeSkins || [];
+const powerUps = window.WHPowerUps || [];
 
 const coinCountEl = document.getElementById("coin-count");
 const skinGridEl = document.getElementById("skin-grid");
+const powerupGridEl = document.getElementById("powerup-grid");
 
 const OWNED_KEY = "wh_theme_owned";
 const SELECTED_KEY = "wh_theme_selected";
 const PRICES_KEY = "wh_theme_prices";
+const POWERUP_COUNTS_KEY = "wh_powerup_counts";
+const POWERUP_EQUIPPED_KEY = "wh_powerup_equipped";
+const MAX_EQUIPPED_POWERUPS = 4;
 
 const PRICE_MIN = 450;
 const PRICE_MAX = 4200;
@@ -94,8 +99,9 @@ function updateCoinBalance() {
 function buildSkinCard(skin, price, ownedSet, selectedId) {
   const owned = ownedSet.has(skin.id);
   const selected = selectedId === skin.id;
+  const locked = !(owned || price === 0);
   return `
-    <article class="skin-card">
+    <article class="skin-card ${locked ? "locked" : ""}">
       <div class="skin-preview-container">
         <div class="card-preview" id="cardPreview-${skin.id}" aria-label="${skin.name} preview"></div>
       </div>
@@ -104,6 +110,40 @@ function buildSkinCard(skin, price, ownedSet, selectedId) {
       <div class="skin-actions">
         <button class="shop-btn buy" type="button" data-action="buy" data-id="${skin.id}" ${owned || price === 0 ? "disabled" : ""}>Buy</button>
         <button class="shop-btn use ${selected ? "active" : ""}" type="button" data-action="use" data-id="${skin.id}" ${owned || price === 0 ? "" : "disabled"}>${selected ? "Using" : "Use"}</button>
+      </div>
+    </article>
+  `;
+}
+
+function getPowerupCounts() {
+  return loadJSON(POWERUP_COUNTS_KEY, {});
+}
+
+function savePowerupCounts(counts) {
+  saveJSON(POWERUP_COUNTS_KEY, counts);
+}
+
+function getEquippedPowerups() {
+  const list = loadJSON(POWERUP_EQUIPPED_KEY, []);
+  return Array.isArray(list) ? list.slice(0, MAX_EQUIPPED_POWERUPS) : [];
+}
+
+function saveEquippedPowerups(list) {
+  saveJSON(POWERUP_EQUIPPED_KEY, list.slice(0, MAX_EQUIPPED_POWERUPS));
+}
+
+function buildPowerupCard(powerup, counts, equipped) {
+  const count = Number(counts[powerup.id] || 0);
+  const isEquipped = equipped.includes(powerup.id);
+  return `
+    <article class="powerup-card">
+      <div class="powerup-icon" aria-hidden="true">${powerup.icon}</div>
+      <div class="skin-name">${powerup.name}</div>
+      <div class="powerup-desc">${powerup.description}</div>
+      <div class="skin-price">${powerup.price} Coins${count > 0 ? ` • x${count}` : ""}</div>
+      <div class="skin-actions">
+        <button class="shop-btn buy" type="button" data-pu-action="buy" data-pu-id="${powerup.id}">Buy</button>
+        <button class="shop-btn use ${isEquipped ? "active" : ""}" type="button" data-pu-action="equip" data-pu-id="${powerup.id}" ${count > 0 ? "" : "disabled"}>${isEquipped ? "Equipped" : "Equip"}</button>
       </div>
     </article>
   `;
@@ -122,6 +162,14 @@ function renderShop() {
     showSkin(document.getElementById(`cardPreview-${skin.id}`), skin.image);
   });
   animatePreview();
+
+  if (powerupGridEl) {
+    const counts = getPowerupCounts();
+    const equipped = getEquippedPowerups();
+    powerupGridEl.innerHTML = powerUps
+      .map((powerup) => buildPowerupCard(powerup, counts, equipped))
+      .join("");
+  }
 }
 
 function buySkin(id) {
@@ -154,6 +202,36 @@ function useSkin(id) {
   renderShop();
 }
 
+function buyPowerup(id) {
+  const powerup = powerUps.find((entry) => entry.id === id);
+  if (!powerup || !rewards?.getCoinBalance) return;
+  const balance = rewards.getCoinBalance();
+  if (balance < powerup.price) return;
+  if (rewards.spendCoins) rewards.spendCoins(powerup.price);
+  else rewards.setCoinBalance(balance - powerup.price);
+
+  const counts = getPowerupCounts();
+  counts[id] = Number(counts[id] || 0) + 1;
+  savePowerupCounts(counts);
+  updateCoinBalance();
+  renderShop();
+}
+
+function equipPowerup(id) {
+  const counts = getPowerupCounts();
+  if (Number(counts[id] || 0) <= 0) return;
+  const equipped = getEquippedPowerups();
+  const index = equipped.indexOf(id);
+  if (index >= 0) {
+    equipped.splice(index, 1);
+  } else {
+    if (equipped.length >= MAX_EQUIPPED_POWERUPS) equipped.shift();
+    equipped.push(id);
+  }
+  saveEquippedPowerups(equipped);
+  renderShop();
+}
+
 skinGridEl?.addEventListener("click", (event) => {
   const button = event.target.closest(".shop-btn");
   if (!button) return;
@@ -162,6 +240,16 @@ skinGridEl?.addEventListener("click", (event) => {
   if (!id || !action) return;
   if (action === "buy") buySkin(id);
   if (action === "use") useSkin(id);
+});
+
+powerupGridEl?.addEventListener("click", (event) => {
+  const button = event.target.closest(".shop-btn");
+  if (!button) return;
+  const action = button.getAttribute("data-pu-action");
+  const id = button.getAttribute("data-pu-id");
+  if (!id || !action) return;
+  if (action === "buy") buyPowerup(id);
+  if (action === "equip") equipPowerup(id);
 });
 
 updateCoinBalance();
