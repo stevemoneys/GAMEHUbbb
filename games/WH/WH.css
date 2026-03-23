@@ -391,6 +391,20 @@ button:disabled {
   gap: 6px;
 }
 
+.powerup-side {
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(7, 14, 24, 0.44);
+  backdrop-filter: blur(6px);
+}
+
 .powerup-play-btn {
   border-radius: 10px;
   padding: 8px 10px;
@@ -400,6 +414,24 @@ button:disabled {
   background: linear-gradient(135deg, rgba(126, 87, 194, 0.95), rgba(80, 55, 143, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
+}
+
+.discard-card-view {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+body.landscape-game-active .powerup-side {
+  right: 4px;
+  top: 56%;
+  padding: 4px;
+  gap: 4px;
+}
+
+body.landscape-game-active .powerup-play-btn {
+  padding: 6px 7px;
+  font-size: 10px;
 }
 
 .timed-chip {
@@ -660,24 +692,24 @@ body.last-card-alert::after {
 }
 
 .theme-minimal .card {
-  background: #7a4a2e;
-  color: #fff3e6;
+  background: #fff3e6;
+  color: #7a4a2e;
 }
 
 .theme-wood .card {
-  background: linear-gradient(145deg, #8b5a2b, #5a321e);
-  color: #ffe8cc;
+  background: #ffe8cc;
+  color: #8b5a2b;
 }
 
 .theme-leather .card {
-  background: #6b3e1e;
-  color: #f5e1c8;
+  background: #f5e1c8;
+  color: #6b3e1e;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
 .theme-tribal .card {
-  background: #5a321e;
-  color: gold;
+  background: gold;
+  color: #5a321e;
 }
 
 .theme-tribal .shape {
@@ -685,18 +717,18 @@ body.last-card-alert::after {
 }
 
 .theme-gold .card {
-  background: linear-gradient(145deg, #8b5a2b, #d4af37);
-  color: #fff8dc;
+  background: #fff8dc;
+  color: #8b5a2b;
 }
 
 .theme-royal .card {
-  background: #3b2414;
-  color: #ffd700;
+  background: #ffd700;
+  color: #3b2414;
 }
 
 .theme-neon .card {
-  background: #2b1a10;
-  color: #ffcc66;
+  background: #ffcc66;
+  color: #2b1a10;
 }
 
 .theme-neon .shape {
@@ -704,56 +736,50 @@ body.last-card-alert::after {
 }
 
 .theme-magic .card {
-  background: radial-gradient(circle, #7a4a2e, #2b1a10);
-  color: #ffd700;
+  background: #ffd700;
+  color: #7a4a2e;
 }
 
 .theme-glass .card {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: #fff;
+  color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(6px);
 }
 
 .theme-fire .card {
-  background: linear-gradient(145deg, #5a1e1e, #b33);
-  color: #ffd6a3;
+  background: #ffd6a3;
+  color: #5a1e1e;
 }
 
 .theme-galaxy .card {
-  background: radial-gradient(circle, #2b1a10, #000);
-  color: #d4af37;
+  background: #d4af37;
+  color: #2b1a10;
 }
 
 .theme-shadow .card {
-  background: #1a0f08;
-  color: #aaa;
+  background: #aaa;
+  color: #1a0f08;
 }
 
 .theme-diamond .card {
-  background: linear-gradient(145deg, #8b5a2b, #fff);
-  color: #333;
+  background: #333;
+  color: #8b5a2b;
 }
 
 .theme-hypnotic .card {
-  background: repeating-linear-gradient(
-    45deg,
-    #5a321e,
-    #5a321e 10px,
-    #6b3e1e 10px,
-    #6b3e1e 20px
-  );
-  color: #fff3e6;
+  background: #fff3e6;
+  color: #5a321e;
 }
 
 .theme-ancient .card {
-  background: #4a2f1b;
-  color: #e6c28b;
+  background: #e6c28b;
+  color: #4a2f1b;
   border: 2px solid #caa56b;
 }
 
 .theme-energy .card {
-  background: radial-gradient(circle, #7a4a2e, #000);
-  color: #ffcc66;
+  background: #ffcc66;
+  color: #7a4a2e;
 }
 
 .theme-energy .shape {
@@ -761,19 +787,19 @@ body.last-card-alert::after {
 }
 
 .theme-esports .card {
-  background: #2b1a10;
-  color: #ff9900;
+  background: #ff9900;
+  color: #2b1a10;
   border: 2px solid #ff9900;
 }
 
 .theme-metal .card {
-  background: linear-gradient(145deg, #8b5a2b, #b87333);
-  color: #fff;
+  background: #fff;
+  color: #8b5a2b;
 }
 
 .theme-mythic .card {
-  background: radial-gradient(circle, #5a321e, #000);
-  color: gold;
+  background: gold;
+  color: #5a321e;
 }
 
 .theme-mythic .shape {
@@ -781,8 +807,8 @@ body.last-card-alert::after {
 }
 
 .theme-god .card {
-  background: radial-gradient(circle, #8b5a2b, #000);
-  color: #ffd700;
+  background: #ffd700;
+  color: #8b5a2b;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
 }
 
@@ -806,8 +832,8 @@ body.last-card-alert::after {
 
 .ai-stack {
   position: relative;
-  width: 70px;
-  height: 102px;
+  width: 82px;
+  height: 118px;
   margin: 0 auto;
 }
 
@@ -868,15 +894,15 @@ body.last-card-alert::after {
 
 .ai-fan-stack {
   position: relative;
-  width: 120px;
-  height: 112px;
+  width: 132px;
+  height: 126px;
 }
 
 .ai-fan-stack .fan-card {
   position: absolute;
   top: 0;
-  width: 70px;
-  height: 102px;
+  width: 82px;
+  height: 118px;
   transform-origin: bottom center;
   transform: translateX(calc(var(--i) * 7px)) rotate(calc((var(--i) - ((var(--total) - 1) / 2)) * 3deg));
 }
@@ -1453,8 +1479,8 @@ body.whot-flash::before {
   body.landscape-game-active .ai-fan-stack .fan-card,
   body.landscape-game-active .ai-stack,
   body.landscape-game-active .ai-stack .card.back {
-    width: 50px;
-    height: 72px;
+    width: 56px;
+    height: 80px;
   }
 
   body.landscape-game-active .ai-fan-stack .count,

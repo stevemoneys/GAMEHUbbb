@@ -140,7 +140,7 @@ function buildPowerupCard(powerup, counts, equipped) {
       <div class="powerup-icon" aria-hidden="true">${powerup.icon}</div>
       <div class="skin-name">${powerup.name}</div>
       <div class="powerup-desc">${powerup.description}</div>
-      <div class="skin-price">${powerup.price} Coins${count > 0 ? ` • x${count}` : ""}</div>
+      <div class="skin-price">${powerup.price} Coins${count > 0 ? ` x${count}` : ""}</div>
       <div class="skin-actions">
         <button class="shop-btn buy" type="button" data-pu-action="buy" data-pu-id="${powerup.id}">Buy</button>
         <button class="shop-btn use ${isEquipped ? "active" : ""}" type="button" data-pu-action="equip" data-pu-id="${powerup.id}" ${count > 0 ? "" : "disabled"}>${isEquipped ? "Equipped" : "Equip"}</button>

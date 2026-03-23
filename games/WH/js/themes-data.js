@@ -23,4 +23,13 @@
   ];
 
   window.WHThemeSkins = THEME_SKINS;
+  window.WHPowerUps = [
+    { id: "second-chance", name: "Second Chance", icon: "\u21BB", description: "Play 2 cards in one turn.", price: 380 },
+    { id: "peek-ai", name: "Peek AI Cards", icon: "\u2315", description: "See one AI card briefly.", price: 320 },
+    { id: "shield", name: "Shield", icon: "\u26E8", description: "Blocks Pick 2 / Pick 3 / Market.", price: 460 },
+    { id: "magnet-draw", name: "Magnet Draw", icon: "\u{1F9F2}", description: "Draws guaranteed valid card.", price: 420 },
+    { id: "destroy-card", name: "Destroy Card", icon: "\u2736", description: "Remove one bad card.", price: 520 },
+    { id: "freeze-ai", name: "Freeze AI", icon: "\u23F8", description: "AI skips next turn.", price: 480 },
+    { id: "double-effect", name: "Double Effect", icon: "\u{1F525}", description: "Next special effect x2.", price: 620 }
+  ];
 })();

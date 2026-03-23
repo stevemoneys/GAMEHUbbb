@@ -1,4 +1,4 @@
-import { state } from "./state.js";
+﻿import { state } from "./state.js";
 import { createDeck } from "./deck.js";
 import {
   unlockNextLevel,
@@ -77,13 +77,13 @@ const WH_POWERUP_COUNTS_KEY = "wh_powerup_counts";
 const WH_POWERUP_EQUIPPED_KEY = "wh_powerup_equipped";
 const WH_POWERUP_LIMIT = 4;
 const POWERUP_META = {
-  "second-chance": { icon: "↻", name: "Second Chance" },
-  "peek-ai": { icon: "⌕", name: "Peek AI" },
-  shield: { icon: "⛨", name: "Shield" },
-  "magnet-draw": { icon: "🧲", name: "Magnet" },
-  "destroy-card": { icon: "✦", name: "Destroy" },
-  "freeze-ai": { icon: "❚❚", name: "Freeze" },
-  "double-effect": { icon: "🔥", name: "Double" }
+  "second-chance": { icon: "\u21BB", name: "Second Chance" },
+  "peek-ai": { icon: "\u2315", name: "Peek AI" },
+  shield: { icon: "\u26E8", name: "Shield" },
+  "magnet-draw": { icon: "\u{1F9F2}", name: "Magnet" },
+  "destroy-card": { icon: "\u2736", name: "Destroy" },
+  "freeze-ai": { icon: "\u23F8", name: "Freeze" },
+  "double-effect": { icon: "\u{1F525}", name: "Double" }
 };
 const ALL_THEME_CLASSES = [
   "theme-minimal",
@@ -301,9 +301,9 @@ function renderPowerupBar() {
   const usable = equippedPowerups.filter((id) => getPowerupCount(id) > 0);
   if (!usable.length) return "";
   return `
-    <div class="powerup-bar">
+    <div class="powerup-bar powerup-side">
       ${usable.map((id) => {
-        const meta = POWERUP_META[id] || { icon: "★", name: id };
+        const meta = POWERUP_META[id] || { icon: "\u2605", name: id };
         const count = getPowerupCount(id);
         return `<button class="shop-btn powerup-play-btn" data-powerup="${id}" title="${meta.name}">${meta.icon} x${count}</button>`;
       }).join("")}
@@ -1008,8 +1008,8 @@ function render() {
       <button class="restart-btn" onclick="playAgain()">Restart</button>
       <button class="hint-btn" onclick="showHint()">Hint</button>
       ${timedModeActive ? `<div class="timed-chip">Timed ${formatTime(timedSecondsLeft)}</div>` : ""}
-      ${renderPowerupBar()}
     </div>
+    ${renderPowerupBar()}
     ${anyPlayerAtLastCard() ? `<div class="last-card-banner">LAST CARD!</div>` : ""}
 
     <div class="game-layout game-layout-${state.mode}">
@@ -1020,7 +1020,9 @@ function render() {
           <div class="board">
             <div class="pile market" id="market"></div>
             <div class="pile discard">
-              ${display(topCard)}
+              <div class="card discard-card-view ${topCard.shape === "WHOT" ? "whot" : ""}">
+                ${display(topCard)}
+              </div>
               ${state.chosenShape ? `<div class="chosen-shape-tag">${state.chosenShape} ${getShapeName(state.chosenShape)}</div>` : ""}
             </div>
           </div>
@@ -1716,3 +1718,4 @@ document.addEventListener("DOMContentLoaded", () => {
   if (settingsBtn) settingsBtn.onclick = window.openSettings;
   if (rulesBtn) rulesBtn.onclick = window.openRules;
 });
+
