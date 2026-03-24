@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Phase 4 UI: renders game state and connects input to core logic.
  * UI only. Game rules and state live in game-state.js and rules.js.
  */
@@ -141,15 +141,8 @@ const PROGRESS_KEYS = [
 ];
 const AVATAR_UNLOCK_STAGE_INTERVAL = 5;
 const rewards = window.GameHubRewards;
-const powerUpsCatalog = window.GameHubPowerUps || [
-  { id: 'second-chance', name: 'Second Chance', icon: '🔄' },
-  { id: 'peek-ai', name: 'Peek AI Cards', icon: '🔍' },
-  { id: 'shield', name: 'Shield', icon: '🛡' },
-  { id: 'magnet-draw', name: 'Magnet Draw', icon: '🧲' },
-  { id: 'destroy-card', name: 'Destroy Card', icon: '💥' },
-  { id: 'freeze-ai', name: 'Freeze AI', icon: '⏸' },
-  { id: 'double-effect', name: 'Double Effect', icon: '🔥' }
-];
+const POWERUPS_ENABLED = false;
+const powerUpsCatalog = POWERUPS_ENABLED ? (window.GameHubPowerUps || []) : [];
 const THEME_PATH_KEY = 'gamehub_uno_theme_path';
 const CARD_PACK_PATH_KEY = 'gamehub_uno_card_pack_path';
 const POWERUP_COUNTS_KEY = 'gamehub_uno_powerup_counts';
@@ -173,6 +166,8 @@ let timedLossTriggered = false;
 let lastCardAlertActive = false;
 let heartbeatTickId = null;
 let heartbeatAudioCtx = null;
+let effectsUserTapped = false;
+let effectsEnabled = false;
 
 function markLandscapeIntent() {
   try {
@@ -193,6 +188,17 @@ function isSpeechEnabled() {
 
 function areReactionsEnabled() {
   return localStorage.getItem(REACTIONS_SETTING_KEY) !== 'off';
+}
+
+function refreshEffectsGate() {
+  const fullscreen = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  const landscape = !isPortraitOrientation();
+  effectsEnabled = effectsUserTapped && fullscreen && landscape;
+}
+
+function markEffectsTap() {
+  effectsUserTapped = true;
+  refreshEffectsGate();
 }
 
 function syncRewardQueueSize() {
@@ -381,6 +387,11 @@ function applyCardPackFromStorage() {
 }
 
 function loadPowerupState() {
+  if (!POWERUPS_ENABLED) {
+    powerUpCounts = {};
+    equippedPowerUpIds = [];
+    return;
+  }
   try {
     const rawCounts = JSON.parse(localStorage.getItem(POWERUP_COUNTS_KEY) || '{}');
     powerUpCounts = rawCounts && typeof rawCounts === 'object' ? rawCounts : {};
@@ -450,6 +461,11 @@ function findGuaranteedPlayableFromDeck() {
 
 function renderPowerupDock() {
   if (!dom.powerupDock) return;
+  if (!POWERUPS_ENABLED) {
+    dom.powerupDock.innerHTML = '';
+    dom.powerupDock.style.display = 'none';
+    return;
+  }
   const usable = equippedPowerUpIds.filter((id) => getPowerupCount(id) > 0).slice(0, MAX_EQUIPPED_POWERUPS);
   if (usable.length === 0) {
     dom.powerupDock.innerHTML = '';
@@ -464,7 +480,7 @@ function renderPowerupDock() {
       const disabled = isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0;
       return `
         <button type="button" class="powerup-pill" data-powerup-id="${id}" title="${meta?.name || id}" ${disabled ? 'disabled' : ''}>
-          <span aria-hidden="true">${meta?.icon || '⭐'}</span>
+          <span aria-hidden="true">${meta?.icon || 'â­'}</span>
           <span class="powerup-pill__count">${count}</span>
         </button>
       `;
@@ -490,6 +506,7 @@ function consumeDoubleIfNeeded(card) {
 }
 
 function handleUsePowerup(event) {
+  if (!POWERUPS_ENABLED) return;
   const button = event.target.closest('.powerup-pill');
   if (!button || isPaused || game.isFinished() || game.getCurrentPlayerIndex() !== 0) return;
   const powerupId = button.dataset.powerupId;
@@ -846,6 +863,7 @@ function restoreSavedMatch() {
 }
 
 function addAnimationClass(el, className) {
+  if (!effectsEnabled) return;
   if (!el) return;
   el.classList.remove(className);
   void el.offsetWidth;
@@ -951,6 +969,7 @@ function getPlayerTarget(playerIndex) {
 }
 
 function animateDrawToPlayer(playerIndex, count = 1, { wasPenalty = false } = {}) {
+  if (!effectsEnabled) return;
   if (wasPenalty && drawAnimationSuppress[playerIndex] >= count) {
     drawAnimationSuppress[playerIndex] -= count;
     return;
@@ -988,6 +1007,7 @@ function animateDrawToPlayer(playerIndex, count = 1, { wasPenalty = false } = {}
 }
 
 function animatePlayCardFromElement(card, sourceRect = null, sourceEl = null) {
+  if (!effectsEnabled) return;
   if (!sourceRect && !sourceEl) return;
   addAnimationClass(dom.centerZone, 'table-shake');
   createFlyingCard({
@@ -1003,6 +1023,7 @@ function animatePlayCardFromElement(card, sourceRect = null, sourceEl = null) {
 }
 
 function animatePlayCardFromPlayer(playerIndex, card) {
+  if (!effectsEnabled) return;
   const fromEl = playerIndex === 0 ? dom.handCards : getOpponentStack(playerIndex);
   addAnimationClass(dom.centerZone, 'table-shake');
   createFlyingCard({
@@ -1028,6 +1049,7 @@ function pulseAvatar(playerIndex) {
 }
 
 function animatePenaltyAttack(targetIndex, count) {
+  if (!effectsEnabled) return;
   drawAnimationSuppress[targetIndex] += count;
   addAnimationClass(dom.drawPile, 'deck-glow');
   if (count >= 4) addAnimationClass(dom.centerZone, 'draw4-flash');
@@ -1046,6 +1068,7 @@ function animatePenaltyAttack(targetIndex, count) {
 }
 
 function showUnoPop(playerIndex) {
+  if (!effectsEnabled) return;
   if (!dom.gameShell) return;
   playSfx('unoAlert', 0.9);
   pulseAvatar(playerIndex);
@@ -1075,6 +1098,7 @@ function showUnoPop(playerIndex) {
 }
 
 function animateVictory() {
+  if (!effectsEnabled) return;
   addAnimationClass(dom.centerZone, 'victory-glow');
   const bursts = 8;
   for (let i = 0; i < bursts; i += 1) {
@@ -1095,6 +1119,7 @@ function animateVictory() {
 }
 
 function animateGameStart() {
+  if (!effectsEnabled) return;
   addAnimationClass(dom.drawPile, 'shuffle-deck');
   const order = Array.from({ length: game.playerCount }, (_, index) => index);
   let delay = 240;
@@ -1208,6 +1233,7 @@ function shouldOpponentSpeak(eventKey, targetIndex) {
 }
 
 function maybeShowSpeech(playerIndex, eventKey, phraseKey = eventKey, targetIndex = null) {
+  if (!effectsEnabled) return;
   if (playerIndex === 0) {
     showSpeech(playerIndex, eventKey, phraseKey);
     return;
@@ -1456,10 +1482,12 @@ async function requestLandscapeMode() {
   await requestFullscreenMode();
   await tryLockOrientation();
   updateOrientationOverlay();
+  refreshEffectsGate();
 }
 
 function handleOrientationChange() {
   updateOrientationOverlay();
+  refreshEffectsGate();
   if (isPortraitOrientation() || document.hidden) return;
   requestLandscapeMode();
   startLandscapeRetry();
@@ -1467,6 +1495,7 @@ function handleOrientationChange() {
 
 function handleFullscreenChange() {
   updateOrientationOverlay();
+  refreshEffectsGate();
   if (document.hidden || isPortraitOrientation()) return;
   requestLandscapeMode();
   startLandscapeRetry();
@@ -1943,6 +1972,7 @@ function initPhase4UI() {
   stopLastCardAlert();
   markLandscapeIntent();
   activateLandscapeMode();
+  refreshEffectsGate();
   syncRewardQueueSize();
   if (!shouldRestoreSavedMatch || !restoreSavedMatch()) {
     game.init();
@@ -1959,14 +1989,17 @@ function initPhase4UI() {
   }
   updateOrientationOverlay();
   document.body.addEventListener('click', () => {
+    markEffectsTap();
     unlockAudio();
     activateLandscapeMode();
   }, { passive: true });
   document.body.addEventListener('touchstart', () => {
+    markEffectsTap();
     unlockAudio();
     activateLandscapeMode();
   }, { passive: true });
   document.body.addEventListener('pointerdown', () => {
+    markEffectsTap();
     unlockAudio();
     activateLandscapeMode();
   }, { passive: true });
@@ -2057,3 +2090,11 @@ function initPhase4UI() {
 }
 
 export { initPhase4UI };
+
+
+
+
+
+
+
+

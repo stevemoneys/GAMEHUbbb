@@ -1,4 +1,4 @@
-body {
+﻿body {
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -210,11 +210,11 @@ kbd {
 }
 
 .level-group:nth-child(odd) {
-  transform: translateY(-28%);
+  transform: none;
 }
 
 .level-group:nth-child(even) {
-  transform: translateY(28%);
+  transform: none;
 }
 
 .level-badge {
@@ -396,3 +396,4 @@ body.landscape-game-active .fullscreen-note {
 :fullscreen .levels-shell {
   padding: 10px 12px 14px;
 }
+

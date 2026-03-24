@@ -1,4 +1,4 @@
-window.GameHubThemes = [
+﻿window.GameHubThemes = [
   { id: 1, name: "Classic Arena", price: 0, src: "assets/themes/theme1.webp", url: "assets/themes/theme1.webp" },
   { id: 2, name: "Rich Velvet", price: 300, src: "assets/themes/theme2.webp", url: "assets/themes/theme2.webp" },
   { id: 3, name: "Neon Edge", price: 350, src: "assets/themes/theme3.webp", url: "assets/themes/theme3.webp" },
@@ -25,49 +25,49 @@ window.GameHubPowerUps = [
   {
     id: "second-chance",
     name: "Second Chance",
-    icon: "🔄",
+    icon: "\u{1F504}",
     description: "Play 2 cards in one turn.",
     price: 420
   },
   {
     id: "peek-ai",
     name: "Peek AI Cards",
-    icon: "🔍",
+    icon: "\u{1F50D}",
     description: "See one AI card briefly.",
     price: 360
   },
   {
     id: "shield",
     name: "Shield",
-    icon: "🛡",
+    icon: "\u{1F6E1}",
     description: "Blocks the next Draw penalty.",
     price: 520
   },
   {
     id: "magnet-draw",
     name: "Magnet Draw",
-    icon: "🧲",
+    icon: "\u{1F9F2}",
     description: "Draw a guaranteed playable card.",
     price: 460
   },
   {
     id: "destroy-card",
     name: "Destroy Card",
-    icon: "💥",
+    icon: "\u{1F4A5}",
     description: "Remove 1 bad card from your hand.",
     price: 580
   },
   {
     id: "freeze-ai",
     name: "Freeze AI",
-    icon: "⏸",
+    icon: "\u23F8",
     description: "AI skips next turn.",
     price: 500
   },
   {
     id: "double-effect",
     name: "Double Effect",
-    icon: "🔥",
+    icon: "\u{1F525}",
     description: "Next special card effect becomes x2.",
     price: 640
   }

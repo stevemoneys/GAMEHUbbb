@@ -25,11 +25,11 @@ const backgroundImages = [
 ];
 
 const SHAPES = ["\u2B24", "\u25B2", "\u25A0", "\u2716", "\u2605"];
-const ANIMATION_SPEED = 850;
-const PLAY_FLIGHT_MS = 540;
-const DRAW_FLIGHT_MS = 460;
-const OPENING_DEAL_FLIGHT_MS = 430;
-const OPENING_DEAL_STAGGER_MS = 86;
+const ANIMATION_SPEED = 1200;
+const PLAY_FLIGHT_MS = 860;
+const DRAW_FLIGHT_MS = 760;
+const OPENING_DEAL_FLIGHT_MS = 620;
+const OPENING_DEAL_STAGGER_MS = 130;
 const TIMED_MODE_EVERY_LEVELS = 5;
 const TIMED_MODE_TOTAL_SECONDS = 180;
 
@@ -75,13 +75,14 @@ const WH_THEME_CLASS_KEY = "wh_theme_selected_class";
 const WH_THEME_BACK_KEY = "wh_theme_selected_back";
 const WH_POWERUP_COUNTS_KEY = "wh_powerup_counts";
 const WH_POWERUP_EQUIPPED_KEY = "wh_powerup_equipped";
+const WH_POWERUP_STARTER_KEY = "wh_powerup_starter_granted";
 const WH_POWERUP_LIMIT = 4;
 const POWERUP_META = {
-  "second-chance": { icon: "\u21BB", name: "Second Chance" },
-  "peek-ai": { icon: "\u2315", name: "Peek AI" },
-  shield: { icon: "\u26E8", name: "Shield" },
+  "second-chance": { icon: "\u{1F504}", name: "Second Chance" },
+  "peek-ai": { icon: "\u{1F50D}", name: "Peek AI" },
+  shield: { icon: "\u{1F6E1}", name: "Shield" },
   "magnet-draw": { icon: "\u{1F9F2}", name: "Magnet" },
-  "destroy-card": { icon: "\u2736", name: "Destroy" },
+  "destroy-card": { icon: "\u{1F4A5}", name: "Destroy" },
   "freeze-ai": { icon: "\u23F8", name: "Freeze" },
   "double-effect": { icon: "\u{1F525}", name: "Double" }
 };
@@ -119,10 +120,6 @@ function loadSettings() {
   }
 }
 
-document.addEventListener("click", () => {
-  updateBackgroundMusic();
-}, { once: true });
-
 function playSound(name) {
   if (!state.settings.sounds) return;
   if (!sounds[name]) return;
@@ -132,7 +129,14 @@ function playSound(name) {
 }
 
 function updateBackgroundMusic() {
-  if (!state.settings.music) {
+  const gameEl = document.getElementById("game");
+  const inGameplay = Boolean(
+    gameEl &&
+    !gameEl.classList.contains("hidden") &&
+    document.body.classList.contains("landscape-game-active")
+  );
+
+  if (!state.settings.music || !inGameplay) {
     bgMusic.pause();
     return;
   }
@@ -266,6 +270,7 @@ function updateLastCardTension() {
 }
 
 function loadPowerupState() {
+  const knownIds = Object.keys(POWERUP_META);
   try {
     const counts = JSON.parse(localStorage.getItem(WH_POWERUP_COUNTS_KEY) || "{}");
     powerupCounts = counts && typeof counts === "object" ? counts : {};
@@ -274,10 +279,29 @@ function loadPowerupState() {
   }
   try {
     const equipped = JSON.parse(localStorage.getItem(WH_POWERUP_EQUIPPED_KEY) || "[]");
-    equippedPowerups = Array.isArray(equipped) ? equipped.slice(0, WH_POWERUP_LIMIT) : [];
+    equippedPowerups = Array.isArray(equipped)
+      ? equipped.filter((id) => knownIds.includes(id)).slice(0, WH_POWERUP_LIMIT)
+      : [];
   } catch {
     equippedPowerups = [];
   }
+
+  if (!equippedPowerups.length) {
+    equippedPowerups = knownIds.slice(0, WH_POWERUP_LIMIT);
+    localStorage.setItem(WH_POWERUP_EQUIPPED_KEY, JSON.stringify(equippedPowerups));
+  }
+
+  if (!localStorage.getItem(WH_POWERUP_STARTER_KEY)) {
+    equippedPowerups.forEach((id) => {
+      powerupCounts[id] = Math.max(1, Number(powerupCounts[id] || 0));
+    });
+    localStorage.setItem(WH_POWERUP_STARTER_KEY, "1");
+  }
+
+  knownIds.forEach((id) => {
+    powerupCounts[id] = Math.max(0, Number(powerupCounts[id] || 0));
+  });
+  savePowerupCounts();
 }
 
 function savePowerupCounts() {
@@ -298,14 +322,17 @@ function consumePowerup(id) {
 
 function renderPowerupBar() {
   if (!equippedPowerups.length) return "";
-  const usable = equippedPowerups.filter((id) => getPowerupCount(id) > 0);
-  if (!usable.length) return "";
   return `
     <div class="powerup-bar powerup-side">
-      ${usable.map((id) => {
+      ${equippedPowerups.map((id) => {
         const meta = POWERUP_META[id] || { icon: "\u2605", name: id };
         const count = getPowerupCount(id);
-        return `<button class="shop-btn powerup-play-btn" data-powerup="${id}" title="${meta.name}">${meta.icon} x${count}</button>`;
+        return `
+          <button class="shop-btn powerup-play-btn" data-powerup="${id}" title="${meta.name} (${count})" ${count > 0 ? "" : "disabled"}>
+            <span class="powerup-icon">${meta.icon}</span>
+            <span class="powerup-count">${count}</span>
+          </button>
+        `;
       }).join("")}
     </div>
   `;
@@ -319,7 +346,11 @@ function pickAiHand() {
 
 function handlePowerupUse(id) {
   if (state.gameOver || state.turn !== "player") return;
-  if (!consumePowerup(id)) return;
+  if (!consumePowerup(id)) {
+    showToast("No power-up charge left");
+    render();
+    return;
+  }
 
   if (id === "second-chance") {
     secondChanceTurns += 1;
@@ -1548,6 +1579,7 @@ window.goHome = function goHome() {
   document.getElementById("menu").classList.remove("hidden");
   document.getElementById("quickUI")?.classList.remove("hidden");
   document.getElementById("hubBackBtn")?.classList.remove("hidden");
+  updateBackgroundMusic();
 };
 
 window.playAgain = function playAgain() {
@@ -1606,6 +1638,7 @@ window.goBack = function goBack() {
   saveMatchSnapshot();
   releaseLandscapeGameplay();
   document.getElementById("game").classList.add("hidden");
+  updateBackgroundMusic();
 
   if (state.mode === "quick") {
     window.showLevels();

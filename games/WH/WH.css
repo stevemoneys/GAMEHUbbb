@@ -407,13 +407,39 @@ button:disabled {
 
 .powerup-play-btn {
   border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
+  padding: 7px 9px;
+  min-width: 62px;
   font-weight: 900;
   letter-spacing: 0.04em;
   background: linear-gradient(135deg, rgba(126, 87, 194, 0.95), rgba(80, 55, 143, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.powerup-play-btn:disabled {
+  opacity: 0.45;
+  filter: grayscale(0.15);
+}
+
+.powerup-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.powerup-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2c1a48;
 }
 
 .discard-card-view {
@@ -559,10 +585,17 @@ body.last-card-alert::after {
 }
 
 .pile.discard {
-  background: linear-gradient(145deg, #fff6eb, #f3dfcc);
-  color: #ffffff;
-  border: 2px solid #e5d2c2;
+  background: transparent;
+  border: none;
   position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.pile.discard .card {
+  width: 100%;
+  height: 100%;
+  margin: 0;
 }
 
 .chosen-shape-tag {
@@ -691,23 +724,27 @@ body.last-card-alert::after {
   display: none;
 }
 
-.theme-minimal .card {
+.theme-minimal .card:not(.back),
+.theme-minimal .pile.discard {
   background: #fff3e6;
   color: #7a4a2e;
 }
 
-.theme-wood .card {
+.theme-wood .card:not(.back),
+.theme-wood .pile.discard {
   background: #ffe8cc;
   color: #8b5a2b;
 }
 
-.theme-leather .card {
+.theme-leather .card:not(.back),
+.theme-leather .pile.discard {
   background: #f5e1c8;
   color: #6b3e1e;
   box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.theme-tribal .card {
+.theme-tribal .card:not(.back),
+.theme-tribal .pile.discard {
   background: gold;
   color: #5a321e;
 }
@@ -716,17 +753,20 @@ body.last-card-alert::after {
   text-shadow: 0 0 6px gold;
 }
 
-.theme-gold .card {
+.theme-gold .card:not(.back),
+.theme-gold .pile.discard {
   background: #fff8dc;
   color: #8b5a2b;
 }
 
-.theme-royal .card {
+.theme-royal .card:not(.back),
+.theme-royal .pile.discard {
   background: #ffd700;
   color: #3b2414;
 }
 
-.theme-neon .card {
+.theme-neon .card:not(.back),
+.theme-neon .pile.discard {
   background: #ffcc66;
   color: #2b1a10;
 }
@@ -735,49 +775,58 @@ body.last-card-alert::after {
   text-shadow: 0 0 10px orange;
 }
 
-.theme-magic .card {
+.theme-magic .card:not(.back),
+.theme-magic .pile.discard {
   background: #ffd700;
   color: #7a4a2e;
 }
 
-.theme-glass .card {
+.theme-glass .card:not(.back),
+.theme-glass .pile.discard {
   background: #fff;
   color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(6px);
 }
 
-.theme-fire .card {
+.theme-fire .card:not(.back),
+.theme-fire .pile.discard {
   background: #ffd6a3;
   color: #5a1e1e;
 }
 
-.theme-galaxy .card {
+.theme-galaxy .card:not(.back),
+.theme-galaxy .pile.discard {
   background: #d4af37;
   color: #2b1a10;
 }
 
-.theme-shadow .card {
+.theme-shadow .card:not(.back),
+.theme-shadow .pile.discard {
   background: #aaa;
   color: #1a0f08;
 }
 
-.theme-diamond .card {
+.theme-diamond .card:not(.back),
+.theme-diamond .pile.discard {
   background: #333;
   color: #8b5a2b;
 }
 
-.theme-hypnotic .card {
+.theme-hypnotic .card:not(.back),
+.theme-hypnotic .pile.discard {
   background: #fff3e6;
   color: #5a321e;
 }
 
-.theme-ancient .card {
+.theme-ancient .card:not(.back),
+.theme-ancient .pile.discard {
   background: #e6c28b;
   color: #4a2f1b;
   border: 2px solid #caa56b;
 }
 
-.theme-energy .card {
+.theme-energy .card:not(.back),
+.theme-energy .pile.discard {
   background: #ffcc66;
   color: #7a4a2e;
 }
@@ -786,18 +835,21 @@ body.last-card-alert::after {
   text-shadow: 0 0 8px orange;
 }
 
-.theme-esports .card {
+.theme-esports .card:not(.back),
+.theme-esports .pile.discard {
   background: #ff9900;
   color: #2b1a10;
   border: 2px solid #ff9900;
 }
 
-.theme-metal .card {
+.theme-metal .card:not(.back),
+.theme-metal .pile.discard {
   background: #fff;
   color: #8b5a2b;
 }
 
-.theme-mythic .card {
+.theme-mythic .card:not(.back),
+.theme-mythic .pile.discard {
   background: gold;
   color: #5a321e;
 }
@@ -806,7 +858,8 @@ body.last-card-alert::after {
   text-shadow: 0 0 12px gold;
 }
 
-.theme-god .card {
+.theme-god .card:not(.back),
+.theme-god .pile.discard {
   background: #ffd700;
   color: #8b5a2b;
   box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);

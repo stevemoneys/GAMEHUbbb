@@ -13,9 +13,9 @@
     cardsPlayed: 0,
     whotUsed: 0,
     winStreak: 0,
-    win10RewardGranted: false,
-    play50RewardGranted: false,
-    whot20RewardGranted: false,
+    win10Cycles: 0,
+    play50Cycles: 0,
+    whot20Cycles: 0,
     comboTriggers: 0,
     streak3RewardCount: 0,
     lastComboAt: 0
@@ -185,14 +185,14 @@
       enqueueReward({ title: "Combo!", amount: 350 });
     }
 
-    if (stats.cardsPlayed >= 50 && !stats.play50RewardGranted) {
+    while (stats.cardsPlayed >= (stats.play50Cycles + 1) * 50) {
       enqueueReward({ title: "Play 50 Cards", amount: 400 });
-      stats.play50RewardGranted = true;
+      stats.play50Cycles += 1;
     }
 
-    if (stats.whotUsed >= 20 && !stats.whot20RewardGranted) {
+    while (stats.whotUsed >= (stats.whot20Cycles + 1) * 20) {
       enqueueReward({ title: "Use WHOT 20 Times", amount: 300 });
-      stats.whot20RewardGranted = true;
+      stats.whot20Cycles += 1;
     }
 
     saveStats(stats);
@@ -211,9 +211,9 @@
       enqueueReward({ title: "Game Won", amount: 200 });
       events.push("win");
 
-      if (stats.wins >= 10 && !stats.win10RewardGranted) {
+      while (stats.wins >= (stats.win10Cycles + 1) * 10) {
         enqueueReward({ title: "Win 10 Games", amount: 3000 });
-        stats.win10RewardGranted = true;
+        stats.win10Cycles += 1;
         events.push("win10");
       }
 
@@ -256,30 +256,36 @@
 
   function getMissionProgress() {
     const stats = loadStats();
+    const win10Progress = stats.wins % 10;
+    const play50Progress = stats.cardsPlayed % 50;
+    const whot20Progress = stats.whotUsed % 20;
     return [
       {
         id: "win10",
         title: "Win 10 games",
         reward: 3000,
-        progress: Math.min(stats.wins, 10),
+        progress: win10Progress,
         target: 10,
-        completed: stats.win10RewardGranted
+        completed: false,
+        cycles: stats.win10Cycles
       },
       {
         id: "play50",
         title: "Play 50 cards",
         reward: 400,
-        progress: Math.min(stats.cardsPlayed, 50),
+        progress: play50Progress,
         target: 50,
-        completed: stats.play50RewardGranted
+        completed: false,
+        cycles: stats.play50Cycles
       },
       {
         id: "whot20",
         title: "Use WHOT 20 times",
         reward: 300,
-        progress: Math.min(stats.whotUsed, 20),
+        progress: whot20Progress,
         target: 20,
-        completed: stats.whot20RewardGranted
+        completed: false,
+        cycles: stats.whot20Cycles
       }
     ];
   }

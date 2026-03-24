@@ -1,7 +1,7 @@
 const rewards = window.GameHubRewards;
 const themes = window.GameHubThemes || [];
 const cardPacks = window.GameHubCardPacks || [];
-const powerUps = window.GameHubPowerUps || [];
+const powerUps = [];
 
 const coinCountEl = document.getElementById("coin-count");
 const carouselEl = document.getElementById("theme-carousel");

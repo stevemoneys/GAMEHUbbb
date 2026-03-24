@@ -121,11 +121,11 @@ function renderMissions() {
   missionListEl.innerHTML = "";
   missions.forEach((mission) => {
     const card = document.createElement("div");
-    card.className = `mission-card${mission.completed ? " completed" : ""}`;
+    card.className = "mission-card";
     card.innerHTML = `
       <div>
         <div class="mission-title">${mission.title}</div>
-        <div class="mission-meta">${mission.progress}/${mission.target}</div>
+        <div class="mission-meta">${mission.progress}/${mission.target}${mission.cycles ? ` · Cleared ${mission.cycles}x` : ""}</div>
       </div>
       <div class="mission-reward">+${mission.reward}</div>
     `;

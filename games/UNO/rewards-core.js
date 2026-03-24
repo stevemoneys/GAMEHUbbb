@@ -304,9 +304,10 @@
     const lastClaim = state.lastClaim || "";
     const streak = typeof state.streak === "number" ? state.streak : 0;
     const alreadyClaimed = lastClaim === todayKey;
+    const normalizedStreak = Math.max(1, Math.min(streak || 1, DAILY_REWARDS.length));
     const nextStreak = alreadyClaimed
-      ? Math.max(1, Math.min(streak || 1, DAILY_REWARDS.length))
-      : (lastClaim === yesterdayKey ? Math.min(streak + 1, DAILY_REWARDS.length) : 1);
+      ? normalizedStreak
+      : (lastClaim === yesterdayKey ? ((normalizedStreak % DAILY_REWARDS.length) + 1) : 1);
     const dayIndex = Math.max(1, Math.min(nextStreak, DAILY_REWARDS.length));
 
     return {
