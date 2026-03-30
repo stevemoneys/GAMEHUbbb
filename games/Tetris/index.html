@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TETRIXA</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="home-mode">
+  <main id="homeScreen" class="screen home-screen">
+    <section class="home-card panel-surface">
+      <p class="eyebrow">Premium Arcade Puzzle</p>
+      <button id="btnOpenShop" class="home-shop-btn" type="button" aria-label="Open shop">Shop</button>
+      <h1>TETRIXA</h1>
+      <p class="home-subtitle">Fast, clean, competitive. One tap from launch into battle.</p>
+
+      <div class="home-highlights">
+        <article class="home-mode-card">
+          <span>Mode</span>
+          <strong id="homeModeName">Battle Mode</strong>
+          <small id="homeModeDescription">Competitive AI showdown</small>
+        </article>
+        <article>
+          <span>Feel</span>
+          <strong>Responsive controls</strong>
+        </article>
+        <article>
+          <span>Style</span>
+          <strong>Premium one-screen UI</strong>
+        </article>
+      </div>
+
+      <div id="modePicker" class="mode-picker" aria-label="Game modes">
+        <button class="mode-pill is-active" data-mode="battle" type="button">Battle</button>
+        <button class="mode-pill" data-mode="classic" type="button">Classic+</button>
+        <button class="mode-pill" data-mode="speed" type="button">Speed Rush</button>
+        <button class="mode-pill" data-mode="puzzle" type="button">Puzzle</button>
+        <button class="mode-pill" data-mode="chaos" type="button">Chaos</button>
+        <button class="mode-pill" data-mode="mirror" type="button">Mirror</button>
+      </div>
+
+      <div class="home-actions">
+        <button id="btnPlayHome" class="home-btn home-btn-primary" type="button">Play Now</button>
+        <button id="btnBattleHome" class="home-btn" type="button">Battle Mode</button>
+      </div>
+
+      <p id="homeSignal" class="home-signal" aria-live="polite">Ready.</p>
+    </section>
+  </main>
+
+  <main id="gameApp" class="screen game-screen app-hidden">
+    <section id="playerPage" class="play-page panel-surface">
+      <header class="page-controls">
+        <div class="coin-counter" id="coinCounter">
+          <span class="coin-icon" aria-hidden="true"></span>
+          <strong id="coinValue">0</strong>
+        </div>
+        <div class="top-next">
+          <span>NEXT</span>
+          <canvas id="nextCanvas" width="64" height="64" aria-label="Next piece preview"></canvas>
+        </div>
+        <button id="btnToggleAIPreview" class="top-ai-live" type="button">
+          <span>AI LIVE</span>
+          <canvas id="aiMiniCanvas" width="52" height="104" aria-label="AI live board preview"></canvas>
+        </button>
+        <div class="top-actions">
+          <button id="btnReset" class="icon-btn" type="button">Reset</button>
+          <button id="btnBackToMenu" class="icon-btn" type="button">Menu</button>
+          <button id="btnShowAIPage" class="icon-btn icon-btn-primary" type="button">AI</button>
+        </div>
+      </header>
+
+      <article class="board-card board-card-player">
+        <div class="board-head">
+          <p>Player</p>
+          <span>Page 1</span>
+        </div>
+        <div class="canvas-shell">
+          <canvas id="playerCanvas" aria-label="Player board"></canvas>
+        </div>
+      </article>
+      <section id="powerupDock" class="powerup-dock" aria-label="Power ups"></section>
+      <section id="aiPreviewPanel" class="ai-preview-panel app-hidden">
+        <div class="ai-preview-head">
+          <h3>AI Preview</h3>
+          <button id="btnCloseAIPreview" type="button" class="ai-preview-close" aria-label="Close AI preview">X</button>
+        </div>
+        <canvas id="aiPreviewCanvas" width="110" height="220" aria-label="Expanded AI board preview"></canvas>
+      </section>
+      <p id="gameSignal" class="game-signal" aria-live="polite"></p>
+    </section>
+
+    <section id="aiPage" class="play-page panel-surface app-hidden">
+      <header class="page-controls">
+        <div class="coin-counter" id="coinCounterAI">
+          <span class="coin-icon" aria-hidden="true"></span>
+          <strong id="coinValueAI">0</strong>
+        </div>
+        <div class="top-next">
+          <span>NEXT</span>
+          <canvas id="aiNextCanvas" width="64" height="64" aria-label="AI next piece preview"></canvas>
+        </div>
+        <div class="top-actions">
+          <button id="btnResetAI" class="icon-btn" type="button">Reset</button>
+          <button id="btnBackToMenuAI" class="icon-btn" type="button">Menu</button>
+          <button id="btnShowPlayerPage" class="icon-btn icon-btn-primary" type="button">Player</button>
+        </div>
+      </header>
+
+      <article class="board-card board-card-ai">
+        <div class="board-head">
+          <p>AI Rival</p>
+          <span>Page 2</span>
+        </div>
+        <div class="canvas-shell">
+          <canvas id="aiCanvas" aria-label="AI board"></canvas>
+        </div>
+        <div class="ai-stats">
+          <span>Incoming <strong id="aiIncomingValue">0</strong></span>
+          <span>Combo <strong id="aiComboValue">1.00</strong></span>
+          <span>Status <strong id="aiStatusValue">Running</strong></span>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <main id="shopScreen" class="screen shop-screen app-hidden">
+    <section class="shop-card panel-surface">
+      <header class="shop-head">
+        <h2>Power Shop</h2>
+        <div class="coin-counter shop-coin-counter">
+          <span class="coin-icon" aria-hidden="true"></span>
+          <strong id="shopCoinValue">0</strong>
+        </div>
+        <button id="btnCloseShop" class="icon-btn" type="button">Back</button>
+      </header>
+      <p class="shop-subtitle">Buy power-ups and use them during matches.</p>
+      <div id="shopGrid" class="shop-grid"></div>
+    </section>
+  </main>
+
+  <div id="coinFxLayer" class="coin-fx-layer" aria-hidden="true"></div>
+  <aside id="dailyRewardModal" class="daily-reward-modal app-hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <div class="daily-reward-card">
+      <h2>Daily Reward</h2>
+      <p id="dailyRewardTitle"></p>
+      <p id="dailyRewardAmount" class="daily-reward-amount"></p>
+      <button id="btnDailyRewardOk" type="button">Collect</button>
+    </div>
+  </aside>
+  <aside id="matchRewardPanel" class="match-reward-panel app-hidden" aria-live="polite">
+    <h2>Match Rewards</h2>
+    <p id="rewardLinesText"></p>
+    <p id="rewardComboText"></p>
+    <p id="rewardSurvivalText"></p>
+    <p id="rewardSkillText"></p>
+    <p id="rewardTotalText" class="reward-total"></p>
+  </aside>
+  <aside id="stageResultPanel" class="stage-result-panel app-hidden" aria-live="polite">
+    <h2 id="stageResultTitle">Stage Result</h2>
+    <p id="stageResultText"></p>
+    <div class="stage-result-actions">
+      <button id="btnStageNext" type="button" class="icon-btn icon-btn-primary">Next Stage</button>
+      <button id="btnStageRetry" type="button" class="icon-btn">Retry</button>
+      <button id="btnStageMenu" type="button" class="icon-btn">Menu</button>
+    </div>
+  </aside>
+
+  <section id="levelSelectScreen" class="level-select app-hidden" aria-live="polite">
+    <header class="level-head">
+      <h2>Select Stage</h2>
+      <button id="btnCloseLevelSelect" type="button">Back</button>
+    </header>
+    <p class="level-subtitle">20 Levels - 5 Stages each - unlocks sequentially.</p>
+    <div id="levelStageGrid" class="level-stage-grid"></div>
+  </section>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
