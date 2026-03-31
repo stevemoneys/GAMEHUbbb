@@ -1,5 +1,8 @@
+export const BOARD_COLUMNS = 10;
+export const BOARD_ROWS = 20;
+
 export class Grid {
-  constructor(width = 10, height = 20) {
+  constructor(width = BOARD_COLUMNS, height = BOARD_ROWS) {
     this.width = width;
     this.height = height;
     this.reset();

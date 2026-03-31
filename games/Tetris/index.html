@@ -80,6 +80,14 @@
         </div>
       </article>
       <section id="powerupDock" class="powerup-dock" aria-label="Power ups"></section>
+      <section class="touch-controls" aria-label="Touch controls">
+        <button id="btnLeft" type="button" class="touch-btn">Left</button>
+        <button id="btnRight" type="button" class="touch-btn">Right</button>
+        <button id="btnDown" type="button" class="touch-btn">Down</button>
+        <button id="btnRotate" type="button" class="touch-btn">Rotate</button>
+        <button id="btnHold" type="button" class="touch-btn">Hold</button>
+        <button id="btnDrop" type="button" class="touch-btn touch-btn-primary">Drop</button>
+      </section>
       <section id="aiPreviewPanel" class="ai-preview-panel app-hidden">
         <div class="ai-preview-head">
           <h3>AI Preview</h3>
@@ -120,6 +128,9 @@
           <span>Combo <strong id="aiComboValue">1.00</strong></span>
           <span>Status <strong id="aiStatusValue">Running</strong></span>
         </div>
+        <div class="telemetry-bar telemetry-bar-ai">
+          <i id="aiIncomingBar"></i>
+        </div>
       </article>
     </section>
   </main>
@@ -134,7 +145,7 @@
         </div>
         <button id="btnCloseShop" class="icon-btn" type="button">Back</button>
       </header>
-      <p class="shop-subtitle">Buy power-ups and use them during matches.</p>
+      <p class="shop-subtitle">Buy power-ups and tetromino skins, then equip and use them in matches.</p>
       <div id="shopGrid" class="shop-grid"></div>
     </section>
   </main>

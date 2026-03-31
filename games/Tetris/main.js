@@ -73,6 +73,8 @@ const shopScreen = document.getElementById('shopScreen');
 const shopGrid = document.getElementById('shopGrid');
 const shopCoinValue = document.getElementById('shopCoinValue');
 const powerupDock = document.getElementById('powerupDock');
+const playerBoardCard = document.querySelector('.board-card-player');
+const aiBoardCard = document.querySelector('.board-card-ai');
 
 const PREVIEW_CELL_SIZE = 16;
 const CELL_SIZE = 24;
@@ -83,6 +85,8 @@ const COIN_STORAGE_KEY = 'tetrixa_coin_bank_v1';
 const DAILY_STORAGE_KEY = 'tetrixa_daily_reward_v1';
 const FIRSTS_STORAGE_KEY = 'tetrixa_first_rewards_v1';
 const POWERUP_STORAGE_KEY = 'tetrixa_powerup_inventory_v1';
+const SKIN_STORAGE_KEY = 'tetrixa_skin_state_v1';
+const TETROMINO_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 const POWERUP_LINE_CLEAR_POINTS = {
   1: 100,
   2: 300,
@@ -159,6 +163,49 @@ const POWERUP_DEFS = [
     price: 200,
     description: 'Rewinds the last locked piece.',
     iconPath: './assets/powerups/undo.webp'
+  }
+];
+
+const TETROMINO_SKIN_DEFS = [
+  {
+    id: 'skin_neon',
+    label: 'Neon Core',
+    short: 'NEON',
+    price: 480,
+    description: 'High-contrast neon crystal blocks.',
+    folder: 'skin-01'
+  },
+  {
+    id: 'skin_ice',
+    label: 'Ice Prism',
+    short: 'ICE',
+    price: 520,
+    description: 'Cool frosted blocks with bright edges.',
+    folder: 'skin-02'
+  },
+  {
+    id: 'skin_lava',
+    label: 'Lava Flux',
+    short: 'LAVA',
+    price: 560,
+    description: 'Molten core blocks with heavy glow.',
+    folder: 'skin-03'
+  },
+  {
+    id: 'skin_astro',
+    label: 'Astro Alloy',
+    short: 'ASTRO',
+    price: 620,
+    description: 'Futuristic plated blocks for ranked feel.',
+    folder: 'skin-04'
+  },
+  {
+    id: 'skin_retro',
+    label: 'Retro Gem',
+    short: 'RETRO',
+    price: 450,
+    description: 'Arcade gem blocks with punchy detail.',
+    folder: 'skin-05'
   }
 ];
 
@@ -350,6 +397,138 @@ function createBoardState(canvasEl, game, tag) {
 
 const player = createBoardState(playerCanvas, new Game(), 'player');
 const ai = createBoardState(aiCanvas, new Game(), 'ai');
+
+const MOBILE_LAYOUT_BREAKPOINT = 900;
+const MOBILE_TOP_UI = 80;
+const MOBILE_BOTTOM_UI = 100;
+const MOBILE_SIDE_UI = 80;
+
+function isMobilePlayViewport() {
+  if (window.innerWidth <= MOBILE_LAYOUT_BREAKPOINT) return true;
+  if (typeof window.matchMedia === 'function') {
+    return window.matchMedia('(pointer: coarse)').matches;
+  }
+  return false;
+}
+
+function computeMobileBoardLayout(board) {
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const cols = board.game.grid.width;
+  const rows = board.game.grid.height;
+
+  const availableWidth = screenWidth - MOBILE_SIDE_UI;
+  const availableHeight = screenHeight - MOBILE_TOP_UI - MOBILE_BOTTOM_UI;
+  const cellSize = Math.max(1, Math.floor(Math.min(availableWidth / cols, availableHeight / rows)));
+
+  const boardWidth = cellSize * cols;
+  const boardHeight = cellSize * rows;
+  const offsetX = Math.floor((screenWidth - boardWidth) / 2);
+  const offsetY = MOBILE_TOP_UI;
+  const dockWidth = Math.max(240, Math.min(screenWidth - 18, 430));
+
+  return { cellSize, boardWidth, boardHeight, offsetX, offsetY, dockWidth };
+}
+
+function computeDesktopDisplayCellSize(board) {
+  const columns = board.game.grid.width;
+  const rows = board.game.grid.height;
+  const isCompactViewport = window.innerWidth <= 760;
+  const viewportWidthCap = Math.floor(window.innerWidth * (isCompactViewport ? 0.986 : 0.98));
+  const viewportHeightCap = Math.floor(
+    Math.min(window.innerHeight * (isCompactViewport ? 0.64 : 0.68), isCompactViewport ? 560 : 620)
+  );
+  const shell = board.canvas.closest('.canvas-shell');
+  const shellWidth = shell ? Math.floor(shell.clientWidth) : 0;
+  const widthBudget = Math.min(460, viewportWidthCap, shellWidth > 0 ? shellWidth : 460);
+  const cellByWidth = Math.floor(widthBudget / columns);
+  const cellByHeight = Math.floor(viewportHeightCap / rows);
+  return Math.max(12, Math.min(cellByWidth, cellByHeight));
+}
+
+function syncBoardCanvasDisplaySize(board, { mobileLayout = null } = {}) {
+  if (!board || !board.canvas) return;
+
+  if (mobileLayout) {
+    board.canvas.style.width = `${mobileLayout.boardWidth}px`;
+    board.canvas.style.height = `${mobileLayout.boardHeight}px`;
+    return;
+  }
+
+  const columns = board.game.grid.width;
+  const rows = board.game.grid.height;
+  const displayCellSize = computeDesktopDisplayCellSize(board);
+  board.canvas.style.width = `${displayCellSize * columns}px`;
+  board.canvas.style.height = `${displayCellSize * rows}px`;
+}
+
+function syncAllBoardCanvasDisplaySizes() {
+  const useMobileLayout = isMobilePlayViewport();
+  const mobileLayout = useMobileLayout ? computeMobileBoardLayout(player) : null;
+
+  if (pageBody) {
+    pageBody.classList.toggle('mobile-play-layout', useMobileLayout);
+    if (mobileLayout) {
+      pageBody.style.setProperty('--mobile-board-width', `${mobileLayout.boardWidth}px`);
+      pageBody.style.setProperty('--mobile-board-height', `${mobileLayout.boardHeight}px`);
+      pageBody.style.setProperty('--mobile-board-offset-x', `${mobileLayout.offsetX}px`);
+      pageBody.style.setProperty('--mobile-board-offset-y', `${mobileLayout.offsetY}px`);
+      pageBody.style.setProperty('--mobile-dock-width', `${mobileLayout.dockWidth}px`);
+    } else {
+      pageBody.style.removeProperty('--mobile-board-width');
+      pageBody.style.removeProperty('--mobile-board-height');
+      pageBody.style.removeProperty('--mobile-board-offset-x');
+      pageBody.style.removeProperty('--mobile-board-offset-y');
+      pageBody.style.removeProperty('--mobile-dock-width');
+    }
+  }
+
+  syncBoardCanvasDisplaySize(player, { mobileLayout });
+  syncBoardCanvasDisplaySize(ai, { mobileLayout });
+
+  [playerBoardCard, aiBoardCard].forEach((card) => {
+    if (!card) return;
+    card.style.width = mobileLayout ? `${mobileLayout.boardWidth}px` : '';
+    card.style.height = mobileLayout ? `${mobileLayout.boardHeight}px` : '';
+  });
+
+  const previewCanvases = [nextCanvas, aiNextCanvas];
+  const miniPreviewSize = aiMiniCanvas;
+  if (mobileLayout) {
+    const previewSize = Math.max(34, Math.min(72, Math.round(mobileLayout.cellSize * 2.15)));
+    previewCanvases.forEach((canvas) => {
+      if (!canvas) return;
+      canvas.style.width = `${previewSize}px`;
+      canvas.style.height = `${previewSize}px`;
+    });
+    if (miniPreviewSize) {
+      miniPreviewSize.style.width = `${Math.round(previewSize * 0.74)}px`;
+      miniPreviewSize.style.height = `${Math.round(previewSize * 1.48)}px`;
+    }
+  } else {
+    previewCanvases.forEach((canvas) => {
+      if (!canvas) return;
+      canvas.style.width = '';
+      canvas.style.height = '';
+    });
+    if (miniPreviewSize) {
+      miniPreviewSize.style.width = '';
+      miniPreviewSize.style.height = '';
+    }
+  }
+}
+
+let boardDisplaySyncFrame = 0;
+function scheduleBoardCanvasDisplaySync() {
+  if (boardDisplaySyncFrame) {
+    cancelAnimationFrame(boardDisplaySyncFrame);
+  }
+  boardDisplaySyncFrame = requestAnimationFrame(() => {
+    boardDisplaySyncFrame = 0;
+    syncAllBoardCanvasDisplaySizes();
+  });
+}
+
 const sound = new SoundEngine();
 const music = new MusicController(MUSIC_SOURCE);
 
@@ -384,6 +563,17 @@ const powerupState = {
   comboBoostUntil: 0,
   freezeUntil: 0,
   freezeBlockFxUntil: 0
+};
+
+const skinState = {
+  owned: {},
+  selectedSkinId: 'default',
+  tiles: {}
+};
+
+const powerupUiState = {
+  expandedUntil: 0,
+  lastInteractionAt: performance.now()
 };
 
 const aiController = {
@@ -528,6 +718,115 @@ function consumePowerup(id) {
 
 powerupState.inventory = sanitizePowerupInventory(powerupState.inventory);
 
+function getSkinDefinition(skinId) {
+  return TETROMINO_SKIN_DEFS.find((def) => def.id === skinId) || null;
+}
+
+function buildSkinImageCandidates(skinDef, pieceType) {
+  const base = `./assets/skins/${skinDef.folder}/${pieceType}`;
+  return [`${base}.webp`, `${base}.png`, `${base}.jpg`, `${base}.jpeg`];
+}
+
+function sanitizeSkinState(rawState) {
+  const safeOwned = {};
+  TETROMINO_SKIN_DEFS.forEach((def) => {
+    safeOwned[def.id] = !!(rawState && rawState.owned && rawState.owned[def.id]);
+  });
+
+  const requested = rawState && typeof rawState.selectedSkinId === 'string'
+    ? rawState.selectedSkinId
+    : 'default';
+  const selectedSkinId =
+    requested === 'default'
+      ? 'default'
+      : (safeOwned[requested] && getSkinDefinition(requested) ? requested : 'default');
+
+  return {
+    owned: safeOwned,
+    selectedSkinId
+  };
+}
+
+function persistSkinState() {
+  writeJsonStorage(SKIN_STORAGE_KEY, {
+    owned: skinState.owned,
+    selectedSkinId: skinState.selectedSkinId
+  });
+}
+
+function isSkinOwned(skinId) {
+  return !!skinState.owned[skinId];
+}
+
+function getSkinTileImage(skinId, pieceType) {
+  if (!skinId || skinId === 'default') return null;
+  const pieceMap = skinState.tiles[skinId];
+  if (!pieceMap) return null;
+  const tile = pieceMap[pieceType];
+  return tile && tile !== 'loading' ? tile : null;
+}
+
+function getActiveTetrominoSkinImage(pieceType) {
+  return getSkinTileImage(skinState.selectedSkinId, pieceType);
+}
+
+function primeSkinTileImage(skinId, pieceType) {
+  const skinDef = getSkinDefinition(skinId);
+  if (!skinDef || !TETROMINO_TYPES.includes(pieceType)) return;
+  if (typeof Image === 'undefined') return;
+
+  const pieceMap = skinState.tiles[skinId] || (skinState.tiles[skinId] = {});
+  if (pieceMap[pieceType] !== undefined) return;
+  pieceMap[pieceType] = 'loading';
+
+  const candidates = buildSkinImageCandidates(skinDef, pieceType);
+  let attempt = 0;
+  const image = new Image();
+
+  const tryNext = () => {
+    if (attempt >= candidates.length) {
+      pieceMap[pieceType] = null;
+      return;
+    }
+    image.src = candidates[attempt];
+    attempt += 1;
+  };
+
+  image.onload = () => {
+    pieceMap[pieceType] = image;
+    renderShopGrid();
+  };
+
+  image.onerror = () => {
+    tryNext();
+  };
+
+  tryNext();
+}
+
+function preloadSkinTiles(skinId) {
+  if (!getSkinDefinition(skinId)) return;
+  TETROMINO_TYPES.forEach((pieceType) => {
+    primeSkinTileImage(skinId, pieceType);
+  });
+}
+
+function primeSkinPreviewTiles() {
+  TETROMINO_SKIN_DEFS.forEach((skinDef) => {
+    primeSkinTileImage(skinDef.id, 'I');
+  });
+}
+
+const rawSkinState = readJsonStorage(SKIN_STORAGE_KEY, { owned: {}, selectedSkinId: 'default' });
+const safeSkinState = sanitizeSkinState(rawSkinState);
+skinState.owned = safeSkinState.owned;
+skinState.selectedSkinId = safeSkinState.selectedSkinId;
+persistSkinState();
+primeSkinPreviewTiles();
+if (skinState.selectedSkinId !== 'default') {
+  preloadSkinTiles(skinState.selectedSkinId);
+}
+
 function normalizeModeKey(modeKey) {
   return Object.prototype.hasOwnProperty.call(MODE_DEFS, modeKey) ? modeKey : 'battle';
 }
@@ -617,46 +916,122 @@ function getPowerupDefinition(id) {
   return POWERUP_DEFS.find((def) => def.id === id) || null;
 }
 
+function createShopSectionTitle(label) {
+  const title = document.createElement('h3');
+  title.className = 'shop-section-title';
+  title.textContent = label;
+  return title;
+}
+
+function getSkinPreviewBackground(skinDef) {
+  const loadedPreview = getSkinTileImage(skinDef.id, 'I');
+  if (loadedPreview && loadedPreview.src) {
+    return `url("${loadedPreview.src}")`;
+  }
+  return `url("./assets/skins/${skinDef.folder}/I.webp")`;
+}
+
+function createPowerupShopCard(def) {
+  const card = document.createElement('article');
+  card.className = 'shop-item';
+
+  const owned = getPowerupCount(def.id);
+  const canBuy = rewardState.coinBank >= def.price;
+
+  const icon = document.createElement('div');
+  icon.className = 'shop-item-icon';
+  icon.style.setProperty('--icon-url', `url("${def.iconPath}")`);
+
+  const main = document.createElement('div');
+  main.className = 'shop-item-main';
+  main.innerHTML = `
+    <strong>${def.label}</strong>
+    <p>${def.description}</p>
+    <span class="shop-price">${def.price} coins - Owned: ${owned}</span>
+  `;
+
+  const actions = document.createElement('div');
+  actions.className = 'shop-item-actions';
+  const buyBtn = document.createElement('button');
+  buyBtn.type = 'button';
+  buyBtn.className = `shop-buy${canBuy ? '' : ' is-disabled'}`;
+  buyBtn.disabled = !canBuy;
+  buyBtn.textContent = canBuy ? 'Buy' : 'Need Coins';
+  buyBtn.addEventListener('click', () => {
+    buyPowerup(def.id);
+  });
+  actions.appendChild(buyBtn);
+
+  card.appendChild(icon);
+  card.appendChild(main);
+  card.appendChild(actions);
+  return card;
+}
+
+function createSkinShopCard(skinDef) {
+  const card = document.createElement('article');
+  card.className = 'shop-item shop-item-skin';
+
+  const owned = isSkinOwned(skinDef.id);
+  const selected = skinState.selectedSkinId === skinDef.id;
+  const canBuy = rewardState.coinBank >= skinDef.price;
+  if (selected) {
+    card.classList.add('shop-item-active');
+  }
+
+  const icon = document.createElement('div');
+  icon.className = 'shop-item-icon shop-skin-icon';
+  icon.style.setProperty('--icon-url', getSkinPreviewBackground(skinDef));
+
+  const main = document.createElement('div');
+  main.className = 'shop-item-main';
+  main.innerHTML = `
+    <strong>${skinDef.label}</strong>
+    <p>${skinDef.description}</p>
+    <span class="shop-price">${skinDef.price} coins - ${owned ? 'Owned' : 'Not owned'} - 7-piece set</span>
+  `;
+
+  const actions = document.createElement('div');
+  actions.className = 'shop-item-actions';
+
+  const buyBtn = document.createElement('button');
+  buyBtn.type = 'button';
+  buyBtn.className = `shop-buy${canBuy ? '' : ' is-disabled'}`;
+  buyBtn.disabled = owned || !canBuy;
+  buyBtn.textContent = owned ? 'Owned' : (canBuy ? 'Buy' : 'Need Coins');
+  buyBtn.addEventListener('click', () => {
+    buySkin(skinDef.id);
+  });
+
+  const useBtn = document.createElement('button');
+  useBtn.type = 'button';
+  useBtn.className = `shop-use${owned && !selected ? '' : ' is-disabled'}`;
+  useBtn.disabled = !owned || selected;
+  useBtn.textContent = selected ? 'In Use' : 'Use';
+  useBtn.addEventListener('click', () => {
+    useSkin(skinDef.id);
+  });
+
+  actions.appendChild(buyBtn);
+  actions.appendChild(useBtn);
+  card.appendChild(icon);
+  card.appendChild(main);
+  card.appendChild(actions);
+  return card;
+}
+
 function renderShopGrid() {
   if (!shopGrid) return;
   shopGrid.innerHTML = '';
 
+  shopGrid.appendChild(createShopSectionTitle('Power Ups'));
   POWERUP_DEFS.forEach((def) => {
-    const card = document.createElement('article');
-    card.className = 'shop-item';
+    shopGrid.appendChild(createPowerupShopCard(def));
+  });
 
-    const owned = getPowerupCount(def.id);
-    const canBuy = rewardState.coinBank >= def.price;
-
-    const icon = document.createElement('div');
-    icon.className = 'shop-item-icon';
-    icon.style.setProperty('--icon-url', `url("${def.iconPath}")`);
-    icon.textContent = def.short;
-
-    const main = document.createElement('div');
-    main.className = 'shop-item-main';
-    main.innerHTML = `
-      <strong>${def.label}</strong>
-      <p>${def.description}</p>
-      <span class="shop-price">${def.price} coins - Owned: ${owned}</span>
-    `;
-
-    const actions = document.createElement('div');
-    actions.className = 'shop-item-actions';
-    const buyBtn = document.createElement('button');
-    buyBtn.type = 'button';
-    buyBtn.className = `shop-buy${canBuy ? '' : ' is-disabled'}`;
-    buyBtn.disabled = !canBuy;
-    buyBtn.textContent = canBuy ? 'Buy' : 'Need Coins';
-    buyBtn.addEventListener('click', () => {
-      buyPowerup(def.id);
-    });
-    actions.appendChild(buyBtn);
-
-    card.appendChild(icon);
-    card.appendChild(main);
-    card.appendChild(actions);
-    shopGrid.appendChild(card);
+  shopGrid.appendChild(createShopSectionTitle('Tetromino Skins'));
+  TETROMINO_SKIN_DEFS.forEach((skinDef) => {
+    shopGrid.appendChild(createSkinShopCard(skinDef));
   });
 }
 
@@ -670,17 +1045,39 @@ function renderPowerupDock() {
     btn.type = 'button';
     btn.className = `powerup-btn${count <= 0 ? ' is-empty' : ''}`;
     btn.disabled = count <= 0;
-    btn.setAttribute('aria-label', `${def.label} (${count})`);
+    btn.setAttribute('aria-label', `${def.label}. ${def.description}. Owned ${count}.`);
+    btn.setAttribute('title', `${def.label}: ${def.description}`);
     btn.innerHTML = `
-      <span class="powerup-icon-wrap" style="--icon-url: url('${def.iconPath}')">${def.short}</span>
-      <span class="powerup-name">${def.short}</span>
+      <span class="powerup-icon-wrap" style="--icon-url: url('${def.iconPath}')"></span>
       <span class="powerup-count">${count}</span>
+      <span class="powerup-meta">
+        <strong class="powerup-name">${def.short}</strong>
+        <small class="powerup-effect">${def.description}</small>
+      </span>
     `;
     btn.addEventListener('click', () => {
+      markPowerupDockInteraction();
       activatePowerup(def.id);
     });
     powerupDock.appendChild(btn);
   });
+
+  updatePowerupDockState();
+}
+
+function markPowerupDockInteraction(now = performance.now()) {
+  powerupUiState.lastInteractionAt = now;
+  powerupUiState.expandedUntil = now + 2200;
+  updatePowerupDockState(now);
+}
+
+function updatePowerupDockState(now = performance.now()) {
+  if (!powerupDock) return;
+  const expanded = now < powerupUiState.expandedUntil;
+  const idle = now - powerupUiState.lastInteractionAt > 2400;
+  powerupDock.classList.toggle('is-expanded', expanded);
+  powerupDock.classList.toggle('is-collapsed', !expanded);
+  powerupDock.classList.toggle('is-idle', idle);
 }
 
 function buyPowerup(powerupId) {
@@ -697,6 +1094,44 @@ function buyPowerup(powerupId) {
   updateCoinHud();
   setFxMessage('Purchased', `${def.label} added`, 900, 5);
   sound.playCoinChing(true);
+}
+
+function buySkin(skinId) {
+  const skinDef = getSkinDefinition(skinId);
+  if (!skinDef) return;
+  if (isSkinOwned(skinId)) {
+    setFxMessage('Already owned', `${skinDef.label} is in your locker`, 820, 4);
+    return;
+  }
+  if (rewardState.coinBank < skinDef.price) {
+    setFxMessage('Not enough coins', `${skinDef.price} coins required`, 800, 4);
+    return;
+  }
+
+  rewardState.coinBank -= skinDef.price;
+  persistCoinBank();
+  skinState.owned[skinId] = true;
+  persistSkinState();
+  preloadSkinTiles(skinId);
+  updateCoinHud();
+  setFxMessage('Skin purchased', `${skinDef.label} unlocked`, 950, 5);
+  sound.playCoinChing(true);
+}
+
+function useSkin(skinId) {
+  if (skinId !== 'default' && !isSkinOwned(skinId)) {
+    setFxMessage('Skin locked', 'Buy this skin first', 820, 4);
+    return;
+  }
+
+  const skinDef = getSkinDefinition(skinId);
+  skinState.selectedSkinId = skinId;
+  persistSkinState();
+  if (skinId !== 'default') {
+    preloadSkinTiles(skinId);
+  }
+  renderShopGrid();
+  setFxMessage('Skin equipped', skinDef ? skinDef.label : 'Classic', 950, 6);
 }
 
 function popCoinCounter() {
@@ -1525,6 +1960,14 @@ function emitPulseWave(board, config = {}) {
 function drawCell(ctx, x, y, color, cellType = '') {
   const px = x * CELL_SIZE;
   const py = y * CELL_SIZE;
+  const skinImage = getActiveTetrominoSkinImage(cellType);
+
+  if (skinImage) {
+    drawImageSquareFit(ctx, skinImage, px, py, CELL_SIZE);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.24)';
+    ctx.strokeRect(px + 0.5, py + 0.5, CELL_SIZE - 1, CELL_SIZE - 1);
+    return;
+  }
 
   ctx.shadowColor = color;
   ctx.shadowBlur = 7;
@@ -1539,16 +1982,25 @@ function drawCell(ctx, x, y, color, cellType = '') {
   ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
 }
 
+function drawImageSquareFit(ctx, image, dx, dy, size) {
+  const srcW = image.naturalWidth || image.width || size;
+  const srcH = image.naturalHeight || image.height || size;
+  const srcSize = Math.min(srcW, srcH);
+  const srcX = (srcW - srcSize) * 0.5;
+  const srcY = (srcH - srcSize) * 0.5;
+  ctx.drawImage(image, srcX, srcY, srcSize, srcSize, dx, dy, size, size);
+}
+
 function drawBoardTileLayer(board) {
   if (!boardThemeState.tileReady || !boardThemeState.tileImage) return;
   const { ctx, game } = board;
   ctx.save();
-  ctx.globalAlpha = 0.48;
+  ctx.globalAlpha = 1;
   for (let y = 0; y < game.grid.height; y++) {
     for (let x = 0; x < game.grid.width; x++) {
       const px = x * CELL_SIZE;
       const py = y * CELL_SIZE;
-      ctx.drawImage(boardThemeState.tileImage, px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+      drawImageSquareFit(ctx, boardThemeState.tileImage, px, py, CELL_SIZE);
     }
   }
   ctx.restore();
@@ -1563,7 +2015,12 @@ function drawGrid(board) {
     });
   });
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+  if (boardThemeState.tileReady && boardThemeState.tileImage) {
+    ctx.strokeStyle = 'rgba(12, 58, 70, 0.14)';
+  } else {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+  }
+
   for (let x = 0; x <= game.grid.width; x++) {
     ctx.beginPath();
     ctx.moveTo(x * CELL_SIZE, 0);
@@ -1818,21 +2275,28 @@ function drawPreview(ctxRef, pieceType) {
   const startX = (canvas.width - cellsWide * PREVIEW_CELL_SIZE) / 2;
   const startY = (canvas.height - cellsHigh * PREVIEW_CELL_SIZE) / 2;
   const color = colorForCell(pieceType);
+  const previewSkinImage = getActiveTetrominoSkinImage(pieceType);
 
   for (let y = bounds.minY; y <= bounds.maxY; y++) {
     for (let x = bounds.minX; x <= bounds.maxX; x++) {
       if (!shape[y][x]) continue;
       const drawX = startX + (x - bounds.minX) * PREVIEW_CELL_SIZE;
       const drawY = startY + (y - bounds.minY) * PREVIEW_CELL_SIZE;
-      ctxRef.shadowColor = color;
-      ctxRef.shadowBlur = 6;
-      ctxRef.fillStyle = color;
-      ctxRef.fillRect(drawX, drawY, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
-      ctxRef.shadowBlur = 0;
-      ctxRef.fillStyle = 'rgba(255, 255, 255, 0.28)';
-      ctxRef.fillRect(drawX + 1.5, drawY + 1.5, PREVIEW_CELL_SIZE - 3, 4.5);
-      ctxRef.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-      ctxRef.strokeRect(drawX + 0.5, drawY + 0.5, PREVIEW_CELL_SIZE - 1, PREVIEW_CELL_SIZE - 1);
+      if (previewSkinImage) {
+        drawImageSquareFit(ctxRef, previewSkinImage, drawX, drawY, PREVIEW_CELL_SIZE);
+        ctxRef.strokeStyle = 'rgba(0, 0, 0, 0.26)';
+        ctxRef.strokeRect(drawX + 0.5, drawY + 0.5, PREVIEW_CELL_SIZE - 1, PREVIEW_CELL_SIZE - 1);
+      } else {
+        ctxRef.shadowColor = color;
+        ctxRef.shadowBlur = 6;
+        ctxRef.fillStyle = color;
+        ctxRef.fillRect(drawX, drawY, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
+        ctxRef.shadowBlur = 0;
+        ctxRef.fillStyle = 'rgba(255, 255, 255, 0.28)';
+        ctxRef.fillRect(drawX + 1.5, drawY + 1.5, PREVIEW_CELL_SIZE - 3, 4.5);
+        ctxRef.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctxRef.strokeRect(drawX + 0.5, drawY + 0.5, PREVIEW_CELL_SIZE - 1, PREVIEW_CELL_SIZE - 1);
+      }
     }
   }
 }
@@ -2182,6 +2646,7 @@ function triggerUndoPowerup() {
 
 function activatePowerup(powerupId) {
   if (!gameSessionActive || player.game.gameOver) return;
+  markPowerupDockInteraction();
   if (!consumePowerup(powerupId)) {
     setFxMessage('No power-up', 'Buy more from the shop', 760, 4);
     return;
@@ -2734,6 +3199,8 @@ function resetBattle() {
   powerupState.comboBoostUntil = 0;
   powerupState.freezeUntil = 0;
   powerupState.freezeBlockFxUntil = 0;
+  powerupUiState.expandedUntil = 0;
+  powerupUiState.lastInteractionAt = performance.now();
   rewardState.sessionCoins = 0;
   rewardState.maxCombo = 0;
   rewardState.lastLevel = 1;
@@ -2877,6 +3344,7 @@ function loop(time = 0) {
     drawMiniLiveBoard(aiMiniCtx, ai);
     drawMiniLiveBoard(aiPreviewCtx, ai);
   }
+  updatePowerupDockState(time);
   updateHud();
 
   maybeRewardMatchEnd(time);
@@ -3159,6 +3627,7 @@ function setActiveBoardPage(page) {
   if (target !== 'player' && aiPreviewPanel) {
     aiPreviewPanel.classList.add('app-hidden');
   }
+  scheduleBoardCanvasDisplaySync();
 }
 
 function openGame(modeLabel, modeKey = 'battle') {
@@ -3181,6 +3650,7 @@ function openGame(modeLabel, modeKey = 'battle') {
   if (statusValue) statusValue.textContent = 'Running';
   configureModeSession(performance.now());
   renderPowerupDock();
+  scheduleBoardCanvasDisplaySync();
 }
 
 function openShopScreen() {
@@ -3300,9 +3770,20 @@ if (modePicker) {
     setHomeMode(mode);
   });
 }
+if (powerupDock) {
+  powerupDock.addEventListener('pointerdown', () => {
+    markPowerupDockInteraction();
+  });
+}
+window.addEventListener('resize', () => {
+  scheduleBoardCanvasDisplaySync();
+});
+window.addEventListener('orientationchange', () => {
+  scheduleBoardCanvasDisplaySync();
+});
 setHomeMode('battle');
 setActiveBoardPage('player');
 setupTouchBoardControls();
 renderShopGrid();
 renderPowerupDock();
-
+scheduleBoardCanvasDisplaySync();

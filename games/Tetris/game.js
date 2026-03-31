@@ -1,4 +1,4 @@
-import { Grid } from './grid.js';
+import { Grid, BOARD_COLUMNS, BOARD_ROWS } from './grid.js';
 import {
   createPiece,
   PIECES,
@@ -23,7 +23,7 @@ const GARBAGE_BY_CLEAR = {
 
 export class Game {
   constructor() {
-    this.grid = new Grid();
+    this.grid = new Grid(BOARD_COLUMNS, BOARD_ROWS);
     this.smartPieceMode = true;
     this.smartSpawnSeed = 0;
     this.recentSmartTypes = [];
