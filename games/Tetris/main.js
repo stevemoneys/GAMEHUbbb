@@ -465,6 +465,16 @@ function syncBoardCanvasDisplaySize(board, { mobileLayout = null } = {}) {
 function syncAllBoardCanvasDisplaySizes() {
   const useMobileLayout = isMobilePlayViewport();
   const mobileLayout = useMobileLayout ? computeMobileBoardLayout(player) : null;
+  const showAiPanels = modeRuntime.aiEnabled && !useMobileLayout;
+
+  if (useMobileLayout) {
+    if (playerPage) playerPage.classList.remove('app-hidden');
+    if (aiPage) aiPage.classList.add('app-hidden');
+    if (aiPreviewPanel) aiPreviewPanel.classList.add('app-hidden');
+  }
+  if (btnShowAIPage) btnShowAIPage.classList.toggle('app-hidden', !showAiPanels);
+  if (btnShowPlayerPage) btnShowPlayerPage.classList.toggle('app-hidden', !showAiPanels);
+  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiPanels);
 
   if (pageBody) {
     pageBody.classList.toggle('mobile-play-layout', useMobileLayout);
@@ -1425,9 +1435,12 @@ function startStageByIndex(stageIndex) {
 
 function updateModeUiVisibility() {
   const aiEnabled = modeRuntime.aiEnabled;
-  if (btnShowAIPage) btnShowAIPage.classList.toggle('app-hidden', !aiEnabled);
-  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !aiEnabled);
-  if (!aiEnabled) {
+  const singlePageMobile = isMobilePlayViewport();
+  const showAiPanels = aiEnabled && !singlePageMobile;
+  if (btnShowAIPage) btnShowAIPage.classList.toggle('app-hidden', !showAiPanels);
+  if (btnShowPlayerPage) btnShowPlayerPage.classList.toggle('app-hidden', !showAiPanels);
+  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiPanels);
+  if (!aiEnabled || singlePageMobile) {
     setActiveBoardPage('player');
   }
 }
@@ -3621,10 +3634,14 @@ function showHomeScreen() {
 }
 
 function setActiveBoardPage(page) {
-  const target = modeRuntime.aiEnabled && page === 'ai' ? 'ai' : 'player';
+  const singlePageMobile = isMobilePlayViewport();
+  const target = modeRuntime.aiEnabled && !singlePageMobile && page === 'ai' ? 'ai' : 'player';
   if (playerPage) playerPage.classList.toggle('app-hidden', target !== 'player');
   if (aiPage) aiPage.classList.toggle('app-hidden', target !== 'ai');
   if (target !== 'player' && aiPreviewPanel) {
+    aiPreviewPanel.classList.add('app-hidden');
+  }
+  if (singlePageMobile && aiPreviewPanel) {
     aiPreviewPanel.classList.add('app-hidden');
   }
   scheduleBoardCanvasDisplaySync();
