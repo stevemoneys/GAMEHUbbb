@@ -8,44 +8,30 @@
 </head>
 <body class="home-mode">
   <main id="homeScreen" class="screen home-screen">
-    <section class="home-card panel-surface">
-      <p class="eyebrow">Premium Arcade Puzzle</p>
-      <button id="btnOpenShop" class="home-shop-btn" type="button" aria-label="Open shop">Shop</button>
-      <button id="btnHowToPlay" class="home-help-btn" type="button" aria-label="Open rules and how to play">Rules</button>
+    <section class="home-card">
+      <div class="home-topbar">
+        <button id="btnHowToPlay" class="home-help-btn" type="button" aria-label="Open rules and how to play">Rules</button>
+        <button id="btnOpenShop" class="home-shop-btn" type="button" aria-label="Open shop">Shop</button>
+      </div>
       <h1>TETRIXA</h1>
-      <p class="home-subtitle">Fast, clean, competitive. One tap from launch into battle.</p>
 
-      <div class="home-highlights">
-        <article class="home-mode-card">
-          <span>Mode</span>
-          <strong id="homeModeName">Battle Mode</strong>
-          <small id="homeModeDescription">Competitive AI showdown</small>
-        </article>
-        <article>
-          <span>Feel</span>
-          <strong>Responsive controls</strong>
-        </article>
-        <article>
-          <span>Style</span>
-          <strong>Premium one-screen UI</strong>
-        </article>
-      </div>
-
-      <div id="modePicker" class="mode-picker" aria-label="Game modes">
-        <button class="mode-pill is-active" data-mode="battle" type="button">Battle</button>
-        <button class="mode-pill" data-mode="classic" type="button">Classic+</button>
-        <button class="mode-pill" data-mode="speed" type="button">Speed Rush</button>
-        <button class="mode-pill" data-mode="puzzle" type="button">Puzzle</button>
-        <button class="mode-pill" data-mode="chaos" type="button">Chaos</button>
-        <button class="mode-pill" data-mode="mirror" type="button">Mirror</button>
-      </div>
+      <label class="home-mode-field" for="modePickerInput">
+        <span>Mode</span>
+        <input id="modePickerInput" list="modeList" value="Battle Mode" aria-label="Select mode" autocomplete="off" />
+      </label>
+      <datalist id="modeList">
+        <option value="Battle Mode"></option>
+        <option value="Classic+"></option>
+        <option value="Speed Rush"></option>
+        <option value="Puzzle Mode"></option>
+        <option value="Chaos Mode"></option>
+        <option value="Mirror Mode"></option>
+      </datalist>
 
       <div class="home-actions">
         <button id="btnPlayHome" class="home-btn home-btn-primary" type="button">Play Now</button>
-        <button id="btnBattleHome" class="home-btn" type="button">Battle Mode</button>
+        <button id="btnBattleHome" class="home-btn" type="button">Play Selected Mode</button>
       </div>
-
-      <p id="homeSignal" class="home-signal" aria-live="polite">Ready.</p>
     </section>
   </main>
 

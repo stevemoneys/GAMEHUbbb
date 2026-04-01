@@ -60,7 +60,17 @@ body::after {
 
 body.home-mode::before {
   background-image: var(--home-bg-image);
-  opacity: 0.22;
+  opacity: 0.98;
+  animation: none;
+  background-position: center top;
+}
+
+body.home-mode::after {
+  opacity: 0;
+}
+
+body.home-mode {
+  background: #030312;
 }
 
 body.game-mode::before {
@@ -156,81 +166,86 @@ button {
 }
 
 .home-screen {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: clamp(10px, 3vh, 30px);
 }
 
 .home-card {
-  width: min(820px, 100%);
-  padding: clamp(16px, 4vw, 32px);
+  width: min(500px, 94vw);
+  padding: clamp(12px, 3.2vw, 18px);
   display: grid;
-  gap: 16px;
+  gap: 10px;
   position: relative;
+  border-radius: 18px;
+  border: 1px solid rgba(143, 221, 255, 0.3);
+  background:
+    linear-gradient(170deg, rgba(8, 16, 30, 0.78), rgba(5, 10, 18, 0.8)),
+    radial-gradient(circle at top, rgba(126, 221, 255, 0.12), transparent 58%);
+  backdrop-filter: blur(8px);
 }
 
-.home-shop-btn {
-  position: absolute;
-  right: clamp(12px, 3vw, 20px);
-  top: clamp(12px, 3vw, 18px);
-  min-height: 38px;
-  min-width: 72px;
+.home-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.home-shop-btn,
+.home-help-btn {
+  min-height: 34px;
+  min-width: 74px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 209, 140, 0.7);
-  background: linear-gradient(145deg, rgba(255, 177, 83, 0.9), rgba(255, 118, 98, 0.86));
-  color: #1d1c19;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
 }
 
 .home-help-btn {
-  position: absolute;
-  left: clamp(12px, 3vw, 20px);
-  top: clamp(12px, 3vw, 18px);
-  min-height: 38px;
-  min-width: 72px;
-  border-radius: 999px;
-  border: 1px solid rgba(154, 226, 255, 0.7);
-  background: linear-gradient(145deg, rgba(130, 220, 255, 0.9), rgba(102, 149, 255, 0.86));
+  border: 1px solid rgba(154, 226, 255, 0.76);
+  background: linear-gradient(145deg, rgba(130, 220, 255, 0.9), rgba(102, 149, 255, 0.84));
   color: #081326;
 }
 
+.home-shop-btn {
+  border: 1px solid rgba(255, 209, 140, 0.76);
+  background: linear-gradient(145deg, rgba(255, 177, 83, 0.9), rgba(255, 118, 98, 0.84));
+  color: #1d1c19;
+}
+
 .home-card h1 {
-  margin: 2px 0 0;
-  font-size: clamp(2.2rem, 8vw, 5rem);
-  letter-spacing: 0.16em;
-}
-
-.home-subtitle {
   margin: 0;
-  color: var(--text-soft);
-  line-height: 1.5;
+  font-size: clamp(2rem, 9vw, 3.3rem);
+  letter-spacing: 0.18em;
+  text-align: center;
+  text-shadow: 0 0 18px rgba(132, 229, 255, 0.26);
 }
 
-.home-highlights {
+.home-mode-field {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
 }
 
-.home-highlights article {
-  border: 1px solid rgba(141, 219, 255, 0.18);
-  border-radius: 12px;
-  background: rgba(9, 18, 31, 0.46);
-  padding: 10px;
-}
-
-.home-mode-card small {
-  display: block;
-  margin-top: 5px;
-  color: rgba(198, 223, 250, 0.72);
-  font-size: 0.72rem;
-}
-
-.home-highlights span {
+.home-mode-field span {
   display: block;
   color: var(--text-dim);
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 4px;
+}
+
+#modePickerInput {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(150, 225, 255, 0.36);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: rgba(7, 15, 26, 0.74);
+  color: #eaf4ff;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .home-actions {
@@ -239,31 +254,8 @@ button {
   gap: 10px;
 }
 
-.mode-picker {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.mode-pill {
-  min-height: 40px;
-  border-radius: 999px;
-  border: 1px solid rgba(144, 222, 255, 0.26);
-  background: rgba(7, 14, 24, 0.54);
-  color: rgba(224, 239, 255, 0.82);
-  font-size: 0.74rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.mode-pill.is-active {
-  border-color: rgba(255, 208, 156, 0.84);
-  color: #111725;
-  background: linear-gradient(145deg, #ffaf73, #ff6984);
-}
-
 .home-btn {
-  min-height: 56px;
+  min-height: 46px;
 }
 
 .home-btn-primary {
@@ -328,7 +320,7 @@ body.mobile-play-layout .play-page > .page-controls {
   left: 6px;
   right: 6px;
   z-index: 14;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto auto 1fr;
   align-items: center;
   gap: 4px;
   padding: 6px 8px;
@@ -339,13 +331,14 @@ body.mobile-play-layout .play-page > .page-controls {
 }
 
 body.mobile-play-layout .play-page > .page-controls .top-actions {
-  grid-column: auto;
+  grid-column: 4;
   justify-self: end;
   gap: 4px;
 }
 
 body.mobile-play-layout .play-page > .page-controls .top-next {
-  justify-self: center;
+  grid-column: 2;
+  justify-self: start;
   padding: 4px 6px;
   gap: 5px;
 }
@@ -371,7 +364,15 @@ body.mobile-play-layout .play-page > .page-controls .icon-btn {
 }
 
 body.mobile-play-layout .play-page > .page-controls .top-ai-live {
-  display: none;
+  grid-column: 3;
+  display: inline-flex;
+  justify-self: start;
+  padding: 4px 6px;
+  gap: 4px;
+}
+
+body.mobile-play-layout .play-page > .page-controls .top-ai-live span {
+  font-size: 0.58rem;
 }
 
 .top-next {
@@ -1563,6 +1564,10 @@ body.freeze-active #playerPage {
 
   .top-ai-live span {
     display: none;
+  }
+
+  body.mobile-play-layout .top-ai-live span {
+    display: inline;
   }
 
   .icon-btn {

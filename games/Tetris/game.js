@@ -297,6 +297,9 @@ export class Game {
     if (candidate.setupGain !== best.setupGain) {
       return candidate.setupGain > best.setupGain;
     }
+    if (candidate.centerDistance !== best.centerDistance) {
+      return candidate.centerDistance < best.centerDistance;
+    }
     return candidate.score > best.score;
   }
 
@@ -332,6 +335,9 @@ export class Game {
         const targetCompleted = !!target && remainingMissing === 0;
         const clearedResult = this.clearLinesInCells(cells);
         const score = this.evaluateCellsFitness(clearedResult.cells, clearedResult.cleared, supports);
+        const footprintCenter = x + (bounds.minX + bounds.maxX) * 0.5;
+        const boardCenter = (this.grid.width - 1) * 0.5;
+        const centerDistance = Math.abs(footprintCenter - boardCenter);
         const nextCandidate = {
           type,
           shape: shape.map((row) => [...row]),
@@ -342,7 +348,8 @@ export class Game {
           targetCompleted,
           remainingMissing,
           assistFill,
-          setupGain
+          setupGain,
+          centerDistance
         };
 
         if (this.isPlacementCandidateBetter(nextCandidate, best)) {
@@ -365,7 +372,8 @@ export class Game {
         targetCompleted: false,
         remainingMissing: target ? target.missing : this.grid.width,
         assistFill: 0,
-        setupGain: -Infinity
+        setupGain: -Infinity,
+        centerDistance: Infinity
       };
     }
     return {
@@ -374,7 +382,8 @@ export class Game {
       targetCompleted: best.targetCompleted,
       remainingMissing: best.remainingMissing,
       assistFill: best.assistFill,
-      setupGain: best.setupGain
+      setupGain: best.setupGain,
+      centerDistance: best.centerDistance
     };
   }
 
@@ -414,6 +423,7 @@ export class Game {
         remainingMissing: profile.remainingMissing,
         assistFill: profile.assistFill,
         setupGain: profile.setupGain,
+        centerDistance: profile.centerDistance,
         tie: this.getTieBreaker(type)
       };
     });
@@ -426,6 +436,7 @@ export class Game {
       if (b.cleared !== a.cleared) return b.cleared - a.cleared;
       if (b.assistFill !== a.assistFill) return b.assistFill - a.assistFill;
       if (b.setupGain !== a.setupGain) return b.setupGain - a.setupGain;
+      if (a.centerDistance !== b.centerDistance) return a.centerDistance - b.centerDistance;
       if (b.score !== a.score) return b.score - a.score;
       return a.tie - b.tie;
     });
@@ -470,21 +481,27 @@ export class Game {
   }
 
   applyAssistToPiece(piece, force = false) {
-    if (!piece || !this.spawnAssistEnabled) return piece;
+    if (!piece) return piece;
+    const basePiece = {
+      ...piece,
+      assistedSpawn: false
+    };
+    if (!this.spawnAssistEnabled) return basePiece;
     const strength = Math.max(0, Math.min(1, Number(this.spawnAssistStrength) || 0));
-    if (!force && Math.random() > strength) return piece;
+    if (!force && Math.random() > strength) return basePiece;
 
     const assistTarget = this.getLineAssistTarget();
     const baseInfo = this.getMostCompleteRowInfo(this.grid.cells);
-    const best = this.findBestPlacementForType(piece.type, assistTarget, baseInfo);
-    if (!best) return piece;
+    const best = this.findBestPlacementForType(basePiece.type, assistTarget, baseInfo);
+    if (!best) return basePiece;
 
     const assistedPiece = {
-      ...piece,
+      ...basePiece,
       shape: best.shape.map((row) => [...row]),
       rotation: best.turns % 4,
       x: best.x,
-      y: this.getSpawnYForShape(best.shape)
+      y: this.getSpawnYForShape(best.shape),
+      assistedSpawn: true
     };
     if (!this.grid.checkCollision(assistedPiece)) {
       return assistedPiece;
@@ -493,13 +510,14 @@ export class Game {
     const centeredX = Math.floor((this.grid.width - assistedPiece.shape[0].length) / 2);
     const centeredPiece = {
       ...assistedPiece,
-      x: centeredX
+      x: centeredX,
+      assistedSpawn: true
     };
     if (!this.grid.checkCollision(centeredPiece)) {
       return centeredPiece;
     }
 
-    return piece;
+    return basePiece;
   }
 
   drawNextPiece() {
@@ -850,7 +868,8 @@ export class Game {
       dropDistance,
       cells: lockedCells,
       perfectFit: placementQuality.perfectFit,
-      tightPlacement: placementQuality.tightPlacement
+      tightPlacement: placementQuality.tightPlacement,
+      assistedSpawn: !!this.currentPiece.assistedSpawn
     });
 
     if (cleared > 0) {

@@ -21,6 +21,7 @@ const homeModeName = document.getElementById('homeModeName');
 const homeModeDescription = document.getElementById('homeModeDescription');
 const btnHowToPlay = document.getElementById('btnHowToPlay');
 const modePicker = document.getElementById('modePicker');
+const modePickerInput = document.getElementById('modePickerInput');
 const gameSignal = document.getElementById('gameSignal');
 const fxBanner = document.getElementById('fxBanner');
 const fxSubline = document.getElementById('fxSubline');
@@ -475,6 +476,7 @@ function syncAllBoardCanvasDisplaySizes() {
   const useMobileLayout = isMobilePlayViewport();
   const mobileLayout = useMobileLayout ? computeMobileBoardLayout(player) : null;
   const showAiPanels = modeRuntime.aiEnabled && !useMobileLayout;
+  const showAiLiveButton = modeRuntime.aiEnabled;
 
   if (useMobileLayout) {
     if (playerPage) playerPage.classList.remove('app-hidden');
@@ -483,7 +485,7 @@ function syncAllBoardCanvasDisplaySizes() {
   }
   if (btnShowAIPage) btnShowAIPage.classList.toggle('app-hidden', !showAiPanels);
   if (btnShowPlayerPage) btnShowPlayerPage.classList.toggle('app-hidden', !showAiPanels);
-  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiPanels);
+  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiLiveButton);
 
   if (pageBody) {
     pageBody.classList.toggle('mobile-play-layout', useMobileLayout);
@@ -575,6 +577,13 @@ const battleState = {
   dangerLevel: 'stable',
   aiSkill: 0.62,
   aiStepAccumulator: 0
+};
+
+const playerAssistState = {
+  pieceLocksSinceLineClear: 0,
+  helpModeActive: false,
+  helpLocksRemaining: 0,
+  cooldownLocks: 0
 };
 
 const powerupState = {
@@ -861,6 +870,29 @@ function normalizeModeKey(modeKey) {
   return Object.prototype.hasOwnProperty.call(MODE_DEFS, modeKey) ? modeKey : 'battle';
 }
 
+function modeKeyFromInputValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const normalized = raw.toLowerCase();
+  const aliasMap = {
+    battle: 'battle',
+    'battle mode': 'battle',
+    classic: 'classic',
+    'classic+': 'classic',
+    speed: 'speed',
+    'speed rush': 'speed',
+    puzzle: 'puzzle',
+    'puzzle mode': 'puzzle',
+    chaos: 'chaos',
+    'chaos mode': 'chaos',
+    mirror: 'mirror',
+    'mirror mode': 'mirror'
+  };
+  if (aliasMap[normalized]) return aliasMap[normalized];
+  const direct = Object.entries(MODE_DEFS).find(([, def]) => def.label.toLowerCase() === normalized);
+  return direct ? direct[0] : null;
+}
+
 function setHomeMode(modeKey) {
   const safeMode = normalizeModeKey(modeKey);
   modeRuntime.selectedMode = safeMode;
@@ -868,6 +900,7 @@ function setHomeMode(modeKey) {
   if (homeModeName) homeModeName.textContent = def.label;
   if (homeModeDescription) homeModeDescription.textContent = def.description;
   if (btnBattleHome) btnBattleHome.textContent = def.label;
+  if (modePickerInput) modePickerInput.value = def.label;
 
   if (modePicker) {
     modePicker.querySelectorAll('.mode-pill').forEach((btn) => {
@@ -1531,9 +1564,10 @@ function updateModeUiVisibility() {
   const aiEnabled = modeRuntime.aiEnabled;
   const singlePageMobile = isMobilePlayViewport();
   const showAiPanels = aiEnabled && !singlePageMobile;
+  const showAiLiveButton = aiEnabled;
   if (btnShowAIPage) btnShowAIPage.classList.toggle('app-hidden', !showAiPanels);
   if (btnShowPlayerPage) btnShowPlayerPage.classList.toggle('app-hidden', !showAiPanels);
-  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiPanels);
+  if (btnToggleAIPreview) btnToggleAIPreview.classList.toggle('app-hidden', !showAiLiveButton);
   if (!aiEnabled || singlePageMobile) {
     setActiveBoardPage('player');
   }
@@ -1549,19 +1583,64 @@ function getBeginnerAssistTier() {
 
 function getGravityAssistMultiplier() {
   const tier = getBeginnerAssistTier();
-  if (tier >= 3) return 1.46;
-  if (tier === 2) return 1.28;
-  if (tier === 1) return 1.14;
+  if (tier >= 3) return 1.24;
+  if (tier === 2) return 1.14;
+  if (tier === 1) return 1.08;
   return 1;
+}
+
+function resetPlayerAssistState() {
+  playerAssistState.pieceLocksSinceLineClear = 0;
+  playerAssistState.helpModeActive = false;
+  playerAssistState.helpLocksRemaining = 0;
+  playerAssistState.cooldownLocks = 0;
+}
+
+function setHelpModeActive(active, now = performance.now()) {
+  if (active) {
+    if (playerAssistState.helpModeActive) return;
+    playerAssistState.helpModeActive = true;
+    playerAssistState.helpLocksRemaining = 4;
+    player.game.spawnAssistEnabled = true;
+    player.game.spawnAssistStrength = 1;
+    if (typeof player.game.applyAssistToPiece === 'function') {
+      player.game.currentPiece = player.game.applyAssistToPiece(player.game.currentPiece, true);
+    }
+    setFxMessage('HELP MODE', 'Follow the guided placement', 1100, 7, now);
+    return;
+  }
+
+  if (!playerAssistState.helpModeActive) return;
+  playerAssistState.helpModeActive = false;
+  playerAssistState.helpLocksRemaining = 0;
+  playerAssistState.cooldownLocks = Math.max(playerAssistState.cooldownLocks, 3);
+  player.game.spawnAssistEnabled = false;
+  player.game.spawnAssistStrength = 0;
+}
+
+function evaluateAdaptiveHelpMode(now = performance.now()) {
+  if (player.game.gameOver || rewardState.stageResolved) return;
+  if (modeRuntime.activeMode === 'puzzle') return;
+  if (playerAssistState.helpModeActive) return;
+  if (playerAssistState.cooldownLocks > 0) return;
+
+  const stackHeight = player.game.grid.height - getBoardTopFilledRow(player.game);
+  const drought = playerAssistState.pieceLocksSinceLineClear;
+  const minHeight = modeRuntime.activeMode === 'battle' ? 5 : 6;
+  const minDrought = modeRuntime.activeMode === 'battle' ? 4 : 5;
+
+  if (stackHeight >= minHeight && drought >= minDrought) {
+    setHelpModeActive(true, now);
+  }
 }
 
 function applyModeDifficultyTuning() {
   const tier = getBeginnerAssistTier();
-  player.game.spawnAssistEnabled = true;
-  player.game.spawnAssistStrength = tier >= 3 ? 1 : (tier === 2 ? 0.92 : (tier === 1 ? 0.8 : 0.68));
+  player.game.spawnAssistEnabled = playerAssistState.helpModeActive;
+  player.game.spawnAssistStrength = playerAssistState.helpModeActive ? 1 : 0;
   player.game.smartPieceMode = true;
   player.game.avoidImmediateRepeats = true;
-  if (typeof player.game.applyAssistToPiece === 'function') {
+  if (playerAssistState.helpModeActive && typeof player.game.applyAssistToPiece === 'function') {
     player.game.currentPiece = player.game.applyAssistToPiece(player.game.currentPiece, true);
   }
 
@@ -1570,12 +1649,12 @@ function applyModeDifficultyTuning() {
   ai.game.avoidImmediateRepeats = true;
 
   if (modeRuntime.activeMode === 'battle') {
-    ai.game.smartPieceMode = progressionState.selectedStageIndex > 4;
-    const randomBoost = tier >= 3 ? 0.2 : (tier === 2 ? 0.12 : (tier === 1 ? 0.06 : 0));
-    const reactionScaleBoost = tier >= 3 ? 1.25 : (tier === 2 ? 1.16 : (tier === 1 ? 1.08 : 1));
+    ai.game.smartPieceMode = progressionState.selectedStageIndex > 3;
+    const randomBoost = tier >= 3 ? 0.14 : (tier === 2 ? 0.08 : (tier === 1 ? 0.03 : 0));
+    const reactionScaleBoost = tier >= 3 ? 1.18 : (tier === 2 ? 1.1 : (tier === 1 ? 1.04 : 1));
     aiProfileState.randomFactor = clamp(aiProfileState.randomFactor + randomBoost, 0.06, 0.92);
     aiProfileState.reactionScale *= reactionScaleBoost;
-    battleState.aiSkill = Math.min(battleState.aiSkill, aiProfileState.baseSkill * (tier >= 3 ? 0.78 : (tier === 2 ? 0.86 : 0.94)));
+    battleState.aiSkill = Math.min(battleState.aiSkill, aiProfileState.baseSkill * (tier >= 3 ? 0.84 : (tier === 2 ? 0.9 : 0.96)));
   } else {
     ai.game.smartPieceMode = true;
   }
@@ -1592,6 +1671,7 @@ function configureModeSession(now = performance.now()) {
   modeRuntime.mirrorNextFlipAt = now + randomRange(6500, 9400);
   modeRuntime.chaosNextEventAt = now + randomRange(7000, 10500);
   modeRuntime.puzzleSolved = false;
+  resetPlayerAssistState();
 
   if (modeRuntime.aiEnabled) {
     ai.game.gameOver = false;
@@ -2954,6 +3034,18 @@ function processBoardEvents(attacker, defender, now) {
 
       if (attacker.tag === 'player') {
         maybeRewardLuckyDrop(attacker, event);
+        playerAssistState.pieceLocksSinceLineClear += 1;
+
+        if (playerAssistState.cooldownLocks > 0) {
+          playerAssistState.cooldownLocks -= 1;
+        }
+
+        if (playerAssistState.helpModeActive) {
+          playerAssistState.helpLocksRemaining = Math.max(0, playerAssistState.helpLocksRemaining - 1);
+          if (playerAssistState.helpLocksRemaining <= 0) {
+            setHelpModeActive(false, now);
+          }
+        }
       }
     }
 
@@ -2985,6 +3077,11 @@ function processBoardEvents(attacker, defender, now) {
       }
 
       if (attacker.tag === 'player') {
+        playerAssistState.pieceLocksSinceLineClear = 0;
+        if (playerAssistState.helpModeActive) {
+          setHelpModeActive(false, now);
+        }
+
         sound.playLineClear(event.count);
         triggerComboMoment(event, now);
 
@@ -3083,6 +3180,11 @@ function processBoardEvents(attacker, defender, now) {
       resultSoundPlayed = false;
     }
   });
+
+  if (attacker.tag === 'player') {
+    evaluateAdaptiveHelpMode(now);
+    applyModeDifficultyTuning();
+  }
 }
 
 function stepBoardGravity(board, delta, softDropActive = false, gravityIntervalOverride = null) {
@@ -3419,6 +3521,7 @@ function resetBattle() {
   battleState.dangerLevel = 'stable';
   battleState.aiSkill = 0.62;
   battleState.aiStepAccumulator = 0;
+  resetPlayerAssistState();
   powerupState.comboBoostUntil = 0;
   powerupState.freezeUntil = 0;
   powerupState.freezeBlockFxUntil = 0;
@@ -4002,6 +4105,24 @@ if (modePicker) {
     if (!pill) return;
     const mode = pill.getAttribute('data-mode') || 'battle';
     setHomeMode(mode);
+  });
+}
+if (modePickerInput) {
+  const applyModeFromInput = () => {
+    const parsed = modeKeyFromInputValue(modePickerInput.value);
+    if (parsed) {
+      setHomeMode(parsed);
+    } else {
+      modePickerInput.value = MODE_DEFS[modeRuntime.selectedMode]?.label || MODE_DEFS.battle.label;
+    }
+  };
+  modePickerInput.addEventListener('change', applyModeFromInput);
+  modePickerInput.addEventListener('blur', applyModeFromInput);
+  modePickerInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      applyModeFromInput();
+    }
   });
 }
 if (powerupDock) {
