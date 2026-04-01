@@ -66,6 +66,8 @@ const btnStageRetry = document.getElementById('btnStageRetry');
 const btnStageMenu = document.getElementById('btnStageMenu');
 const levelSelectScreen = document.getElementById('levelSelectScreen');
 const levelStageGrid = document.getElementById('levelStageGrid');
+const levelSelectTitle = levelSelectScreen ? levelSelectScreen.querySelector('.level-head h2') : null;
+const levelSelectSubtitle = levelSelectScreen ? levelSelectScreen.querySelector('.level-subtitle') : null;
 const btnCloseLevelSelect = document.getElementById('btnCloseLevelSelect');
 const btnOpenShop = document.getElementById('btnOpenShop');
 const btnCloseShop = document.getElementById('btnCloseShop');
@@ -661,8 +663,7 @@ const modeRuntime = {
   mirrorFlipped: false,
   mirrorNextFlipAt: 0,
   puzzlePresetIndex: 0,
-  puzzleSolved: false,
-  puzzleAdvanceOnStart: true
+  puzzleSolved: false
 };
 
 function readJsonStorage(key, fallback) {
@@ -1299,20 +1300,34 @@ updateCoinHud();
 const STAGES_PER_LEVEL = 5;
 const TOTAL_LEVELS = 20;
 const TOTAL_STAGES = TOTAL_LEVELS * STAGES_PER_LEVEL;
-const STAGE_UNLOCK_STORAGE_KEY = 'tetrixa_stage_unlock_v1';
+const MODE_STAGE_PROGRESS_STORAGE_KEY = 'tetrixa_mode_stage_progress_v1';
+const STAGE_TRACKED_MODES = ['battle', 'classic', 'speed', 'puzzle', 'chaos', 'mirror'];
 const THEME_FALLBACK_BG = './assets/backgrounds/playingpg.webp';
 
+function sanitizeModeStageProgress(rawProgress) {
+  const safe = {};
+  STAGE_TRACKED_MODES.forEach((mode) => {
+    const rawUnlocked = rawProgress && rawProgress[mode] && rawProgress[mode].unlockedStageIndex;
+    const unlockedStageIndex = clamp(Math.floor(Number(rawUnlocked) || 0), 0, TOTAL_STAGES - 1);
+    safe[mode] = { unlockedStageIndex };
+  });
+  return safe;
+}
+
+const modeStageProgressState = sanitizeModeStageProgress(readJsonStorage(MODE_STAGE_PROGRESS_STORAGE_KEY, {}));
+
 const progressionState = {
-  unlockedStageIndex: readNumberStorage(STAGE_UNLOCK_STORAGE_KEY, 0),
+  modeKey: 'battle',
+  unlockedStageIndex: modeStageProgressState.battle.unlockedStageIndex,
   selectedStageIndex: 0,
   goalLines: 9,
   aiLevel: 1
 };
-progressionState.unlockedStageIndex = clamp(progressionState.unlockedStageIndex, 0, TOTAL_STAGES - 1);
 
 const stageResultState = {
   nextStageIndex: null,
-  retryStageIndex: null
+  retryStageIndex: null,
+  modeKey: 'battle'
 };
 
 const boardThemeState = {
@@ -1339,6 +1354,40 @@ function stageIndexToLevelStage(stageIndex) {
 
 function linesGoalForStage(stageIndex) {
   return 9 + stageIndex * 2;
+}
+
+function normalizeStageModeKey(modeKey) {
+  const safeMode = normalizeModeKey(modeKey);
+  return STAGE_TRACKED_MODES.includes(safeMode) ? safeMode : 'battle';
+}
+
+function getModeStageProgress(modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  if (!modeStageProgressState[safeMode]) {
+    modeStageProgressState[safeMode] = { unlockedStageIndex: 0 };
+  }
+  return modeStageProgressState[safeMode];
+}
+
+function persistModeStageProgress() {
+  writeJsonStorage(MODE_STAGE_PROGRESS_STORAGE_KEY, modeStageProgressState);
+}
+
+function setProgressionMode(modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  const modeProgress = getModeStageProgress(safeMode);
+  progressionState.modeKey = safeMode;
+  progressionState.unlockedStageIndex = clamp(Math.floor(Number(modeProgress.unlockedStageIndex) || 0), 0, TOTAL_STAGES - 1);
+  progressionState.selectedStageIndex = clamp(progressionState.selectedStageIndex, 0, progressionState.unlockedStageIndex);
+  progressionState.goalLines = linesGoalForStage(progressionState.selectedStageIndex);
+}
+
+function unlockNextStageForCurrentMode() {
+  const maxUnlocked = Math.min(TOTAL_STAGES - 1, progressionState.selectedStageIndex + 1);
+  progressionState.unlockedStageIndex = Math.max(progressionState.unlockedStageIndex, maxUnlocked);
+  const modeProgress = getModeStageProgress(progressionState.modeKey);
+  modeProgress.unlockedStageIndex = progressionState.unlockedStageIndex;
+  persistModeStageProgress();
 }
 
 function pad2(value) {
@@ -1422,15 +1471,19 @@ function stageLabel(stageIndex) {
   return `Level ${level} - Stage ${stage}`;
 }
 
-function startStageByIndex(stageIndex) {
-  const safeStageIndex = clamp(stageIndex, 0, TOTAL_STAGES - 1);
+function startStageByIndex(stageIndex, modeKey = progressionState.modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  setProgressionMode(safeMode);
+  const safeStageIndex = clamp(stageIndex, 0, progressionState.unlockedStageIndex);
   const { level, stage } = stageIndexToLevelStage(safeStageIndex);
   progressionState.selectedStageIndex = safeStageIndex;
   progressionState.goalLines = linesGoalForStage(safeStageIndex);
+  stageResultState.modeKey = safeMode;
   applyAIProfile(level);
   applyBoardThemeForLevel(level);
   hideStageResultPanel();
-  openGame(`L${level}-S${stage}`);
+  const modeLabel = MODE_DEFS[safeMode]?.label || 'Play';
+  openGame(`${modeLabel} L${level}-S${stage}`, safeMode);
 }
 
 function updateModeUiVisibility() {
@@ -1464,24 +1517,21 @@ function configureModeSession(now = performance.now()) {
   }
 
   if (mode === 'puzzle') {
-    if (modeRuntime.puzzleAdvanceOnStart) {
-      modeRuntime.puzzlePresetIndex = (modeRuntime.puzzlePresetIndex + 1) % PUZZLE_PRESETS.length;
-    }
-    modeRuntime.puzzleAdvanceOnStart = true;
+    modeRuntime.puzzlePresetIndex = progressionState.selectedStageIndex % PUZZLE_PRESETS.length;
     applyPuzzlePreset(player.game, modeRuntime.puzzlePresetIndex);
     setFxMessage('Puzzle Board', 'Clear the board to solve', 1200, 4, now);
   }
   if (mode === 'speed') {
-    setFxMessage('Speed Rush', 'Speed increases every 10 seconds', 1200, 4, now);
+    setFxMessage('Speed Rush', `Clear ${progressionState.goalLines} lines`, 1200, 4, now);
   }
   if (mode === 'chaos') {
-    setFxMessage('Chaos Mode', 'Expect random events', 1200, 4, now);
+    setFxMessage('Chaos Mode', `Clear ${progressionState.goalLines} lines`, 1200, 4, now);
   }
   if (mode === 'mirror') {
-    setFxMessage('Mirror Mode', 'Board may flip during play', 1200, 4, now);
+    setFxMessage('Mirror Mode', `Clear ${progressionState.goalLines} lines`, 1200, 4, now);
   }
   if (mode === 'classic') {
-    setFxMessage('Classic+', 'Solo focus with rewards and overdrive', 1200, 4, now);
+    setFxMessage('Classic+', `Clear ${progressionState.goalLines} lines`, 1200, 4, now);
   }
   if (mode === 'battle') {
     setFxMessage('Battle Mode', `Goal: ${progressionState.goalLines} lines`, 1200, 1, now);
@@ -1529,18 +1579,21 @@ function updateModeDynamics(now) {
       modeRuntime.puzzleSolved = true;
       rewardState.stageResolved = true;
       gameSessionActive = false;
+      stageResultState.modeKey = progressionState.modeKey;
       rewardCoins(70, 'Puzzle Solved', {
         fromX: window.innerWidth * 0.5,
         fromY: window.innerHeight * 0.35,
         count: 11,
         special: true
       });
-      stageResultState.nextStageIndex = null;
-      stageResultState.retryStageIndex = null;
+      unlockNextStageForCurrentMode();
+      persistStageUnlock(progressionState.modeKey);
+      stageResultState.nextStageIndex = Math.min(TOTAL_STAGES - 1, progressionState.selectedStageIndex + 1);
+      stageResultState.retryStageIndex = progressionState.selectedStageIndex;
       showStageResultPanel({
         title: 'Puzzle Cleared',
-        message: 'Board solved. Continue to the next puzzle.',
-        canGoNext: true,
+        message: `${stageLabel(progressionState.selectedStageIndex)} solved.`,
+        canGoNext: progressionState.selectedStageIndex < TOTAL_STAGES - 1,
         canRetry: true
       });
     }
@@ -1567,28 +1620,18 @@ function getModeGravityInterval(baseInterval, now) {
 }
 
 function startSelectedModeFromHome() {
-  const mode = modeRuntime.selectedMode;
-  const def = MODE_DEFS[mode];
-  if (mode === 'battle') {
-    openLevelSelect();
-    return;
-  }
-  progressionState.selectedStageIndex = 0;
-  progressionState.goalLines = 0;
-  if (mode === 'puzzle') {
-    modeRuntime.puzzleAdvanceOnStart = true;
-  }
-  applyBoardThemeForLevel(1);
-  hideStageResultPanel();
-  openGame(def.label, mode);
+  const mode = normalizeStageModeKey(modeRuntime.selectedMode);
+  setProgressionMode(mode);
+  progressionState.selectedStageIndex = progressionState.unlockedStageIndex;
+  progressionState.goalLines = linesGoalForStage(progressionState.selectedStageIndex);
+  openLevelSelect(mode);
 }
 
-function persistStageUnlock() {
-  try {
-    localStorage.setItem(STAGE_UNLOCK_STORAGE_KEY, String(progressionState.unlockedStageIndex));
-  } catch {
-    // Ignore storage write failure.
-  }
+function persistStageUnlock(modeKey = progressionState.modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  const modeProgress = getModeStageProgress(safeMode);
+  modeProgress.unlockedStageIndex = clamp(Math.floor(Number(progressionState.unlockedStageIndex) || 0), 0, TOTAL_STAGES - 1);
+  persistModeStageProgress();
 }
 
 function profileForLevel(level) {
@@ -1620,32 +1663,46 @@ function applyAIProfile(level) {
   battleState.aiSkill = profile.baseSkill;
 }
 
-function openLevelSelect() {
+function openLevelSelect(modeKey = modeRuntime.selectedMode) {
   if (!levelSelectScreen || !levelStageGrid) return;
+  const safeMode = normalizeStageModeKey(modeKey);
+  setProgressionMode(safeMode);
+  stageResultState.modeKey = safeMode;
   levelStageGrid.innerHTML = '';
+  if (levelSelectTitle) {
+    levelSelectTitle.textContent = `${MODE_DEFS[safeMode]?.label || 'Mode'} Stages`;
+  }
+  if (levelSelectSubtitle) {
+    levelSelectSubtitle.textContent = safeMode === 'puzzle'
+      ? 'Each stage is a puzzle challenge. Unlocks are saved per mode.'
+      : '20 Levels - 5 Stages each - clear line goals to unlock the next stage.';
+  }
 
   for (let idx = 0; idx < TOTAL_STAGES; idx++) {
     const { level, stage } = stageIndexToLevelStage(idx);
     const unlocked = idx <= progressionState.unlockedStageIndex;
     const cleared = idx < progressionState.unlockedStageIndex;
-    const current = idx === progressionState.unlockedStageIndex;
+    const current = idx === progressionState.selectedStageIndex;
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `stage-card${unlocked ? '' : ' locked'}${cleared ? ' cleared' : ''}${current ? ' current' : ''}`;
     card.disabled = !unlocked;
     const stateLabel = unlocked ? (cleared ? 'Cleared' : 'Ready') : 'Locked';
+    const objectiveText = safeMode === 'puzzle'
+      ? 'Solve the board puzzle'
+      : `Clear ${linesGoalForStage(idx)} lines`;
     card.innerHTML = `
       <div class="stage-top">
         <span class="stage-chip">L${level}-S${stage}</span>
         <span class="stage-state">${stateLabel}</span>
       </div>
       <strong>Level ${level}</strong>
-      <p>Stage ${stage}</p>
+      <p>${objectiveText}</p>
     `;
     if (unlocked) {
       card.addEventListener('click', () => {
         closeLevelSelect();
-        startStageByIndex(idx);
+        startStageByIndex(idx, safeMode);
       });
     }
     levelStageGrid.appendChild(card);
@@ -1737,16 +1794,26 @@ function evaluateStageRaceOutcome(now) {
   if (modeRuntime.activeMode !== 'battle') return;
   if (rewardState.stageResolved || !gameSessionActive) return;
   const goal = progressionState.goalLines;
-  if (goal <= 0) return;
+  const playerReached = goal > 0 && player.game.linesCleared >= goal;
+  const aiReached = goal > 0 && ai.game.linesCleared >= goal;
+  const playerKO = !!player.game.gameOver;
+  const aiKO = !!ai.game.gameOver;
 
-  const playerReached = player.game.linesCleared >= goal;
-  const aiReached = ai.game.linesCleared >= goal;
-  if (!playerReached && !aiReached) return;
+  if (!playerReached && !aiReached && !playerKO && !aiKO) return;
 
   rewardState.stageResolved = true;
-  if (playerReached && !aiReached) {
+  const playerWon = (aiKO && !playerKO && !aiReached) || (playerReached && !aiReached);
+  const aiWon = (aiReached && !playerReached) || (playerKO && !aiKO && !playerReached);
+  const playerWonByKo = aiKO && !playerKO && !aiReached;
+  const aiWonByKo = playerKO && !aiKO;
+  stageResultState.modeKey = progressionState.modeKey;
+
+  if (playerWon && !aiWon) {
     ai.game.gameOver = true;
-    setFxMessage('Stage Clear', `You hit ${goal} lines first`, 1300, 7, now);
+    const winMessage = playerWonByKo
+      ? 'AI knocked out. Stage won.'
+      : `You hit ${goal} lines first`;
+    setFxMessage('Stage Clear', winMessage, 1300, 7, now);
     const stageBonus = 55 + progressionState.aiLevel * 6;
     rewardCoins(stageBonus, 'Stage Victory Bonus', {
       fromX: window.innerWidth * 0.5,
@@ -1754,31 +1821,36 @@ function evaluateStageRaceOutcome(now) {
       count: 12,
       special: true
     });
-    if (progressionState.selectedStageIndex >= progressionState.unlockedStageIndex) {
-      progressionState.unlockedStageIndex = Math.min(TOTAL_STAGES - 1, progressionState.unlockedStageIndex + 1);
-      persistStageUnlock();
-    }
+    unlockNextStageForCurrentMode();
+    persistStageUnlock(progressionState.modeKey);
     stageResultState.nextStageIndex = Math.min(TOTAL_STAGES - 1, progressionState.selectedStageIndex + 1);
     stageResultState.retryStageIndex = progressionState.selectedStageIndex;
     showStageResultPanel({
       title: 'Stage Cleared',
-      message: `${stageLabel(progressionState.selectedStageIndex)} complete.`,
+      message: playerWonByKo
+        ? `${stageLabel(progressionState.selectedStageIndex)} won by AI K.O.`
+        : `${stageLabel(progressionState.selectedStageIndex)} complete.`,
       canGoNext: progressionState.selectedStageIndex < TOTAL_STAGES - 1,
       canRetry: false
     });
-  } else if (aiReached && !playerReached) {
+  } else if (aiWon && !playerWon) {
     player.game.gameOver = true;
-    setFxMessage('Stage Lost', `AI reached ${goal} lines first`, 1300, 7, now);
+    const loseMessage = aiWonByKo
+      ? 'You were knocked out first'
+      : `AI reached ${goal} lines first`;
+    setFxMessage('Stage Lost', loseMessage, 1300, 7, now);
     stageResultState.nextStageIndex = null;
     stageResultState.retryStageIndex = progressionState.selectedStageIndex;
     showStageResultPanel({
       title: 'Stage Lost',
-      message: `${stageLabel(progressionState.selectedStageIndex)} failed. Retry and beat AI.`,
+      message: aiWonByKo
+        ? `${stageLabel(progressionState.selectedStageIndex)} failed by player K.O.`
+        : `${stageLabel(progressionState.selectedStageIndex)} failed. Retry and beat AI.`,
       canGoNext: false,
       canRetry: true
     });
   } else {
-    setFxMessage('Photo Finish', `Both reached ${goal} lines`, 1200, 7, now);
+    setFxMessage('Photo Finish', goal > 0 ? `Both reached ${goal} lines` : 'Both players finished together', 1200, 7, now);
     stageResultState.nextStageIndex = null;
     stageResultState.retryStageIndex = progressionState.selectedStageIndex;
     showStageResultPanel({
@@ -1794,14 +1866,56 @@ function evaluateStageRaceOutcome(now) {
 function evaluateSoloOutcome(now) {
   if (modeRuntime.activeMode === 'battle') return;
   if (rewardState.stageResolved || !gameSessionActive) return;
-  if (!player.game.gameOver) return;
+  stageResultState.modeKey = progressionState.modeKey;
+
+  if (modeRuntime.activeMode === 'puzzle') {
+    if (!player.game.gameOver) return;
+    rewardState.stageResolved = true;
+    gameSessionActive = false;
+    stageResultState.nextStageIndex = null;
+    stageResultState.retryStageIndex = progressionState.selectedStageIndex;
+    showStageResultPanel({
+      title: 'Puzzle Failed',
+      message: `${stageLabel(progressionState.selectedStageIndex)} failed. Retry this puzzle stage.`,
+      canGoNext: false,
+      canRetry: true
+    });
+    return;
+  }
+
+  const goal = progressionState.goalLines;
+  const playerReached = goal > 0 && player.game.linesCleared >= goal;
+  const playerKO = !!player.game.gameOver;
+  if (!playerReached && !playerKO) return;
 
   rewardState.stageResolved = true;
   gameSessionActive = false;
-  const survivedSeconds = Math.max(0, Math.floor((now - rewardState.sessionStartAt) / 1000));
+  if (playerReached && !playerKO) {
+    unlockNextStageForCurrentMode();
+    persistStageUnlock(progressionState.modeKey);
+    const bonus = 38 + Math.floor(progressionState.selectedStageIndex * 1.4);
+    rewardCoins(bonus, 'Stage Clear Bonus', {
+      fromX: window.innerWidth * 0.5,
+      fromY: window.innerHeight * 0.4,
+      count: 10,
+      special: true
+    });
+    stageResultState.nextStageIndex = Math.min(TOTAL_STAGES - 1, progressionState.selectedStageIndex + 1);
+    stageResultState.retryStageIndex = progressionState.selectedStageIndex;
+    showStageResultPanel({
+      title: 'Stage Cleared',
+      message: `${stageLabel(progressionState.selectedStageIndex)} complete.`,
+      canGoNext: progressionState.selectedStageIndex < TOTAL_STAGES - 1,
+      canRetry: false
+    });
+    return;
+  }
+
+  stageResultState.nextStageIndex = null;
+  stageResultState.retryStageIndex = progressionState.selectedStageIndex;
   showStageResultPanel({
-    title: `${MODE_DEFS[modeRuntime.activeMode]?.label || 'Mode'} Ended`,
-    message: `Survived ${survivedSeconds}s. Tap retry to run again.`,
+    title: 'Stage Lost',
+    message: `${stageLabel(progressionState.selectedStageIndex)} failed. Retry this stage.`,
     canGoNext: false,
     canRetry: true
   });
@@ -3721,30 +3835,24 @@ if (dailyRewardModal) {
 }
 if (btnStageNext) {
   btnStageNext.addEventListener('click', () => {
+    const modeKey = normalizeStageModeKey(stageResultState.modeKey || progressionState.modeKey || modeRuntime.activeMode);
     const target = stageResultState.nextStageIndex;
     if (typeof target === 'number') {
-      startStageByIndex(target);
+      startStageByIndex(target, modeKey);
       return;
     }
-    if (modeRuntime.activeMode === 'puzzle') {
-      modeRuntime.puzzleAdvanceOnStart = true;
-      openGame(MODE_DEFS.puzzle.label, 'puzzle');
-    }
+    openLevelSelect(modeKey);
   });
 }
 if (btnStageRetry) {
   btnStageRetry.addEventListener('click', () => {
+    const modeKey = normalizeStageModeKey(stageResultState.modeKey || progressionState.modeKey || modeRuntime.activeMode);
     const target = stageResultState.retryStageIndex ?? progressionState.selectedStageIndex;
-    if (typeof target === 'number' && modeRuntime.activeMode === 'battle') {
-      startStageByIndex(target);
+    if (typeof target === 'number') {
+      startStageByIndex(target, modeKey);
       return;
     }
-    if (modeRuntime.activeMode === 'puzzle') {
-      modeRuntime.puzzleAdvanceOnStart = false;
-      openGame(MODE_DEFS.puzzle.label, 'puzzle');
-      return;
-    }
-    openGame(MODE_DEFS[modeRuntime.activeMode]?.label || 'Play', modeRuntime.activeMode);
+    openLevelSelect(modeKey);
   });
 }
 if (btnStageMenu) {
