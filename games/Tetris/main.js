@@ -19,6 +19,7 @@ const pageBody = document.body;
 const homeSignal = document.getElementById('homeSignal');
 const homeModeName = document.getElementById('homeModeName');
 const homeModeDescription = document.getElementById('homeModeDescription');
+const btnHowToPlay = document.getElementById('btnHowToPlay');
 const modePicker = document.getElementById('modePicker');
 const gameSignal = document.getElementById('gameSignal');
 const fxBanner = document.getElementById('fxBanner');
@@ -69,6 +70,9 @@ const levelStageGrid = document.getElementById('levelStageGrid');
 const levelSelectTitle = levelSelectScreen ? levelSelectScreen.querySelector('.level-head h2') : null;
 const levelSelectSubtitle = levelSelectScreen ? levelSelectScreen.querySelector('.level-subtitle') : null;
 const btnCloseLevelSelect = document.getElementById('btnCloseLevelSelect');
+const howToPlayModal = document.getElementById('howToPlayModal');
+const btnCloseHowToPlay = document.getElementById('btnCloseHowToPlay');
+const btnHowToPlayStart = document.getElementById('btnHowToPlayStart');
 const btnOpenShop = document.getElementById('btnOpenShop');
 const btnCloseShop = document.getElementById('btnCloseShop');
 const shopScreen = document.getElementById('shopScreen');
@@ -80,7 +84,9 @@ const aiBoardCard = document.querySelector('.board-card-ai');
 
 const PREVIEW_CELL_SIZE = 16;
 const CELL_SIZE = 24;
+const SKIN_TILE_SCALE = 1.08;
 const SOFT_DROP_INTERVAL_MS = 45;
+const CELL_SEPARATOR_COLOR = 'rgba(255, 255, 255, 0.22)';
 const COMBO_TIERS = [2, 4, 6, 8, 10];
 const MUSIC_SOURCE = './assets/audio/bgm.mp3';
 const COIN_STORAGE_KEY = 'tetrixa_coin_bank_v1';
@@ -88,6 +94,7 @@ const DAILY_STORAGE_KEY = 'tetrixa_daily_reward_v1';
 const FIRSTS_STORAGE_KEY = 'tetrixa_first_rewards_v1';
 const POWERUP_STORAGE_KEY = 'tetrixa_powerup_inventory_v1';
 const SKIN_STORAGE_KEY = 'tetrixa_skin_state_v1';
+const HOW_TO_PLAY_STORAGE_KEY = 'tetrixa_how_to_play_seen_v1';
 const TETROMINO_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 const POWERUP_LINE_CLEAR_POINTS = {
   1: 100,
@@ -695,6 +702,18 @@ function readNumberStorage(key, fallback = 0) {
   }
 }
 
+function sanitizeHowToPlayState(rawState) {
+  return {
+    seen: !!(rawState && rawState.seen)
+  };
+}
+
+const howToPlayState = sanitizeHowToPlayState(readJsonStorage(HOW_TO_PLAY_STORAGE_KEY, { seen: false }));
+
+function persistHowToPlayState() {
+  writeJsonStorage(HOW_TO_PLAY_STORAGE_KEY, howToPlayState);
+}
+
 function sanitizePowerupInventory(rawInventory) {
   const safe = {};
   POWERUP_DEFS.forEach((def) => {
@@ -1269,6 +1288,25 @@ function collectDailyReward() {
   hideDailyRewardModal();
 }
 
+function showHowToPlayModal({ markSeen = false } = {}) {
+  if (!howToPlayModal) return;
+  howToPlayModal.classList.remove('app-hidden');
+  if (markSeen && !howToPlayState.seen) {
+    howToPlayState.seen = true;
+    persistHowToPlayState();
+  }
+}
+
+function hideHowToPlayModal() {
+  if (!howToPlayModal) return;
+  howToPlayModal.classList.add('app-hidden');
+}
+
+function maybeShowHowToPlayOnFirstLaunch() {
+  if (howToPlayState.seen) return;
+  showHowToPlayModal({ markSeen: true });
+}
+
 function claimDailyRewardIfEligible() {
   const tiers = [50, 100, 150, 250, 300, 450, 600];
   const { dateKey } = getLocalDateInfo();
@@ -1353,7 +1391,10 @@ function stageIndexToLevelStage(stageIndex) {
 }
 
 function linesGoalForStage(stageIndex) {
-  return 9 + stageIndex * 2;
+  const safeStage = Math.max(0, Math.floor(stageIndex) || 0);
+  if (safeStage <= 4) return 6 + safeStage * 2;
+  if (safeStage <= 14) return 16 + (safeStage - 5) * 2;
+  return 36 + (safeStage - 15) * 3;
 }
 
 function normalizeStageModeKey(modeKey) {
@@ -1498,6 +1539,48 @@ function updateModeUiVisibility() {
   }
 }
 
+function getBeginnerAssistTier() {
+  const stage = Math.max(0, progressionState.selectedStageIndex | 0);
+  if (stage <= 4) return 3;
+  if (stage <= 9) return 2;
+  if (stage <= 14) return 1;
+  return 0;
+}
+
+function getGravityAssistMultiplier() {
+  const tier = getBeginnerAssistTier();
+  if (tier >= 3) return 1.46;
+  if (tier === 2) return 1.28;
+  if (tier === 1) return 1.14;
+  return 1;
+}
+
+function applyModeDifficultyTuning() {
+  const tier = getBeginnerAssistTier();
+  player.game.spawnAssistEnabled = true;
+  player.game.spawnAssistStrength = tier >= 3 ? 1 : (tier === 2 ? 0.92 : (tier === 1 ? 0.8 : 0.68));
+  player.game.smartPieceMode = true;
+  player.game.avoidImmediateRepeats = true;
+  if (typeof player.game.applyAssistToPiece === 'function') {
+    player.game.currentPiece = player.game.applyAssistToPiece(player.game.currentPiece, true);
+  }
+
+  ai.game.spawnAssistEnabled = false;
+  ai.game.spawnAssistStrength = 0;
+  ai.game.avoidImmediateRepeats = true;
+
+  if (modeRuntime.activeMode === 'battle') {
+    ai.game.smartPieceMode = progressionState.selectedStageIndex > 4;
+    const randomBoost = tier >= 3 ? 0.2 : (tier === 2 ? 0.12 : (tier === 1 ? 0.06 : 0));
+    const reactionScaleBoost = tier >= 3 ? 1.25 : (tier === 2 ? 1.16 : (tier === 1 ? 1.08 : 1));
+    aiProfileState.randomFactor = clamp(aiProfileState.randomFactor + randomBoost, 0.06, 0.92);
+    aiProfileState.reactionScale *= reactionScaleBoost;
+    battleState.aiSkill = Math.min(battleState.aiSkill, aiProfileState.baseSkill * (tier >= 3 ? 0.78 : (tier === 2 ? 0.86 : 0.94)));
+  } else {
+    ai.game.smartPieceMode = true;
+  }
+}
+
 function configureModeSession(now = performance.now()) {
   const mode = modeRuntime.activeMode;
   modeRuntime.aiEnabled = mode === 'battle';
@@ -1537,6 +1620,7 @@ function configureModeSession(now = performance.now()) {
     setFxMessage('Battle Mode', `Goal: ${progressionState.goalLines} lines`, 1200, 1, now);
   }
 
+  applyModeDifficultyTuning();
   updateModeUiVisibility();
 }
 
@@ -1601,6 +1685,8 @@ function updateModeDynamics(now) {
 }
 
 function getModeGravityInterval(baseInterval, now) {
+  const assistMultiplier = getGravityAssistMultiplier();
+
   if (modeRuntime.activeMode === 'speed') {
     const elapsed = Math.max(0, now - rewardState.sessionStartAt);
     const tier = Math.floor(elapsed / 10000);
@@ -1609,14 +1695,14 @@ function getModeGravityInterval(baseInterval, now) {
       setFxMessage('Speed Up', `Tier ${tier + 1}`, 700, 3, now);
     }
     const scale = clamp(1 - tier * 0.08, 0.34, 1);
-    return baseInterval * scale;
+    return baseInterval * scale * assistMultiplier;
   }
 
   if (modeRuntime.activeMode === 'chaos') {
-    return baseInterval * modeRuntime.chaosGravityScale;
+    return baseInterval * modeRuntime.chaosGravityScale * assistMultiplier;
   }
 
-  return baseInterval;
+  return baseInterval * assistMultiplier;
 }
 
 function startSelectedModeFromHome() {
@@ -2090,8 +2176,8 @@ function drawCell(ctx, x, y, color, cellType = '') {
   const skinImage = getActiveTetrominoSkinImage(cellType);
 
   if (skinImage) {
-    drawImageSquareFit(ctx, skinImage, px, py, CELL_SIZE);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.24)';
+    drawImageSquareFitScaled(ctx, skinImage, px, py, CELL_SIZE, SKIN_TILE_SCALE);
+    ctx.strokeStyle = CELL_SEPARATOR_COLOR;
     ctx.strokeRect(px + 0.5, py + 0.5, CELL_SIZE - 1, CELL_SIZE - 1);
     return;
   }
@@ -2105,7 +2191,7 @@ function drawCell(ctx, x, y, color, cellType = '') {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
   ctx.fillRect(px + 2, py + 2, CELL_SIZE - 4, 6);
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+  ctx.strokeStyle = CELL_SEPARATOR_COLOR;
   ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
 }
 
@@ -2116,6 +2202,18 @@ function drawImageSquareFit(ctx, image, dx, dy, size) {
   const srcX = (srcW - srcSize) * 0.5;
   const srcY = (srcH - srcSize) * 0.5;
   ctx.drawImage(image, srcX, srcY, srcSize, srcSize, dx, dy, size, size);
+}
+
+function drawImageSquareFitScaled(ctx, image, dx, dy, size, scale = 1) {
+  const safeScale = Math.max(0.9, Number(scale) || 1);
+  const scaledSize = size * safeScale;
+  const offset = (scaledSize - size) * 0.5;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(dx, dy, size, size);
+  ctx.clip();
+  drawImageSquareFit(ctx, image, dx - offset, dy - offset, scaledSize);
+  ctx.restore();
 }
 
 function drawBoardTileLayer(board) {
@@ -2142,11 +2240,8 @@ function drawGrid(board) {
     });
   });
 
-  if (boardThemeState.tileReady && boardThemeState.tileImage) {
-    ctx.strokeStyle = 'rgba(12, 58, 70, 0.14)';
-  } else {
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
-  }
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
 
   for (let x = 0; x <= game.grid.width; x++) {
     ctx.beginPath();
@@ -2160,6 +2255,7 @@ function drawGrid(board) {
     ctx.lineTo(board.canvas.width, y * CELL_SIZE);
     ctx.stroke();
   }
+  ctx.lineWidth = 1;
 }
 
 function drawCurrentPiece(board) {
@@ -2410,8 +2506,8 @@ function drawPreview(ctxRef, pieceType) {
       const drawX = startX + (x - bounds.minX) * PREVIEW_CELL_SIZE;
       const drawY = startY + (y - bounds.minY) * PREVIEW_CELL_SIZE;
       if (previewSkinImage) {
-        drawImageSquareFit(ctxRef, previewSkinImage, drawX, drawY, PREVIEW_CELL_SIZE);
-        ctxRef.strokeStyle = 'rgba(0, 0, 0, 0.26)';
+        drawImageSquareFitScaled(ctxRef, previewSkinImage, drawX, drawY, PREVIEW_CELL_SIZE, SKIN_TILE_SCALE);
+        ctxRef.strokeStyle = CELL_SEPARATOR_COLOR;
         ctxRef.strokeRect(drawX + 0.5, drawY + 0.5, PREVIEW_CELL_SIZE - 1, PREVIEW_CELL_SIZE - 1);
       } else {
         ctxRef.shadowColor = color;
@@ -2421,7 +2517,7 @@ function drawPreview(ctxRef, pieceType) {
         ctxRef.shadowBlur = 0;
         ctxRef.fillStyle = 'rgba(255, 255, 255, 0.28)';
         ctxRef.fillRect(drawX + 1.5, drawY + 1.5, PREVIEW_CELL_SIZE - 3, 4.5);
-        ctxRef.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctxRef.strokeStyle = CELL_SEPARATOR_COLOR;
         ctxRef.strokeRect(drawX + 0.5, drawY + 0.5, PREVIEW_CELL_SIZE - 1, PREVIEW_CELL_SIZE - 1);
       }
     }
@@ -3763,6 +3859,7 @@ function openGame(modeLabel, modeKey = 'battle') {
   currentModeLabel = modeLabel;
   music.unlock();
   claimDailyRewardIfEligible();
+  hideHowToPlayModal();
   setActiveBoardPage('player');
   if (pageBody) {
     pageBody.classList.remove('shop-mode');
@@ -3781,6 +3878,7 @@ function openGame(modeLabel, modeKey = 'battle') {
 
 function openShopScreen() {
   gameSessionActive = false;
+  hideHowToPlayModal();
   if (pageBody) {
     pageBody.classList.remove('game-mode');
     pageBody.classList.remove('home-mode');
@@ -3814,6 +3912,9 @@ if (btnBattleHome) {
 if (btnOpenShop) {
   btnOpenShop.addEventListener('click', () => openShopScreen());
 }
+if (btnHowToPlay) {
+  btnHowToPlay.addEventListener('click', () => showHowToPlayModal({ markSeen: true }));
+}
 if (btnCloseShop) {
   btnCloseShop.addEventListener('click', () => closeShopScreen());
 }
@@ -3830,6 +3931,19 @@ if (dailyRewardModal) {
   dailyRewardModal.addEventListener('click', (e) => {
     if (e.target === dailyRewardModal) {
       collectDailyReward();
+    }
+  });
+}
+if (btnCloseHowToPlay) {
+  btnCloseHowToPlay.addEventListener('click', () => hideHowToPlayModal());
+}
+if (btnHowToPlayStart) {
+  btnHowToPlayStart.addEventListener('click', () => hideHowToPlayModal());
+}
+if (howToPlayModal) {
+  howToPlayModal.addEventListener('click', (e) => {
+    if (e.target === howToPlayModal) {
+      hideHowToPlayModal();
     }
   });
 }
@@ -3907,3 +4021,4 @@ setupTouchBoardControls();
 renderShopGrid();
 renderPowerupDock();
 scheduleBoardCanvasDisplaySync();
+maybeShowHowToPlayOnFirstLaunch();

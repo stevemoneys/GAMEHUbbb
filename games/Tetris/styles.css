@@ -180,6 +180,18 @@ button {
   color: #1d1c19;
 }
 
+.home-help-btn {
+  position: absolute;
+  left: clamp(12px, 3vw, 20px);
+  top: clamp(12px, 3vw, 18px);
+  min-height: 38px;
+  min-width: 72px;
+  border-radius: 999px;
+  border: 1px solid rgba(154, 226, 255, 0.7);
+  background: linear-gradient(145deg, rgba(130, 220, 255, 0.9), rgba(102, 149, 255, 0.86));
+  color: #081326;
+}
+
 .home-card h1 {
   margin: 2px 0 0;
   font-size: clamp(2.2rem, 8vw, 5rem);
@@ -312,17 +324,54 @@ body.mobile-play-layout #aiPage {
 
 body.mobile-play-layout .play-page > .page-controls {
   position: fixed;
-  top: 8px;
-  left: 8px;
-  right: 8px;
+  top: 6px;
+  left: 6px;
+  right: 6px;
   z-index: 14;
-  grid-template-columns: auto auto auto;
-  gap: 5px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid rgba(140, 221, 255, 0.22);
+  border-radius: 14px;
+  background: rgba(6, 12, 22, 0.68);
+  backdrop-filter: blur(6px);
 }
 
 body.mobile-play-layout .play-page > .page-controls .top-actions {
-  grid-column: 1 / -1;
+  grid-column: auto;
   justify-self: end;
+  gap: 4px;
+}
+
+body.mobile-play-layout .play-page > .page-controls .top-next {
+  justify-self: center;
+  padding: 4px 6px;
+  gap: 5px;
+}
+
+body.mobile-play-layout .play-page > .page-controls .top-next span {
+  font-size: 0.62rem;
+}
+
+body.mobile-play-layout .play-page > .page-controls .coin-counter {
+  gap: 4px;
+  padding: 3px 7px;
+}
+
+body.mobile-play-layout .play-page > .page-controls .coin-icon {
+  width: 15px;
+  height: 15px;
+}
+
+body.mobile-play-layout .play-page > .page-controls .icon-btn {
+  min-height: 28px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+}
+
+body.mobile-play-layout .play-page > .page-controls .top-ai-live {
+  display: none;
 }
 
 .top-next {
@@ -695,6 +744,109 @@ body.mobile-play-layout .game-signal {
   z-index: 45;
 }
 
+.howto-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 72;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(3, 8, 14, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.howto-modal.app-hidden {
+  display: none;
+}
+
+.howto-card {
+  width: min(92vw, 520px);
+  max-height: min(92dvh, 720px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid rgba(147, 224, 255, 0.42);
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(12, 23, 38, 0.96), rgba(6, 10, 19, 0.97)),
+    radial-gradient(circle at top, rgba(255, 179, 108, 0.15), transparent 58%);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.45);
+}
+
+.howto-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.howto-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.howto-close {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0;
+  border: 1px solid rgba(255, 212, 158, 0.86);
+  background: rgba(16, 27, 42, 0.7);
+  color: #ffd8b5;
+  line-height: 1;
+}
+
+.howto-subtitle {
+  margin: 8px 0 10px;
+  color: rgba(220, 237, 255, 0.86);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.howto-block {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(145, 220, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(9, 16, 27, 0.46);
+}
+
+.howto-block h3 {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffe3b6;
+}
+
+.howto-block p {
+  margin: 0;
+  color: rgba(221, 236, 255, 0.84);
+  font-size: 0.83rem;
+  line-height: 1.45;
+}
+
+.howto-block ul {
+  margin: 0;
+  padding-left: 16px;
+  color: rgba(221, 236, 255, 0.84);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.howto-start-btn {
+  margin-top: 12px;
+  width: 100%;
+  min-height: 38px;
+  border-radius: 999px;
+  border-color: rgba(255, 214, 166, 0.9);
+  background: linear-gradient(145deg, #ffad71, #ff6785);
+  color: #101622;
+}
+
 .coin-fly {
   position: absolute;
   width: 14px;
@@ -1060,13 +1212,14 @@ body.mobile-play-layout .game-signal {
 }
 
 body.mobile-play-layout .powerup-dock {
-  --powerup-icon-size: 50px;
+  --powerup-icon-size: 42px;
   position: fixed;
   left: 50%;
-  bottom: 20px;
-  width: var(--mobile-dock-width, min(92vw, 420px));
+  bottom: 10px;
+  width: min(var(--mobile-dock-width, 88vw), 380px);
   transform: translateX(-50%) scale(var(--dock-scale));
-  z-index: 14;
+  z-index: 13;
+  gap: 4px;
 }
 
 .touch-controls {
@@ -1100,8 +1253,8 @@ body.mobile-play-layout .touch-controls {
 }
 
 .powerup-btn {
-  min-height: 58px;
-  padding: 4px;
+  min-height: 52px;
+  padding: 3px;
   border-radius: 14px;
   border: 1px solid rgba(146, 223, 255, 0.27);
   background: rgba(7, 14, 23, 0.28);
@@ -1114,7 +1267,7 @@ body.mobile-play-layout .touch-controls {
 }
 
 .powerup-dock.is-expanded .powerup-btn {
-  min-height: 72px;
+  min-height: 62px;
   transform: scale(1.01);
   border-color: rgba(255, 215, 156, 0.56);
 }
@@ -1125,6 +1278,15 @@ body.mobile-play-layout .touch-controls {
 
 .powerup-btn.is-empty {
   opacity: 0.34;
+}
+
+body.mobile-play-layout .powerup-btn {
+  min-height: 48px;
+  border-radius: 12px;
+}
+
+body.mobile-play-layout .powerup-dock.is-expanded .powerup-btn {
+  min-height: 56px;
 }
 
 .powerup-icon-wrap {
@@ -1369,6 +1531,13 @@ body.freeze-active #playerPage {
     grid-template-columns: 1fr;
   }
 
+  .home-help-btn,
+  .home-shop-btn {
+    min-height: 34px;
+    min-width: 66px;
+    font-size: 0.72rem;
+  }
+
   .mode-picker {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1428,6 +1597,11 @@ body.freeze-active #playerPage {
   .powerup-dock {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
+  }
+
+  .howto-card {
+    width: min(95vw, 500px);
+    padding: 12px;
   }
 
   .shop-card {

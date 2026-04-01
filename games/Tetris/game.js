@@ -25,10 +25,14 @@ export class Game {
   constructor() {
     this.grid = new Grid(BOARD_COLUMNS, BOARD_ROWS);
     this.smartPieceMode = true;
+    this.spawnAssistEnabled = true;
+    this.spawnAssistStrength = 1;
+    this.avoidImmediateRepeats = true;
     this.smartSpawnSeed = 0;
     this.recentSmartTypes = [];
+    this.lastSmartType = '';
     this.pieceBag = [];
-    this.currentPiece = this.drawNextPiece();
+    this.currentPiece = this.applyAssistToPiece(this.drawNextPiece(), true);
     this.nextPiece = this.drawNextPiece();
     this.heldType = null;
     this.canHold = true;
@@ -75,15 +79,19 @@ export class Game {
   }
 
   getUniqueRotationsForType(type) {
+    return this.getUniqueRotationOptionsForType(type).map((option) => option.shape);
+  }
+
+  getUniqueRotationOptionsForType(type) {
     const rotations = [];
     const seen = new Set();
     let shape = PIECES[type];
 
-    for (let i = 0; i < 4; i++) {
+    for (let turns = 0; turns < 4; turns++) {
       const key = shape.map((row) => row.join('')).join('|');
       if (!seen.has(key)) {
         seen.add(key);
-        rotations.push(shape.map((row) => [...row]));
+        rotations.push({ shape: shape.map((row) => [...row]), turns });
       }
       shape = rotateShapeClockwise(shape);
     }
@@ -272,20 +280,33 @@ export class Game {
     return filled;
   }
 
-  findBestPlacementProfile(type, assistTarget = null, baseRowInfo = null) {
-    const rotations = this.getUniqueRotationsForType(type);
+  isPlacementCandidateBetter(candidate, best) {
+    if (!best) return true;
+    if (candidate.targetCompleted !== best.targetCompleted) {
+      return candidate.targetCompleted && !best.targetCompleted;
+    }
+    if (candidate.remainingMissing !== best.remainingMissing) {
+      return candidate.remainingMissing < best.remainingMissing;
+    }
+    if (candidate.assistFill !== best.assistFill) {
+      return candidate.assistFill > best.assistFill;
+    }
+    if (candidate.cleared !== best.cleared) {
+      return candidate.cleared > best.cleared;
+    }
+    if (candidate.setupGain !== best.setupGain) {
+      return candidate.setupGain > best.setupGain;
+    }
+    return candidate.score > best.score;
+  }
+
+  findBestPlacementForType(type, assistTarget = null, baseRowInfo = null) {
+    const rotationOptions = this.getUniqueRotationOptionsForType(type);
     const target = assistTarget || this.getLineAssistTarget();
     const baseInfo = baseRowInfo || this.getMostCompleteRowInfo(this.grid.cells);
-    let best = {
-      score: -Infinity,
-      cleared: 0,
-      targetCompleted: false,
-      remainingMissing: target ? target.missing : this.grid.width,
-      assistFill: 0,
-      setupGain: -Infinity
-    };
+    let best = null;
 
-    rotations.forEach((shape) => {
+    rotationOptions.forEach(({ shape, turns }) => {
       const bounds = this.getShapeBounds(shape);
       if (!bounds) return;
 
@@ -294,7 +315,7 @@ export class Game {
       const spawnY = this.getSpawnYForShape(shape);
 
       for (let x = minX; x <= maxX; x++) {
-        const piece = { type, shape, rotation: 0, x, y: spawnY };
+        const piece = { type, shape, rotation: turns % 4, x, y: spawnY };
         if (this.grid.checkCollision(piece)) continue;
 
         while (!this.grid.checkCollision({ ...piece, y: piece.y + 1 })) {
@@ -312,6 +333,10 @@ export class Game {
         const clearedResult = this.clearLinesInCells(cells);
         const score = this.evaluateCellsFitness(clearedResult.cells, clearedResult.cleared, supports);
         const nextCandidate = {
+          type,
+          shape: shape.map((row) => [...row]),
+          turns: turns % 4,
+          x,
           score,
           cleared: clearedResult.cleared,
           targetCompleted,
@@ -319,21 +344,38 @@ export class Game {
           assistFill,
           setupGain
         };
-        const shouldReplace =
-          (nextCandidate.targetCompleted && !best.targetCompleted) ||
-          (nextCandidate.targetCompleted === best.targetCompleted && nextCandidate.remainingMissing < best.remainingMissing) ||
-          (nextCandidate.targetCompleted === best.targetCompleted && nextCandidate.remainingMissing === best.remainingMissing && nextCandidate.assistFill > best.assistFill) ||
-          (nextCandidate.targetCompleted === best.targetCompleted && nextCandidate.remainingMissing === best.remainingMissing && nextCandidate.assistFill === best.assistFill && nextCandidate.cleared > best.cleared) ||
-          (nextCandidate.targetCompleted === best.targetCompleted && nextCandidate.remainingMissing === best.remainingMissing && nextCandidate.assistFill === best.assistFill && nextCandidate.cleared === best.cleared && nextCandidate.setupGain > best.setupGain) ||
-          (nextCandidate.targetCompleted === best.targetCompleted && nextCandidate.remainingMissing === best.remainingMissing && nextCandidate.assistFill === best.assistFill && nextCandidate.cleared === best.cleared && nextCandidate.setupGain === best.setupGain && nextCandidate.score > best.score);
 
-        if (shouldReplace) {
+        if (this.isPlacementCandidateBetter(nextCandidate, best)) {
           best = nextCandidate;
         }
       }
     });
 
     return best;
+  }
+
+  findBestPlacementProfile(type, assistTarget = null, baseRowInfo = null) {
+    const target = assistTarget || this.getLineAssistTarget();
+    const baseInfo = baseRowInfo || this.getMostCompleteRowInfo(this.grid.cells);
+    const best = this.findBestPlacementForType(type, target, baseInfo);
+    if (!best) {
+      return {
+        score: -Infinity,
+        cleared: 0,
+        targetCompleted: false,
+        remainingMissing: target ? target.missing : this.grid.width,
+        assistFill: 0,
+        setupGain: -Infinity
+      };
+    }
+    return {
+      score: best.score,
+      cleared: best.cleared,
+      targetCompleted: best.targetCompleted,
+      remainingMissing: best.remainingMissing,
+      assistFill: best.assistFill,
+      setupGain: best.setupGain
+    };
   }
 
   getTieBreaker(type) {
@@ -354,6 +396,7 @@ export class Game {
     if (this.recentSmartTypes.length > 8) {
       this.recentSmartTypes.shift();
     }
+    this.lastSmartType = type;
     this.smartSpawnSeed = (this.smartSpawnSeed + 1) % 100000;
   }
 
@@ -392,18 +435,71 @@ export class Game {
     if (!pool.length) return 'T';
 
     const startIndex = this.smartSpawnSeed % pool.length;
-    let pick = pool[startIndex];
+    const avoidType = this.avoidImmediateRepeats ? this.lastSmartType : '';
+    let pick = null;
+
     for (let offset = 0; offset < pool.length; offset++) {
       const candidate = pool[(startIndex + offset) % pool.length];
       const repeatCount = this.getRecentRepeatCount(candidate.type);
-      if (repeatCount < 2 || offset === pool.length - 1) {
+      const sameAsLast = avoidType && candidate.type === avoidType;
+      if (!sameAsLast && repeatCount < 2) {
         pick = candidate;
         break;
       }
     }
 
+    if (!pick) {
+      for (let offset = 0; offset < pool.length; offset++) {
+        const candidate = pool[(startIndex + offset) % pool.length];
+        if (!avoidType || candidate.type !== avoidType) {
+          pick = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!pick) {
+      pick = pool[startIndex];
+      if (avoidType && pool.length > 1 && pick.type === avoidType) {
+        pick = pool[(startIndex + 1) % pool.length];
+      }
+    }
+
     this.rememberSmartType(pick.type);
     return pick.type;
+  }
+
+  applyAssistToPiece(piece, force = false) {
+    if (!piece || !this.spawnAssistEnabled) return piece;
+    const strength = Math.max(0, Math.min(1, Number(this.spawnAssistStrength) || 0));
+    if (!force && Math.random() > strength) return piece;
+
+    const assistTarget = this.getLineAssistTarget();
+    const baseInfo = this.getMostCompleteRowInfo(this.grid.cells);
+    const best = this.findBestPlacementForType(piece.type, assistTarget, baseInfo);
+    if (!best) return piece;
+
+    const assistedPiece = {
+      ...piece,
+      shape: best.shape.map((row) => [...row]),
+      rotation: best.turns % 4,
+      x: best.x,
+      y: this.getSpawnYForShape(best.shape)
+    };
+    if (!this.grid.checkCollision(assistedPiece)) {
+      return assistedPiece;
+    }
+
+    const centeredX = Math.floor((this.grid.width - assistedPiece.shape[0].length) / 2);
+    const centeredPiece = {
+      ...assistedPiece,
+      x: centeredX
+    };
+    if (!this.grid.checkCollision(centeredPiece)) {
+      return centeredPiece;
+    }
+
+    return piece;
   }
 
   drawNextPiece() {
@@ -437,6 +533,7 @@ export class Game {
       gridCells: this.grid.cells.map((row) => [...row]),
       smartSpawnSeed: this.smartSpawnSeed,
       recentSmartTypes: [...this.recentSmartTypes],
+      lastSmartType: this.lastSmartType,
       pieceBag: [...this.pieceBag],
       currentPiece: this.clonePieceState(this.currentPiece),
       nextPiece: this.clonePieceState(this.nextPiece),
@@ -459,6 +556,7 @@ export class Game {
     this.grid.cells = snapshot.gridCells.map((row) => [...row]);
     this.smartSpawnSeed = snapshot.smartSpawnSeed;
     this.recentSmartTypes = [...snapshot.recentSmartTypes];
+    this.lastSmartType = snapshot.lastSmartType || '';
     this.pieceBag = [...snapshot.pieceBag];
     this.currentPiece = this.clonePieceState(snapshot.currentPiece);
     this.nextPiece = this.clonePieceState(snapshot.nextPiece);
@@ -637,12 +735,12 @@ export class Game {
 
     if (this.heldType === null) {
       this.heldType = currentType;
-      this.currentPiece = this.nextPiece;
+      this.currentPiece = this.applyAssistToPiece(this.nextPiece, true);
       this.nextPiece = this.drawNextPiece();
     } else {
       const swapType = this.heldType;
       this.heldType = currentType;
-      this.currentPiece = createPiece(swapType, this.grid.width);
+      this.currentPiece = this.applyAssistToPiece(createPiece(swapType, this.grid.width), true);
     }
 
     this.canHold = false;
@@ -815,7 +913,7 @@ export class Game {
       }
     }
 
-    this.currentPiece = this.nextPiece;
+    this.currentPiece = this.applyAssistToPiece(this.nextPiece, true);
     this.nextPiece = this.drawNextPiece();
     this.canHold = true;
 
@@ -833,8 +931,9 @@ export class Game {
     this.grid.reset();
     this.smartSpawnSeed = 0;
     this.recentSmartTypes = [];
+    this.lastSmartType = '';
     this.pieceBag = [];
-    this.currentPiece = this.drawNextPiece();
+    this.currentPiece = this.applyAssistToPiece(this.drawNextPiece(), true);
     this.nextPiece = this.drawNextPiece();
     this.heldType = null;
     this.canHold = true;

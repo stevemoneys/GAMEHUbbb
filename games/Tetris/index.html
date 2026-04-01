@@ -11,6 +11,7 @@
     <section class="home-card panel-surface">
       <p class="eyebrow">Premium Arcade Puzzle</p>
       <button id="btnOpenShop" class="home-shop-btn" type="button" aria-label="Open shop">Shop</button>
+      <button id="btnHowToPlay" class="home-help-btn" type="button" aria-label="Open rules and how to play">Rules</button>
       <h1>TETRIXA</h1>
       <p class="home-subtitle">Fast, clean, competitive. One tap from launch into battle.</p>
 
@@ -185,6 +186,39 @@
     <p class="level-subtitle">20 Levels - 5 Stages each - unlocks sequentially.</p>
     <div id="levelStageGrid" class="level-stage-grid"></div>
   </section>
+
+  <aside id="howToPlayModal" class="howto-modal app-hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <section class="howto-card">
+      <header class="howto-head">
+        <h2>How To Play</h2>
+        <button id="btnCloseHowToPlay" class="howto-close" type="button" aria-label="Close rules">X</button>
+      </header>
+      <p class="howto-subtitle">Clear lines, build combos, and use power-ups at the right moment.</p>
+      <article class="howto-block">
+        <h3>Goal</h3>
+        <p>Fill each row with blocks to clear it. In stage modes, clear the target lines to win.</p>
+      </article>
+      <article class="howto-block">
+        <h3>Mobile Touch Controls</h3>
+        <ul>
+          <li>Tap left side: move left.</li>
+          <li>Tap right side: move right.</li>
+          <li>Tap center: rotate piece.</li>
+          <li>Swipe down: drop faster.</li>
+          <li>Swipe up: hold piece.</li>
+        </ul>
+      </article>
+      <article class="howto-block">
+        <h3>Quick Tips</h3>
+        <ul>
+          <li>Keep the center low and avoid tall stacks.</li>
+          <li>Use hold to save an I piece for tight gaps.</li>
+          <li>Use power-ups when a line clear is guaranteed.</li>
+        </ul>
+      </article>
+      <button id="btnHowToPlayStart" type="button" class="howto-start-btn">Got It</button>
+    </section>
+  </aside>
 
   <script type="module" src="main.js"></script>
 </body>
