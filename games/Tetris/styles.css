@@ -302,6 +302,14 @@ body.mobile-play-layout .play-page {
   position: relative;
 }
 
+body.mobile-play-layout #playerPage {
+  display: grid !important;
+}
+
+body.mobile-play-layout #aiPage {
+  display: none !important;
+}
+
 body.mobile-play-layout .play-page > .page-controls {
   position: fixed;
   top: 8px;

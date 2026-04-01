@@ -3435,31 +3435,14 @@ function setupTouchBoardControls() {
     pointerId: null,
     startX: 0,
     startY: 0,
-    holdZone: 'center',
-    holdDelayTimer: null,
-    holdRepeatTimer: null,
-    holdTriggered: false,
-    startTime: 0,
-    lastX: 0,
-    lastY: 0
+    lastDropY: 0,
+    swipeDetected: false,
+    holdTriggered: false
   };
 
   const TAP_DISTANCE = 14;
-  const SOFT_DROP_STEP = 18;
-  const HARD_DROP_DISTANCE = 140;
-  const HOLD_START_MS = 180;
-  const HOLD_REPEAT_MS = 70;
-
-  const clearHoldTimers = () => {
-    if (touchState.holdDelayTimer) {
-      clearTimeout(touchState.holdDelayTimer);
-      touchState.holdDelayTimer = null;
-    }
-    if (touchState.holdRepeatTimer) {
-      clearInterval(touchState.holdRepeatTimer);
-      touchState.holdRepeatTimer = null;
-    }
-  };
+  const SOFT_DROP_STEP = 16;
+  const SWIPE_UP_HOLD_THRESHOLD = 28;
 
   const moveFromZone = (zone) => {
     const inverted = isControlsInverted();
@@ -3486,25 +3469,9 @@ function setupTouchBoardControls() {
     touchState.pointerId = e.pointerId;
     touchState.startX = e.clientX;
     touchState.startY = e.clientY;
-    touchState.lastX = e.clientX;
-    touchState.lastY = e.clientY;
-    touchState.holdZone = getTouchZone(e.clientX);
+    touchState.lastDropY = e.clientY;
+    touchState.swipeDetected = false;
     touchState.holdTriggered = false;
-    touchState.startTime = performance.now();
-    clearHoldTimers();
-    touchState.holdDelayTimer = setTimeout(() => {
-      if (!touchState.active) return;
-      if (touchState.holdZone === 'center') {
-        doPlayerAction(() => player.game.holdPiece(), () => sound.playHold());
-        touchState.holdTriggered = true;
-        return;
-      }
-      moveFromZone(touchState.holdZone);
-      touchState.holdRepeatTimer = setInterval(() => {
-        moveFromZone(touchState.holdZone);
-      }, HOLD_REPEAT_MS);
-      touchState.holdTriggered = true;
-    }, HOLD_START_MS);
     playerCanvas.setPointerCapture(e.pointerId);
   });
 
@@ -3512,13 +3479,26 @@ function setupTouchBoardControls() {
     if (!touchState.active || touchState.pointerId !== e.pointerId || e.pointerType !== 'touch') return;
     e.preventDefault();
 
-    const totalDy = e.clientY - touchState.startY;
-    const stepDy = e.clientY - touchState.lastY;
-    touchState.holdZone = getTouchZone(e.clientX);
+    const dx = e.clientX - touchState.startX;
+    const dy = e.clientY - touchState.startY;
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
 
-    if (stepDy >= SOFT_DROP_STEP && Math.abs(totalDy) >= SOFT_DROP_STEP) {
-      doPlayerAction(() => player.game.softDrop(), null);
-      touchState.lastY = e.clientY;
+    if (!touchState.holdTriggered && dy <= -SWIPE_UP_HOLD_THRESHOLD && absDy > absDx) {
+      doPlayerAction(() => player.game.holdPiece(), () => sound.playHold());
+      touchState.holdTriggered = true;
+      touchState.swipeDetected = true;
+      return;
+    }
+
+    const dropDelta = e.clientY - touchState.lastDropY;
+    if (dropDelta >= SOFT_DROP_STEP) {
+      const steps = Math.floor(dropDelta / SOFT_DROP_STEP);
+      for (let i = 0; i < steps; i++) {
+        doPlayerAction(() => player.game.softDrop(), null);
+      }
+      touchState.lastDropY += steps * SOFT_DROP_STEP;
+      touchState.swipeDetected = true;
     }
   });
 
@@ -3528,20 +3508,29 @@ function setupTouchBoardControls() {
 
     const dx = e.clientX - touchState.startX;
     const dy = e.clientY - touchState.startY;
-    const duration = performance.now() - touchState.startTime;
     const absDx = Math.abs(dx);
     const absDy = Math.abs(dy);
     const zone = getTouchZone(e.clientX);
-    clearHoldTimers();
 
-    if (!touchState.holdTriggered && absDx <= TAP_DISTANCE && absDy <= TAP_DISTANCE && duration <= 260) {
+    if (touchState.holdTriggered) {
+      touchState.active = false;
+      touchState.pointerId = null;
+      return;
+    }
+
+    if (!touchState.swipeDetected && absDx <= TAP_DISTANCE && absDy <= TAP_DISTANCE) {
       if (zone === 'center') {
         doPlayerRotate(isControlsInverted() ? -1 : 1);
       } else {
         moveFromZone(zone);
       }
-    } else if (dy >= HARD_DROP_DISTANCE && absDy > absDx) {
-      doPlayerHardDrop();
+    } else if (dy <= -SWIPE_UP_HOLD_THRESHOLD && absDy > absDx) {
+      doPlayerAction(() => player.game.holdPiece(), () => sound.playHold());
+    } else if (dy > 0 && absDy > absDx) {
+      const steps = Math.max(1, Math.floor(absDy / SOFT_DROP_STEP));
+      for (let i = 0; i < steps; i++) {
+        doPlayerAction(() => player.game.softDrop(), null);
+      }
     }
 
     touchState.active = false;
@@ -3549,9 +3538,10 @@ function setupTouchBoardControls() {
   });
 
   playerCanvas.addEventListener('pointercancel', () => {
-    clearHoldTimers();
     touchState.active = false;
     touchState.pointerId = null;
+    touchState.swipeDetected = false;
+    touchState.holdTriggered = false;
   });
 }
 
@@ -3635,13 +3625,18 @@ function showHomeScreen() {
 
 function setActiveBoardPage(page) {
   const singlePageMobile = isMobilePlayViewport();
-  const target = modeRuntime.aiEnabled && !singlePageMobile && page === 'ai' ? 'ai' : 'player';
+  if (singlePageMobile) {
+    if (playerPage) playerPage.classList.remove('app-hidden');
+    if (aiPage) aiPage.classList.add('app-hidden');
+    if (aiPreviewPanel) aiPreviewPanel.classList.add('app-hidden');
+    scheduleBoardCanvasDisplaySync();
+    return;
+  }
+
+  const target = modeRuntime.aiEnabled && page === 'ai' ? 'ai' : 'player';
   if (playerPage) playerPage.classList.toggle('app-hidden', target !== 'player');
   if (aiPage) aiPage.classList.toggle('app-hidden', target !== 'ai');
   if (target !== 'player' && aiPreviewPanel) {
-    aiPreviewPanel.classList.add('app-hidden');
-  }
-  if (singlePageMobile && aiPreviewPanel) {
     aiPreviewPanel.classList.add('app-hidden');
   }
   scheduleBoardCanvasDisplaySync();
