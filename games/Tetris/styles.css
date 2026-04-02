@@ -659,7 +659,6 @@ body.mobile-play-layout .board-card-ai .telemetry-bar-ai {
   display: none;
 }
 
-body.mobile-play-layout .ai-preview-panel,
 body.mobile-play-layout .game-signal {
   display: none !important;
 }
@@ -744,6 +743,24 @@ body.mobile-play-layout .game-signal {
   background: rgba(9, 18, 31, 0.26);
 }
 
+body.mobile-play-layout .ai-preview-panel {
+  position: fixed;
+  right: 8px;
+  top: calc(86px + env(safe-area-inset-top, 0px));
+  z-index: 24;
+  width: min(40vw, 152px);
+  padding: 8px;
+  border-color: rgba(151, 227, 255, 0.4);
+  border-radius: 14px;
+  background: rgba(7, 14, 25, 0.88);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.34);
+}
+
+body.mobile-play-layout .ai-preview-panel.app-hidden {
+  display: none !important;
+}
+
 .ai-preview-head {
   display: flex;
   align-items: center;
@@ -772,6 +789,14 @@ body.mobile-play-layout .game-signal {
   font-size: 0.86rem;
   line-height: 1;
   cursor: pointer;
+}
+
+body.mobile-play-layout .ai-preview-close {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  font-size: 0.9rem;
 }
 
 #aiPreviewCanvas {

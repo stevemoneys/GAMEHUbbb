@@ -218,19 +218,79 @@ const TETROMINO_SKIN_DEFS = [
   }
 ];
 
+const AudioEngine = (() => {
+  if (typeof window === 'undefined') {
+    return {
+      ctx: null,
+      masterGain: null,
+      unlock: () => {},
+      playOsc: () => {}
+    };
+  }
+
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) {
+    return {
+      ctx: null,
+      masterGain: null,
+      unlock: () => {},
+      playOsc: () => {}
+    };
+  }
+
+  const ctx = new AudioContextCtor();
+  const masterGain = ctx.createGain();
+  masterGain.gain.value = 0.5;
+  masterGain.connect(ctx.destination);
+
+  const unlock = () => {
+    if (ctx.state !== 'running') {
+      ctx.resume().catch(() => {});
+    }
+    document.removeEventListener('touchstart', unlock);
+    document.removeEventListener('click', unlock);
+  };
+
+  document.addEventListener('touchstart', unlock);
+  document.addEventListener('click', unlock);
+
+  function playOsc({
+    type = 'sine',
+    freq = 440,
+    duration = 0.1,
+    volume = 0.1,
+    attack = 0.01,
+    release = 0.1
+  }) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(volume, ctx.currentTime + attack);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration + release);
+
+    osc.connect(gain);
+    gain.connect(masterGain);
+
+    osc.start();
+    osc.stop(ctx.currentTime + duration + release);
+  }
+
+  return { ctx, masterGain, unlock, playOsc };
+})();
+
 class SoundEngine {
   constructor() {
-    this.ctx = null;
+    this.ctx = AudioEngine.ctx;
+    this.masterGain = AudioEngine.masterGain;
     this.lastPlayed = {};
   }
 
   unlock() {
-    if (typeof window === 'undefined') return;
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-
-    if (!this.ctx) this.ctx = new AudioCtx();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    AudioEngine.unlock();
   }
 
   canPlay(name, cooldownMs = 0) {
@@ -241,7 +301,7 @@ class SoundEngine {
   }
 
   tone({ freq = 440, durationMs = 100, type = 'sine', gain = 0.04, endFreq = null }) {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
     const duration = durationMs / 1000;
     const osc = this.ctx.createOscillator();
@@ -258,44 +318,35 @@ class SoundEngine {
     amp.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     osc.connect(amp);
-    amp.connect(this.ctx.destination);
+    amp.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + duration + 0.01);
   }
 
   playMove() {
-    if (!this.canPlay('move', 28)) return;
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    // Requested click movement sound: square @ 800Hz, short 0.05s.
-    osc.type = 'square';
-    osc.frequency.setValueAtTime(800, now);
-    gain.gain.setValueAtTime(0.05, now);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.05);
+    if (!this.canPlay('move', 22)) return;
+    AudioEngine.playOsc({
+      type: 'square',
+      freq: 600 + Math.random() * 50,
+      duration: 0.03,
+      volume: 0.04
+    });
   }
 
   playRotate() {
-    if (!this.canPlay('rotate', 36)) return;
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
+    if (!this.canPlay('rotate', 36) || !this.ctx || !this.masterGain) return;
+    const now = AudioEngine.ctx.currentTime;
+    const osc = AudioEngine.ctx.createOscillator();
+    const gain = AudioEngine.ctx.createGain();
 
-    // Requested rotate sound: triangle sweep 600Hz -> 1000Hz in 0.1s.
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(1000, now + 0.1);
+    osc.frequency.setValueAtTime(500, now);
+    osc.frequency.exponentialRampToValueAtTime(900, now + 0.08);
     gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
 
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + 0.1);
   }
@@ -306,13 +357,11 @@ class SoundEngine {
   }
 
   playLock() {
-    if (!this.canPlay('lock', 40)) return;
-    this.tone({ freq: 180, endFreq: 130, durationMs: 75, type: 'square', gain: 0.025 });
+    this.playLand();
   }
 
   playHardDrop() {
-    if (!this.canPlay('hardDrop', 40)) return;
-    this.tone({ freq: 210, endFreq: 70, durationMs: 110, type: 'sawtooth', gain: 0.045 });
+    this.playLand();
   }
 
   playLineClear(lines) {
@@ -353,11 +402,64 @@ class SoundEngine {
   }
 
   playCoinChing(layered = false) {
-    if (!this.canPlay('coinChing', 45)) return;
-    this.tone({ freq: 720, endFreq: 980, durationMs: 90, type: 'triangle', gain: 0.032 });
-    if (layered) {
-      this.tone({ freq: 520, endFreq: 760, durationMs: 120, type: 'sine', gain: 0.02 });
-    }
+    this.playCoin(layered ? 2 : 1);
+  }
+
+  playLand() {
+    if (!this.canPlay('land', 55) || !this.ctx || !this.masterGain) return;
+    const now = AudioEngine.ctx.currentTime;
+
+    const osc1 = AudioEngine.ctx.createOscillator();
+    const gain1 = AudioEngine.ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(120, now);
+    gain1.gain.setValueAtTime(0.15, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    osc1.connect(gain1);
+    gain1.connect(this.masterGain);
+    osc1.start();
+    osc1.stop(now + 0.2);
+
+    setTimeout(() => {
+      AudioEngine.playOsc({
+        type: 'square',
+        freq: 800,
+        duration: 0.02,
+        volume: 0.03
+      });
+    }, 10);
+  }
+
+  playCoin(comboLevel = 1) {
+    if (!this.canPlay('coin', 45) || !this.ctx || !this.masterGain) return;
+    const now = AudioEngine.ctx.currentTime;
+    const baseFreq = 800 + comboLevel * 50;
+
+    const osc = AudioEngine.ctx.createOscillator();
+    const gain = AudioEngine.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.15);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start();
+    osc.stop(now + 0.2);
+
+    setTimeout(() => {
+      AudioEngine.playOsc({
+        type: 'sine',
+        freq: 1400,
+        duration: 0.05,
+        volume: 0.05
+      });
+    }, 50);
   }
 
   playNearMiss() {
@@ -1216,6 +1318,7 @@ function createCoinFlyToCounter(options = {}) {
     fromX = window.innerWidth * 0.5,
     fromY = window.innerHeight * 0.5,
     count = 3,
+    comboLevel = 1,
     special = false,
     reason = ''
   } = options;
@@ -1259,7 +1362,8 @@ function createCoinFlyToCounter(options = {}) {
       }
       if (t >= 1) {
         coin.remove();
-        sound.playCoinChing(special);
+        const sparkleLevel = special ? comboLevel + 1 : comboLevel;
+        sound.playCoin(sparkleLevel);
         popCoinCounter();
         return;
       }
@@ -1289,6 +1393,7 @@ function rewardCoins(amount, reason, options = {}) {
     fromX: options.fromX,
     fromY: options.fromY,
     count: options.count || clamp(Math.ceil(safeAmount / 8), 2, 12),
+    comboLevel: clamp(Number(options.comboLevel) || (1 + Math.floor(safeAmount / 24)), 1, 10),
     special: !!options.special,
     reason
   });
