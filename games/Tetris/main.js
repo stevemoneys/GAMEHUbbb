@@ -88,7 +88,9 @@ const SKIN_TILE_SCALE = 1.08;
 const SOFT_DROP_INTERVAL_MS = 45;
 const CELL_SEPARATOR_COLOR = 'rgba(255, 255, 255, 0.22)';
 const COMBO_TIERS = [2, 4, 6, 8, 10];
-const MUSIC_SOURCE = './assets/audio/bgm.mp3';
+const NORMAL_MUSIC_SOURCE = './assets/audio/bgm-normal.mp3';
+const DANGER_MUSIC_SOURCE = './assets/audio/bgm-danger.mp3';
+const MUSIC_FALLBACK_SOURCE = './assets/audio/bgm.mp3';
 const COIN_STORAGE_KEY = 'tetrixa_coin_bank_v1';
 const DAILY_STORAGE_KEY = 'tetrixa_daily_reward_v1';
 const FIRSTS_STORAGE_KEY = 'tetrixa_first_rewards_v1';
@@ -479,31 +481,92 @@ class SoundEngine {
 }
 
 class MusicController {
-  constructor(src) {
-    this.audio = null;
+  constructor(normalSrc, dangerSrc, fallbackSrc = '') {
+    this.normalAudio = null;
+    this.dangerAudio = null;
     this.enabled = false;
+    this.isActive = false;
+    this.lastDanger = null;
+    this.lastOverdrive = null;
+
     if (typeof window === 'undefined') return;
     try {
-      this.audio = new Audio(src);
-      this.audio.loop = true;
-      this.audio.volume = 0.32;
-      this.audio.preload = 'auto';
+      this.normalAudio = new Audio(normalSrc);
+      this.dangerAudio = new Audio(dangerSrc);
+
+      [this.normalAudio, this.dangerAudio].forEach((audio) => {
+        audio.loop = true;
+        audio.preload = 'auto';
+        audio.volume = 0;
+      });
+
+      if (fallbackSrc) {
+        this.normalAudio.addEventListener('error', () => {
+          if (this.normalAudio.src.includes(fallbackSrc)) return;
+          this.normalAudio.src = fallbackSrc;
+          this.normalAudio.load();
+        });
+      }
+
+      this.dangerAudio.addEventListener('error', () => {
+        if (!this.normalAudio) return;
+        if (this.dangerAudio.src === this.normalAudio.src) return;
+        this.dangerAudio.src = this.normalAudio.src;
+        this.dangerAudio.load();
+      });
+
       this.enabled = true;
     } catch {
       this.enabled = false;
     }
   }
 
-  unlock() {
-    if (!this.enabled || !this.audio) return;
-    if (!this.audio.paused) return;
-    this.audio.play().catch(() => {});
+  ensureStarted() {
+    if (!this.enabled || !this.normalAudio || !this.dangerAudio) return;
+    if (this.normalAudio.paused) this.normalAudio.play().catch(() => {});
+    if (this.dangerAudio.paused) this.dangerAudio.play().catch(() => {});
   }
 
-  setOverdrive(active) {
-    if (!this.enabled || !this.audio) return;
-    this.audio.playbackRate = active ? 1.08 : 1;
-    this.audio.volume = active ? 0.42 : 0.32;
+  unlock() {
+    if (!this.enabled || !this.isActive) return;
+    this.ensureStarted();
+  }
+
+  setActive(active) {
+    this.isActive = !!active;
+    if (!this.enabled || !this.normalAudio || !this.dangerAudio) return;
+    if (this.isActive) {
+      this.ensureStarted();
+      return;
+    }
+    this.normalAudio.pause();
+    this.dangerAudio.pause();
+    this.normalAudio.currentTime = 0;
+    this.dangerAudio.currentTime = 0;
+    this.normalAudio.volume = 0;
+    this.dangerAudio.volume = 0;
+    this.lastDanger = null;
+    this.lastOverdrive = null;
+  }
+
+  updateMood({ isDanger = false, overdrive = false } = {}) {
+    if (!this.enabled || !this.isActive || !this.normalAudio || !this.dangerAudio) return;
+    if (this.lastDanger === isDanger && this.lastOverdrive === overdrive) return;
+
+    this.lastDanger = isDanger;
+    this.lastOverdrive = overdrive;
+    this.ensureStarted();
+
+    const normalBase = overdrive ? 0.34 : 0.26;
+    const dangerBase = overdrive ? 0.48 : 0.4; // Danger loop intentionally louder.
+    const normalVol = isDanger ? normalBase * 0.18 : normalBase;
+    const dangerVol = isDanger ? dangerBase : 0;
+    const rate = overdrive ? 1.05 : 1;
+
+    this.normalAudio.playbackRate = rate;
+    this.dangerAudio.playbackRate = rate;
+    this.normalAudio.volume = normalVol;
+    this.dangerAudio.volume = dangerVol;
   }
 }
 
@@ -679,7 +742,7 @@ function scheduleBoardCanvasDisplaySync() {
 }
 
 const sound = new SoundEngine();
-const music = new MusicController(MUSIC_SOURCE);
+const music = new MusicController(NORMAL_MUSIC_SOURCE, DANGER_MUSIC_SOURCE, MUSIC_FALLBACK_SOURCE);
 
 const nextCtx = nextCanvas ? nextCanvas.getContext('2d') : null;
 const aiNextCtx = aiNextCanvas ? aiNextCanvas.getContext('2d') : null;
@@ -3764,7 +3827,10 @@ function loop(time = 0) {
   if (battleState.overdriveUntil > time) {
     sound.playOverdrivePulse();
   }
-  music.setOverdrive(battleState.overdriveUntil > time);
+  music.updateMood({
+    isDanger: battleState.dangerLevel === 'danger' || battleState.dangerLevel === 'critical',
+    overdrive: battleState.overdriveUntil > time
+  });
   playerLastIncoming = player.game.pendingGarbage;
 
   const battleEnded = modeRuntime.aiEnabled
@@ -4043,6 +4109,7 @@ wireButton('btnResetAI', () => resetBattle());
 function showHomeScreen() {
   gameSessionActive = false;
   currentModeLabel = 'Play';
+  music.setActive(false);
   if (homeSignal) {
     homeSignal.textContent = 'Ready for the next upgrade.';
   }
@@ -4087,6 +4154,7 @@ function openGame(modeLabel, modeKey = 'battle') {
   resetBattle();
   gameSessionActive = true;
   currentModeLabel = modeLabel;
+  music.setActive(true);
   music.unlock();
   claimDailyRewardIfEligible();
   hideHowToPlayModal();
@@ -4108,6 +4176,7 @@ function openGame(modeLabel, modeKey = 'battle') {
 
 function openShopScreen() {
   gameSessionActive = false;
+  music.setActive(false);
   hideHowToPlayModal();
   if (pageBody) {
     pageBody.classList.remove('game-mode');
@@ -4122,6 +4191,7 @@ function openShopScreen() {
 }
 
 function closeShopScreen() {
+  music.setActive(false);
   if (shopScreen) shopScreen.classList.add('app-hidden');
   if (pageBody) {
     pageBody.classList.remove('shop-mode');
