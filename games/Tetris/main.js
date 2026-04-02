@@ -10,6 +10,8 @@ const btnBattleHome = document.getElementById('btnBattleHome');
 const btnBackToMenu = document.getElementById('btnBackToMenu');
 const btnBackToMenuAI = document.getElementById('btnBackToMenuAI');
 const btnResetAI = document.getElementById('btnResetAI');
+const btnPause = document.getElementById('btnPause');
+const btnPauseAI = document.getElementById('btnPauseAI');
 const btnShowAIPage = document.getElementById('btnShowAIPage');
 const btnShowPlayerPage = document.getElementById('btnShowPlayerPage');
 const btnToggleAIPreview = document.getElementById('btnToggleAIPreview');
@@ -65,6 +67,11 @@ const stageResultText = document.getElementById('stageResultText');
 const btnStageNext = document.getElementById('btnStageNext');
 const btnStageRetry = document.getElementById('btnStageRetry');
 const btnStageMenu = document.getElementById('btnStageMenu');
+const pauseModal = document.getElementById('pauseModal');
+const btnResumeGame = document.getElementById('btnResumeGame');
+const btnPauseMenu = document.getElementById('btnPauseMenu');
+const btnToggleSfx = document.getElementById('btnToggleSfx');
+const btnToggleMusic = document.getElementById('btnToggleMusic');
 const levelSelectScreen = document.getElementById('levelSelectScreen');
 const levelStageGrid = document.getElementById('levelStageGrid');
 const levelSelectTitle = levelSelectScreen ? levelSelectScreen.querySelector('.level-head h2') : null;
@@ -97,6 +104,7 @@ const FIRSTS_STORAGE_KEY = 'tetrixa_first_rewards_v1';
 const POWERUP_STORAGE_KEY = 'tetrixa_powerup_inventory_v1';
 const SKIN_STORAGE_KEY = 'tetrixa_skin_state_v1';
 const HOW_TO_PLAY_STORAGE_KEY = 'tetrixa_how_to_play_seen_v1';
+const AUDIO_PREFS_STORAGE_KEY = 'tetrixa_audio_prefs_v1';
 const TETROMINO_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 const POWERUP_LINE_CLEAR_POINTS = {
   1: 100,
@@ -289,6 +297,8 @@ class SoundEngine {
     this.ctx = AudioEngine.ctx;
     this.masterGain = AudioEngine.masterGain;
     this.lastPlayed = {};
+    this.muted = false;
+    this.paused = false;
   }
 
   unlock() {
@@ -296,10 +306,19 @@ class SoundEngine {
   }
 
   canPlay(name, cooldownMs = 0) {
+    if (this.muted || this.paused) return false;
     const now = performance.now();
     if ((this.lastPlayed[name] || 0) + cooldownMs > now) return false;
     this.lastPlayed[name] = now;
     return true;
+  }
+
+  setMuted(muted) {
+    this.muted = !!muted;
+  }
+
+  setPaused(paused) {
+    this.paused = !!paused;
   }
 
   tone({ freq = 440, durationMs = 100, type = 'sine', gain = 0.04, endFreq = null }) {
@@ -486,6 +505,10 @@ class MusicController {
     this.dangerAudio = null;
     this.enabled = false;
     this.isActive = false;
+    this.muted = false;
+    this.pausedForOverlay = false;
+    this.currentDanger = false;
+    this.currentOverdrive = false;
     this.lastDanger = null;
     this.lastOverdrive = null;
 
@@ -528,7 +551,7 @@ class MusicController {
   }
 
   unlock() {
-    if (!this.enabled || !this.isActive) return;
+    if (!this.enabled || !this.isActive || this.muted || this.pausedForOverlay) return;
     this.ensureStarted();
   }
 
@@ -536,7 +559,9 @@ class MusicController {
     this.isActive = !!active;
     if (!this.enabled || !this.normalAudio || !this.dangerAudio) return;
     if (this.isActive) {
-      this.ensureStarted();
+      if (!this.muted && !this.pausedForOverlay) {
+        this.ensureStarted();
+      }
       return;
     }
     this.normalAudio.pause();
@@ -549,16 +574,57 @@ class MusicController {
     this.lastOverdrive = null;
   }
 
+  setMuted(muted) {
+    this.muted = !!muted;
+    if (!this.enabled || !this.normalAudio || !this.dangerAudio) return;
+    if (this.muted) {
+      this.normalAudio.pause();
+      this.dangerAudio.pause();
+      this.normalAudio.volume = 0;
+      this.dangerAudio.volume = 0;
+      return;
+    }
+    if (this.isActive && !this.pausedForOverlay) {
+      this.lastDanger = null;
+      this.lastOverdrive = null;
+      this.ensureStarted();
+      this.updateMood({ isDanger: this.currentDanger, overdrive: this.currentOverdrive });
+    }
+  }
+
+  setPaused(paused) {
+    this.pausedForOverlay = !!paused;
+    if (!this.enabled || !this.normalAudio || !this.dangerAudio) return;
+    if (this.pausedForOverlay) {
+      this.normalAudio.pause();
+      this.dangerAudio.pause();
+      return;
+    }
+    if (this.isActive && !this.muted) {
+      this.lastDanger = null;
+      this.lastOverdrive = null;
+      this.ensureStarted();
+      this.updateMood({ isDanger: this.currentDanger, overdrive: this.currentOverdrive });
+    }
+  }
+
   updateMood({ isDanger = false, overdrive = false } = {}) {
     if (!this.enabled || !this.isActive || !this.normalAudio || !this.dangerAudio) return;
+    this.currentDanger = !!isDanger;
+    this.currentOverdrive = !!overdrive;
+    if (this.muted || this.pausedForOverlay) {
+      this.normalAudio.volume = 0;
+      this.dangerAudio.volume = 0;
+      return;
+    }
     if (this.lastDanger === isDanger && this.lastOverdrive === overdrive) return;
 
     this.lastDanger = isDanger;
     this.lastOverdrive = overdrive;
     this.ensureStarted();
 
-    const normalBase = overdrive ? 0.34 : 0.26;
-    const dangerBase = overdrive ? 0.48 : 0.4; // Danger loop intentionally louder.
+    const normalBase = overdrive ? 0.22 : 0.18;
+    const dangerBase = overdrive ? 0.34 : 0.3; // Danger loop intentionally louder.
     const normalVol = isDanger ? normalBase * 0.18 : normalBase;
     const dangerVol = isDanger ? dangerBase : 0;
     const rate = overdrive ? 1.05 : 1;
@@ -743,6 +809,43 @@ function scheduleBoardCanvasDisplaySync() {
 
 const sound = new SoundEngine();
 const music = new MusicController(NORMAL_MUSIC_SOURCE, DANGER_MUSIC_SOURCE, MUSIC_FALLBACK_SOURCE);
+const audioPrefs = (() => {
+  const raw = readJsonStorage(AUDIO_PREFS_STORAGE_KEY, { sfxMuted: false, musicMuted: false });
+  return {
+    sfxMuted: !!raw.sfxMuted,
+    musicMuted: !!raw.musicMuted
+  };
+})();
+
+function persistAudioPrefs() {
+  writeJsonStorage(AUDIO_PREFS_STORAGE_KEY, audioPrefs);
+}
+
+function updateAudioToggleLabels() {
+  if (btnToggleSfx) {
+    btnToggleSfx.textContent = `SFX: ${audioPrefs.sfxMuted ? 'OFF' : 'ON'}`;
+  }
+  if (btnToggleMusic) {
+    btnToggleMusic.textContent = `Music: ${audioPrefs.musicMuted ? 'OFF' : 'ON'}`;
+  }
+}
+
+function setSfxMuted(muted) {
+  audioPrefs.sfxMuted = !!muted;
+  sound.setMuted(audioPrefs.sfxMuted);
+  persistAudioPrefs();
+  updateAudioToggleLabels();
+}
+
+function setMusicMuted(muted) {
+  audioPrefs.musicMuted = !!muted;
+  music.setMuted(audioPrefs.musicMuted);
+  persistAudioPrefs();
+  updateAudioToggleLabels();
+}
+
+setSfxMuted(audioPrefs.sfxMuted);
+setMusicMuted(audioPrefs.musicMuted);
 
 const nextCtx = nextCanvas ? nextCanvas.getContext('2d') : null;
 const aiNextCtx = aiNextCanvas ? aiNextCanvas.getContext('2d') : null;
@@ -754,6 +857,7 @@ let lastTime = 0;
 let playerLastIncoming = 0;
 let resultSoundPlayed = false;
 let gameSessionActive = false;
+let gamePaused = false;
 let currentModeLabel = 'Play';
 
 const battleState = {
@@ -831,32 +935,24 @@ const MODE_DEFS = {
 
 const PUZZLE_PRESETS = [
   [
-    [19, [1, 4, 7]],
-    [18, [0, 6]],
-    [17, [2, 8]],
-    [16, [3, 5]],
-    [15, [4]]
+    [19, [0, 2, 4, 6, 8]],
+    [18, [1, 3, 5, 7, 9]],
+    [17, [2, 4, 6, 8]]
   ],
   [
-    [19, [2, 5, 9]],
-    [18, [1, 3, 8]],
-    [17, [0, 6]],
-    [16, [4, 7]],
-    [15, [2]]
+    [19, [1, 2, 5, 6, 9]],
+    [18, [0, 3, 4, 7, 8]],
+    [17, [2, 5, 8]]
   ],
   [
-    [19, [0, 4, 8]],
-    [18, [2, 6]],
-    [17, [1, 5, 9]],
-    [16, [3, 7]],
-    [15, [4]]
+    [19, [0, 4, 5, 9]],
+    [18, [1, 2, 6, 7]],
+    [17, [3, 4, 8]]
   ],
   [
-    [19, [3, 6]],
-    [18, [1, 4, 8]],
-    [17, [0, 5, 9]],
-    [16, [2, 7]],
-    [15, [4]]
+    [19, [2, 3, 6, 7]],
+    [18, [0, 1, 5, 8, 9]],
+    [17, [4, 6]]
   ]
 ];
 
@@ -1858,7 +1954,11 @@ function configureModeSession(now = performance.now()) {
   modeRuntime.chaosGravityScale = 1;
   modeRuntime.controlsInvertedUntil = 0;
   modeRuntime.mirrorFlipped = false;
-  modeRuntime.mirrorNextFlipAt = now + randomRange(6500, 9400);
+  if (mode === 'mirror' && progressionState.selectedStageIndex <= 4) {
+    modeRuntime.mirrorNextFlipAt = now + randomRange(22000, 32000);
+  } else {
+    modeRuntime.mirrorNextFlipAt = now + randomRange(12000, 18000);
+  }
   modeRuntime.chaosNextEventAt = now + randomRange(7000, 10500);
   modeRuntime.puzzleSolved = false;
   resetPlayerAssistState();
@@ -1923,9 +2023,14 @@ function updateModeDynamics(now) {
   }
 
   if (modeRuntime.activeMode === 'mirror' && now >= modeRuntime.mirrorNextFlipAt) {
-    modeRuntime.mirrorFlipped = !modeRuntime.mirrorFlipped;
-    modeRuntime.mirrorNextFlipAt = now + randomRange(6500, 9600);
-    setFxMessage('MIRROR SHIFT', modeRuntime.mirrorFlipped ? 'Board flipped' : 'Board restored', 900, 5, now);
+    if (progressionState.selectedStageIndex <= 4) {
+      modeRuntime.mirrorFlipped = false;
+      modeRuntime.mirrorNextFlipAt = now + randomRange(22000, 32000);
+    } else {
+      modeRuntime.mirrorFlipped = !modeRuntime.mirrorFlipped;
+      modeRuntime.mirrorNextFlipAt = now + randomRange(12000, 18000);
+      setFxMessage('MIRROR SHIFT', modeRuntime.mirrorFlipped ? 'Board flipped' : 'Board restored', 900, 5, now);
+    }
   }
 
   if (modeRuntime.activeMode === 'puzzle' && !modeRuntime.puzzleSolved && !rewardState.stageResolved) {
@@ -1970,6 +2075,14 @@ function getModeGravityInterval(baseInterval, now) {
 
   if (modeRuntime.activeMode === 'chaos') {
     return baseInterval * modeRuntime.chaosGravityScale * assistMultiplier;
+  }
+
+  if (modeRuntime.activeMode === 'puzzle') {
+    return baseInterval * 1.18 * assistMultiplier;
+  }
+
+  if (modeRuntime.activeMode === 'mirror') {
+    return baseInterval * 1.12 * assistMultiplier;
   }
 
   return baseInterval * assistMultiplier;
@@ -3735,7 +3848,37 @@ function resetBattle() {
   updateCoinHud();
 }
 
+function setGamePaused(paused) {
+  if (paused) {
+    if (!gameSessionActive || player.game.gameOver || rewardState.stageResolved) return;
+    gamePaused = true;
+    if (aiPreviewPanel) aiPreviewPanel.classList.add('app-hidden');
+    if (pauseModal) pauseModal.classList.remove('app-hidden');
+    sound.setPaused(true);
+    music.setPaused(true);
+    updateAudioToggleLabels();
+    return;
+  }
+
+  gamePaused = false;
+  if (pauseModal) pauseModal.classList.add('app-hidden');
+  sound.setPaused(false);
+  music.setPaused(false);
+  if (gameSessionActive && !audioPrefs.musicMuted) {
+    music.unlock();
+  }
+}
+
+function restartCurrentModeSession(now = performance.now()) {
+  const preservedMode = modeRuntime.activeMode;
+  resetBattle();
+  modeRuntime.activeMode = preservedMode;
+  configureModeSession(now);
+  setGamePaused(false);
+}
+
 function doPlayerAction(action, soundAction = null) {
+  if (gamePaused) return false;
   const changed = action();
   if (changed) {
     registerPlayerActionMomentum();
@@ -3745,7 +3888,7 @@ function doPlayerAction(action, soundAction = null) {
 }
 
 function doPlayerHardDrop() {
-  if (player.game.gameOver) return;
+  if (player.game.gameOver || gamePaused) return;
   registerPlayerActionMomentum();
   player.game.hardDrop();
 }
@@ -3767,6 +3910,11 @@ function loop(time = 0) {
   lastTime = time;
 
   if (!gameSessionActive) {
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  if (gamePaused) {
     requestAnimationFrame(loop);
     return;
   }
@@ -3877,6 +4025,14 @@ document.addEventListener('keydown', (e) => {
   if (!gameSessionActive) return;
   sound.unlock();
 
+  if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+    e.preventDefault();
+    setGamePaused(!gamePaused);
+    return;
+  }
+
+  if (gamePaused) return;
+
   if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Space', 'Shift'].includes(e.key) || e.code === 'Space') {
     e.preventDefault();
   }
@@ -3916,7 +4072,7 @@ document.addEventListener('keydown', (e) => {
     doPlayerAction(() => player.game.holdPiece(), () => sound.playHold());
   }
   if (e.key.toLowerCase() === 'r') {
-    resetBattle();
+    restartCurrentModeSession();
   }
 });
 
@@ -3968,7 +4124,7 @@ function setupTouchBoardControls() {
   };
 
   playerCanvas.addEventListener('pointerdown', (e) => {
-    if (!gameSessionActive || e.pointerType !== 'touch') return;
+    if (!gameSessionActive || gamePaused || e.pointerType !== 'touch') return;
     e.preventDefault();
     sound.unlock();
     touchState.active = true;
@@ -4103,10 +4259,11 @@ wireHoldButton(
 wireButton('btnRotate', () => doPlayerRotate(isControlsInverted() ? -1 : 1));
 wireButton('btnHold', () => doPlayerAction(() => player.game.holdPiece(), () => sound.playHold()));
 wireButton('btnDrop', () => doPlayerHardDrop());
-wireButton('btnReset', () => resetBattle());
-wireButton('btnResetAI', () => resetBattle());
+wireButton('btnReset', () => restartCurrentModeSession());
+wireButton('btnResetAI', () => restartCurrentModeSession());
 
 function showHomeScreen() {
+  setGamePaused(false);
   gameSessionActive = false;
   currentModeLabel = 'Play';
   music.setActive(false);
@@ -4150,6 +4307,7 @@ function setActiveBoardPage(page) {
 }
 
 function openGame(modeLabel, modeKey = 'battle') {
+  setGamePaused(false);
   modeRuntime.activeMode = normalizeModeKey(modeKey);
   resetBattle();
   gameSessionActive = true;
@@ -4175,6 +4333,7 @@ function openGame(modeLabel, modeKey = 'battle') {
 }
 
 function openShopScreen() {
+  setGamePaused(false);
   gameSessionActive = false;
   music.setActive(false);
   hideHowToPlayModal();
@@ -4191,6 +4350,7 @@ function openShopScreen() {
 }
 
 function closeShopScreen() {
+  setGamePaused(false);
   music.setActive(false);
   if (shopScreen) shopScreen.classList.add('app-hidden');
   if (pageBody) {
@@ -4277,6 +4437,27 @@ if (btnBackToMenu) {
 }
 if (btnBackToMenuAI) {
   btnBackToMenuAI.addEventListener('click', () => showHomeScreen());
+}
+if (btnPause) {
+  btnPause.addEventListener('click', () => setGamePaused(true));
+}
+if (btnPauseAI) {
+  btnPauseAI.addEventListener('click', () => setGamePaused(true));
+}
+if (btnResumeGame) {
+  btnResumeGame.addEventListener('click', () => setGamePaused(false));
+}
+if (btnPauseMenu) {
+  btnPauseMenu.addEventListener('click', () => {
+    setGamePaused(false);
+    showHomeScreen();
+  });
+}
+if (btnToggleSfx) {
+  btnToggleSfx.addEventListener('click', () => setSfxMuted(!audioPrefs.sfxMuted));
+}
+if (btnToggleMusic) {
+  btnToggleMusic.addEventListener('click', () => setMusicMuted(!audioPrefs.musicMuted));
 }
 if (btnShowAIPage) {
   btnShowAIPage.addEventListener('click', () => setActiveBoardPage('ai'));

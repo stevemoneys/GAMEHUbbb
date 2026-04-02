@@ -375,7 +375,7 @@ body.mobile-play-layout .play-page > .page-controls {
 body.mobile-play-layout .play-page > .page-controls .top-actions {
   grid-area: actions;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, auto));
+  grid-template-columns: repeat(4, minmax(0, auto));
   justify-self: end;
   gap: 4px;
 }
@@ -405,8 +405,8 @@ body.mobile-play-layout .play-page > .page-controls .coin-icon {
 
 body.mobile-play-layout .play-page > .page-controls .icon-btn {
   min-height: 28px;
-  padding: 4px 8px;
-  font-size: 0.65rem;
+  padding: 3px 6px;
+  font-size: 0.62rem;
 }
 
 body.mobile-play-layout .play-page > .page-controls .top-ai-live {
@@ -1071,6 +1071,52 @@ body.mobile-play-layout .ai-preview-close {
 .stage-result-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pause-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(4, 8, 13, 0.56);
+  backdrop-filter: blur(3px);
+}
+
+.pause-modal.app-hidden {
+  display: none !important;
+}
+
+.pause-card {
+  width: min(90vw, 360px);
+  padding: 14px;
+  border: 1px solid rgba(151, 226, 255, 0.34);
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(12, 21, 34, 0.96), rgba(7, 12, 22, 0.95)),
+    radial-gradient(circle at top, rgba(255, 180, 112, 0.12), transparent 58%);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.44);
+}
+
+.pause-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #eaf7ff;
+}
+
+.pause-card p {
+  margin: 8px 0 10px;
+  color: rgba(220, 236, 255, 0.82);
+  font-size: 0.84rem;
+}
+
+.pause-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 

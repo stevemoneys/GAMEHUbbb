@@ -50,6 +50,7 @@
           <canvas id="aiMiniCanvas" width="52" height="104" aria-label="AI live board preview"></canvas>
         </button>
         <div class="top-actions">
+          <button id="btnPause" class="icon-btn" type="button">Pause</button>
           <button id="btnReset" class="icon-btn" type="button">Reset</button>
           <button id="btnBackToMenu" class="icon-btn" type="button">Menu</button>
           <button id="btnShowAIPage" class="icon-btn icon-btn-primary" type="button">AI</button>
@@ -95,6 +96,7 @@
           <canvas id="aiNextCanvas" width="64" height="64" aria-label="AI next piece preview"></canvas>
         </div>
         <div class="top-actions">
+          <button id="btnPauseAI" class="icon-btn" type="button">Pause</button>
           <button id="btnResetAI" class="icon-btn" type="button">Reset</button>
           <button id="btnBackToMenuAI" class="icon-btn" type="button">Menu</button>
           <button id="btnShowPlayerPage" class="icon-btn icon-btn-primary" type="button">Player</button>
@@ -161,6 +163,19 @@
       <button id="btnStageRetry" type="button" class="icon-btn">Retry</button>
       <button id="btnStageMenu" type="button" class="icon-btn">Menu</button>
     </div>
+  </aside>
+
+  <aside id="pauseModal" class="pause-modal app-hidden" role="dialog" aria-modal="true" aria-live="polite">
+    <section class="pause-card">
+      <h2>Paused</h2>
+      <p>Game paused. Resume when ready.</p>
+      <div class="pause-actions">
+        <button id="btnResumeGame" type="button" class="icon-btn icon-btn-primary">Resume</button>
+        <button id="btnToggleSfx" type="button" class="icon-btn">SFX: ON</button>
+        <button id="btnToggleMusic" type="button" class="icon-btn">Music: ON</button>
+        <button id="btnPauseMenu" type="button" class="icon-btn">Menu</button>
+      </div>
+    </section>
   </aside>
 
   <section id="levelSelectScreen" class="level-select app-hidden" aria-live="polite">
