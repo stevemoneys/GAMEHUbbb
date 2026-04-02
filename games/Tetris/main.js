@@ -933,28 +933,43 @@ const MODE_DEFS = {
   }
 };
 
-const PUZZLE_PRESETS = [
-  [
-    [19, [0, 2, 4, 6, 8]],
-    [18, [1, 3, 5, 7, 9]],
-    [17, [2, 4, 6, 8]]
+const PUZZLE_PATTERN_BANKS = {
+  easy: [
+    [0, 2, 4, 6, 8],
+    [1, 3, 5, 7, 9],
+    [0, 1, 4, 5, 8, 9],
+    [2, 3, 6, 7],
+    [0, 3, 4, 7, 8],
+    [1, 2, 5, 6, 9]
   ],
-  [
-    [19, [1, 2, 5, 6, 9]],
-    [18, [0, 3, 4, 7, 8]],
-    [17, [2, 5, 8]]
+  medium: [
+    [0, 3, 6, 9],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 2, 5, 7],
+    [1, 3, 6, 8],
+    [0, 4, 5, 9]
   ],
-  [
-    [19, [0, 4, 5, 9]],
-    [18, [1, 2, 6, 7]],
-    [17, [3, 4, 8]]
+  hard: [
+    [1, 5],
+    [3, 7],
+    [0, 4],
+    [2, 6],
+    [4, 8],
+    [1, 8],
+    [2, 7]
   ],
-  [
-    [19, [2, 3, 6, 7]],
-    [18, [0, 1, 5, 8, 9]],
-    [17, [4, 6]]
+  expert: [
+    [0],
+    [2],
+    [4],
+    [5],
+    [7],
+    [9],
+    [1, 6],
+    [3, 8]
   ]
-];
+};
 
 const modeRuntime = {
   selectedMode: 'battle',
@@ -1174,10 +1189,93 @@ function setHomeMode(modeKey) {
   }
 }
 
-function applyPuzzlePreset(game, presetIndex) {
+function createSeededRandom(seed) {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function normalizePuzzleHoles(holes, width, minHoles, maxHoles, random) {
+  const unique = new Set();
+  holes.forEach((value) => {
+    unique.add(clamp(Math.floor(Number(value) || 0), 0, width - 1));
+  });
+
+  while (unique.size < minHoles) {
+    unique.add(Math.floor(random() * width));
+  }
+
+  const list = [...unique];
+  while (list.length > maxHoles) {
+    list.splice(Math.floor(random() * list.length), 1);
+  }
+
+  list.sort((a, b) => a - b);
+  return list;
+}
+
+function transformPuzzleHoles(baseHoles, width, random) {
+  const shift = Math.floor(random() * width);
+  const mirror = random() < 0.5;
+  const transformed = baseHoles.map((hole) => {
+    const shifted = (hole + shift) % width;
+    return mirror ? (width - 1 - shifted) : shifted;
+  });
+  return transformed;
+}
+
+function getPuzzleStageProfile(stageIndex) {
+  const safeStage = clamp(Math.floor(Number(stageIndex) || 0), 0, TOTAL_STAGES - 1);
+  if (safeStage <= 4) {
+    return { rows: 2 + Math.floor(safeStage / 3), minHoles: 5, maxHoles: 6, gapChance: 0, banks: ['easy'] };
+  }
+  if (safeStage <= 9) {
+    return { rows: 3 + Math.floor((safeStage - 5) / 3), minHoles: 4, maxHoles: 5, gapChance: 0.05, banks: ['easy', 'medium'] };
+  }
+  if (safeStage <= 24) {
+    return { rows: 4 + Math.floor((safeStage - 10) / 8), minHoles: 3, maxHoles: 4, gapChance: 0.09, banks: ['medium'] };
+  }
+  if (safeStage <= 49) {
+    return { rows: 5 + Math.floor((safeStage - 25) / 10), minHoles: 2, maxHoles: 3, gapChance: 0.12, banks: ['medium', 'hard'] };
+  }
+  if (safeStage <= 74) {
+    return { rows: 6 + Math.floor((safeStage - 50) / 12), minHoles: 2, maxHoles: 3, gapChance: 0.15, banks: ['hard'] };
+  }
+  return { rows: 8, minHoles: 1, maxHoles: 2, gapChance: 0.18, banks: ['hard', 'expert'] };
+}
+
+function buildPuzzleRowsForStage(stageIndex, width, height) {
+  const safeStage = clamp(Math.floor(Number(stageIndex) || 0), 0, TOTAL_STAGES - 1);
+  const profile = getPuzzleStageProfile(safeStage);
+  const random = createSeededRandom((safeStage + 1) * 11939 + 7);
+  const rows = [];
+  let rowY = height - 1;
+  const targetRows = clamp(profile.rows, 2, Math.max(2, height - 4));
+
+  for (let i = 0; i < targetRows && rowY >= 4; i++) {
+    if (i > 0 && random() < profile.gapChance && rowY > 5) {
+      rowY -= 1;
+    }
+    if (rowY < 4) break;
+
+    const bankName = profile.banks[Math.floor(random() * profile.banks.length)] || 'easy';
+    const bank = PUZZLE_PATTERN_BANKS[bankName] || PUZZLE_PATTERN_BANKS.easy;
+    const template = bank[Math.floor(random() * bank.length)] || bank[0];
+    const transformed = transformPuzzleHoles(template, width, random);
+    const holes = normalizePuzzleHoles(transformed, width, profile.minHoles, profile.maxHoles, random);
+    rows.push([rowY, holes]);
+    rowY -= 1;
+  }
+
+  return rows;
+}
+
+function applyPuzzlePreset(game, stageIndex) {
   game.grid.reset();
-  const preset = PUZZLE_PRESETS[presetIndex % PUZZLE_PRESETS.length];
-  preset.forEach(([rowY, holes]) => {
+  const puzzleRows = buildPuzzleRowsForStage(stageIndex, game.grid.width, game.grid.height);
+  puzzleRows.forEach(([rowY, holes]) => {
     if (rowY < 0 || rowY >= game.grid.height) return;
     const row = Array(game.grid.width).fill('G');
     holes.forEach((hole) => {
@@ -1188,14 +1286,14 @@ function applyPuzzlePreset(game, presetIndex) {
   });
 }
 
-function countFilledCells(cells) {
-  let filled = 0;
+function countCellsByType(cells, type) {
+  let count = 0;
   cells.forEach((row) => {
     row.forEach((cell) => {
-      if (cell !== 0) filled += 1;
+      if (cell === type) count += 1;
     });
   });
-  return filled;
+  return count;
 }
 
 function isControlsInverted(now = performance.now()) {
@@ -1640,6 +1738,8 @@ const STAGES_PER_LEVEL = 5;
 const TOTAL_LEVELS = 20;
 const TOTAL_STAGES = TOTAL_LEVELS * STAGES_PER_LEVEL;
 const MODE_STAGE_PROGRESS_STORAGE_KEY = 'tetrixa_mode_stage_progress_v1';
+const MODE_SESSION_SAVE_STORAGE_KEY = 'tetrixa_mode_session_save_v1';
+const MODE_SESSION_SAVE_VERSION = 1;
 const STAGE_TRACKED_MODES = ['battle', 'classic', 'speed', 'puzzle', 'chaos', 'mirror'];
 const THEME_FALLBACK_BG = './assets/backgrounds/playingpg.webp';
 
@@ -1654,6 +1754,27 @@ function sanitizeModeStageProgress(rawProgress) {
 }
 
 const modeStageProgressState = sanitizeModeStageProgress(readJsonStorage(MODE_STAGE_PROGRESS_STORAGE_KEY, {}));
+
+function sanitizeModeSessionSaveState(rawState) {
+  const safe = {};
+  STAGE_TRACKED_MODES.forEach((mode) => {
+    const snapshot = rawState && typeof rawState === 'object' ? rawState[mode] : null;
+    if (!snapshot || typeof snapshot !== 'object') {
+      safe[mode] = null;
+      return;
+    }
+    const stageIndex = clamp(Math.floor(Number(snapshot.stageIndex) || 0), 0, TOTAL_STAGES - 1);
+    safe[mode] = {
+      ...snapshot,
+      version: MODE_SESSION_SAVE_VERSION,
+      stageIndex
+    };
+  });
+  return safe;
+}
+
+const modeSessionSaveState = sanitizeModeSessionSaveState(readJsonStorage(MODE_SESSION_SAVE_STORAGE_KEY, {}));
+let lastModeSessionPersistAt = 0;
 
 const progressionState = {
   modeKey: 'battle',
@@ -1813,10 +1934,427 @@ function stageLabel(stageIndex) {
   return `Level ${level} - Stage ${stage}`;
 }
 
-function startStageByIndex(stageIndex, modeKey = progressionState.modeKey) {
+function persistModeSessionSaveState() {
+  writeJsonStorage(MODE_SESSION_SAVE_STORAGE_KEY, modeSessionSaveState);
+}
+
+function getModeSessionSave(modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  return modeSessionSaveState[safeMode] || null;
+}
+
+function clearModeSessionSave(modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  if (!modeSessionSaveState[safeMode]) return;
+  modeSessionSaveState[safeMode] = null;
+  persistModeSessionSaveState();
+}
+
+function setModeSessionSave(modeKey, snapshot) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  modeSessionSaveState[safeMode] = snapshot;
+  persistModeSessionSaveState();
+}
+
+function normalizePieceShapeForSave(shape) {
+  if (!Array.isArray(shape) || shape.length === 0) return null;
+  const normalized = shape.map((row) => {
+    if (!Array.isArray(row) || row.length === 0) return null;
+    return row.map((cell) => (cell ? 1 : 0));
+  });
+  if (normalized.some((row) => !row)) return null;
+  const width = normalized[0].length;
+  if (width <= 0 || normalized.some((row) => row.length !== width)) return null;
+  return normalized;
+}
+
+function serializePieceForSave(piece) {
+  if (!piece || typeof piece !== 'object') return null;
+  const shape = normalizePieceShapeForSave(piece.shape);
+  if (!shape) return null;
+  return {
+    type: TETROMINO_TYPES.includes(piece.type) ? piece.type : 'I',
+    shape,
+    rotation: Math.floor(Number(piece.rotation) || 0),
+    x: Math.floor(Number(piece.x) || 0),
+    y: Math.floor(Number(piece.y) || 0),
+    assistedSpawn: !!piece.assistedSpawn
+  };
+}
+
+function deserializePieceFromSave(piece) {
+  if (!piece || typeof piece !== 'object') return null;
+  const shape = normalizePieceShapeForSave(piece.shape);
+  if (!shape) return null;
+  const type = TETROMINO_TYPES.includes(piece.type) ? piece.type : 'I';
+  return {
+    type,
+    shape,
+    rotation: Math.floor(Number(piece.rotation) || 0),
+    x: Math.floor(Number(piece.x) || 0),
+    y: Math.floor(Number(piece.y) || 0),
+    assistedSpawn: !!piece.assistedSpawn
+  };
+}
+
+function sanitizeGridCellsForSave(gridCells, width, height) {
+  if (!Array.isArray(gridCells) || gridCells.length !== height) return null;
+  const allowed = new Set([...TETROMINO_TYPES, 'G', 'C']);
+  const normalized = [];
+  for (let y = 0; y < height; y++) {
+    const row = gridCells[y];
+    if (!Array.isArray(row) || row.length !== width) return null;
+    normalized.push(row.map((cell) => {
+      if (cell === 0) return 0;
+      if (typeof cell === 'string' && allowed.has(cell)) return cell;
+      return 0;
+    }));
+  }
+  return normalized;
+}
+
+function serializeUndoSnapshotForSave(snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  return {
+    gridCells: snapshot.gridCells && snapshot.gridCells.map((row) => [...row]),
+    smartSpawnSeed: Math.floor(Number(snapshot.smartSpawnSeed) || 0),
+    recentSmartTypes: Array.isArray(snapshot.recentSmartTypes)
+      ? snapshot.recentSmartTypes.filter((type) => TETROMINO_TYPES.includes(type)).slice(-8)
+      : [],
+    lastSmartType: TETROMINO_TYPES.includes(snapshot.lastSmartType) ? snapshot.lastSmartType : '',
+    pieceBag: Array.isArray(snapshot.pieceBag)
+      ? snapshot.pieceBag.filter((type) => TETROMINO_TYPES.includes(type))
+      : [],
+    currentPiece: serializePieceForSave(snapshot.currentPiece),
+    nextPiece: serializePieceForSave(snapshot.nextPiece),
+    heldType: TETROMINO_TYPES.includes(snapshot.heldType) ? snapshot.heldType : null,
+    canHold: snapshot.canHold !== false,
+    gameOver: !!snapshot.gameOver,
+    linesCleared: Math.max(0, Math.floor(Number(snapshot.linesCleared) || 0)),
+    level: Math.max(1, Math.floor(Number(snapshot.level) || 1)),
+    score: Math.max(0, Math.floor(Number(snapshot.score) || 0)),
+    comboCount: Math.max(0, Math.floor(Number(snapshot.comboCount) || 0)),
+    comboMultiplier: Math.max(1, Number(snapshot.comboMultiplier) || 1),
+    pendingGarbage: Math.max(0, Math.floor(Number(snapshot.pendingGarbage) || 0)),
+    forgivenessCharges: Math.max(0, Math.floor(Number(snapshot.forgivenessCharges) || 0))
+  };
+}
+
+function deserializeUndoSnapshotFromSave(snapshot, width, height) {
+  if (!snapshot || typeof snapshot !== 'object') return null;
+  const gridCells = sanitizeGridCellsForSave(snapshot.gridCells, width, height);
+  if (!gridCells) return null;
+  const currentPiece = deserializePieceFromSave(snapshot.currentPiece);
+  const nextPiece = deserializePieceFromSave(snapshot.nextPiece);
+  if (!currentPiece || !nextPiece) return null;
+  return {
+    gridCells,
+    smartSpawnSeed: Math.floor(Number(snapshot.smartSpawnSeed) || 0),
+    recentSmartTypes: Array.isArray(snapshot.recentSmartTypes)
+      ? snapshot.recentSmartTypes.filter((type) => TETROMINO_TYPES.includes(type)).slice(-8)
+      : [],
+    lastSmartType: TETROMINO_TYPES.includes(snapshot.lastSmartType) ? snapshot.lastSmartType : '',
+    pieceBag: Array.isArray(snapshot.pieceBag)
+      ? snapshot.pieceBag.filter((type) => TETROMINO_TYPES.includes(type))
+      : [],
+    currentPiece,
+    nextPiece,
+    heldType: TETROMINO_TYPES.includes(snapshot.heldType) ? snapshot.heldType : null,
+    canHold: snapshot.canHold !== false,
+    gameOver: !!snapshot.gameOver,
+    linesCleared: Math.max(0, Math.floor(Number(snapshot.linesCleared) || 0)),
+    level: Math.max(1, Math.floor(Number(snapshot.level) || 1)),
+    score: Math.max(0, Math.floor(Number(snapshot.score) || 0)),
+    comboCount: Math.max(0, Math.floor(Number(snapshot.comboCount) || 0)),
+    comboMultiplier: Math.max(1, Number(snapshot.comboMultiplier) || 1),
+    pendingGarbage: Math.max(0, Math.floor(Number(snapshot.pendingGarbage) || 0)),
+    forgivenessCharges: Math.max(0, Math.floor(Number(snapshot.forgivenessCharges) || 0))
+  };
+}
+
+function serializeGameForSave(game) {
+  return {
+    smartPieceMode: game.smartPieceMode !== false,
+    spawnAssistEnabled: game.spawnAssistEnabled !== false,
+    spawnAssistStrength: clamp(Number(game.spawnAssistStrength) || 0, 0, 1),
+    avoidImmediateRepeats: game.avoidImmediateRepeats !== false,
+    smartSpawnSeed: Math.floor(Number(game.smartSpawnSeed) || 0),
+    recentSmartTypes: Array.isArray(game.recentSmartTypes)
+      ? game.recentSmartTypes.filter((type) => TETROMINO_TYPES.includes(type)).slice(-8)
+      : [],
+    lastSmartType: TETROMINO_TYPES.includes(game.lastSmartType) ? game.lastSmartType : '',
+    pieceBag: Array.isArray(game.pieceBag)
+      ? game.pieceBag.filter((type) => TETROMINO_TYPES.includes(type))
+      : [],
+    currentPiece: serializePieceForSave(game.currentPiece),
+    nextPiece: serializePieceForSave(game.nextPiece),
+    heldType: TETROMINO_TYPES.includes(game.heldType) ? game.heldType : null,
+    canHold: game.canHold !== false,
+    gameOver: !!game.gameOver,
+    linesCleared: Math.max(0, Math.floor(Number(game.linesCleared) || 0)),
+    level: Math.max(1, Math.floor(Number(game.level) || 1)),
+    score: Math.max(0, Math.floor(Number(game.score) || 0)),
+    comboCount: Math.max(0, Math.floor(Number(game.comboCount) || 0)),
+    comboMultiplier: Math.max(1, Number(game.comboMultiplier) || 1),
+    pendingGarbage: Math.max(0, Math.floor(Number(game.pendingGarbage) || 0)),
+    forgivenessCharges: Math.max(0, Math.floor(Number(game.forgivenessCharges) || 0)),
+    gridCells: game.grid.cells.map((row) => [...row]),
+    lastUndoSnapshot: serializeUndoSnapshotForSave(game.lastUndoSnapshot)
+  };
+}
+
+function applyGameSnapshot(game, snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  const width = game.grid.width;
+  const height = game.grid.height;
+  const gridCells = sanitizeGridCellsForSave(snapshot.gridCells, width, height);
+  const currentPiece = deserializePieceFromSave(snapshot.currentPiece);
+  const nextPiece = deserializePieceFromSave(snapshot.nextPiece);
+  if (!gridCells || !currentPiece || !nextPiece) return false;
+
+  game.grid.cells = gridCells.map((row) => [...row]);
+  game.smartPieceMode = snapshot.smartPieceMode !== false;
+  game.spawnAssistEnabled = snapshot.spawnAssistEnabled !== false;
+  game.spawnAssistStrength = clamp(Number(snapshot.spawnAssistStrength) || 0, 0, 1);
+  game.avoidImmediateRepeats = snapshot.avoidImmediateRepeats !== false;
+  game.smartSpawnSeed = Math.floor(Number(snapshot.smartSpawnSeed) || 0);
+  game.recentSmartTypes = Array.isArray(snapshot.recentSmartTypes)
+    ? snapshot.recentSmartTypes.filter((type) => TETROMINO_TYPES.includes(type)).slice(-8)
+    : [];
+  game.lastSmartType = TETROMINO_TYPES.includes(snapshot.lastSmartType) ? snapshot.lastSmartType : '';
+  game.pieceBag = Array.isArray(snapshot.pieceBag)
+    ? snapshot.pieceBag.filter((type) => TETROMINO_TYPES.includes(type))
+    : [];
+  game.currentPiece = currentPiece;
+  game.nextPiece = nextPiece;
+  game.heldType = TETROMINO_TYPES.includes(snapshot.heldType) ? snapshot.heldType : null;
+  game.canHold = snapshot.canHold !== false;
+  game.gameOver = !!snapshot.gameOver;
+  game.linesCleared = Math.max(0, Math.floor(Number(snapshot.linesCleared) || 0));
+  game.level = Math.max(1, Math.floor(Number(snapshot.level) || 1));
+  game.score = Math.max(0, Math.floor(Number(snapshot.score) || 0));
+  game.comboCount = Math.max(0, Math.floor(Number(snapshot.comboCount) || 0));
+  game.comboMultiplier = Math.max(1, Number(snapshot.comboMultiplier) || 1);
+  game.pendingGarbage = Math.max(0, Math.floor(Number(snapshot.pendingGarbage) || 0));
+  game.forgivenessCharges = Math.max(0, Math.floor(Number(snapshot.forgivenessCharges) || 0));
+  game.lastUndoSnapshot = deserializeUndoSnapshotFromSave(snapshot.lastUndoSnapshot, width, height);
+  game.events = [];
+
+  if (!game.gameOver && game.grid.checkCollision(game.currentPiece)) {
+    return false;
+  }
+  return true;
+}
+
+function captureModeSessionSnapshot(now = performance.now()) {
+  const safeMode = normalizeStageModeKey(modeRuntime.activeMode || progressionState.modeKey);
+  if (!gameSessionActive || rewardState.stageResolved) return null;
+  if (player.game.gameOver) return null;
+  if (modeRuntime.aiEnabled && ai.game.gameOver) return null;
+
+  return {
+    version: MODE_SESSION_SAVE_VERSION,
+    modeKey: safeMode,
+    stageIndex: clamp(Math.floor(Number(progressionState.selectedStageIndex) || 0), 0, TOTAL_STAGES - 1),
+    savedAtEpochMs: Date.now(),
+    currentModeLabel,
+    progression: {
+      unlockedStageIndex: clamp(Math.floor(Number(progressionState.unlockedStageIndex) || 0), 0, TOTAL_STAGES - 1),
+      goalLines: Math.max(0, Math.floor(Number(progressionState.goalLines) || 0)),
+      aiLevel: Math.max(1, Math.floor(Number(progressionState.aiLevel) || 1))
+    },
+    modeRuntime: {
+      speedRushTier: Math.max(0, Math.floor(Number(modeRuntime.speedRushTier) || 0)),
+      chaosGravityScale: Number(modeRuntime.chaosGravityScale) || 1,
+      chaosNextEventRemainingMs: Math.max(0, Math.floor((modeRuntime.chaosNextEventAt || 0) - now)),
+      chaosEventRemainingMs: Math.max(0, Math.floor((modeRuntime.chaosEventUntil || 0) - now)),
+      controlsInvertedRemainingMs: Math.max(0, Math.floor((modeRuntime.controlsInvertedUntil || 0) - now)),
+      mirrorFlipped: !!modeRuntime.mirrorFlipped,
+      mirrorNextFlipRemainingMs: Math.max(0, Math.floor((modeRuntime.mirrorNextFlipAt || 0) - now)),
+      puzzleSolved: !!modeRuntime.puzzleSolved
+    },
+    reward: {
+      sessionCoins: Math.max(0, Math.floor(Number(rewardState.sessionCoins) || 0)),
+      maxCombo: Math.max(0, Math.floor(Number(rewardState.maxCombo) || 0)),
+      sessionElapsedMs: Math.max(0, Math.floor(now - rewardState.sessionStartAt)),
+      lastLevel: Math.max(1, Math.floor(Number(rewardState.lastLevel) || 1)),
+      lastActionAgoMs: rewardState.lastActionAt > 0 ? Math.max(0, Math.floor(now - rewardState.lastActionAt)) : -1,
+      speedBonusCooldownRemainingMs: Math.max(0, Math.floor((rewardState.speedBonusCooldownUntil || 0) - now)),
+      matchRewardGiven: !!rewardState.matchRewardGiven,
+      challengeLines10Done: !!rewardState.challengeLines10Done,
+      challengeCombo5Done: !!rewardState.challengeCombo5Done
+    },
+    battle: {
+      comboTier: Math.max(0, Math.floor(Number(battleState.comboTier) || 0)),
+      comboFxRemainingMs: Math.max(0, Math.floor((battleState.comboFxUntil || 0) - now)),
+      slowMotionRemainingMs: Math.max(0, Math.floor((battleState.slowMotionUntil || 0) - now)),
+      nearMissCooldownRemainingMs: Math.max(0, Math.floor((battleState.nearMissCooldownUntil || 0) - now)),
+      overdriveRemainingMs: Math.max(0, Math.floor((battleState.overdriveUntil || 0) - now)),
+      flashRemainingMs: Math.max(0, Math.floor((battleState.flashUntil || 0) - now)),
+      fxRemainingMs: Math.max(0, Math.floor((battleState.fxUntil || 0) - now)),
+      fxPriority: Math.max(0, Math.floor(Number(battleState.fxPriority) || 0)),
+      dangerLevel: typeof battleState.dangerLevel === 'string' ? battleState.dangerLevel : 'stable',
+      aiSkill: Number(battleState.aiSkill) || 0.62,
+      aiStepAccumulator: Math.max(0, Number(battleState.aiStepAccumulator) || 0)
+    },
+    assist: {
+      pieceLocksSinceLineClear: Math.max(0, Math.floor(Number(playerAssistState.pieceLocksSinceLineClear) || 0)),
+      helpModeActive: !!playerAssistState.helpModeActive,
+      helpLocksRemaining: Math.max(0, Math.floor(Number(playerAssistState.helpLocksRemaining) || 0)),
+      cooldownLocks: Math.max(0, Math.floor(Number(playerAssistState.cooldownLocks) || 0)),
+      pendingImmediateAssist: !!playerAssistState.pendingImmediateAssist,
+      lastAssistAgoMs: playerAssistState.lastAssistAppliedAt > 0
+        ? Math.max(0, Math.floor(now - playerAssistState.lastAssistAppliedAt))
+        : -1
+    },
+    powerups: {
+      comboBoostRemainingMs: Math.max(0, Math.floor((powerupState.comboBoostUntil || 0) - now)),
+      freezeRemainingMs: Math.max(0, Math.floor((powerupState.freezeUntil || 0) - now)),
+      freezeBlockFxRemainingMs: Math.max(0, Math.floor((powerupState.freezeBlockFxUntil || 0) - now))
+    },
+    board: {
+      playerDropAccumulator: Math.max(0, Number(player.dropAccumulator) || 0),
+      aiDropAccumulator: Math.max(0, Number(ai.dropAccumulator) || 0),
+      playerLastIncoming: Math.max(0, Math.floor(Number(playerLastIncoming) || 0)),
+      resultSoundPlayed: !!resultSoundPlayed
+    },
+    playerGame: serializeGameForSave(player.game),
+    aiGame: serializeGameForSave(ai.game)
+  };
+}
+
+function applyModeSessionSnapshot(modeKey, snapshot) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  if (!applyGameSnapshot(player.game, snapshot.playerGame)) return false;
+  if (!applyGameSnapshot(ai.game, snapshot.aiGame)) return false;
+
+  const now = performance.now();
+  const savedUnlocked = snapshot.progression && typeof snapshot.progression === 'object'
+    ? clamp(Math.floor(Number(snapshot.progression.unlockedStageIndex) || 0), 0, TOTAL_STAGES - 1)
+    : 0;
+  if (savedUnlocked > progressionState.unlockedStageIndex) {
+    progressionState.unlockedStageIndex = savedUnlocked;
+    persistStageUnlock(safeMode);
+  }
+  progressionState.selectedStageIndex = clamp(
+    Math.floor(Number(snapshot.stageIndex) || 0),
+    0,
+    Math.max(progressionState.unlockedStageIndex, 0)
+  );
+  progressionState.goalLines = Math.max(
+    0,
+    Math.floor(Number(snapshot.progression && snapshot.progression.goalLines) || linesGoalForStage(progressionState.selectedStageIndex))
+  );
+  progressionState.aiLevel = Math.max(
+    1,
+    Math.floor(Number(snapshot.progression && snapshot.progression.aiLevel) || stageIndexToLevelStage(progressionState.selectedStageIndex).level)
+  );
+
+  const runtime = snapshot.modeRuntime && typeof snapshot.modeRuntime === 'object' ? snapshot.modeRuntime : {};
+  modeRuntime.speedRushTier = Math.max(0, Math.floor(Number(runtime.speedRushTier) || 0));
+  modeRuntime.chaosGravityScale = clamp(Number(runtime.chaosGravityScale) || 1, 0.42, 1.5);
+  modeRuntime.chaosNextEventAt = now + Math.max(0, Math.floor(Number(runtime.chaosNextEventRemainingMs) || 0));
+  modeRuntime.chaosEventUntil = now + Math.max(0, Math.floor(Number(runtime.chaosEventRemainingMs) || 0));
+  modeRuntime.controlsInvertedUntil = now + Math.max(0, Math.floor(Number(runtime.controlsInvertedRemainingMs) || 0));
+  modeRuntime.mirrorFlipped = !!runtime.mirrorFlipped;
+  modeRuntime.mirrorNextFlipAt = now + Math.max(0, Math.floor(Number(runtime.mirrorNextFlipRemainingMs) || 0));
+  modeRuntime.puzzleSolved = !!runtime.puzzleSolved;
+
+  const reward = snapshot.reward && typeof snapshot.reward === 'object' ? snapshot.reward : {};
+  rewardState.sessionCoins = Math.max(0, Math.floor(Number(reward.sessionCoins) || 0));
+  rewardState.maxCombo = Math.max(0, Math.floor(Number(reward.maxCombo) || 0));
+  rewardState.sessionStartAt = now - Math.max(0, Math.floor(Number(reward.sessionElapsedMs) || 0));
+  rewardState.lastLevel = Math.max(1, Math.floor(Number(reward.lastLevel) || 1));
+  rewardState.lastActionAt = Number(reward.lastActionAgoMs) >= 0
+    ? now - Math.max(0, Math.floor(Number(reward.lastActionAgoMs) || 0))
+    : 0;
+  rewardState.speedBonusCooldownUntil = now + Math.max(0, Math.floor(Number(reward.speedBonusCooldownRemainingMs) || 0));
+  rewardState.matchRewardGiven = !!reward.matchRewardGiven;
+  rewardState.stageResolved = false;
+  rewardState.challengeLines10Done = !!reward.challengeLines10Done;
+  rewardState.challengeCombo5Done = !!reward.challengeCombo5Done;
+
+  const savedBattle = snapshot.battle && typeof snapshot.battle === 'object' ? snapshot.battle : {};
+  battleState.comboTier = Math.max(0, Math.floor(Number(savedBattle.comboTier) || 0));
+  battleState.comboFxUntil = now + Math.max(0, Math.floor(Number(savedBattle.comboFxRemainingMs) || 0));
+  battleState.slowMotionUntil = now + Math.max(0, Math.floor(Number(savedBattle.slowMotionRemainingMs) || 0));
+  battleState.nearMissCooldownUntil = now + Math.max(0, Math.floor(Number(savedBattle.nearMissCooldownRemainingMs) || 0));
+  battleState.overdriveUntil = now + Math.max(0, Math.floor(Number(savedBattle.overdriveRemainingMs) || 0));
+  battleState.flashUntil = now + Math.max(0, Math.floor(Number(savedBattle.flashRemainingMs) || 0));
+  battleState.fxUntil = now + Math.max(0, Math.floor(Number(savedBattle.fxRemainingMs) || 0));
+  battleState.fxPriority = Math.max(0, Math.floor(Number(savedBattle.fxPriority) || 0));
+  battleState.dangerLevel = typeof savedBattle.dangerLevel === 'string' ? savedBattle.dangerLevel : 'stable';
+  battleState.aiSkill = clamp(Number(savedBattle.aiSkill) || battleState.aiSkill, 0.2, 1.3);
+  battleState.aiStepAccumulator = Math.max(0, Number(savedBattle.aiStepAccumulator) || 0);
+
+  const assist = snapshot.assist && typeof snapshot.assist === 'object' ? snapshot.assist : {};
+  playerAssistState.pieceLocksSinceLineClear = Math.max(0, Math.floor(Number(assist.pieceLocksSinceLineClear) || 0));
+  playerAssistState.helpModeActive = !!assist.helpModeActive;
+  playerAssistState.helpLocksRemaining = Math.max(0, Math.floor(Number(assist.helpLocksRemaining) || 0));
+  playerAssistState.cooldownLocks = Math.max(0, Math.floor(Number(assist.cooldownLocks) || 0));
+  playerAssistState.pendingImmediateAssist = !!assist.pendingImmediateAssist;
+  playerAssistState.lastAssistAppliedAt = Number(assist.lastAssistAgoMs) >= 0
+    ? now - Math.max(0, Math.floor(Number(assist.lastAssistAgoMs) || 0))
+    : 0;
+
+  const savedPowerups = snapshot.powerups && typeof snapshot.powerups === 'object' ? snapshot.powerups : {};
+  powerupState.comboBoostUntil = now + Math.max(0, Math.floor(Number(savedPowerups.comboBoostRemainingMs) || 0));
+  powerupState.freezeUntil = now + Math.max(0, Math.floor(Number(savedPowerups.freezeRemainingMs) || 0));
+  powerupState.freezeBlockFxUntil = now + Math.max(0, Math.floor(Number(savedPowerups.freezeBlockFxRemainingMs) || 0));
+
+  const board = snapshot.board && typeof snapshot.board === 'object' ? snapshot.board : {};
+  player.dropAccumulator = Math.max(0, Number(board.playerDropAccumulator) || 0);
+  ai.dropAccumulator = Math.max(0, Number(board.aiDropAccumulator) || 0);
+  playerLastIncoming = Math.max(0, Math.floor(Number(board.playerLastIncoming) || 0));
+  resultSoundPlayed = !!board.resultSoundPlayed;
+  playerSoftDropHeld = false;
+
+  if (typeof snapshot.currentModeLabel === 'string' && snapshot.currentModeLabel.trim()) {
+    currentModeLabel = snapshot.currentModeLabel;
+  } else {
+    const { level, stage } = stageIndexToLevelStage(progressionState.selectedStageIndex);
+    const modeLabel = MODE_DEFS[safeMode]?.label || 'Play';
+    currentModeLabel = `${modeLabel} L${level}-S${stage}`;
+  }
+
+  if (currentModeValue) currentModeValue.textContent = currentModeLabel;
+  if (statusValue) statusValue.textContent = 'Running';
+  return true;
+}
+
+function persistActiveModeSession(force = false, now = performance.now()) {
+  const safeMode = normalizeStageModeKey(modeRuntime.activeMode || progressionState.modeKey);
+  if (!force && now - lastModeSessionPersistAt < 850) return;
+  lastModeSessionPersistAt = now;
+
+  const snapshot = captureModeSessionSnapshot(now);
+  if (!snapshot) {
+    return;
+  }
+  setModeSessionSave(safeMode, snapshot);
+}
+
+function tryResumeSavedModeSession(modeKey) {
+  const safeMode = normalizeStageModeKey(modeKey);
+  const snapshot = getModeSessionSave(safeMode);
+  if (!snapshot || typeof snapshot !== 'object') return false;
+  const stageIndex = clamp(Math.floor(Number(snapshot.stageIndex) || 0), 0, TOTAL_STAGES - 1);
+  startStageByIndex(stageIndex, safeMode, { resumeSave: snapshot });
+  return true;
+}
+
+function startStageByIndex(stageIndex, modeKey = progressionState.modeKey, options = {}) {
   const safeMode = normalizeStageModeKey(modeKey);
   setProgressionMode(safeMode);
-  const safeStageIndex = clamp(stageIndex, 0, progressionState.unlockedStageIndex);
+  const resumeSave = options && options.resumeSave && typeof options.resumeSave === 'object'
+    ? options.resumeSave
+    : null;
+  const resumeUnlockedStage = resumeSave && resumeSave.progression && typeof resumeSave.progression === 'object'
+    ? clamp(Math.floor(Number(resumeSave.progression.unlockedStageIndex) || 0), 0, TOTAL_STAGES - 1)
+    : 0;
+  const maxReachableStage = Math.max(progressionState.unlockedStageIndex, resumeUnlockedStage, 0);
+  const safeStageIndex = clamp(stageIndex, 0, maxReachableStage);
   const { level, stage } = stageIndexToLevelStage(safeStageIndex);
   progressionState.selectedStageIndex = safeStageIndex;
   progressionState.goalLines = linesGoalForStage(safeStageIndex);
@@ -1825,7 +2363,18 @@ function startStageByIndex(stageIndex, modeKey = progressionState.modeKey) {
   applyBoardThemeForLevel(level);
   hideStageResultPanel();
   const modeLabel = MODE_DEFS[safeMode]?.label || 'Play';
+  if (!resumeSave) {
+    clearModeSessionSave(safeMode);
+  }
   openGame(`${modeLabel} L${level}-S${stage}`, safeMode);
+  if (resumeSave) {
+    if (applyModeSessionSnapshot(safeMode, resumeSave)) {
+      setFxMessage('Session Restored', `${stageLabel(safeStageIndex)} resumed`, 1250, 7, performance.now());
+    } else {
+      clearModeSessionSave(safeMode);
+    }
+  }
+  persistActiveModeSession(true, performance.now());
 }
 
 function updateModeUiVisibility() {
@@ -1970,8 +2519,8 @@ function configureModeSession(now = performance.now()) {
   }
 
   if (mode === 'puzzle') {
-    modeRuntime.puzzlePresetIndex = progressionState.selectedStageIndex % PUZZLE_PRESETS.length;
-    applyPuzzlePreset(player.game, modeRuntime.puzzlePresetIndex);
+    modeRuntime.puzzlePresetIndex = progressionState.selectedStageIndex;
+    applyPuzzlePreset(player.game, progressionState.selectedStageIndex);
     setFxMessage('Puzzle Board', 'Clear the board to solve', 1200, 4, now);
   }
   if (mode === 'speed') {
@@ -2034,7 +2583,7 @@ function updateModeDynamics(now) {
   }
 
   if (modeRuntime.activeMode === 'puzzle' && !modeRuntime.puzzleSolved && !rewardState.stageResolved) {
-    if (countFilledCells(player.game.grid.cells) === 0 && player.game.linesCleared > 0) {
+    if (countCellsByType(player.game.grid.cells, 'G') === 0) {
       modeRuntime.puzzleSolved = true;
       rewardState.stageResolved = true;
       gameSessionActive = false;
@@ -2055,6 +2604,7 @@ function updateModeDynamics(now) {
         canGoNext: progressionState.selectedStageIndex < TOTAL_STAGES - 1,
         canRetry: true
       });
+      clearModeSessionSave(progressionState.modeKey);
     }
   }
 }
@@ -2091,6 +2641,9 @@ function getModeGravityInterval(baseInterval, now) {
 function startSelectedModeFromHome() {
   const mode = normalizeStageModeKey(modeRuntime.selectedMode);
   setProgressionMode(mode);
+  if (tryResumeSavedModeSession(mode)) {
+    return;
+  }
   progressionState.selectedStageIndex = progressionState.unlockedStageIndex;
   progressionState.goalLines = linesGoalForStage(progressionState.selectedStageIndex);
   openLevelSelect(mode);
@@ -2330,6 +2883,7 @@ function evaluateStageRaceOutcome(now) {
     });
   }
   gameSessionActive = false;
+  clearModeSessionSave(progressionState.modeKey);
 }
 
 function evaluateSoloOutcome(now) {
@@ -2349,6 +2903,7 @@ function evaluateSoloOutcome(now) {
       canGoNext: false,
       canRetry: true
     });
+    clearModeSessionSave(progressionState.modeKey);
     return;
   }
 
@@ -2377,6 +2932,7 @@ function evaluateSoloOutcome(now) {
       canGoNext: progressionState.selectedStageIndex < TOTAL_STAGES - 1,
       canRetry: false
     });
+    clearModeSessionSave(progressionState.modeKey);
     return;
   }
 
@@ -2388,6 +2944,7 @@ function evaluateSoloOutcome(now) {
     canGoNext: false,
     canRetry: true
   });
+  clearModeSessionSave(progressionState.modeKey);
 }
 
 function getBoardCellViewportPosition(board, cell) {
@@ -3851,6 +4408,7 @@ function resetBattle() {
 function setGamePaused(paused) {
   if (paused) {
     if (!gameSessionActive || player.game.gameOver || rewardState.stageResolved) return;
+    persistActiveModeSession(true, performance.now());
     gamePaused = true;
     if (aiPreviewPanel) aiPreviewPanel.classList.add('app-hidden');
     if (pauseModal) pauseModal.classList.remove('app-hidden');
@@ -3875,6 +4433,7 @@ function restartCurrentModeSession(now = performance.now()) {
   modeRuntime.activeMode = preservedMode;
   configureModeSession(now);
   setGamePaused(false);
+  persistActiveModeSession(true, now);
 }
 
 function doPlayerAction(action, soundAction = null) {
@@ -4015,6 +4574,7 @@ function loop(time = 0) {
   updateHud();
 
   maybeRewardMatchEnd(time);
+  persistActiveModeSession(false, time);
 
   requestAnimationFrame(loop);
 }
@@ -4263,6 +4823,9 @@ wireButton('btnReset', () => restartCurrentModeSession());
 wireButton('btnResetAI', () => restartCurrentModeSession());
 
 function showHomeScreen() {
+  if (gameSessionActive && !rewardState.stageResolved) {
+    persistActiveModeSession(true, performance.now());
+  }
   setGamePaused(false);
   gameSessionActive = false;
   currentModeLabel = 'Play';
@@ -4333,6 +4896,9 @@ function openGame(modeLabel, modeKey = 'battle') {
 }
 
 function openShopScreen() {
+  if (gameSessionActive && !rewardState.stageResolved) {
+    persistActiveModeSession(true, performance.now());
+  }
   setGamePaused(false);
   gameSessionActive = false;
   music.setActive(false);
@@ -4495,6 +5061,14 @@ window.addEventListener('resize', () => {
 });
 window.addEventListener('orientationchange', () => {
   scheduleBoardCanvasDisplaySync();
+});
+window.addEventListener('beforeunload', () => {
+  persistActiveModeSession(true, performance.now());
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    persistActiveModeSession(true, performance.now());
+  }
 });
 setHomeMode('battle');
 setActiveBoardPage('player');
