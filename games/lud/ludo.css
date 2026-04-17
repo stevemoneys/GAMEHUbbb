@@ -2345,3 +2345,58 @@ body::before {
 .bg-layer.bg-a {
   opacity: 1;
 }
+
+/* ===== RUNTIME FINAL TOKEN OVERRIDE ===== */
+.token {
+  width: 112% !important;
+  height: 112% !important;
+  padding: 0 !important;
+  margin-top: 2% !important;
+}
+
+.path .token {
+  width: 122% !important;
+  height: 122% !important;
+}
+
+.home .token {
+  width: 112% !important;
+  height: 112% !important;
+}
+
+.goal-slot .token {
+  width: 26% !important;
+  height: 26% !important;
+}
+
+.token img {
+  --token-rotation: 0deg;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center 56% !important;
+  transform-origin: center 72%;
+  transform: rotate(var(--token-rotation)) scale(1.12, 0.92);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.28));
+}
+
+.goal-slot .token img {
+  transform: rotate(var(--token-rotation)) scale(1.02, 0.98);
+  object-position: center center !important;
+}
+
+body.orient-red .token img {
+  --token-rotation: 0deg;
+}
+
+body.orient-green .token img {
+  --token-rotation: 90deg;
+}
+
+body.orient-yellow .token img {
+  --token-rotation: 180deg;
+}
+
+body.orient-blue .token img {
+  --token-rotation: -90deg;
+}
