@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>2048+ Premium</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-label="2048 premium app">
+      <section class="home" data-home-screen>
+        <header class="home-header" aria-label="Home header">
+          <div class="logo-pill" aria-label="Game name">2048+</div>
+          <div class="best-pill" aria-label="Best score"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-home>0</span></div>
+          <button class="icon-btn" type="button" aria-label="Settings" data-settings-btn>&#9881;</button>
+        </header>
+
+        <section class="hero" aria-label="Live board preview">
+          <div class="hero-stage">
+            <div class="hero-copy">
+              <span class="hero-kicker">Premium 2048 Duel</span>
+              <h1 class="hero-title">Beat the board before the AI beats you.</h1>
+              <p class="hero-text">One shared board, sharper modes, smarter opponents, and deeper level goals.</p>
+            </div>
+            <div class="hero-board" data-hero-board></div>
+          </div>
+        </section>
+
+        <section class="home-actions" aria-label="Game start actions">
+          <button class="play-btn" type="button" data-play-btn>PLAY NOW</button>
+          <div class="secondary-actions">
+            <button class="secondary-btn" type="button" data-resume-btn>Resume</button>
+            <button class="secondary-btn" type="button" data-theme-btn>Themes</button>
+            <button class="secondary-btn" type="button" data-mode-btn>Modes</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="themes hidden" data-theme-screen aria-label="Theme selection">
+        <header class="theme-header">
+          <button class="icon-btn" type="button" data-theme-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Themes</div>
+            <div class="level-subtitle">Choose your mood</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-theme>0</span></div>
+        </header>
+
+        <section class="theme-progress-card" aria-label="Theme progression">
+          <div>Best: <span data-theme-progress-score>0</span></div>
+          <div>Max Tile: <span data-theme-progress-max-tile>0</span></div>
+          <div>Games: <span data-theme-progress-games>0</span></div>
+        </section>
+
+        <section class="theme-grid" data-theme-grid aria-label="Theme cards"></section>
+      </section>
+
+      <section class="levels hidden" data-level-screen aria-label="Level selection">
+        <header class="level-header">
+          <button class="icon-btn" type="button" data-level-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Levels</div>
+            <div class="level-subtitle">Pick and play</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-level>0</span></div>
+        </header>
+
+        <section class="level-progress-card" aria-label="Level progress">
+          <div>Unlocked: <span data-unlocked-level>1</span>/100</div>
+          <div>Selected: <span data-selected-level>1</span></div>
+          <div>AI: <span data-selected-ai-name>Clueless Player</span></div>
+        </section>
+
+        <section class="level-profile-card" aria-label="Selected AI profile">
+          <h2 class="profile-title" data-profile-title>Clueless Player</h2>
+          <p class="profile-summary" data-profile-summary>Random moves with no strategy.</p>
+          <div class="profile-meta">
+            <span data-profile-depth>Depth: 0</span>
+            <span data-profile-mistake>Mistake: 80%</span>
+            <span data-profile-speed>Speed: Slow</span>
+          </div>
+        </section>
+
+        <section class="level-grid" data-level-grid aria-label="Level buttons"></section>
+
+        <button class="play-btn level-start-btn" type="button" data-start-level-btn>START SELECTED LEVEL</button>
+      </section>
+
+      <section class="game hidden" data-game-screen>
+        <header class="game-header" aria-label="Gameplay header">
+          <button class="icon-btn game-icon-btn" type="button" data-home-btn aria-label="Back to home">&lt;</button>
+          <div class="game-pills" aria-label="Gameplay indicators">
+            <div class="target-pill" aria-label="Level target">Target <span data-target-value>256</span></div>
+            <div class="mode-pill" aria-label="Current mode"><span data-game-mode>Classic</span></div>
+            <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
+          </div>
+          <div class="game-controls" aria-label="Gameplay controls">
+            <button class="dock-btn game-mini-btn" type="button" data-restart aria-label="Restart level">R</button>
+            <button class="dock-btn game-mini-btn" type="button" data-sound-toggle aria-label="Sound on">||</button>
+          </div>
+        </header>
+
+        <section class="arena-wrap arena-wrap-single" aria-label="Shared board area">
+          <article class="board-shell board-shell-shared" aria-label="Shared game board">
+            <div class="board board-shared" data-board role="grid" aria-label="Shared board"></div>
+            <div class="combo-banner" data-combo-banner aria-live="polite"></div>
+          </article>
+
+          <div class="game-over-panel hidden" data-game-over-panel aria-live="polite">
+            <span class="game-over-kicker" data-game-over-kicker>Match Complete</span>
+            <strong class="game-over-title" data-game-over-title>You Win</strong>
+            <p class="game-over-copy" data-game-over-copy>Great run. Select your next level or replay this one.</p>
+            <div class="game-over-actions">
+              <button class="secondary-btn" type="button" data-overlay-home>Home</button>
+              <button class="play-btn game-over-btn" type="button" data-overlay-restart>Play Again</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottom-dock bottom-dock-compact" aria-label="Current shots">
+          <div class="launcher-wrap launcher-wrap-compact" aria-label="Current shots">
+            <div class="launcher-card">
+              <div class="launcher-label">You</div>
+              <div class="launcher-frame">
+                <div class="shot-tile tile tile-empty" data-current-ammo aria-label="Your current shot tile"></div>
+              </div>
+              <div class="next-stack">
+                <span class="next-label">Next</span>
+                <div class="shot-next tile tile-empty" data-next-ammo aria-label="Your next shot tile"></div>
+              </div>
+            </div>
+
+            <div class="launcher-card launcher-card-ai" data-ai-launcher>
+              <div class="launcher-label">AI</div>
+              <div class="launcher-frame">
+                <div class="shot-tile tile tile-empty" data-ai-current-ammo aria-label="AI current shot tile"></div>
+              </div>
+              <div class="next-stack">
+                <span class="next-label">Next</span>
+                <div class="shot-next tile tile-empty" data-ai-next-ammo aria-label="AI next shot tile"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <p class="sr-status" data-status aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

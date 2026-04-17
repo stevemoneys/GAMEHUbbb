@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 | Rewards</title>
+    <link rel="stylesheet" href="rewards.css">
+</head>
+<body class="rewards-page">
+    <main class="rewards-app">
+        <header class="rewards-topbar">
+            <a class="icon-btn" href="index.html" aria-label="Back home">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 3 2 11h2v10h6v-6h4v6h6V11h2Z"/>
+                </svg>
+            </a>
+            <div class="rewards-headline">
+                <p class="eyebrow">Claim Center</p>
+                <h1>Coin Rewards</h1>
+            </div>
+            <div id="coinBalance" class="coin-balance">0 Coins</div>
+        </header>
+
+        <section class="claim-panel">
+            <div class="claim-title">
+                <h2>Daily Reward</h2>
+                <p id="streakMeta">Streak: Day 1</p>
+            </div>
+
+            <div class="claim-box">
+                <button id="claimBoxBtn" class="claim-btn" type="button">
+                    <span>Claim Today</span>
+                    <strong id="claimTodayValue">+50</strong>
+                </button>
+                <p id="claimResult" class="claim-result">Claim to grow your wallet.</p>
+            </div>
+        </section>
+
+        <section class="progress-panel">
+            <h2>Progress Snapshot</h2>
+            <p id="progressMeta">Reached: Level 1 Stage 1</p>
+            <p id="themeMeta">Backgrounds: 1/25</p>
+        </section>
+    </main>
+
+    <script src="progression.js"></script>
+    <script src="theme-config.js"></script>
+    <script src="economy.js"></script>
+    <script src="rewards.js"></script>
+</body>
+</html>

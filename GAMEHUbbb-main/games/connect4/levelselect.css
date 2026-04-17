@@ -1,0 +1,210 @@
+:root {
+    --text-main: #eef3ff;
+    --text-muted: #c8d3f4;
+    --panel: rgba(8, 14, 31, 0.74);
+    --panel-edge: rgba(163, 187, 245, 0.26);
+    --locked: rgba(78, 94, 132, 0.9);
+    --unlocked: #59e0a8;
+    --current: #ffd66c;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body.level-page {
+    min-height: 100svh;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    color: var(--text-main);
+    background-color: #040a19;
+    background-image:
+        linear-gradient(185deg, rgba(4, 9, 23, 0.16) 0%, rgba(4, 9, 23, 0.82) 78%),
+        url("./assets/firstpagebg.png");
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: contain;
+}
+
+.level-app {
+    width: min(100%, 30rem);
+    margin: 0 auto;
+    min-height: 100svh;
+    padding: 0.8rem 0.8rem 1rem;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 0.8rem;
+}
+
+.level-topbar {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.icon-btn {
+    width: 2.22rem;
+    height: 2.22rem;
+    border-radius: 999px;
+    border: 1px solid rgba(197, 214, 255, 0.2);
+    background: rgba(6, 11, 25, 0.3);
+    color: var(--text-main);
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+}
+
+.icon-btn svg {
+    width: 1.14rem;
+    height: 1.14rem;
+    fill: currentColor;
+}
+
+.level-heading .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.19em;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.level-heading h1 {
+    font-size: clamp(1.1rem, 4.7vw, 1.4rem);
+    margin-top: 0.08rem;
+}
+
+.progress-badge {
+    border: 1px solid rgba(204, 219, 255, 0.24);
+    background: rgba(9, 16, 35, 0.5);
+    border-radius: 999px;
+    padding: 0.28rem 0.56rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.level-grid {
+    overflow: auto;
+    display: grid;
+    gap: 0.76rem;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: y proximity;
+}
+
+.level-card {
+    border: 1px solid var(--panel-edge);
+    border-radius: 1.1rem;
+    background: var(--panel);
+    backdrop-filter: blur(2px);
+    padding: 0.7rem;
+    display: grid;
+    gap: 0.55rem;
+    scroll-snap-align: start;
+}
+
+.level-card--locked {
+    opacity: 0.52;
+    filter: saturate(0.6);
+}
+
+.level-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.level-card__title {
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.level-card__title small {
+    display: block;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.68rem;
+    margin-top: 0.1rem;
+}
+
+.level-card__state {
+    font-size: 0.67rem;
+    color: var(--text-muted);
+}
+
+.shape-arena {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 0.95rem;
+    background:
+        radial-gradient(circle at 50% 45%, rgba(25, 40, 80, 0.35), rgba(8, 14, 29, 0.55)),
+        linear-gradient(170deg, rgba(50, 83, 172, 0.18), rgba(21, 31, 64, 0.18));
+    overflow: hidden;
+}
+
+.shape-path {
+    position: absolute;
+    inset: 0;
+}
+
+.shape-path path {
+    fill: none;
+    stroke: rgba(187, 210, 255, 0.35);
+    stroke-width: 2.4;
+}
+
+.shape-path polyline {
+    fill: none;
+    stroke: rgba(107, 156, 255, 0.38);
+    stroke-width: 1.2;
+    stroke-dasharray: 2.8 2.8;
+}
+
+.stage-node {
+    position: absolute;
+    left: calc(var(--x) * 1%);
+    top: calc(var(--y) * 1%);
+    transform: translate(-50%, -50%);
+    width: 2.1rem;
+    height: 2.1rem;
+    border: 1px solid rgba(169, 191, 241, 0.3);
+    border-radius: 999px;
+    background: rgba(30, 44, 76, 0.9);
+    color: #b9c8ef;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+}
+
+.stage-node--unlocked {
+    color: #e8fff6;
+    border-color: rgba(133, 242, 197, 0.64);
+    box-shadow: 0 0 0.45rem rgba(89, 224, 168, 0.48);
+    background: radial-gradient(circle at 30% 28%, #86ffd2 0%, #39a982 68%, #1d5e49 100%);
+}
+
+.stage-node--current {
+    border-color: rgba(255, 234, 167, 0.88);
+    box-shadow:
+        0 0 0.68rem rgba(255, 214, 108, 0.8),
+        inset 0 0 0 1px rgba(255, 253, 235, 0.65);
+    color: #fff8de;
+    background: radial-gradient(circle at 30% 28%, #ffefae 0%, #f6b94a 68%, #a76f17 100%);
+}
+
+.stage-node--locked {
+    pointer-events: none;
+    color: rgba(169, 182, 212, 0.58);
+    background: var(--locked);
+    border-color: rgba(134, 151, 188, 0.28);
+}
+
+@media (max-width: 360px) {
+    .stage-node {
+        width: 1.95rem;
+        height: 1.95rem;
+        font-size: 0.68rem;
+    }
+}

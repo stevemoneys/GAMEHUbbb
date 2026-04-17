@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WHOT - Coin Rewards</title>
+  <link rel="stylesheet" href="WH.css">
+  <link rel="stylesheet" href="coin-rewards.css">
+</head>
+<body class="coin-rewards-page">
+  <main class="coin-rewards-shell">
+    <header class="coin-rewards-header">
+      <a href="WH.html" class="coin-back-btn" aria-label="Back to WHOT">Back</a>
+      <div class="coin-balance-card" id="balance-card">
+        <span class="coin-dot" aria-hidden="true"></span>
+        <span id="coin-count">1200</span>
+      </div>
+    </header>
+
+    <section class="coin-rewards-hero">
+      <p class="coin-eyebrow">Daily Login Reward</p>
+      <h1>Coin Streak Vault</h1>
+      <p>Claim your login coins every day and keep your streak alive for premium payouts.</p>
+    </section>
+
+    <section class="today-card" id="daily-reward">
+      <div>
+        <h2>Today Reward</h2>
+        <p id="daily-subtitle">Day 1 streak reward</p>
+      </div>
+      <button type="button" id="daily-claim" class="daily-claim-btn">
+        <span class="coin-dot" aria-hidden="true"></span>
+        <span id="daily-amount">0</span>
+        <span class="claim-tag">Claim</span>
+      </button>
+    </section>
+
+    <section class="streak-board-wrap">
+      <h2>7 Day Streak Coins</h2>
+      <div id="daily-schedule" class="streak-board"></div>
+    </section>
+
+    <section class="queue-wrap">
+      <h2>Milestone Rewards</h2>
+      <div id="mission-list" class="mission-list"></div>
+    </section>
+
+    <section class="queue-wrap">
+      <h2>Reward Rules</h2>
+      <div class="rule-list">
+        <div class="rule-item"><span>Per one game won</span><strong>+200</strong></div>
+        <div class="rule-item"><span>Win 10 games</span><strong>+3000</strong></div>
+        <div class="rule-item"><span>Play 50 cards</span><strong>+400</strong></div>
+        <div class="rule-item"><span>Use WHOT 20 times</span><strong>+300</strong></div>
+        <div class="rule-item"><span>Win without drawing</span><strong>+1000</strong></div>
+        <div class="rule-item"><span>Win without using Pick 2</span><strong>+500</strong></div>
+        <div class="rule-item"><span>Win without using Pick 3</span><strong>+700</strong></div>
+        <div class="rule-item"><span>Win without using Hold on</span><strong>+650</strong></div>
+        <div class="rule-item"><span>Play 3 cards fast (Combo)</span><strong>+350</strong></div>
+        <div class="rule-item"><span>Win 3 matches (Win Streak)</span><strong>+900</strong></div>
+      </div>
+    </section>
+
+    <section class="queue-wrap">
+      <h2>Gameplay Coin Rewards</h2>
+      <div id="reward-list" class="reward-list"></div>
+      <div id="empty-state" class="empty-state hidden">No unclaimed gameplay rewards yet.</div>
+    </section>
+  </main>
+
+  <div id="coin-fx-layer" class="coin-fx-layer" aria-hidden="true"></div>
+
+  <script src="js/rewards.js"></script>
+  <script src="coin-rewards.js"></script>
+</body>
+</html>
