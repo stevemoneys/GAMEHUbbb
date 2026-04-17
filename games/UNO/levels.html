@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="screen-orientation" content="landscape">
+  <meta name="x5-orientation" content="landscape">
+  <meta name="x5-fullscreen" content="true">
+  <meta name="full-screen" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>UNO - Level Select</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="components.css">
+  <link rel="stylesheet" href="levels.css">
+</head>
+<body>
+  <div id="rotate-overlay" class="rotate-overlay hidden" aria-live="polite">
+    <div class="rotate-card">
+      <h2>Tap Screen</h2>
+      <p>On mobile, tap your screen to enter landscape fullscreen.</p>
+    </div>
+  </div>
+  <div class="levels-shell">
+    <header class="levels-header">
+      <div>
+        <p class="eyebrow">GameHub</p>
+        <h1>UNO Road</h1>
+        <p class="subtitle">Unlock levels in order. Each level increases AI difficulty.</p>
+      </div>
+      <div class="levels-header__actions">
+        <div id="resume-panel" class="resume-panel hidden">
+          <div class="resume-panel__meta">
+            <span class="resume-panel__label">Saved Match</span>
+            <span id="resume-meta" class="resume-panel__text">Ready to continue</span>
+          </div>
+          <button id="btn-resume-match" class="resume-btn" type="button">Resume</button>
+        </div>
+        <button id="btn-back" class="back-btn" type="button">Back</button>
+      </div>
+    </header>
+
+    <main class="road-map">
+      <div id="level-road" class="level-road">
+        <div class="road-track"></div>
+      </div>
+    </main>
+
+    <p class="fullscreen-note">This screen and the match page switch to fullscreen automatically where your browser allows it. Press <kbd>Esc</kbd> to exit fullscreen on desktop.</p>
+  </div>
+
+  <script src="levels.js"></script>
+</body>
+</html>

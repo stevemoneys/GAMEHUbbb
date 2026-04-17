@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect 4 | Themes</title>
+    <link rel="stylesheet" href="themes.css">
+</head>
+<body class="themes-page">
+    <main class="themes-app">
+        <header class="themes-topbar">
+            <a class="icon-btn" href="index.html" aria-label="Back to home">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                    <path d="M12 3 2 11h2v10h6v-6h4v6h6V11h2Z"/>
+                </svg>
+            </a>
+            <div class="themes-heading">
+                <p class="eyebrow">Theme Shop</p>
+                <h1>Visual Customization</h1>
+            </div>
+            <div id="progressBadge" class="themes-badge">1 / 100</div>
+        </header>
+
+        <section class="theme-section" aria-label="Piece colors">
+            <div class="section-head">
+                <h2>Piece Colors</h2>
+                <p>Use arrows to browse combinations.</p>
+            </div>
+
+            <div class="carousel">
+                <button id="colorPrev" class="nav-btn" type="button" aria-label="Previous color set">&lt;</button>
+                <div id="colorViewport" class="carousel-viewport"></div>
+                <button id="colorNext" class="nav-btn" type="button" aria-label="Next color set">&gt;</button>
+            </div>
+        </section>
+
+        <section class="theme-section" aria-label="Playing backgrounds">
+            <div class="section-head">
+                <h2>Background Themes</h2>
+                <p>Unlock one every 4 stage wins</p>
+            </div>
+
+            <div class="carousel">
+                <button id="bgPrev" class="nav-btn" type="button" aria-label="Previous backgrounds">&lt;</button>
+                <div id="bgViewport" class="carousel-viewport carousel-viewport--dual"></div>
+                <button id="bgNext" class="nav-btn" type="button" aria-label="Next backgrounds">&gt;</button>
+            </div>
+        </section>
+
+        <section class="theme-section" aria-label="Board textures">
+            <div class="section-head">
+                <h2>Board Textures</h2>
+                <p>Use texture images to style the board surface.</p>
+            </div>
+
+            <div class="carousel">
+                <button id="boardPrev" class="nav-btn" type="button" aria-label="Previous board textures">&lt;</button>
+                <div id="boardViewport" class="carousel-viewport carousel-viewport--dual"></div>
+                <button id="boardNext" class="nav-btn" type="button" aria-label="Next board textures">&gt;</button>
+            </div>
+        </section>
+
+        <section class="theme-section" aria-label="Piece skins">
+            <div class="section-head">
+                <h2>Piece Skins</h2>
+                <p>Buy and use skins. Preview follows the active piece colors.</p>
+            </div>
+
+            <div class="carousel">
+                <button id="skinPrev" class="nav-btn" type="button" aria-label="Previous piece skins">&lt;</button>
+                <div id="skinViewport" class="carousel-viewport carousel-viewport--dual"></div>
+                <button id="skinNext" class="nav-btn" type="button" aria-label="Next piece skins">&gt;</button>
+            </div>
+        </section>
+
+        <section class="theme-section" aria-label="Effects shop">
+            <div class="section-head">
+                <h2>Effects</h2>
+                <p>Buy effect charges and use them during gameplay.</p>
+            </div>
+
+            <div class="carousel">
+                <button id="fxPrev" class="nav-btn" type="button" aria-label="Previous effects">&lt;</button>
+                <div id="fxViewport" class="carousel-viewport carousel-viewport--dual"></div>
+                <button id="fxNext" class="nav-btn" type="button" aria-label="Next effects">&gt;</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="progression.js"></script>
+    <script src="economy.js"></script>
+    <script src="theme-config.js"></script>
+    <script src="themes.js"></script>
+</body>
+</html>
