@@ -16,7 +16,87 @@ const MODES = [
 const LEVEL_COUNT = 100;
 const LEVEL_UNLOCK_KEY = "gamehub_2048_unlocked_level_v2";
 const LEVEL_SELECTED_KEY = "gamehub_2048_selected_level_v2";
+const SFX_ENABLED_KEY = "gamehub_2048_sfx_enabled_v1";
+const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
 const BLOCKER_TILE = -1;
+const LEVEL_SCENE_BACKGROUNDS = Object.freeze([
+  "linear-gradient(135deg, #FFF0F5, #FFE4E1)",
+  "linear-gradient(125deg, #E6F0FA, #FDE8E0)",
+  "radial-gradient(circle at 10% 30%, #FDE2E4, #FAD2E1)",
+  "linear-gradient(112deg, #FFE9C4, #FFD6A5)",
+  "conic-gradient(from 90deg, #FEE3B5, #FFC7A2, #FFB08C)",
+  "radial-gradient(ellipse at 70% 20%, #FFDEE9, #B5FFFC)",
+  "linear-gradient(145deg, #D4F1F9, #FFE0F0, #FFCCA7)",
+  "repeating-linear-gradient(45deg, #FFF2E6 0px, #FFE0C0 30px, #FFD9B5 30px, #FFC9A5 60px)",
+  "linear-gradient(135deg, #FBC2EB, #A6C1EE, #84FAB0)",
+  "radial-gradient(circle at 30% 40%, #FFD194, #70E1F5)",
+  "conic-gradient(from 0deg, #FFC3A0, #FFAFB0, #D6A2E8)",
+  "linear-gradient(115deg, #CDEFFF, #A1B5D8, #FFC6D9)",
+  "radial-gradient(circle at 60% 30%, #F9D976, #F39F86, #B2F0E5)",
+  "repeating-radial-gradient(circle at 20% 40%, #FFDEE9, #FFD1E8 40px, #C9E4DE 80px)",
+  "linear-gradient(95deg, #FAD0C4, #FFD1FF, #C9E4DE)",
+  "conic-gradient(from 135deg, #F0F3BD, #F9B5AC, #EEB5EB, #B0E0E6)",
+  "radial-gradient(ellipse at 80% 10%, #FFB347, #FF8C42, #F3A683)",
+  "linear-gradient(160deg, #2b1b3a, #1f2b4e, #2c3e5c, #c471ed)",
+  "radial-gradient(circle at 10% 30%, #0f0c29, #302b63, #24243e, #c94b4b)",
+  "conic-gradient(from 60deg, #3a1c71, #d76d77, #ffaf7b)",
+  "linear-gradient(112deg, #0b0f1a, #1e2a3a, #2c5364, #ffb347)",
+  "radial-gradient(ellipse at 60% 50%, #ffecd2, #fcb69f, #6a11cb)",
+  "repeating-linear-gradient(60deg, #fbc2eb 0px, #a6c1ee 30px, #fbc2eb 60px, #84fab0 90px)",
+  "conic-gradient(from 200deg, #f6d365, #fda085, #f093fb, #f5576c)",
+  "linear-gradient(105deg, #0f2027, #203a43, #2c5364, #e2b0ff)",
+  "radial-gradient(circle at 90% 20%, #ff9a9e, #fecfef, #a1c4fd)",
+  "conic-gradient(from 30deg, #ff6a88, #ff99ac, #d397fc, #6e45e2)",
+  "linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb49)",
+  "repeating-conic-gradient(from 45deg, #FFB88C 0deg 30deg, #DE6262 30deg 60deg, #FFB88C 60deg 90deg)",
+  "radial-gradient(circle at 40% 50%, #f5af19, #f12711, #b721ff, #21d4fd)",
+  "linear-gradient(125deg, #ff0844, #ffb199, #00c6fb)",
+  "conic-gradient(from 0deg at 50% 50%, #f9d423, #f83600, #4facfe, #00f2fe)",
+  "repeating-linear-gradient(45deg, #FFE0F0, #FFC8DD, #B5E3FF, #C0F0E8)",
+  "radial-gradient(ellipse at 20% 30%, #ffdde1, #ee9ca7), repeating-linear-gradient(0deg, #ffdde1 0px, #c9e4de 20px)",
+  "linear-gradient(135deg, #ff9a9e, #fad0c4, #a1c4fd)",
+  "conic-gradient(from 90deg, #ffb347, #ffcc33, #4facfe, #43e97b)",
+  "radial-gradient(circle at 10% 70%, #f6d365, #fda085), repeating-linear-gradient(90deg, #a6c1ee 0px, #fbc2eb 40px)",
+  "linear-gradient(35deg, #2b5876, #4e4376, #f0a6ca, #f5b7b1)",
+  "conic-gradient(from 0deg, #FFC371, #FF5F6D, #D3CCE3, #A1FFCE)",
+  "repeating-radial-gradient(circle at 30% 40%, #FBC2EB, #FF9A9E 40px, #A6C1EE 80px, #84FAB0 120px)",
+  "linear-gradient(225deg, #16222A, #3A6072, #C471ED, #F64F59)",
+  "conic-gradient(from 70deg, #f12711, #f5af19, #b721ff, #21d4fd)",
+  "radial-gradient(circle at 70% 20%, #ffd194, #70e1f5), linear-gradient(45deg, #ff9a9e, #fad0c4)",
+  "repeating-linear-gradient(0deg, #ffb7b2, #ffd6a5, #fdfd97, #9bf6ff, #b5ead7)",
+  "conic-gradient(from 150deg, #FFB88C, #DE6262, #FFB88C, #FF9A9E, #A6C1EE)",
+  "radial-gradient(ellipse at 30% 70%, #ffe259, #ffa751), repeating-linear-gradient(45deg, #fbc2eb 0px, #a18cd1 25px)",
+  "linear-gradient(125deg, #ff0844, #ffb199, #00c6fb, #1e3c72)",
+  "conic-gradient(from 30deg, #F2994A, #F2C94C, #6A11CB, #2575FC, #F2994A)",
+  "radial-gradient(circle at 40% 50%, #f5af19, #f12711, #f5af19, #b721ff)",
+  "repeating-conic-gradient(from 30deg, #f093fb 0deg 30deg, #f5576c 30deg 60deg, #4facfe 60deg 90deg, #43e97b 90deg 120deg)"
+]);
+const LEVEL_SCENE_EFFECTS = Object.freeze({
+  31: { backgroundSize: "200% 200%", animation: "gradientShift 8s infinite" },
+  32: { backgroundSize: "300% 300%", animation: "gradientShift 10s infinite" },
+  33: { backgroundSize: "300% 300%", animation: "cosmicDrift 12s infinite alternate" },
+  34: { backgroundBlendMode: "soft-light", backgroundSize: "400% 400%", animation: "gradientShift 11s infinite" },
+  35: { backgroundSize: "250% 250%", animation: "gradientShift 9s infinite" },
+  36: { backgroundSize: "200% 200%", animation: "gradientShift 10s infinite" },
+  37: { backgroundBlendMode: "difference", backgroundSize: "300% 300%", animation: "cosmicDrift 15s infinite" },
+  38: { backgroundSize: "400% 400%", animation: "gradientShift 13s infinite" },
+  39: { backgroundSize: "300% 300%", animation: "gradientShift 16s infinite" },
+  40: { backgroundSize: "200% 200%", animation: "gradientShift 18s infinite alternate" },
+  41: { backgroundSize: "250% 250%", animation: "gradientShift 12s infinite" },
+  42: { backgroundSize: "350% 350%", animation: "gradientShift 14s infinite" },
+  43: { backgroundBlendMode: "screen", backgroundSize: "400% 400%", animation: "cosmicDrift 20s infinite" },
+  44: { backgroundSize: "300% 300%", animation: "gradientShift 11s infinite" },
+  45: { backgroundSize: "300% 300%", animation: "gradientShift 19s infinite" },
+  46: { backgroundBlendMode: "overlay", backgroundSize: "350% 350%", animation: "cosmicDrift 13s infinite" },
+  47: { backgroundSize: "500% 500%", animation: "gradientShift 15s infinite" },
+  48: { backgroundSize: "200% 200%", animation: "gradientShift 17s infinite" },
+  49: { backgroundSize: "400% 400%", animation: "gradientShift 22s infinite" },
+  50: {
+    backgroundSize: "300% 300%",
+    animation: "cosmicDrift 21s infinite, gradientShift 8s infinite",
+    boxShadow: "inset 0 0 80px rgba(255, 215, 0, 0.4)"
+  }
+});
 
 const AI_TIERS = [
   { from: 1, to: 10, name: "Clueless Player", summary: "Random moves with no strategy.", depth: [0, 0], mistake: [0.8, 0.8], speed: [1300, 1200], weights: { score: 0.3, empty: 0.2 }, lookahead: 0, branch: 1, ammoSamples: 1, noise: 1.1 },
@@ -43,6 +123,10 @@ const el = {
   themeBackBtn: document.querySelector("[data-theme-back-btn]"),
   modeBtn: document.querySelector("[data-mode-btn]"),
   settingsBtn: document.querySelector("[data-settings-btn]"),
+  settingsPanel: document.querySelector("[data-settings-panel]"),
+  settingsCloseBtn: document.querySelector("[data-settings-close-btn]"),
+  toggleSfxBtn: document.querySelector("[data-toggle-sfx-btn]"),
+  toggleMusicBtn: document.querySelector("[data-toggle-music-btn]"),
   levelBackBtn: document.querySelector("[data-level-back-btn]"),
   startLevelBtn: document.querySelector("[data-start-level-btn]"),
   levelGrid: document.querySelector("[data-level-grid]"),
@@ -96,7 +180,9 @@ const state = {
   unlockedLevel: clampLevel(loadStoredLevel(LEVEL_UNLOCK_KEY, 1)),
   selectedLevel: 1,
   activeLevel: 1,
-  soundEnabled: true,
+  sfxEnabled: loadStoredBool(SFX_ENABLED_KEY, true),
+  musicEnabled: loadStoredBool(MUSIC_ENABLED_KEY, true),
+  settingsOpen: false,
   roundActive: false,
   roundFinished: false,
   roundResult: "",
@@ -117,6 +203,10 @@ const player = createActor("player", el.ammoPlayerCurrent, el.ammoPlayerNext);
 const ai = createActor("ai", el.ammoAiCurrent, el.ammoAiNext);
 
 let audioContext = null;
+let sfxBusGain = null;
+let bgmBusGain = null;
+let bgmLoopIntervalId = null;
+let bgmStep = 0;
 let heroState = createHeroState();
 let heroIntervalId = null;
 let aiMoveTimeoutId = null;
@@ -169,11 +259,13 @@ function initialize() {
   buildThemeGrid();
   bindEvents();
   themeManager.loadTheme();
+  renderSettingsPanel();
   renderHeroBoard();
   startHeroAutoplay();
   resetRound();
   syncThemeProgress();
   renderAll();
+  applyMusicState();
   showHome();
 }
 
@@ -252,13 +344,42 @@ function bindEvents() {
     renderGameHeader();
   });
 
-  const toggleSound = () => {
-    state.soundEnabled = !state.soundEnabled;
-    renderSound();
-  };
+  el.settingsBtn.addEventListener("click", () => {
+    if (state.settingsOpen) {
+      closeSettingsPanel();
+    } else {
+      openSettingsPanel();
+    }
+  });
 
-  el.settingsBtn.addEventListener("click", toggleSound);
-  el.soundBtn.addEventListener("click", toggleSound);
+  el.settingsCloseBtn.addEventListener("click", closeSettingsPanel);
+  el.settingsPanel.addEventListener("click", (event) => {
+    if (event.target === el.settingsPanel) {
+      closeSettingsPanel();
+    }
+  });
+
+  el.toggleSfxBtn.addEventListener("click", () => {
+    state.sfxEnabled = !state.sfxEnabled;
+    saveStoredBool(SFX_ENABLED_KEY, state.sfxEnabled);
+    renderSound();
+    renderSettingsPanel();
+  });
+
+  el.toggleMusicBtn.addEventListener("click", () => {
+    state.musicEnabled = !state.musicEnabled;
+    saveStoredBool(MUSIC_ENABLED_KEY, state.musicEnabled);
+    applyMusicState();
+    renderSound();
+    renderSettingsPanel();
+  });
+
+  el.soundBtn.addEventListener("click", () => {
+    state.sfxEnabled = !state.sfxEnabled;
+    saveStoredBool(SFX_ENABLED_KEY, state.sfxEnabled);
+    renderSound();
+    renderSettingsPanel();
+  });
 
   el.levelBackBtn.addEventListener("click", showHome);
   el.themeBackBtn.addEventListener("click", showHome);
@@ -277,6 +398,7 @@ function bindEvents() {
 function showHome() {
   stopAiLoop();
   stopModeTimer();
+  closeSettingsPanel();
   el.home.classList.remove("hidden");
   el.themes.classList.add("hidden");
   el.levels.classList.add("hidden");
@@ -287,6 +409,7 @@ function showHome() {
 function showThemes() {
   stopAiLoop();
   stopModeTimer();
+  closeSettingsPanel();
   el.home.classList.add("hidden");
   el.themes.classList.remove("hidden");
   el.levels.classList.add("hidden");
@@ -297,6 +420,7 @@ function showThemes() {
 function showLevels() {
   stopAiLoop();
   stopModeTimer();
+  closeSettingsPanel();
   el.home.classList.add("hidden");
   el.themes.classList.add("hidden");
   el.levels.classList.remove("hidden");
@@ -305,6 +429,7 @@ function showLevels() {
 }
 
 function showGame() {
+  closeSettingsPanel();
   el.home.classList.add("hidden");
   el.themes.classList.add("hidden");
   el.levels.classList.add("hidden");
@@ -317,6 +442,22 @@ function showGame() {
 
 function isGameVisible() {
   return !el.game.classList.contains("hidden");
+}
+
+function openSettingsPanel() {
+  state.settingsOpen = true;
+  el.settingsPanel.classList.remove("hidden");
+  renderSettingsPanel();
+}
+
+function closeSettingsPanel() {
+  state.settingsOpen = false;
+  el.settingsPanel.classList.add("hidden");
+}
+
+function renderSettingsPanel() {
+  el.toggleSfxBtn.textContent = `SFX: ${state.sfxEnabled ? "ON" : "OFF"}`;
+  el.toggleMusicBtn.textContent = `MUSIC: ${state.musicEnabled ? "ON" : "OFF"}`;
 }
 
 function buildLevelGrid() {
@@ -520,8 +661,8 @@ function resetBoard(board) {
 function resetActor(actor) {
   actor.score = 0;
   actor.shotCount = 0;
-  actor.currentAmmo = createAmmoValue(state.modeIndex);
-  actor.nextAmmo = createAmmoValue(state.modeIndex);
+  actor.currentAmmo = createAmmoValue(state.modeIndex, actor.kind);
+  actor.nextAmmo = createAmmoValue(state.modeIndex, actor.kind);
 }
 
 function getCurrentMode() {
@@ -708,7 +849,7 @@ async function executeShot(actor, column, withAudio) {
   boardState.isAnimating = true;
 
   if (withAudio) {
-    playShotSound();
+    playShotSound(actor.currentAmmo);
   }
 
   try {
@@ -742,6 +883,9 @@ async function executeShot(actor, column, withAudio) {
 
     if (withAudio) {
       playMergeSound(mergeResult.maxMergedValue, mergeResult.comboCount);
+      if (mergeResult.comboCount > 1) {
+        playComboSound(mergeResult.comboCount);
+      }
     }
 
     triggerMergeFeedback(boardState, mergeResult.maxMergedValue);
@@ -754,7 +898,7 @@ async function executeShot(actor, column, withAudio) {
 
   actor.shotCount += 1;
   actor.currentAmmo = actor.nextAmmo;
-  actor.nextAmmo = createAmmoValue(state.modeIndex);
+  actor.nextAmmo = createAmmoValue(state.modeIndex, actor.kind);
   applyModeAfterShot(actor);
   boardState.isAnimating = false;
 
@@ -835,6 +979,7 @@ function renderAll() {
   renderGameHeader();
   renderStatus();
   renderSound();
+  renderSettingsPanel();
   renderMetaButtons();
   renderThemeScreen();
   renderLevels();
@@ -931,15 +1076,15 @@ function renderStatus() {
 }
 
 function renderSound() {
-  el.soundBtn.classList.toggle("is-muted", !state.soundEnabled);
-  el.soundBtn.textContent = state.soundEnabled ? "||" : "x";
-  el.soundBtn.setAttribute("aria-label", state.soundEnabled ? "Sound on" : "Sound off");
-  el.settingsBtn.setAttribute("aria-label", state.soundEnabled ? "Sound on" : "Sound off");
+  el.soundBtn.classList.toggle("is-muted", !state.sfxEnabled);
+  el.soundBtn.textContent = state.sfxEnabled ? "SFX" : "SFX OFF";
+  el.soundBtn.setAttribute("aria-label", state.sfxEnabled ? "Sound effects on" : "Sound effects off");
+  el.settingsBtn.setAttribute("aria-label", "Audio settings");
 }
 
 function renderMetaButtons() {
-  el.themeBtn.textContent = `Theme: ${themeManager.getTheme().name}`;
-  el.modeBtn.textContent = `Mode: ${MODES[state.modeIndex].homeLabel}`;
+  el.themeBtn.textContent = `Themes - ${themeManager.getTheme().name}`;
+  el.modeBtn.textContent = `Mode - ${MODES[state.modeIndex].label}`;
 }
 
 function updateBoardScale() {
@@ -952,13 +1097,31 @@ function updateBoardScale() {
 }
 
 function updateBoardScaleFor(board) {
-  const width = board.boardElement.getBoundingClientRect().width;
-  if (!Number.isFinite(width) || width <= 0) {
+  const boardElement = board.boardElement;
+  const hostRect = boardElement.parentElement?.getBoundingClientRect();
+  const hostWidth = hostRect?.width ?? boardElement.getBoundingClientRect().width;
+
+  if (!Number.isFinite(hostWidth) || hostWidth <= 0) {
     return;
   }
 
-  const size = Math.max(10, Math.min(28, width / (board.cols * 1.25)));
-  board.boardElement.style.setProperty("--tile-font-size-base", `${size}px`);
+  const styles = window.getComputedStyle(boardElement);
+  const gap = Number.parseFloat(styles.getPropertyValue("--board-gap")) || 6;
+  const pad = Number.parseFloat(styles.getPropertyValue("--board-pad")) || 0;
+  const widthCell = (hostWidth - pad * 2 - gap * (board.cols - 1)) / board.cols;
+
+  const viewportHeight = window.innerHeight || 800;
+  const maxBoardHeight = viewportHeight * 0.69;
+  const heightCell = (maxBoardHeight - pad * 2 - gap * (board.rows - 1)) / board.rows;
+  const cellSize = Math.max(24, Math.floor(Math.min(widthCell, heightCell)));
+
+  boardElement.style.setProperty("--board-cell-size", `${cellSize}px`);
+
+  const boardPixelWidth = cellSize * board.cols + gap * (board.cols - 1) + pad * 2;
+  boardElement.style.width = `${Math.min(hostWidth, boardPixelWidth)}px`;
+
+  const fontSize = Math.max(12, Math.min(38, cellSize * 0.45));
+  boardElement.style.setProperty("--tile-font-size-base", `${fontSize}px`);
 }
 
 function applyNearMergeHints(board) {
@@ -1110,7 +1273,7 @@ function evaluateFuture(grid, depth, profile) {
     return -900;
   }
 
-  const ammos = getSearchAmmoDistribution(state.modeIndex, profile.ammoSamples);
+  const ammos = getSearchAmmoDistribution(state.modeIndex, profile.ammoSamples, "ai");
   let expected = 0;
 
   for (const ammo of ammos) {
@@ -1286,8 +1449,8 @@ function collectMetrics(grid) {
   };
 }
 
-function getSearchAmmoDistribution(modeIndex, samples) {
-  const distribution = getAmmoDistribution(modeIndex)
+function getSearchAmmoDistribution(modeIndex, samples, actorKind = "ai") {
+  const distribution = getAmmoDistribution(modeIndex, actorKind)
     .slice()
     .sort((a, b) => b.probability - a.probability)
     .slice(0, Math.max(1, samples));
@@ -1305,15 +1468,18 @@ function getAiProfileForLevel(level) {
   const span = Math.max(1, tier.to - tier.from);
   const progress = (level - tier.from) / span;
 
-  const depth = Math.round(lerp(tier.depth[0], tier.depth[1], progress));
-  const mistakeRate = clamp(lerp(tier.mistake[0], tier.mistake[1], progress), 0, 1);
-  const speedMs = Math.round(lerp(tier.speed[0], tier.speed[1], progress));
+  const baseDepth = Math.round(lerp(tier.depth[0], tier.depth[1], progress));
+  const easedDepth = Math.max(0, baseDepth - (level <= 75 ? 1 : 0));
+  const baseMistake = lerp(tier.mistake[0], tier.mistake[1], progress);
+  const mistakeRate = clamp(baseMistake + 0.15, 0.08, 0.95);
+  const baseSpeed = Math.round(lerp(tier.speed[0], tier.speed[1], progress));
+  const speedMs = Math.round(baseSpeed * 1.22);
   const speedLabel = speedMs >= 1050 ? "Slow" : speedMs >= 700 ? "Medium" : "Fast";
   const depthDisplay = tier.depth[0] === tier.depth[1] ? String(tier.depth[0]) : `${tier.depth[0]}-${tier.depth[1]}`;
 
   return {
     ...tier,
-    depth,
+    depth: easedDepth,
     depthDisplay,
     mistakeRate,
     speedMs,
@@ -1625,8 +1791,8 @@ function syncThemeProgress() {
   }
 }
 
-function createAmmoValue(modeIndex) {
-  const distribution = getAmmoDistribution(modeIndex);
+function createAmmoValue(modeIndex, actorKind = "player") {
+  const distribution = getAmmoDistribution(modeIndex, actorKind);
   const random = Math.random();
   let cumulative = 0;
 
@@ -1640,46 +1806,89 @@ function createAmmoValue(modeIndex) {
   return distribution[distribution.length - 1].value;
 }
 
-function getAmmoDistribution(modeIndex) {
+function getAmmoDistribution(modeIndex, actorKind = "player") {
   const modeId = MODES[modeIndex]?.id ?? "classic";
+  const isPlayer = actorKind === "player";
+  const isAi = actorKind === "ai";
 
   if (modeId === "speed") {
+    if (isAi) {
+      return [
+        { value: 2, probability: 0.34 },
+        { value: 4, probability: 0.26 },
+        { value: 8, probability: 0.2 },
+        { value: 16, probability: 0.13 },
+        { value: 32, probability: 0.07 }
+      ];
+    }
+
     return [
-      { value: 2, probability: 0.3 },
+      { value: 2, probability: 0.44 },
       { value: 4, probability: 0.28 },
-      { value: 8, probability: 0.22 },
-      { value: 16, probability: 0.14 },
-      { value: 32, probability: 0.06 }
+      { value: 8, probability: 0.16 },
+      { value: 16, probability: 0.09 },
+      { value: 32, probability: 0.03 }
     ];
   }
 
   if (modeId === "puzzle") {
+    if (isAi) {
+      return [
+        { value: 2, probability: 0.56 },
+        { value: 4, probability: 0.24 },
+        { value: 8, probability: 0.14 },
+        { value: 16, probability: 0.06 }
+      ];
+    }
+
     return [
-      { value: 2, probability: 0.52 },
-      { value: 4, probability: 0.24 },
-      { value: 8, probability: 0.16 },
-      { value: 16, probability: 0.08 }
+      { value: 2, probability: 0.64 },
+      { value: 4, probability: 0.22 },
+      { value: 8, probability: 0.1 },
+      { value: 16, probability: 0.04 }
     ];
   }
 
   if (modeId === "chaos") {
+    if (isAi) {
+      return [
+        { value: 2, probability: 0.26 },
+        { value: 4, probability: 0.22 },
+        { value: 8, probability: 0.18 },
+        { value: 16, probability: 0.16 },
+        { value: 32, probability: 0.12 },
+        { value: 64, probability: 0.06 }
+      ];
+    }
+
     return [
-      { value: 2, probability: 0.22 },
+      { value: 2, probability: 0.36 },
       { value: 4, probability: 0.22 },
-      { value: 8, probability: 0.2 },
-      { value: 16, probability: 0.18 },
-      { value: 32, probability: 0.12 },
-      { value: 64, probability: 0.06 }
+      { value: 8, probability: 0.16 },
+      { value: 16, probability: 0.12 },
+      { value: 32, probability: 0.09 },
+      { value: 64, probability: 0.05 }
+    ];
+  }
+
+  if (isAi) {
+    return [
+      { value: 2, probability: 0.42 },
+      { value: 4, probability: 0.23 },
+      { value: 8, probability: 0.15 },
+      { value: 16, probability: 0.1 },
+      { value: 32, probability: 0.07 },
+      { value: 64, probability: 0.03 }
     ];
   }
 
   return [
-    { value: 2, probability: 0.4 },
+    { value: 2, probability: 0.56 },
     { value: 4, probability: 0.22 },
-    { value: 8, probability: 0.16 },
-    { value: 16, probability: 0.12 },
-    { value: 32, probability: 0.07 },
-    { value: 64, probability: 0.03 }
+    { value: 8, probability: 0.11 },
+    { value: 16, probability: 0.06 },
+    { value: 32, probability: 0.04 },
+    { value: 64, probability: 0.01 }
   ];
 }
 
@@ -1723,32 +1932,105 @@ function getVisualLevel() {
   return state.unlockedLevel;
 }
 
+function getLevelScenePreset(level) {
+  const safeLevel = clamp(Math.round(Number(level) || 1), 1, LEVEL_COUNT);
+  const sceneLevel = clamp(Math.ceil(safeLevel / 2), 1, LEVEL_SCENE_BACKGROUNDS.length);
+  const sceneEffects = LEVEL_SCENE_EFFECTS[sceneLevel] || {};
+  return {
+    sceneLevel,
+    background: LEVEL_SCENE_BACKGROUNDS[sceneLevel - 1],
+    backgroundSize: sceneEffects.backgroundSize || "",
+    backgroundBlendMode: sceneEffects.backgroundBlendMode || "",
+    animation: sceneEffects.animation || "",
+    boxShadow: sceneEffects.boxShadow || ""
+  };
+}
+
 function applyLevelVisualTheme(level) {
   const palette = getLevelPalette(level, themeManager.getTheme());
+  const rootStyle = document.documentElement.style;
+  const gameStyle = el.game.style;
 
-  document.body.style.setProperty("--bg-1", palette.bg1);
-  document.body.style.setProperty("--bg-2", palette.bg2);
-  document.body.style.setProperty("--bg-3", palette.bg3);
-  document.body.style.setProperty("--glow-1", palette.glow1);
-  document.body.style.setProperty("--glow-2", palette.glow2);
+  rootStyle.setProperty("--bg-1", palette.bg1);
+  rootStyle.setProperty("--bg-2", palette.bg2);
+  rootStyle.setProperty("--bg-3", palette.bg3);
+  rootStyle.setProperty("--glow-1", palette.glow1);
+  rootStyle.setProperty("--glow-2", palette.glow2);
+  rootStyle.setProperty("--board-field-bg", palette.boardFieldBackground);
+  rootStyle.setProperty("--board-field-size", palette.boardBackgroundSize);
+  rootStyle.setProperty("--board-field-anim", palette.boardAnimation);
+  rootStyle.setProperty("--board-slot-bg", palette.boardCellBackground);
+  rootStyle.setProperty("--board-slot-size", palette.boardBackgroundSize);
+  rootStyle.setProperty("--board-slot-anim", palette.boardAnimation);
+
+  gameStyle.background = palette.pageBackground;
+  gameStyle.backgroundSize = palette.pageBackgroundSize;
+  gameStyle.backgroundBlendMode = palette.pageBackgroundBlendMode;
+  gameStyle.animation = palette.pageAnimation;
+  gameStyle.boxShadow = palette.pageBoxShadow;
 }
 
 function getLevelPalette(level, theme) {
-  const progress = clamp((level - 1) / Math.max(1, LEVEL_COUNT - 1), 0, 1);
+  const scene = getLevelScenePreset(level);
+  const progress = clamp((scene.sceneLevel - 1) / Math.max(1, LEVEL_SCENE_BACKGROUNDS.length - 1), 0, 1);
   const palette = theme?.palette || {};
   const themeShift = Number(palette.hueShift || 0);
   const glowBoost = Number(palette.glowBoost || 1);
-  const hueA = (208 + level * 11 + themeShift) % 360;
+  const hueA = (208 + scene.sceneLevel * 11 + themeShift) % 360;
   const hueB = (hueA + 70 + progress * 90) % 360;
   const hueC = (hueA + 150 + progress * 70) % 360;
   const richness = 54 + progress * 28 + Number(palette.saturationBoost || 0) * 0.14;
   const depth = 7 + progress * 4;
+  const boardTopOverlay = (0.15 + progress * 0.09).toFixed(3);
+  const boardBottomOverlay = (0.24 + progress * 0.16).toFixed(3);
+  const slotTopOverlay = (0.22 - progress * 0.06).toFixed(3);
+  const slotBottomOverlay = (0.14 + progress * 0.1).toFixed(3);
   return {
     bg1: `hsl(${hueA} ${richness}% ${depth}%)`,
     bg2: `hsl(${hueB} ${Math.min(92, richness + 8)}% ${depth + 6}%)`,
     bg3: `hsl(${hueC} ${Math.min(94, richness + 12)}% ${depth + 12}%)`,
     glow1: `hsla(${hueA}, ${78 + progress * 18}%, ${56 + progress * 10}%, ${(0.22 + progress * 0.18) * glowBoost})`,
-    glow2: `hsla(${hueB}, ${82 + progress * 12}%, ${58 + progress * 10}%, ${(0.18 + progress * 0.16) * glowBoost})`
+    glow2: `hsla(${hueB}, ${82 + progress * 12}%, ${58 + progress * 10}%, ${(0.18 + progress * 0.16) * glowBoost})`,
+    boardFieldBackground: `linear-gradient(180deg, rgba(9, 12, 18, ${boardTopOverlay}), rgba(9, 12, 18, ${boardBottomOverlay})), ${scene.background}`,
+    boardCellBackground: `linear-gradient(180deg, rgba(255, 255, 255, ${slotTopOverlay}), rgba(6, 10, 18, ${slotBottomOverlay})), ${scene.background}`,
+    boardBackgroundSize: scene.backgroundSize || "260% 260%",
+    boardAnimation: scene.animation || "none",
+    pageBackground: scene.background,
+    pageBackgroundSize: scene.backgroundSize || "",
+    pageBackgroundBlendMode: scene.backgroundBlendMode || "",
+    pageAnimation: scene.animation || "",
+    pageBoxShadow: scene.boxShadow || ""
+  };
+}
+
+function getTileToneByValue(value) {
+  const tones = {
+    2: { h: 41, s: 40, l1: 70, l2: 62, text: "#f7f3ea" },
+    4: { h: 203, s: 42, l1: 69, l2: 61, text: "#f2f8ff" },
+    8: { h: 307, s: 50, l1: 71, l2: 64, text: "#2f2030" },
+    16: { h: 282, s: 36, l1: 76, l2: 68, text: "#2d2133" },
+    32: { h: 358, s: 55, l1: 72, l2: 65, text: "#301d1f" },
+    64: { h: 220, s: 43, l1: 73, l2: 66, text: "#242d3b" },
+    128: { h: 41, s: 42, l1: 71, l2: 63, text: "#f7f2e8" },
+    256: { h: 158, s: 47, l1: 77, l2: 69, text: "#21342d" },
+    512: { h: 203, s: 45, l1: 70, l2: 62, text: "#f2f8ff" },
+    1024: { h: 324, s: 48, l1: 74, l2: 66, text: "#2e2028" },
+    2048: { h: 75, s: 52, l1: 68, l2: 60, text: "#27301f" },
+    4096: { h: 330, s: 56, l1: 74, l2: 66, text: "#2f1f2a" },
+    8192: { h: 219, s: 36, l1: 68, l2: 60, text: "#f3f7ff" }
+  };
+
+  if (tones[value]) {
+    return tones[value];
+  }
+
+  const exp = Math.max(1, Math.log2(value));
+  return {
+    h: (200 + exp * 27) % 360,
+    s: 46,
+    l1: 72,
+    l2: 63,
+    text: "#f6fbff"
   };
 }
 
@@ -1771,20 +2053,27 @@ function applyTileVisualStyle(element, value, level) {
 
   const theme = themeManager.getTheme();
   const palette = theme.palette || {};
-  const intensity = theme.effectIntensity?.multiplier || 1;
-  const progress = clamp((level - 1) / Math.max(1, LEVEL_COUNT - 1), 0, 1);
-  const exp = Math.max(1, Math.log2(value));
-  const hueA = (level * 17 + exp * 23 + 190 + Number(palette.tileHueShift || 0)) % 360;
-  const hueB = (hueA + 32 + progress * 110) % 360;
-  const sat = 52 + progress * 34 + Number(palette.saturationBoost || 0);
-  const topLight = Math.max(42, 74 - exp * 2 + progress * 5 + intensity * 2);
-  const bottomLight = Math.max(28, 56 - exp * 1.6 + progress * 4);
-  const textColor = topLight > 64 ? "#122340" : "#f8fbff";
+  const scene = getLevelScenePreset(level);
+  const tone = getTileToneByValue(value);
+  const hueShift = Number(palette.tileHueShift || 0);
+  const saturationBoost = Number(palette.saturationBoost || 0) * 0.42;
+  const intensity = Number(theme.effectIntensity?.multiplier || 1);
+  const progress = clamp((scene.sceneLevel - 1) / Math.max(1, LEVEL_SCENE_BACKGROUNDS.length - 1), 0, 1);
+  const levelHueShift = (scene.sceneLevel - 1) * 4.7;
+  const hueA = (tone.h + hueShift + levelHueShift) % 360;
+  const hueB = (hueA + 7 + progress * 10) % 360;
+  const satA = clamp(tone.s + saturationBoost + scene.sceneLevel * 0.18, 22, 96);
+  const satB = clamp(tone.s + saturationBoost + 4 + scene.sceneLevel * 0.22, 22, 98);
+  const topLight = clamp(tone.l1 + intensity * 1.2 + (progress < 0.5 ? 2 : 1), 34, 86);
+  const bottomLight = clamp(tone.l2 + intensity * 0.9 - progress * 2.4, 24, 78);
+  const strokeLight = clamp(topLight + 12, 42, 95);
+  const shadowStrength = 0.24 + Math.min(0.26, Math.log2(Math.max(2, value)) * 0.02) + progress * 0.08;
+  const rimGlow = clamp(0.08 + progress * 0.2 + Math.log2(Math.max(2, value)) * 0.012, 0.1, 0.5);
 
-  element.style.background = `linear-gradient(135deg, hsl(${hueA} ${sat}% ${topLight}%), hsl(${hueB} ${Math.min(98, sat + 10)}% ${bottomLight}%))`;
-  element.style.color = textColor;
-  element.style.borderColor = `hsla(${hueB}, 96%, ${Math.min(92, 74 + progress * 16)}%, 0.34)`;
-  element.style.boxShadow = `0 10px 18px rgba(0, 0, 0, 0.34), inset 0 1px 0 hsla(${hueA}, 100%, 96%, ${0.18 + progress * 0.18})`;
+  element.style.background = `linear-gradient(180deg, hsl(${hueA} ${satA}% ${topLight}%), hsl(${hueB} ${satB}% ${bottomLight}%))`;
+  element.style.color = tone.text;
+  element.style.borderColor = `hsla(${hueA}, 84%, ${strokeLight}%, 0.35)`;
+  element.style.boxShadow = `0 10px 16px rgba(0, 0, 0, ${shadowStrength}), 0 0 0 1px hsla(${hueA}, 88%, 84%, ${rimGlow}), inset 0 1px 0 rgba(255, 255, 255, 0.26)`;
 }
 
 function createHeroState() {
@@ -1911,13 +2200,10 @@ function placeHeroRandomTile(grid) {
 
 function unlockAudio() {
   ensureAudioContext();
+  applyMusicState();
 }
 
 function ensureAudioContext() {
-  if (!state.soundEnabled) {
-    return null;
-  }
-
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtor) {
     return null;
@@ -1931,7 +2217,158 @@ function ensureAudioContext() {
     audioContext.resume().catch(() => undefined);
   }
 
+  setupAudioBuses(audioContext);
+  updateAudioMix();
+
   return audioContext;
+}
+
+function setupAudioBuses(ctx) {
+  if (sfxBusGain && bgmBusGain) {
+    return;
+  }
+
+  sfxBusGain = ctx.createGain();
+  bgmBusGain = ctx.createGain();
+
+  sfxBusGain.gain.value = 1;
+  bgmBusGain.gain.value = 0.16;
+
+  sfxBusGain.connect(ctx.destination);
+  bgmBusGain.connect(ctx.destination);
+}
+
+function updateAudioMix() {
+  if (!audioContext || !sfxBusGain || !bgmBusGain) {
+    return;
+  }
+
+  const now = audioContext.currentTime;
+  const sfxTarget = state.sfxEnabled ? 1.45 : 0.0001;
+  const musicTarget = state.musicEnabled ? 0.2 : 0.0001;
+
+  sfxBusGain.gain.cancelScheduledValues(now);
+  sfxBusGain.gain.setValueAtTime(Math.max(0.0001, sfxBusGain.gain.value), now);
+  sfxBusGain.gain.exponentialRampToValueAtTime(sfxTarget, now + 0.12);
+
+  bgmBusGain.gain.cancelScheduledValues(now);
+  bgmBusGain.gain.setValueAtTime(Math.max(0.0001, bgmBusGain.gain.value), now);
+  bgmBusGain.gain.exponentialRampToValueAtTime(musicTarget, now + 0.2);
+}
+
+function applyMusicState() {
+  const ctx = ensureAudioContext();
+  if (!ctx || !bgmBusGain) {
+    return;
+  }
+
+  updateAudioMix();
+
+  if (!state.musicEnabled) {
+    stopBackgroundMusicLoop();
+    return;
+  }
+
+  startBackgroundMusicLoop();
+}
+
+function startBackgroundMusicLoop() {
+  if (!audioContext || bgmLoopIntervalId) {
+    return;
+  }
+
+  const barDuration = 2.4;
+  let nextBarTime = audioContext.currentTime + 0.08;
+
+  const scheduleBar = (startTime) => {
+    const progression = [
+      [174.61, 220.0, 261.63],
+      [196.0, 246.94, 293.66],
+      [164.81, 220.0, 261.63],
+      [146.83, 196.0, 246.94]
+    ];
+    const chord = progression[bgmStep % progression.length];
+    const profile = getThemeSoundProfile();
+    const pitchMul = Number(profile.pitchMultiplier || 1);
+    const wave = profile.type === "electronic" ? "triangle" : "sine";
+
+    for (const note of chord) {
+      playBackgroundPad(startTime, note * pitchMul, wave);
+    }
+
+    playBackgroundPulse(startTime + 0.05, chord[0] * pitchMul * 0.5);
+    playBackgroundPulse(startTime + 0.65, chord[1] * pitchMul * 0.5);
+    playBackgroundPulse(startTime + 1.2, chord[2] * pitchMul * 0.5);
+    playBackgroundPulse(startTime + 1.8, chord[1] * pitchMul * 0.5);
+
+    bgmStep += 1;
+  };
+
+  scheduleBar(nextBarTime);
+
+  bgmLoopIntervalId = window.setInterval(() => {
+    if (!audioContext || !state.musicEnabled) {
+      return;
+    }
+
+    while (nextBarTime < audioContext.currentTime + 0.35) {
+      nextBarTime += barDuration;
+    }
+
+    scheduleBar(nextBarTime);
+    nextBarTime += barDuration;
+  }, 700);
+}
+
+function stopBackgroundMusicLoop() {
+  if (bgmLoopIntervalId) {
+    window.clearInterval(bgmLoopIntervalId);
+    bgmLoopIntervalId = null;
+  }
+}
+
+function playBackgroundPad(startTime, frequency, waveType) {
+  if (!audioContext || !bgmBusGain) {
+    return;
+  }
+
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  osc.type = waveType;
+  osc.frequency.setValueAtTime(frequency, startTime);
+  osc.frequency.exponentialRampToValueAtTime(frequency * 1.01, startTime + 2.05);
+
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.08, startTime + 0.22);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 2.15);
+
+  osc.connect(gain);
+  gain.connect(bgmBusGain);
+  osc.start(startTime);
+  osc.stop(startTime + 2.2);
+}
+
+function playBackgroundPulse(startTime, frequency) {
+  if (!audioContext || !bgmBusGain) {
+    return;
+  }
+
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(frequency, startTime);
+  osc.frequency.exponentialRampToValueAtTime(frequency * 0.95, startTime + 0.2);
+
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.04, startTime + 0.04);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.26);
+
+  osc.connect(gain);
+  gain.connect(bgmBusGain);
+  osc.start(startTime);
+  osc.stop(startTime + 0.28);
 }
 
 function getThemeSoundProfile() {
@@ -1944,34 +2381,37 @@ function getThemeSoundProfile() {
   };
 }
 
-function playShotSound() {
+function playShotSound(value = 2) {
+  if (!state.sfxEnabled) return;
   const ctx = ensureAudioContext();
-  if (!ctx) return;
+  if (!ctx || !sfxBusGain) return;
   const profile = getThemeSoundProfile();
   const pitch = Number(profile.pitchMultiplier || 1);
   const volume = Number(profile.volumeMultiplier || 1);
+  const valuePitch = Math.max(0.88, Math.min(1.32, 0.92 + Math.log2(Math.max(2, value)) * 0.035));
 
   const now = ctx.currentTime;
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
 
   osc.type = profile.shotWave || "triangle";
-  osc.frequency.setValueAtTime(240 * pitch, now);
-  osc.frequency.exponentialRampToValueAtTime(380 * pitch, now + 0.05);
+  osc.frequency.setValueAtTime(240 * pitch * valuePitch, now);
+  osc.frequency.exponentialRampToValueAtTime(410 * pitch * valuePitch, now + 0.05);
 
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.028 * volume, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.08 * volume, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(sfxBusGain);
   osc.start(now);
   osc.stop(now + 0.09);
 }
 
 function playLandingSound(value) {
+  if (!state.sfxEnabled) return;
   const ctx = ensureAudioContext();
-  if (!ctx) return;
+  if (!ctx || !sfxBusGain) return;
   const profile = getThemeSoundProfile();
   const pitch = Number(profile.pitchMultiplier || 1);
   const volume = Number(profile.volumeMultiplier || 1);
@@ -1986,18 +2426,19 @@ function playLandingSound(value) {
   osc.frequency.exponentialRampToValueAtTime(frequency * 0.86, now + 0.08);
 
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.05 * volume, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.11 * volume, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(sfxBusGain);
   osc.start(now);
   osc.stop(now + 0.1);
 }
 
 function playMergeSound(value, comboCount = 1) {
+  if (!state.sfxEnabled) return;
   const ctx = ensureAudioContext();
-  if (!ctx) return;
+  if (!ctx || !sfxBusGain) return;
   const profile = getThemeSoundProfile();
   const pitch = Number(profile.pitchMultiplier || 1);
   const volume = Number(profile.volumeMultiplier || 1);
@@ -2006,14 +2447,14 @@ function playMergeSound(value, comboCount = 1) {
   const shift = Math.max(0, Math.min(10, Math.log2(value) - 1));
   const root = (360 + shift * 26) * pitch;
 
-  playMergeTone(ctx, now, profile.mergeWave || "sine", root, 0.09 * volume, 0.22);
-  playMergeTone(ctx, now + 0.02, profile.mergeWave || "triangle", root * 1.5, 0.06 * volume, 0.21);
+  playMergeTone(ctx, now, profile.mergeWave || "sine", root, 0.16 * volume, 0.24);
+  playMergeTone(ctx, now + 0.02, profile.mergeWave || "triangle", root * 1.5, 0.12 * volume, 0.23);
 
   if (comboCount > 1) {
     const layers = Math.min(3, comboCount - 1);
 
     for (let i = 0; i < layers; i += 1) {
-      playMergeTone(ctx, now + 0.03 + i * 0.016, profile.mergeWave || "sine", root * (1.2 + i * 0.15), 0.045 * volume, 0.16);
+      playMergeTone(ctx, now + 0.03 + i * 0.016, profile.mergeWave || "sine", root * (1.2 + i * 0.15), 0.08 * volume, 0.18);
     }
   }
 }
@@ -2031,14 +2472,15 @@ function playMergeTone(ctx, startTime, waveType, frequency, peakGain, duration) 
   gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(sfxBusGain);
   osc.start(startTime);
   osc.stop(startTime + duration + 0.02);
 }
 
 function playBlockedSound() {
+  if (!state.sfxEnabled) return;
   const ctx = ensureAudioContext();
-  if (!ctx) return;
+  if (!ctx || !sfxBusGain) return;
   const profile = getThemeSoundProfile();
   const pitch = Number(profile.pitchMultiplier || 1);
   const volume = Number(profile.volumeMultiplier || 1);
@@ -2052,13 +2494,43 @@ function playBlockedSound() {
   osc.frequency.exponentialRampToValueAtTime(90 * pitch, now + 0.08);
 
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.028 * volume, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.095 * volume, now + 0.01);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
 
   osc.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(sfxBusGain);
   osc.start(now);
   osc.stop(now + 0.1);
+}
+
+function playComboSound(comboCount) {
+  if (!state.sfxEnabled) return;
+  const ctx = ensureAudioContext();
+  if (!ctx || !sfxBusGain) return;
+
+  const now = ctx.currentTime;
+  const steps = Math.min(4, Math.max(2, comboCount));
+  const base = 480;
+
+  for (let i = 0; i < steps; i += 1) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const start = now + i * 0.04;
+    const freq = base * (1 + i * 0.26);
+
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.08, start + 0.12);
+
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.12, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+
+    osc.connect(gain);
+    gain.connect(sfxBusGain);
+    osc.start(start);
+    osc.stop(start + 0.16);
+  }
 }
 
 function getLandingFrequency(value) {
@@ -2073,7 +2545,9 @@ function getLandingFrequency(value) {
 }
 
 function getLevelTarget(level) {
-  return 256n << BigInt(Math.max(0, level - 1));
+  const safeLevel = Math.max(1, level);
+  const tierStep = Math.floor((safeLevel - 1) / 3);
+  return 128n << BigInt(tierStep);
 }
 
 function hasReachedLevelTarget(maxTile, level) {
@@ -2106,7 +2580,7 @@ function formatTimeLeft(ms) {
 }
 
 function getPuzzleMoveLimit(level) {
-  return Math.max(8, 16 - Math.min(8, Math.floor((level - 1) / 2)));
+  return Math.max(12, 22 - Math.min(10, Math.floor((level - 1) / 2)));
 }
 
 function createPuzzleBoard(level) {
@@ -2269,6 +2743,27 @@ function loadStoredLevel(key, fallback) {
 function saveStoredLevel(key, value) {
   try {
     window.localStorage.setItem(key, String(value));
+  } catch (error) {
+    // Ignore storage write errors.
+  }
+}
+
+function loadStoredBool(key, fallback) {
+  try {
+    const stored = window.localStorage.getItem(key);
+    if (stored === null) {
+      return fallback;
+    }
+
+    return stored === "1";
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function saveStoredBool(key, value) {
+  try {
+    window.localStorage.setItem(key, value ? "1" : "0");
   } catch (error) {
     // Ignore storage write errors.
   }

@@ -15,24 +15,41 @@
           <button class="icon-btn" type="button" aria-label="Settings" data-settings-btn>&#9881;</button>
         </header>
 
-        <section class="hero" aria-label="Live board preview">
-          <div class="hero-stage">
-            <div class="hero-copy">
-              <span class="hero-kicker">Premium 2048 Duel</span>
-              <h1 class="hero-title">Beat the board before the AI beats you.</h1>
-              <p class="hero-text">One shared board, sharper modes, smarter opponents, and deeper level goals.</p>
+        <div class="settings-sheet hidden" data-settings-panel aria-label="Audio settings" aria-live="polite">
+          <div class="settings-card">
+            <div class="settings-head">
+              <strong>Audio Settings</strong>
+              <button class="icon-btn settings-close-btn" type="button" data-settings-close-btn aria-label="Close settings">x</button>
             </div>
-            <div class="hero-board" data-hero-board></div>
+            <div class="settings-actions">
+              <button class="secondary-btn settings-toggle-btn" type="button" data-toggle-sfx-btn>SFX: ON</button>
+              <button class="secondary-btn settings-toggle-btn" type="button" data-toggle-music-btn>MUSIC: ON</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="hero home-hero-product" aria-label="Live board preview">
+          <div class="home-hero-left">
+            <div class="home-cta-row">
+              <button class="play-btn home-play-btn" type="button" data-play-btn>PLAY NOW</button>
+              <button class="secondary-btn home-resume-btn" type="button" data-resume-btn>RESUME</button>
+            </div>
+          </div>
+
+          <div class="home-hero-right">
+            <div class="hero-board-wrap">
+              <div class="hero-board" data-hero-board></div>
+            </div>
           </div>
         </section>
 
-        <section class="home-actions" aria-label="Game start actions">
-          <button class="play-btn" type="button" data-play-btn>PLAY NOW</button>
-          <div class="secondary-actions">
-            <button class="secondary-btn" type="button" data-resume-btn>Resume</button>
-            <button class="secondary-btn" type="button" data-theme-btn>Themes</button>
-            <button class="secondary-btn" type="button" data-mode-btn>Modes</button>
-          </div>
+        <section class="home-labs" aria-label="Game setup actions">
+          <button class="secondary-btn home-lab-btn" type="button" data-theme-btn>Theme Lab</button>
+          <button class="secondary-btn home-lab-btn" type="button" data-mode-btn>Mode Vault</button>
+        </section>
+
+        <section class="home-footnote" aria-label="Game identity">
+          <p class="home-footnote-text">100 levels, adaptive AI, and premium theme progression.</p>
         </section>
       </section>
 
