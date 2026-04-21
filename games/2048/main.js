@@ -18,7 +18,41 @@ const LEVEL_UNLOCK_KEY = "gamehub_2048_unlocked_level_v2";
 const LEVEL_SELECTED_KEY = "gamehub_2048_selected_level_v2";
 const SFX_ENABLED_KEY = "gamehub_2048_sfx_enabled_v1";
 const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
+const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
 const BLOCKER_TILE = -1;
+const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
+const SESSION_MODIFIERS = Object.freeze([
+  {
+    id: "high-fours",
+    title: "Today: Power Starts",
+    subtitle: "Higher chance of 4+ tiles.",
+    scoreMultiplier: 1.02,
+    calm: false,
+    ammoBoost: 0.18
+  },
+  {
+    id: "fast-scoring",
+    title: "Today: Fast Scoring",
+    subtitle: "Score gains are boosted.",
+    scoreMultiplier: 1.2,
+    calm: false,
+    ammoBoost: 0.08
+  },
+  {
+    id: "calm-mode",
+    title: "Today: Calm Mode",
+    subtitle: "Slower pressure and steadier flow.",
+    scoreMultiplier: 1.06,
+    calm: true,
+    ammoBoost: 0.12
+  }
+]);
+const COMBO_CELEBRATIONS = Object.freeze([
+  { min: 2, label: "NICE" },
+  { min: 4, label: "GREAT" },
+  { min: 6, label: "AMAZING" },
+  { min: 8, label: "INSANE" }
+]);
 const LEVEL_SCENE_BACKGROUNDS = Object.freeze([
   "linear-gradient(135deg, #FFF0F5, #FFE4E1)",
   "linear-gradient(125deg, #E6F0FA, #FDE8E0)",
@@ -161,6 +195,10 @@ const el = {
   gameMode: document.querySelector("[data-game-mode]"),
   modeDetailWrap: document.querySelector("[data-mode-detail-wrap]"),
   modeDetail: document.querySelector("[data-mode-detail]"),
+  momentumLevel: document.querySelector("[data-momentum-level]"),
+  momentumFill: document.querySelector("[data-momentum-fill]"),
+  runProgressLabel: document.querySelector("[data-run-progress-label]"),
+  runProgressFill: document.querySelector("[data-run-progress-fill]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -190,13 +228,27 @@ const state = {
   timeLeftMs: 0,
   timerIntervalId: null,
   playerMovesLeft: null,
-  lastChaosEvent: ""
+  lastChaosEvent: "",
+  sessionModifier: null,
+  momentumPoints: 0,
+  momentumLevel: 1,
+  chainGoodMoves: 0,
+  chainBoostArmed: false,
+  assistCooldownTurns: 0,
+  magnetTurns: 0,
+  flashTile: null,
+  pendingRiskTileValue: null,
+  turnIndex: 0,
+  progressionMilestonesHit: new Set(),
+  nearMissTimeoutId: null,
+  nearMissCells: new Set()
 };
 
 state.selectedLevel = clampLevel(loadStoredLevel(LEVEL_SELECTED_KEY, state.unlockedLevel));
 if (state.selectedLevel > state.unlockedLevel) {
   state.selectedLevel = state.unlockedLevel;
 }
+state.sessionModifier = loadSessionModifier();
 
 const boardState = createBoardState(el.board, el.comboBanner);
 const player = createActor("player", el.ammoPlayerCurrent, el.ammoPlayerNext);
@@ -251,6 +303,373 @@ function createActor(kind, currentAmmoElement, nextAmmoElement) {
     currentAmmoElement,
     nextAmmoElement
   };
+}
+
+function getLocalDateKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function getSessionModifierById(id) {
+  return SESSION_MODIFIERS.find((modifier) => modifier.id === id) || SESSION_MODIFIERS[0];
+}
+
+function loadSessionModifier() {
+  const dateKey = getLocalDateKey();
+
+  try {
+    const raw = window.localStorage.getItem(SESSION_MODIFIER_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.date === dateKey && parsed?.id) {
+        return getSessionModifierById(parsed.id);
+      }
+    }
+  } catch (error) {
+    // Ignore parsing errors and rebuild modifier.
+  }
+
+  const index = hashString(dateKey) % SESSION_MODIFIERS.length;
+  const modifier = SESSION_MODIFIERS[index];
+
+  try {
+    window.localStorage.setItem(SESSION_MODIFIER_STORAGE_KEY, JSON.stringify({ date: dateKey, id: modifier.id }));
+  } catch (error) {
+    // Ignore storage write failures.
+  }
+
+  return modifier;
+}
+
+function getMomentumLevelFromPoints(points) {
+  if (points >= MOMENTUM_THRESHOLDS[3]) {
+    return 4;
+  }
+  if (points >= MOMENTUM_THRESHOLDS[2]) {
+    return 3;
+  }
+  if (points >= MOMENTUM_THRESHOLDS[1]) {
+    return 2;
+  }
+  return 1;
+}
+
+function clearNearMissMarks() {
+  if (state.nearMissTimeoutId) {
+    window.clearTimeout(state.nearMissTimeoutId);
+    state.nearMissTimeoutId = null;
+  }
+  state.nearMissCells = new Set();
+}
+
+function resetRunDynamicSystems() {
+  state.momentumPoints = 0;
+  state.momentumLevel = 1;
+  state.chainGoodMoves = 0;
+  state.chainBoostArmed = false;
+  state.assistCooldownTurns = 0;
+  state.magnetTurns = 0;
+  state.flashTile = null;
+  state.pendingRiskTileValue = null;
+  state.turnIndex = 0;
+  state.progressionMilestonesHit = new Set();
+  clearNearMissMarks();
+}
+
+function setMomentumPoints(nextPoints) {
+  const safePoints = clamp(Math.round(nextPoints), 0, 100);
+  const previousLevel = state.momentumLevel;
+  state.momentumPoints = safePoints;
+  state.momentumLevel = getMomentumLevelFromPoints(safePoints);
+
+  if (state.momentumLevel > previousLevel && state.roundActive && !state.roundFinished) {
+    showSystemBanner(`MOMENTUM x${state.momentumLevel}`);
+  }
+}
+
+function updateMomentumByMerge(actor, mergeResult) {
+  if (actor.kind !== "player") {
+    return;
+  }
+
+  const mergeGain = 14 + Math.min(24, mergeResult.comboCount * 4) + Math.min(16, Math.log2(Math.max(2, mergeResult.maxMergedValue)));
+  setMomentumPoints(state.momentumPoints + mergeGain);
+  state.chainGoodMoves += 1;
+
+  if (state.chainGoodMoves >= 3 && !state.chainBoostArmed) {
+    state.chainBoostArmed = true;
+    showSystemBanner("CHAIN BOOST READY");
+  }
+}
+
+function decayMomentumForStall(actor) {
+  if (actor.kind !== "player") {
+    return;
+  }
+
+  const calmMod = state.sessionModifier?.calm ? 0.7 : 1;
+  const decay = Math.round((18 + Math.max(0, state.momentumLevel - 1) * 5) * calmMod);
+  setMomentumPoints(state.momentumPoints - decay);
+  state.chainGoodMoves = 0;
+}
+
+function getComboCelebration(comboCount) {
+  let selected = COMBO_CELEBRATIONS[0];
+  for (const tier of COMBO_CELEBRATIONS) {
+    if (comboCount >= tier.min) {
+      selected = tier;
+    }
+  }
+  return selected;
+}
+
+function getDynamicPlayerShotCap(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
+  const safeTile = Math.max(2, maxTile || 2);
+  const tileStep = Math.max(0, Math.floor(Math.log2(safeTile)) - 9);
+  const levelStep = Math.max(0, Math.floor((Math.max(1, activeLevel) - 1) / 6));
+  const step = Math.max(tileStep, levelStep);
+  const cappedStep = Math.min(5, step);
+  return 64 * 2 ** cappedStep;
+}
+
+function getMergeOpportunityForColumn(grid, column, ammo) {
+  const outcome = getShotOutcome(grid, column);
+  if (outcome.type === "blocked" || outcome.row === null) {
+    return null;
+  }
+
+  const row = outcome.row;
+  const cells = [];
+  const neighbors = [
+    { row: row, col: column - 1 },
+    { row: row, col: column + 1 },
+    { row: row - 1, col: column },
+    { row: row + 1, col: column }
+  ];
+
+  for (const neighbor of neighbors) {
+    if (neighbor.row < 0 || neighbor.row >= grid.length || neighbor.col < 0 || neighbor.col >= grid[0].length) {
+      continue;
+    }
+    if (grid[neighbor.row][neighbor.col] === ammo) {
+      cells.push({ row: neighbor.row, col: neighbor.col });
+    }
+  }
+
+  if (cells.length === 0) {
+    return null;
+  }
+
+  cells.push({ row, col: column });
+  return { column, cells };
+}
+
+function getMergeOpportunityColumns(grid, ammo) {
+  const opportunities = [];
+  for (let col = 0; col < grid[0].length; col += 1) {
+    const hit = getMergeOpportunityForColumn(grid, col, ammo);
+    if (hit) {
+      opportunities.push(hit);
+    }
+  }
+  return opportunities;
+}
+
+function triggerNearMissEffect(opportunities, chosenColumn) {
+  const missed = opportunities.filter((item) => item.column !== chosenColumn);
+  if (missed.length === 0) {
+    return;
+  }
+
+  const marks = new Set();
+  for (const item of missed) {
+    for (const cell of item.cells) {
+      marks.add(`${cell.row},${cell.col}`);
+    }
+  }
+
+  if (marks.size === 0) {
+    return;
+  }
+
+  clearNearMissMarks();
+  state.nearMissCells = marks;
+  state.nearMissTimeoutId = window.setTimeout(() => {
+    state.nearMissCells = new Set();
+    state.nearMissTimeoutId = null;
+    renderBoard(boardState);
+  }, 580);
+
+  showSystemBanner("NEAR MISS");
+}
+
+function findRecoveryAssistSpawn(grid) {
+  const empties = getEmptyCoordinates(grid);
+  let best = null;
+
+  for (const empty of empties) {
+    const neighbors = [];
+    const adjacent = [
+      { row: empty.row, col: empty.col - 1 },
+      { row: empty.row, col: empty.col + 1 },
+      { row: empty.row - 1, col: empty.col },
+      { row: empty.row + 1, col: empty.col }
+    ];
+
+    for (const spot of adjacent) {
+      if (spot.row < 0 || spot.row >= grid.length || spot.col < 0 || spot.col >= grid[0].length) {
+        continue;
+      }
+
+      const value = grid[spot.row][spot.col];
+      if (value > 0 && value !== BLOCKER_TILE) {
+        neighbors.push(value);
+      }
+    }
+
+    if (neighbors.length === 0) {
+      continue;
+    }
+
+    const target = Math.max(...neighbors);
+    if (!best || target > best.value) {
+      best = { row: empty.row, col: empty.col, value: target };
+    }
+  }
+
+  return best;
+}
+
+function maybeApplyAlmostMagicRecovery(actor, mergeResult) {
+  if (actor.kind !== "player" || mergeResult.scoreGained > 0) {
+    return false;
+  }
+
+  if (state.assistCooldownTurns > 0) {
+    state.assistCooldownTurns -= 1;
+    return false;
+  }
+
+  const emptyCells = getEmptyCellCount(boardState.grid);
+  if (emptyCells > 6 || Math.random() > 0.42) {
+    return false;
+  }
+
+  const spawn = findRecoveryAssistSpawn(boardState.grid);
+  if (!spawn) {
+    return false;
+  }
+
+  boardState.grid[spawn.row][spawn.col] = spawn.value;
+  boardState.maxTile = getMaxTile(boardState.grid);
+  state.assistCooldownTurns = 3;
+  showSystemBanner("ALMOST MAGIC");
+  addTileEffectClass(boardState, spawn.row, spawn.col, "tile-spawn-pop");
+  themeEffects.applySpawnEffect(getTileElement(boardState, spawn.row, spawn.col), spawn.value);
+  return true;
+}
+
+function maybeAssignRiskTile(actor) {
+  if (actor.kind !== "player") {
+    state.pendingRiskTileValue = null;
+    return;
+  }
+
+  const cap = getDynamicPlayerShotCap(boardState.maxTile, state.activeLevel);
+  if (Math.random() > 0.08 || cap <= actor.nextAmmo || boardState.maxTile < 256) {
+    state.pendingRiskTileValue = null;
+    return;
+  }
+
+  const riskValue = Math.min(cap, actor.nextAmmo * 2);
+  if (riskValue <= actor.nextAmmo) {
+    state.pendingRiskTileValue = null;
+    return;
+  }
+
+  actor.nextAmmo = riskValue;
+  state.pendingRiskTileValue = riskValue;
+  showSystemBanner("RISK TILE READY");
+}
+
+function maybeTriggerMicroEvent(actor, mergeResult) {
+  if (actor.kind !== "player" || state.roundFinished || Math.random() > 0.09) {
+    return false;
+  }
+
+  const roll = Math.random();
+
+  if (roll < 0.34) {
+    const candidates = [];
+    for (let row = 0; row < boardState.grid.length; row += 1) {
+      for (let col = 0; col < boardState.grid[row].length; col += 1) {
+        const value = boardState.grid[row][col];
+        if (value > 0 && value < 16384 && value !== BLOCKER_TILE) {
+          candidates.push({ row, col, value });
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      const target = candidates[Math.floor(Math.random() * candidates.length)];
+      boardState.grid[target.row][target.col] = target.value * 2;
+      const bonus = Math.round(target.value * 0.6);
+      actor.score += bonus;
+      boardState.score += bonus;
+      boardState.maxTile = getMaxTile(boardState.grid);
+      updateBestScore(boardState.score);
+      showSystemBanner("LUCKY MERGE");
+      addTileEffectClass(boardState, target.row, target.col, "tile-merge-pop");
+      themeEffects.applyMergeEffect(getTileElement(boardState, target.row, target.col), boardState.grid[target.row][target.col]);
+      return true;
+    }
+  }
+
+  if (roll < 0.67) {
+    const candidates = [];
+    for (let row = 0; row < boardState.grid.length; row += 1) {
+      for (let col = 0; col < boardState.grid[row].length; col += 1) {
+        const value = boardState.grid[row][col];
+        if (value > 0 && value !== BLOCKER_TILE) {
+          candidates.push({ row, col, value });
+        }
+      }
+    }
+
+    if (candidates.length > 0) {
+      const flash = candidates[Math.floor(Math.random() * candidates.length)];
+      state.flashTile = { row: flash.row, col: flash.col, turns: 1 };
+      showSystemBanner("FLASH TILE");
+      return true;
+    }
+  }
+
+  state.magnetTurns = 1;
+  showSystemBanner("MAGNET MOVE");
+  return true;
+}
+
+function getEmptyCellCount(grid) {
+  let count = 0;
+  for (let row = 0; row < grid.length; row += 1) {
+    for (let col = 0; col < grid[row].length; col += 1) {
+      if (grid[row][col] === 0) {
+        count += 1;
+      }
+    }
+  }
+  return count;
 }
 
 function initialize() {
@@ -620,6 +1039,11 @@ function startSelectedLevel() {
   syncThemeProgress();
   renderAll();
   showGame();
+  window.setTimeout(() => {
+    if (state.roundActive && !state.roundFinished && isGameVisible()) {
+      showSystemBanner(state.sessionModifier?.title || "SESSION MODIFIER");
+    }
+  }, 180);
 }
 
 function restartLevel() {
@@ -644,6 +1068,7 @@ function resetRound() {
   resetBoard(boardState);
   resetActor(player);
   resetActor(ai);
+  resetRunDynamicSystems();
   setupModeState();
   hideGameOverPanel();
   updateBoardScale();
@@ -655,7 +1080,7 @@ function resetBoard(board) {
   board.maxTile = 0;
   board.isAnimating = false;
   clearAnimationLayer(board);
-  board.boardElement.classList.remove("is-game-over", "is-glow", "is-shaking", "is-blocked");
+  board.boardElement.classList.remove("is-game-over", "is-glow", "is-shaking", "is-blocked", "is-danger", "is-calm", "is-magnetized", "is-slowmo");
 }
 
 function resetActor(actor) {
@@ -728,17 +1153,48 @@ function stopModeTimer() {
   }
 }
 
-function applyScoreMultiplier(score) {
-  if (!isSpeedMode()) {
-    return score;
+function getRunScoreMultiplier(actor, mergeResult) {
+  let multiplier = 1;
+
+  if (isSpeedMode()) {
+    multiplier *= 1.75;
   }
 
-  return Math.round(score * 1.75);
+  if (actor.kind === "player") {
+    multiplier *= 1 + (state.momentumLevel - 1) * 0.2;
+    if (state.chainBoostArmed && mergeResult.scoreGained > 0) {
+      multiplier *= 1.34;
+    }
+    multiplier *= Number(state.sessionModifier?.scoreMultiplier || 1);
+  } else if (state.sessionModifier?.id === "fast-scoring") {
+    multiplier *= 1.08;
+  }
+
+  return multiplier;
 }
 
-function applyModeAfterShot(actor) {
+function applyScoreMultiplier(score, actor, mergeResult) {
+  if (score <= 0) {
+    return 0;
+  }
+  return Math.round(score * getRunScoreMultiplier(actor, mergeResult));
+}
+
+function applyModeAfterShot(actor, mergeResult) {
   if (isPuzzleMode() && actor.kind === "player") {
     state.playerMovesLeft = Math.max(0, (state.playerMovesLeft ?? 0) - 1);
+  }
+
+  if (actor.kind === "player") {
+    if (mergeResult.scoreGained > 0) {
+      updateMomentumByMerge(actor, mergeResult);
+    } else {
+      decayMomentumForStall(actor);
+    }
+
+    if (state.magnetTurns > 0) {
+      state.magnetTurns = Math.max(0, state.magnetTurns - 1);
+    }
   }
 
   if (isChaosMode()) {
@@ -747,7 +1203,8 @@ function applyModeAfterShot(actor) {
 }
 
 function triggerChaosEvent() {
-  if (Math.random() > 0.34) {
+  const chaosChance = state.sessionModifier?.calm ? 0.2 : 0.34;
+  if (Math.random() > chaosChance) {
     state.lastChaosEvent = "";
     return;
   }
@@ -831,11 +1288,23 @@ async function executeShot(actor, column, withAudio) {
     return "ignored";
   }
 
+  const opportunitiesBefore =
+    actor.kind === "player" ? getMergeOpportunityColumns(boardState.grid, actor.currentAmmo) : [];
   const outcome = getShotOutcome(boardState.grid, column);
   if (outcome.type === "blocked") {
     triggerBlockedFeedback(boardState);
     if (withAudio) {
       playBlockedSound();
+    }
+
+    if (actor.kind === "player" && getEmptyCellCount(boardState.grid) <= 2 && Math.random() < 0.55) {
+      const assist = findRecoveryAssistSpawn(boardState.grid);
+      if (assist) {
+        boardState.grid[assist.row][assist.col] = assist.value;
+        boardState.maxTile = getMaxTile(boardState.grid);
+        showSystemBanner("ALMOST MAGIC");
+        addTileEffectClass(boardState, assist.row, assist.col, "tile-spawn-pop");
+      }
     }
 
     if (!hasAnyValidShots(boardState.grid)) {
@@ -867,7 +1336,7 @@ async function executeShot(actor, column, withAudio) {
   }
 
   const mergeResult = resolveAdjacentMerges(boardState.grid);
-  const scoreGained = applyScoreMultiplier(mergeResult.scoreGained);
+  const scoreGained = applyScoreMultiplier(mergeResult.scoreGained, actor, mergeResult);
   actor.score += scoreGained;
   boardState.score += scoreGained;
   boardState.maxTile = getMaxTile(boardState.grid);
@@ -892,16 +1361,38 @@ async function executeShot(actor, column, withAudio) {
 
     if (mergeResult.comboCount > 1) {
       showComboBanner(actor, mergeResult.comboCount);
+      await maybePlayComboCinematic(mergeResult.comboCount);
       await wait(Math.min(150, 55 + mergeResult.comboCount * 20));
     }
+  } else if (actor.kind === "player" && opportunitiesBefore.length > 0) {
+    triggerNearMissEffect(opportunitiesBefore, column);
   }
+
+  if (actor.kind === "player" && state.chainBoostArmed && mergeResult.scoreGained > 0) {
+    state.chainBoostArmed = false;
+    showSystemBanner("CHAIN BOOST CASHED");
+  }
+
+  maybeApplyAlmostMagicRecovery(actor, mergeResult);
+  maybeTriggerMicroEvent(actor, mergeResult);
 
   actor.shotCount += 1;
   actor.currentAmmo = actor.nextAmmo;
   actor.nextAmmo = createAmmoValue(state.modeIndex, actor.kind);
-  applyModeAfterShot(actor);
+  maybeAssignRiskTile(actor);
+  applyModeAfterShot(actor, mergeResult);
+
+  if (actor.kind === "player" && state.flashTile) {
+    state.flashTile.turns -= 1;
+    if (state.flashTile.turns <= 0) {
+      state.flashTile = null;
+    }
+  }
+
+  state.turnIndex += 1;
   boardState.isAnimating = false;
 
+  checkRunProgressMilestones();
   renderAll();
 
   if (hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
@@ -928,6 +1419,7 @@ function finishRound(result) {
   }
 
   state.roundFinished = true;
+  clearNearMissMarks();
   stopAiLoop();
   stopModeTimer();
   boardState.boardElement.classList.add("is-game-over");
@@ -977,6 +1469,7 @@ function renderAll() {
   renderAmmo();
   renderScoreboard();
   renderGameHeader();
+  renderLiveMeta();
   renderStatus();
   renderSound();
   renderSettingsPanel();
@@ -987,21 +1480,32 @@ function renderAll() {
 
 function renderBoard(board) {
   const visualLevel = getVisualLevel();
+  const emptyCells = getEmptyCellCount(board.grid);
   let index = 0;
 
   for (let row = 0; row < board.rows; row += 1) {
     for (let col = 0; col < board.cols; col += 1) {
       const value = board.grid[row][col];
       const tile = board.tileElements[index];
+      const key = `${row},${col}`;
 
       tile.className = `tile ${getTileClass(value)}`;
       tile.dataset.value = String(value);
       tile.dataset.digits = String(value).length;
       tile.textContent = value === 0 ? "" : value === BLOCKER_TILE ? "X" : String(value);
+      tile.classList.toggle("tile-alive", value >= 32);
+      tile.classList.toggle("tile-pulse", value >= 512);
+      tile.classList.toggle("tile-aura", value >= 2048);
+      tile.classList.toggle("tile-flash", Boolean(state.flashTile && state.flashTile.row === row && state.flashTile.col === col));
+      tile.classList.toggle("tile-near-miss", state.nearMissCells.has(key));
       applyTileVisualStyle(tile, value, visualLevel);
       index += 1;
     }
   }
+
+  board.boardElement.classList.toggle("is-danger", emptyCells <= 5 && !state.roundFinished);
+  board.boardElement.classList.toggle("is-calm", emptyCells >= 22 && !state.roundFinished);
+  board.boardElement.classList.toggle("is-magnetized", state.magnetTurns > 0);
 
   applyNearMergeHints(board);
   board.boardElement.classList.toggle("is-game-over", state.roundFinished);
@@ -1012,6 +1516,7 @@ function renderAmmo() {
   renderAmmoTile(player.nextAmmoElement, player.nextAmmo, "Your next tile");
   renderAmmoTile(ai.currentAmmoElement, ai.currentAmmo, "AI current tile");
   renderAmmoTile(ai.nextAmmoElement, ai.nextAmmo, "AI next tile");
+  el.ammoPlayerNext.classList.toggle("is-risk-ammo", state.pendingRiskTileValue === player.nextAmmo && player.nextAmmo > player.currentAmmo);
 }
 
 function renderAmmoTile(element, value, label) {
@@ -1044,10 +1549,52 @@ function renderGameHeader() {
     detailText = `${state.playerMovesLeft ?? 0} moves`;
   } else if (isChaosMode() && state.lastChaosEvent) {
     detailText = state.lastChaosEvent;
+  } else if (state.sessionModifier?.subtitle) {
+    detailText = state.sessionModifier.subtitle;
   }
 
   el.modeDetailWrap.classList.toggle("hidden", detailText === "");
   el.modeDetail.textContent = detailText;
+}
+
+function getLevelTargetExponent(level) {
+  return Math.log2(Number(getLevelTarget(level)));
+}
+
+function getRunProgressRatio() {
+  if (!state.roundActive) {
+    return 0;
+  }
+  const currentExp = Math.log2(Math.max(1, boardState.maxTile));
+  const targetExp = getLevelTargetExponent(state.activeLevel);
+  return clamp(currentExp / targetExp, 0, 1);
+}
+
+function renderLiveMeta() {
+  const ratio = getRunProgressRatio();
+  const momentumRatio = clamp(state.momentumPoints / 100, 0, 1);
+
+  el.momentumLevel.textContent = `x${state.momentumLevel}`;
+  el.momentumFill.style.width = `${Math.round(momentumRatio * 100)}%`;
+  el.runProgressLabel.textContent = `${Math.round(ratio * 100)}%`;
+  el.runProgressFill.style.width = `${Math.round(ratio * 100)}%`;
+
+  document.documentElement.style.setProperty("--momentum-heat", String((state.momentumLevel - 1) * 0.32));
+}
+
+function checkRunProgressMilestones() {
+  if (!state.roundActive || state.roundFinished) {
+    return;
+  }
+
+  const ratio = getRunProgressRatio();
+  const milestones = [0.25, 0.5, 0.75];
+  for (const milestone of milestones) {
+    if (ratio >= milestone && !state.progressionMilestonesHit.has(milestone)) {
+      state.progressionMilestonesHit.add(milestone);
+      showSystemBanner(`${Math.round(milestone * 100)}% TO TARGET`);
+    }
+  }
 }
 
 function renderStatus() {
@@ -1068,7 +1615,9 @@ function renderStatus() {
 
   if (state.currentTurn === "player") {
     const modeText = isPuzzleMode() ? ` ${state.playerMovesLeft} moves left.` : "";
-    el.status.textContent = `Your turn. Place ${player.currentAmmo}.${modeText}`;
+    const momentumText = state.momentumLevel > 1 ? ` Momentum x${state.momentumLevel}.` : "";
+    const chainText = state.chainBoostArmed ? " Chain boost armed." : "";
+    el.status.textContent = `Your turn. Place ${player.currentAmmo}.${modeText}${momentumText}${chainText}`;
     return;
   }
 
@@ -1130,6 +1679,7 @@ function applyNearMergeHints(board) {
       const tile = getTileElement(board, row, col);
       if (tile) {
         tile.classList.remove("tile-near-merge");
+        tile.classList.remove("tile-magnetized");
       }
     }
   }
@@ -1161,6 +1711,7 @@ function markNearMerge(board, row, col) {
   const tile = getTileElement(board, row, col);
   if (tile && !tile.classList.contains("tile-empty")) {
     tile.classList.add("tile-near-merge");
+    tile.classList.toggle("tile-magnetized", state.magnetTurns > 0);
   }
 }
 
@@ -1467,13 +2018,14 @@ function getAiProfileForLevel(level) {
   const tier = AI_TIERS.find((entry) => level >= entry.from && level <= entry.to) || AI_TIERS[0];
   const span = Math.max(1, tier.to - tier.from);
   const progress = (level - tier.from) / span;
+  const calmFactor = state.sessionModifier?.calm ? 1.14 : 1;
 
   const baseDepth = Math.round(lerp(tier.depth[0], tier.depth[1], progress));
   const easedDepth = Math.max(0, baseDepth - (level <= 75 ? 1 : 0));
   const baseMistake = lerp(tier.mistake[0], tier.mistake[1], progress);
-  const mistakeRate = clamp(baseMistake + 0.15, 0.08, 0.95);
+  const mistakeRate = clamp(baseMistake + (state.sessionModifier?.calm ? 0.2 : 0.15), 0.08, 0.95);
   const baseSpeed = Math.round(lerp(tier.speed[0], tier.speed[1], progress));
-  const speedMs = Math.round(baseSpeed * 1.22);
+  const speedMs = Math.round(baseSpeed * 1.22 * calmFactor);
   const speedLabel = speedMs >= 1050 ? "Slow" : speedMs >= 700 ? "Medium" : "Fast";
   const depthDisplay = tier.depth[0] === tier.depth[1] ? String(tier.depth[0]) : `${tier.depth[0]}-${tier.depth[1]}`;
 
@@ -1508,7 +2060,7 @@ function simulateShot(grid, column, ammo) {
   }
 
   nextGrid[outcome.row][column] = ammo;
-  const merge = resolveAdjacentMerges(nextGrid);
+  const merge = resolveAdjacentMerges(nextGrid, { simulate: true });
 
   return {
     blocked: false,
@@ -1538,12 +2090,13 @@ function hasAnyValidShots(grid) {
   return false;
 }
 
-function resolveAdjacentMerges(grid) {
+function resolveAdjacentMerges(grid, { simulate = false } = {}) {
   let totalScore = 0;
   let comboCount = 0;
   let maxMergedValue = 0;
   const mergedCells = [];
   let mergedInPass = false;
+  let flashConsumed = false;
 
   do {
     mergedInPass = false;
@@ -1566,14 +2119,38 @@ function resolveAdjacentMerges(grid) {
         const downRow = row + 1;
 
         if (rightCol < grid[row].length && grid[row][rightCol] === currentValue && !mergedFlags.has(`${row},${rightCol}`)) {
-          merges.push({ keepRow: row, keepCol: col, clearRow: row, clearCol: rightCol, nextValue: currentValue * 2 });
+          const hasFlash =
+            !simulate &&
+            state.flashTile &&
+            !flashConsumed &&
+            ((state.flashTile.row === row && state.flashTile.col === col) || (state.flashTile.row === row && state.flashTile.col === rightCol));
+          merges.push({
+            keepRow: row,
+            keepCol: col,
+            clearRow: row,
+            clearCol: rightCol,
+            nextValue: currentValue * (hasFlash ? 4 : 2),
+            flashMerge: hasFlash
+          });
           mergedFlags.add(currentKey);
           mergedFlags.add(`${row},${rightCol}`);
           continue;
         }
 
         if (downRow < grid.length && grid[downRow][col] === currentValue && !mergedFlags.has(`${downRow},${col}`)) {
-          merges.push({ keepRow: row, keepCol: col, clearRow: downRow, clearCol: col, nextValue: currentValue * 2 });
+          const hasFlash =
+            !simulate &&
+            state.flashTile &&
+            !flashConsumed &&
+            ((state.flashTile.row === row && state.flashTile.col === col) || (state.flashTile.row === downRow && state.flashTile.col === col));
+          merges.push({
+            keepRow: row,
+            keepCol: col,
+            clearRow: downRow,
+            clearCol: col,
+            nextValue: currentValue * (hasFlash ? 4 : 2),
+            flashMerge: hasFlash
+          });
           mergedFlags.add(currentKey);
           mergedFlags.add(`${downRow},${col}`);
         }
@@ -1593,10 +2170,18 @@ function resolveAdjacentMerges(grid) {
       totalScore += merge.nextValue;
       maxMergedValue = Math.max(maxMergedValue, merge.nextValue);
       mergedCells.push({ row: merge.keepRow, col: merge.keepCol });
+      if (merge.flashMerge) {
+        flashConsumed = true;
+      }
     }
 
     collapseColumnsTopToBottom(grid);
   } while (mergedInPass);
+
+  if (flashConsumed && !simulate) {
+    state.flashTile = null;
+    showSystemBanner("FLASH MERGE");
+  }
 
   return { scoreGained: totalScore, comboCount, maxMergedValue, mergedCells };
 }
@@ -1736,9 +2321,24 @@ function triggerMergeFeedback(board, maxMergedValue) {
   }, Math.max(120, Math.round(220 * speed)));
 }
 
+async function maybePlayComboCinematic(comboCount) {
+  if (comboCount < 3) {
+    return;
+  }
+
+  boardState.boardElement.classList.remove("is-slowmo");
+  void boardState.boardElement.offsetWidth;
+  boardState.boardElement.classList.add("is-slowmo");
+  await wait(Math.min(170, 80 + comboCount * 12));
+  boardState.boardElement.classList.remove("is-slowmo");
+}
+
 function showComboBanner(actor, comboCount) {
-  boardState.comboElement.textContent = `${actor.kind === "player" ? "YOU" : "AI"} COMBO x${comboCount}`;
+  const celebration = getComboCelebration(comboCount);
+  boardState.comboElement.textContent = `${actor.kind === "player" ? "YOU" : "AI"} ${celebration.label} x${comboCount}`;
   boardState.comboElement.classList.toggle("is-ai", actor.kind === "ai");
+  boardState.comboElement.classList.toggle("is-big", comboCount >= 4);
+  boardState.comboElement.classList.toggle("is-huge", comboCount >= 7);
   boardState.comboElement.classList.remove("is-visible");
   void boardState.comboElement.offsetWidth;
   boardState.comboElement.classList.add("is-visible");
@@ -1806,89 +2406,107 @@ function createAmmoValue(modeIndex, actorKind = "player") {
   return distribution[distribution.length - 1].value;
 }
 
-function getAmmoDistribution(modeIndex, actorKind = "player") {
-  const modeId = MODES[modeIndex]?.id ?? "classic";
-  const isPlayer = actorKind === "player";
-  const isAi = actorKind === "ai";
+function normalizeDistribution(items) {
+  const total = items.reduce((sum, item) => sum + item.weight, 0) || 1;
+  return items.map((item) => ({
+    value: item.value,
+    probability: item.weight / total
+  }));
+}
 
-  if (modeId === "speed") {
-    if (isAi) {
-      return [
-        { value: 2, probability: 0.34 },
-        { value: 4, probability: 0.26 },
-        { value: 8, probability: 0.2 },
-        { value: 16, probability: 0.13 },
-        { value: 32, probability: 0.07 }
-      ];
+function buildAdaptivePlayerDistribution(modeId) {
+  const referenceTile = Math.max(boardState.maxTile, player.currentAmmo, player.nextAmmo, 2);
+  const cap = getDynamicPlayerShotCap(referenceTile, state.activeLevel);
+  const values = [];
+
+  for (let value = 2; value <= cap; value *= 2) {
+    values.push(value);
+  }
+
+  const highest = values[values.length - 1] || 64;
+  const maxExp = Math.log2(highest);
+  const minExp = 1;
+  let curve = referenceTile >= 512 ? 2.2 : 1.2;
+
+  if (modeId === "puzzle") {
+    curve -= 0.28;
+  } else if (modeId === "speed") {
+    curve += 0.16;
+  }
+
+  const boosted = values.map((value) => {
+    const exp = Math.log2(value);
+    const norm = (exp - minExp) / Math.max(1, maxExp - minExp);
+    let weight = 1 + Math.pow(Math.max(0, norm), curve) * (8 + Number(state.sessionModifier?.ammoBoost || 0) * 10);
+
+    if (referenceTile >= 512) {
+      weight *= 0.45 + norm * 2.1;
+      if (value <= 8) {
+        weight *= 0.32;
+      }
     }
 
+    if (modeId === "puzzle" && value <= 16) {
+      weight *= 1.18;
+    }
+
+    if (modeId === "speed" && value >= 32) {
+      weight *= 1.1;
+    }
+
+    if (state.sessionModifier?.id === "high-fours" && value >= 4) {
+      weight *= 1.22;
+    }
+
+    return { value, weight };
+  });
+
+  return normalizeDistribution(boosted);
+}
+
+function getAmmoDistribution(modeIndex, actorKind = "player") {
+  const modeId = MODES[modeIndex]?.id ?? "classic";
+  if (actorKind === "player") {
+    return buildAdaptivePlayerDistribution(modeId);
+  }
+
+  if (modeId === "speed") {
     return [
-      { value: 2, probability: 0.44 },
-      { value: 4, probability: 0.28 },
-      { value: 8, probability: 0.16 },
-      { value: 16, probability: 0.09 },
-      { value: 32, probability: 0.03 }
+      { value: 2, probability: 0.38 },
+      { value: 4, probability: 0.26 },
+      { value: 8, probability: 0.18 },
+      { value: 16, probability: 0.12 },
+      { value: 32, probability: 0.06 }
     ];
   }
 
   if (modeId === "puzzle") {
-    if (isAi) {
-      return [
-        { value: 2, probability: 0.56 },
-        { value: 4, probability: 0.24 },
-        { value: 8, probability: 0.14 },
-        { value: 16, probability: 0.06 }
-      ];
-    }
-
     return [
-      { value: 2, probability: 0.64 },
-      { value: 4, probability: 0.22 },
-      { value: 8, probability: 0.1 },
-      { value: 16, probability: 0.04 }
+      { value: 2, probability: 0.58 },
+      { value: 4, probability: 0.24 },
+      { value: 8, probability: 0.12 },
+      { value: 16, probability: 0.06 }
     ];
   }
 
   if (modeId === "chaos") {
-    if (isAi) {
-      return [
-        { value: 2, probability: 0.26 },
-        { value: 4, probability: 0.22 },
-        { value: 8, probability: 0.18 },
-        { value: 16, probability: 0.16 },
-        { value: 32, probability: 0.12 },
-        { value: 64, probability: 0.06 }
-      ];
-    }
-
     return [
-      { value: 2, probability: 0.36 },
-      { value: 4, probability: 0.22 },
-      { value: 8, probability: 0.16 },
-      { value: 16, probability: 0.12 },
-      { value: 32, probability: 0.09 },
-      { value: 64, probability: 0.05 }
-    ];
-  }
-
-  if (isAi) {
-    return [
-      { value: 2, probability: 0.42 },
+      { value: 2, probability: 0.3 },
       { value: 4, probability: 0.23 },
-      { value: 8, probability: 0.15 },
-      { value: 16, probability: 0.1 },
-      { value: 32, probability: 0.07 },
-      { value: 64, probability: 0.03 }
+      { value: 8, probability: 0.18 },
+      { value: 16, probability: 0.15 },
+      { value: 32, probability: 0.1 },
+      { value: 64, probability: 0.04 }
     ];
   }
 
   return [
-    { value: 2, probability: 0.56 },
-    { value: 4, probability: 0.22 },
-    { value: 8, probability: 0.11 },
-    { value: 16, probability: 0.06 },
-    { value: 32, probability: 0.04 },
-    { value: 64, probability: 0.01 }
+    { value: 2, probability: 0.44 },
+    { value: 4, probability: 0.23 },
+    { value: 8, probability: 0.14 },
+    { value: 16, probability: 0.1 },
+    { value: 32, probability: 0.07 },
+    { value: 64, probability: 0.02 }
   ];
 }
 
@@ -1913,7 +2531,9 @@ function getTileClass(value) {
 function getShotTravelMs() {
   const base = isSpeedMode() ? 130 : SHOT_TRAVEL_MS;
   const speed = themeManager.getTheme().animationProfile?.speed || 1;
-  return Math.max(90, Math.round(base * speed));
+  const momentumBoost = state.momentumLevel >= 3 ? 0.9 : 1;
+  const magnetBoost = state.magnetTurns > 0 ? 0.86 : 1;
+  return Math.max(84, Math.round(base * speed * momentumBoost * magnetBoost));
 }
 
 function getThemeAnimationEasing(fallback = SHOT_EASING) {
@@ -2546,8 +3166,10 @@ function getLandingFrequency(value) {
 
 function getLevelTarget(level) {
   const safeLevel = Math.max(1, level);
-  const tierStep = Math.floor((safeLevel - 1) / 3);
-  return 128n << BigInt(tierStep);
+  const levelOffset = safeLevel - 1;
+  const growthBand = Math.floor(levelOffset / 6);
+  const growthStep = BigInt(96 + growthBand * 32);
+  return 128n + BigInt(levelOffset) * growthStep;
 }
 
 function hasReachedLevelTarget(maxTile, level) {
@@ -2634,6 +3256,7 @@ function getEmptyCoordinates(grid) {
 function showSystemBanner(text) {
   boardState.comboElement.textContent = text;
   boardState.comboElement.classList.add("is-ai");
+  boardState.comboElement.classList.remove("is-big", "is-huge");
   boardState.comboElement.classList.remove("is-visible");
   void boardState.comboElement.offsetWidth;
   boardState.comboElement.classList.add("is-visible");
