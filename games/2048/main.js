@@ -19,6 +19,8 @@ const LEVEL_SELECTED_KEY = "gamehub_2048_selected_level_v2";
 const SFX_ENABLED_KEY = "gamehub_2048_sfx_enabled_v1";
 const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
 const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
+const POWER_BALANCE_STORAGE_KEY = "gamehub_2048_power_balance_v1";
+const POWER_INVENTORY_STORAGE_KEY = "gamehub_2048_power_inventory_v1";
 const BLOCKER_TILE = -1;
 const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
 const SESSION_MODIFIERS = Object.freeze([
@@ -52,6 +54,16 @@ const COMBO_CELEBRATIONS = Object.freeze([
   { min: 4, label: "GREAT" },
   { min: 6, label: "AMAZING" },
   { min: 8, label: "INSANE" }
+]);
+const POWER_UPS = Object.freeze([
+  { id: "rewind", icon: "&#8630;", name: "Time Rewind", price: 280, description: "Go back 3 moves with a slick rewind pulse.", target: "instant" },
+  { id: "breaker", icon: "&#10006;", name: "Tile Breaker", price: 180, description: "Remove one tile, except the current highest tile.", target: "tile" },
+  { id: "merge-boost", icon: "&#8649;", name: "Merge Boost", price: 220, description: "Force a selected tile to merge with its nearest match.", target: "tile" },
+  { id: "freeze-time", icon: "&#10052;", name: "Freeze Time", price: 240, description: "Freeze pressure and skip AI turns for 3 player moves.", target: "instant" },
+  { id: "wild-tile", icon: "&#10022;", name: "Wild Tile", price: 320, description: "Your next shot becomes a wild tile that fuses with any neighbor.", target: "instant" },
+  { id: "smart-shuffle", icon: "&#8635;", name: "Smart Shuffle", price: 210, description: "Rearrange the board into a safer, merge-friendly shape.", target: "instant" },
+  { id: "lock-tile", icon: "&#128274;", name: "Lock Tile", price: 200, description: "Keep one tile anchored in place for 3 turns.", target: "tile" },
+  { id: "evolve-tile", icon: "&#11014;", name: "Evolve Tile", price: 260, description: "Upgrade a selected tile one tier instantly.", target: "tile" }
 ]);
 const LEVEL_SCENE_BACKGROUNDS = Object.freeze([
   "linear-gradient(135deg, #FFF0F5, #FFE4E1)",
@@ -148,13 +160,16 @@ const AI_TIERS = [
 const el = {
   home: document.querySelector("[data-home-screen]"),
   themes: document.querySelector("[data-theme-screen]"),
+  powers: document.querySelector("[data-power-screen]"),
   levels: document.querySelector("[data-level-screen]"),
   game: document.querySelector("[data-game-screen]"),
   heroBoard: document.querySelector("[data-hero-board]"),
   playBtn: document.querySelector("[data-play-btn]"),
   resumeBtn: document.querySelector("[data-resume-btn]"),
   themeBtn: document.querySelector("[data-theme-btn]"),
+  powerBtn: document.querySelector("[data-power-btn]"),
   themeBackBtn: document.querySelector("[data-theme-back-btn]"),
+  powerBackBtn: document.querySelector("[data-power-back-btn]"),
   modeBtn: document.querySelector("[data-mode-btn]"),
   settingsBtn: document.querySelector("[data-settings-btn]"),
   settingsPanel: document.querySelector("[data-settings-panel]"),
@@ -165,10 +180,14 @@ const el = {
   startLevelBtn: document.querySelector("[data-start-level-btn]"),
   levelGrid: document.querySelector("[data-level-grid]"),
   themeGrid: document.querySelector("[data-theme-grid]"),
+  powerGrid: document.querySelector("[data-power-grid]"),
   bestScoreTheme: document.querySelector("[data-best-score-theme]"),
   themeProgressScore: document.querySelector("[data-theme-progress-score]"),
   themeProgressMaxTile: document.querySelector("[data-theme-progress-max-tile]"),
   themeProgressGames: document.querySelector("[data-theme-progress-games]"),
+  powerBalance: document.querySelector("[data-power-balance]"),
+  powerBalanceLarge: document.querySelector("[data-power-balance-large]"),
+  powerOwnedCount: document.querySelector("[data-power-owned-count]"),
   unlockedLevel: document.querySelector("[data-unlocked-level]"),
   selectedLevel: document.querySelector("[data-selected-level]"),
   selectedAiName: document.querySelector("[data-selected-ai-name]"),
@@ -195,10 +214,11 @@ const el = {
   gameMode: document.querySelector("[data-game-mode]"),
   modeDetailWrap: document.querySelector("[data-mode-detail-wrap]"),
   modeDetail: document.querySelector("[data-mode-detail]"),
-  momentumLevel: document.querySelector("[data-momentum-level]"),
-  momentumFill: document.querySelector("[data-momentum-fill]"),
-  runProgressLabel: document.querySelector("[data-run-progress-label]"),
-  runProgressFill: document.querySelector("[data-run-progress-fill]"),
+  powerDrawerBtn: document.querySelector("[data-power-drawer-btn]"),
+  powerDrawer: document.querySelector("[data-power-drawer]"),
+  powerDrawerCloseBtn: document.querySelector("[data-power-drawer-close-btn]"),
+  powerDrawerGrid: document.querySelector("[data-power-drawer-grid]"),
+  powerDrawerNote: document.querySelector("[data-power-drawer-note]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -229,12 +249,20 @@ const state = {
   timerIntervalId: null,
   playerMovesLeft: null,
   lastChaosEvent: "",
+  powerBalance: loadStoredNumber(POWER_BALANCE_STORAGE_KEY, 960),
+  powerInventory: loadStoredInventory(),
+  powerDrawerOpen: false,
+  selectedPowerId: "",
   sessionModifier: null,
   momentumPoints: 0,
   momentumLevel: 1,
   chainGoodMoves: 0,
   chainBoostArmed: false,
   assistCooldownTurns: 0,
+  freezeTurns: 0,
+  wildTileArmed: false,
+  moveHistory: [],
+  lockedTiles: [],
   magnetTurns: 0,
   flashTile: null,
   pendingRiskTileValue: null,
@@ -265,6 +293,8 @@ let aiMoveTimeoutId = null;
 let activeAiProfile = getAiProfileForLevel(state.selectedLevel);
 const levelButtons = [];
 const themeCards = [];
+const powerCards = [];
+const powerDrawerButtons = [];
 const themeManager = createThemeManager();
 const themeEffects = createThemeEffects({ getTheme: () => themeManager.getTheme() });
 
@@ -350,6 +380,55 @@ function loadSessionModifier() {
   }
 
   return modifier;
+}
+
+function loadStoredNumber(key, fallback) {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) {
+      return fallback;
+    }
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function loadStoredInventory() {
+  const defaults = Object.fromEntries(POWER_UPS.map((power) => [power.id, 0]));
+
+  try {
+    const raw = window.localStorage.getItem(POWER_INVENTORY_STORAGE_KEY);
+    if (!raw) {
+      return defaults;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return defaults;
+    }
+
+    return POWER_UPS.reduce((inventory, power) => {
+      inventory[power.id] = Math.max(0, Number(parsed[power.id] || 0));
+      return inventory;
+    }, { ...defaults });
+  } catch (error) {
+    return defaults;
+  }
+}
+
+function savePowerState() {
+  try {
+    window.localStorage.setItem(POWER_BALANCE_STORAGE_KEY, String(Math.max(0, Math.round(state.powerBalance))));
+    window.localStorage.setItem(POWER_INVENTORY_STORAGE_KEY, JSON.stringify(state.powerInventory));
+  } catch (error) {
+    // Ignore storage write failures.
+  }
+}
+
+function getPowerById(powerId) {
+  return POWER_UPS.find((power) => power.id === powerId) || null;
 }
 
 function getMomentumLevelFromPoints(points) {
@@ -676,6 +755,7 @@ function initialize() {
   buildBoard(boardState);
   buildLevelGrid();
   buildThemeGrid();
+  buildPowerGrid();
   bindEvents();
   themeManager.loadTheme();
   renderSettingsPanel();
@@ -702,6 +782,12 @@ function bindEvents() {
     }
 
     const column = Number.parseInt(cell.dataset.col || "", 10);
+    const row = Number.parseInt(cell.dataset.row || "", 10);
+    if (state.selectedPowerId && Number.isInteger(row) && Number.isInteger(column)) {
+      maybeHandlePowerTarget(row, column);
+      return;
+    }
+
     if (Number.isInteger(column)) {
       handleHumanShot(column);
     }
@@ -746,6 +832,10 @@ function bindEvents() {
 
   el.themeBtn.addEventListener("click", () => {
     showThemes();
+  });
+
+  el.powerBtn.addEventListener("click", () => {
+    showPowers();
   });
 
   el.modeBtn.addEventListener("click", () => {
@@ -802,12 +892,26 @@ function bindEvents() {
 
   el.levelBackBtn.addEventListener("click", showHome);
   el.themeBackBtn.addEventListener("click", showHome);
+  el.powerBackBtn.addEventListener("click", showHome);
   el.startLevelBtn.addEventListener("click", startSelectedLevel);
 
   el.homeBtn.addEventListener("click", showHome);
   el.overlayHomeBtn.addEventListener("click", showHome);
   el.restartBtn.addEventListener("click", restartLevel);
   el.overlayRestartBtn.addEventListener("click", restartLevel);
+  el.powerDrawerBtn.addEventListener("click", () => {
+    if (state.powerDrawerOpen) {
+      closePowerDrawer();
+    } else {
+      openPowerDrawer();
+    }
+  });
+  el.powerDrawerCloseBtn.addEventListener("click", closePowerDrawer);
+  el.powerDrawer.addEventListener("click", (event) => {
+    if (event.target === el.powerDrawer) {
+      closePowerDrawer();
+    }
+  });
 
   window.addEventListener("resize", updateBoardScale, { passive: true });
   window.addEventListener("pointerdown", unlockAudio, { passive: true });
@@ -818,8 +922,10 @@ function showHome() {
   stopAiLoop();
   stopModeTimer();
   closeSettingsPanel();
+  closePowerDrawer();
   el.home.classList.remove("hidden");
   el.themes.classList.add("hidden");
+  el.powers.classList.add("hidden");
   el.levels.classList.add("hidden");
   el.game.classList.add("hidden");
   renderAll();
@@ -829,19 +935,36 @@ function showThemes() {
   stopAiLoop();
   stopModeTimer();
   closeSettingsPanel();
+  closePowerDrawer();
   el.home.classList.add("hidden");
   el.themes.classList.remove("hidden");
+  el.powers.classList.add("hidden");
   el.levels.classList.add("hidden");
   el.game.classList.add("hidden");
   renderThemeScreen();
+}
+
+function showPowers() {
+  stopAiLoop();
+  stopModeTimer();
+  closeSettingsPanel();
+  closePowerDrawer();
+  el.home.classList.add("hidden");
+  el.themes.classList.add("hidden");
+  el.powers.classList.remove("hidden");
+  el.levels.classList.add("hidden");
+  el.game.classList.add("hidden");
+  renderPowerShop();
 }
 
 function showLevels() {
   stopAiLoop();
   stopModeTimer();
   closeSettingsPanel();
+  closePowerDrawer();
   el.home.classList.add("hidden");
   el.themes.classList.add("hidden");
+  el.powers.classList.add("hidden");
   el.levels.classList.remove("hidden");
   el.game.classList.add("hidden");
   renderLevels();
@@ -849,8 +972,10 @@ function showLevels() {
 
 function showGame() {
   closeSettingsPanel();
+  closePowerDrawer();
   el.home.classList.add("hidden");
   el.themes.classList.add("hidden");
+  el.powers.classList.add("hidden");
   el.levels.classList.add("hidden");
   el.game.classList.remove("hidden");
   if (isSpeedMode() && state.roundActive && !state.roundFinished) {
@@ -872,6 +997,23 @@ function openSettingsPanel() {
 function closeSettingsPanel() {
   state.settingsOpen = false;
   el.settingsPanel.classList.add("hidden");
+}
+
+function openPowerDrawer() {
+  state.powerDrawerOpen = true;
+  el.powerDrawer.classList.remove("hidden");
+  renderPowerDrawer();
+}
+
+function closePowerDrawer() {
+  state.powerDrawerOpen = false;
+  state.selectedPowerId = "";
+  if (el.powerDrawer) {
+    el.powerDrawer.classList.add("hidden");
+  }
+  if (el.powerDrawerNote) {
+    el.powerDrawerNote.textContent = "Tap a power-up to use it. Some require selecting a tile.";
+  }
 }
 
 function renderSettingsPanel() {
@@ -959,6 +1101,463 @@ function buildThemeGrid() {
   }
 }
 
+function buildPowerGrid() {
+  el.powerGrid.innerHTML = "";
+  powerCards.length = 0;
+
+  for (const power of POWER_UPS) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "power-card";
+    card.dataset.powerId = power.id;
+    card.innerHTML = `
+      <div class="power-card-head">
+        <span class="power-card-icon">${power.icon}</span>
+        <div class="power-card-titles">
+          <strong class="power-card-title">${power.name}</strong>
+          <span class="power-card-price">${power.price} cores</span>
+        </div>
+      </div>
+      <p class="power-card-copy">${power.description}</p>
+      <div class="power-card-footer">
+        <span class="power-card-owned" data-power-owned>Owned 0</span>
+        <span class="power-card-buy">Buy</span>
+      </div>
+    `;
+
+    card.addEventListener("click", () => {
+      buyPowerUp(power.id);
+    });
+
+    el.powerGrid.append(card);
+    powerCards.push(card);
+  }
+}
+
+function renderPowerShop() {
+  const ownedCount = POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
+
+  el.powerBalance.textContent = state.powerBalance.toLocaleString();
+  el.powerBalanceLarge.textContent = state.powerBalance.toLocaleString();
+  el.powerOwnedCount.textContent = String(ownedCount);
+
+  for (const card of powerCards) {
+    const power = getPowerById(card.dataset.powerId || "");
+    if (!power) {
+      continue;
+    }
+
+    const owned = Number(state.powerInventory[power.id] || 0);
+    const affordable = state.powerBalance >= power.price;
+    const ownedEl = card.querySelector("[data-power-owned]");
+
+    card.classList.toggle("is-disabled", !affordable);
+    if (ownedEl) {
+      ownedEl.textContent = `Owned ${owned}`;
+    }
+  }
+}
+
+function buyPowerUp(powerId) {
+  const power = getPowerById(powerId);
+  if (!power) {
+    return false;
+  }
+
+  if (state.powerBalance < power.price) {
+    showSystemBanner("NOT ENOUGH CORES");
+    return false;
+  }
+
+  state.powerBalance -= power.price;
+  state.powerInventory[power.id] = Number(state.powerInventory[power.id] || 0) + 1;
+  savePowerState();
+  renderPowerShop();
+  renderPowerDrawer();
+  showSystemBanner(`${power.name.toUpperCase()} BOUGHT`);
+  return true;
+}
+
+function renderPowerDrawer() {
+  if (!el.powerDrawerGrid) {
+    return;
+  }
+
+  el.powerDrawerGrid.innerHTML = "";
+  powerDrawerButtons.length = 0;
+
+  if (el.powerDrawerNote) {
+    el.powerDrawerNote.textContent = state.selectedPowerId
+      ? `${getPowerById(state.selectedPowerId)?.name || "Power-Up"} armed. Tap a tile on the board.`
+      : "Tap a power-up to use it. Some require selecting a tile.";
+  }
+
+  for (const power of POWER_UPS) {
+    const count = Number(state.powerInventory[power.id] || 0);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "power-drawer-btn";
+    button.dataset.powerId = power.id;
+    button.disabled = count <= 0 || !state.roundActive || state.roundFinished;
+    button.innerHTML = `
+      <span class="power-drawer-icon">${power.icon}</span>
+      <span class="power-drawer-name">${power.name}</span>
+      <span class="power-drawer-count">${count}</span>
+    `;
+    button.classList.toggle("is-selected", state.selectedPowerId === power.id);
+    button.addEventListener("click", () => {
+      armOrUsePowerUp(power.id);
+    });
+    el.powerDrawerGrid.append(button);
+    powerDrawerButtons.push(button);
+  }
+}
+
+function armOrUsePowerUp(powerId) {
+  const power = getPowerById(powerId);
+  if (!power || !state.roundActive || state.roundFinished) {
+    return false;
+  }
+
+  const owned = Number(state.powerInventory[power.id] || 0);
+  if (owned <= 0) {
+    showSystemBanner("POWER-UP EMPTY");
+    return false;
+  }
+
+  if (power.target === "instant") {
+    state.selectedPowerId = "";
+    const didUse = useInstantPowerUp(power.id);
+    renderPowerDrawer();
+    return didUse;
+  }
+
+  state.selectedPowerId = state.selectedPowerId === power.id ? "" : power.id;
+  renderPowerDrawer();
+  renderStatus();
+  return true;
+}
+
+function consumePowerUp(powerId) {
+  const owned = Number(state.powerInventory[powerId] || 0);
+  if (owned <= 0) {
+    return false;
+  }
+  state.powerInventory[powerId] = owned - 1;
+  savePowerState();
+  renderPowerShop();
+  return true;
+}
+
+function snapshotActor(actor) {
+  return {
+    currentAmmo: actor.currentAmmo,
+    nextAmmo: actor.nextAmmo,
+    score: actor.score,
+    shotCount: actor.shotCount
+  };
+}
+
+function restoreActor(actor, snapshot) {
+  actor.currentAmmo = snapshot.currentAmmo;
+  actor.nextAmmo = snapshot.nextAmmo;
+  actor.score = snapshot.score;
+  actor.shotCount = snapshot.shotCount;
+}
+
+function storeGameSnapshot() {
+  const snapshot = {
+    grid: cloneGrid(boardState.grid),
+    boardScore: boardState.score,
+    boardMaxTile: boardState.maxTile,
+    player: snapshotActor(player),
+    ai: snapshotActor(ai),
+    state: {
+      activeLevel: state.activeLevel,
+      selectedLevel: state.selectedLevel,
+      currentTurn: state.currentTurn,
+      roundActive: state.roundActive,
+      roundFinished: state.roundFinished,
+      roundResult: state.roundResult,
+      timeLeftMs: state.timeLeftMs,
+      playerMovesLeft: state.playerMovesLeft,
+      lastChaosEvent: state.lastChaosEvent,
+      momentumPoints: state.momentumPoints,
+      momentumLevel: state.momentumLevel,
+      chainGoodMoves: state.chainGoodMoves,
+      chainBoostArmed: state.chainBoostArmed,
+      assistCooldownTurns: state.assistCooldownTurns,
+      freezeTurns: state.freezeTurns,
+      wildTileArmed: state.wildTileArmed,
+      magnetTurns: state.magnetTurns,
+      flashTile: state.flashTile ? { ...state.flashTile } : null,
+      pendingRiskTileValue: state.pendingRiskTileValue,
+      turnIndex: state.turnIndex,
+      progressionMilestonesHit: Array.from(state.progressionMilestonesHit),
+      lockedTiles: state.lockedTiles.map((tile) => ({ ...tile }))
+    }
+  };
+
+  state.moveHistory.push(snapshot);
+  if (state.moveHistory.length > 14) {
+    state.moveHistory.shift();
+  }
+}
+
+function restoreSnapshot(snapshot) {
+  if (!snapshot) {
+    return false;
+  }
+
+  boardState.grid = cloneGrid(snapshot.grid);
+  boardState.score = snapshot.boardScore;
+  boardState.maxTile = snapshot.boardMaxTile;
+  restoreActor(player, snapshot.player);
+  restoreActor(ai, snapshot.ai);
+
+  state.activeLevel = snapshot.state.activeLevel;
+  state.selectedLevel = snapshot.state.selectedLevel;
+  state.currentTurn = snapshot.state.currentTurn;
+  state.roundActive = snapshot.state.roundActive;
+  state.roundFinished = snapshot.state.roundFinished;
+  state.roundResult = snapshot.state.roundResult;
+  state.timeLeftMs = snapshot.state.timeLeftMs;
+  state.playerMovesLeft = snapshot.state.playerMovesLeft;
+  state.lastChaosEvent = snapshot.state.lastChaosEvent;
+  state.momentumPoints = snapshot.state.momentumPoints;
+  state.momentumLevel = snapshot.state.momentumLevel;
+  state.chainGoodMoves = snapshot.state.chainGoodMoves;
+  state.chainBoostArmed = snapshot.state.chainBoostArmed;
+  state.assistCooldownTurns = snapshot.state.assistCooldownTurns;
+  state.freezeTurns = snapshot.state.freezeTurns;
+  state.wildTileArmed = snapshot.state.wildTileArmed;
+  state.magnetTurns = snapshot.state.magnetTurns;
+  state.flashTile = snapshot.state.flashTile ? { ...snapshot.state.flashTile } : null;
+  state.pendingRiskTileValue = snapshot.state.pendingRiskTileValue;
+  state.turnIndex = snapshot.state.turnIndex;
+  state.progressionMilestonesHit = new Set(snapshot.state.progressionMilestonesHit);
+  state.lockedTiles = snapshot.state.lockedTiles.map((tile) => ({ ...tile }));
+  state.selectedPowerId = "";
+  clearNearMissMarks();
+  hideGameOverPanel();
+  stopAiLoop();
+  renderAll();
+  if (state.currentTurn === "ai" && !state.roundFinished) {
+    scheduleAiTurn(true);
+  }
+  return true;
+}
+
+function useInstantPowerUp(powerId) {
+  if (powerId === "rewind") {
+    if (state.moveHistory.length < 2) {
+      showSystemBanner("NO REWIND READY");
+      return false;
+    }
+
+    const targetIndex = Math.max(0, state.moveHistory.length - 4);
+    const snapshot = state.moveHistory[targetIndex];
+    if (!consumePowerUp(powerId)) {
+      return false;
+    }
+    state.moveHistory = state.moveHistory.slice(0, targetIndex + 1);
+    showSystemBanner("TIME REWIND");
+    return restoreSnapshot(snapshot);
+  }
+
+  if (!consumePowerUp(powerId)) {
+    return false;
+  }
+
+  if (powerId === "freeze-time") {
+    state.freezeTurns = Math.max(state.freezeTurns, 3);
+    showSystemBanner("TIME FROZEN");
+  } else if (powerId === "wild-tile") {
+    state.wildTileArmed = true;
+    showSystemBanner("WILD SHOT READY");
+  } else if (powerId === "smart-shuffle") {
+    smartShuffleBoard();
+    showSystemBanner("SMART SHUFFLE");
+  } else {
+    return false;
+  }
+
+  storeGameSnapshot();
+  renderAll();
+  renderPowerDrawer();
+  return true;
+}
+
+function getSelectedCellValue(row, col) {
+  if (row < 0 || row >= boardState.grid.length || col < 0 || col >= boardState.grid[0].length) {
+    return 0;
+  }
+  return boardState.grid[row][col];
+}
+
+function getWildPlacementValue(row, col, fallbackValue) {
+  let best = 0;
+  const neighbors = [
+    { row, col: col - 1 },
+    { row, col: col + 1 },
+    { row: row - 1, col },
+    { row: row + 1, col }
+  ];
+
+  for (const neighbor of neighbors) {
+    const value = getSelectedCellValue(neighbor.row, neighbor.col);
+    if (value > best && value !== BLOCKER_TILE) {
+      best = value;
+    }
+  }
+
+  return best > 0 ? best : fallbackValue;
+}
+
+function removeLockedTile(row, col) {
+  state.lockedTiles = state.lockedTiles.filter((tile) => !(tile.row === row && tile.col === col));
+}
+
+function useTargetedPowerUp(powerId, row, col) {
+  const value = getSelectedCellValue(row, col);
+  const maxTile = getMaxTile(boardState.grid);
+
+  if (value <= 0 || value === BLOCKER_TILE) {
+    showSystemBanner("SELECT A TILE");
+    return false;
+  }
+
+  if (!consumePowerUp(powerId)) {
+    return false;
+  }
+
+  let didApply = false;
+
+  if (powerId === "breaker") {
+    if (value >= maxTile) {
+      state.powerInventory[powerId] += 1;
+      savePowerState();
+      showSystemBanner("HIGHEST TILE SAFE");
+      return false;
+    }
+
+    boardState.grid[row][col] = 0;
+    removeLockedTile(row, col);
+    collapseColumnsTopToBottom(boardState.grid);
+    didApply = true;
+    showSystemBanner("TILE BROKEN");
+  } else if (powerId === "evolve-tile") {
+    boardState.grid[row][col] = value * 2;
+    boardState.score += value * 2;
+    updateBestScore(boardState.score);
+    didApply = true;
+    showSystemBanner("TILE EVOLVED");
+  } else if (powerId === "lock-tile") {
+    removeLockedTile(row, col);
+    state.lockedTiles.push({ row, col, turns: 3 });
+    didApply = true;
+    showSystemBanner("TILE LOCKED");
+  } else if (powerId === "merge-boost") {
+    const match = findNearestMatchingTile(row, col, value);
+    if (!match) {
+      state.powerInventory[powerId] += 1;
+      savePowerState();
+      showSystemBanner("NO MATCH FOUND");
+      return false;
+    }
+
+    boardState.grid[row][col] = value * 2;
+    boardState.grid[match.row][match.col] = 0;
+    removeLockedTile(match.row, match.col);
+    collapseColumnsTopToBottom(boardState.grid);
+    boardState.score += value * 2;
+    updateBestScore(boardState.score);
+    didApply = true;
+    showSystemBanner("MERGE BOOST");
+  }
+
+  if (!didApply) {
+    state.powerInventory[powerId] += 1;
+    savePowerState();
+    return false;
+  }
+
+  boardState.maxTile = getMaxTile(boardState.grid);
+  state.selectedPowerId = "";
+  storeGameSnapshot();
+  renderAll();
+  renderPowerDrawer();
+  return true;
+}
+
+function maybeHandlePowerTarget(row, col) {
+  if (!state.selectedPowerId) {
+    return false;
+  }
+
+  return useTargetedPowerUp(state.selectedPowerId, row, col);
+}
+
+function findNearestMatchingTile(sourceRow, sourceCol, value) {
+  let best = null;
+
+  for (let row = 0; row < boardState.grid.length; row += 1) {
+    for (let col = 0; col < boardState.grid[row].length; col += 1) {
+      if (row === sourceRow && col === sourceCol) {
+        continue;
+      }
+      if (boardState.grid[row][col] !== value) {
+        continue;
+      }
+
+      const distance = Math.abs(sourceRow - row) + Math.abs(sourceCol - col);
+      if (!best || distance < best.distance) {
+        best = { row, col, distance };
+      }
+    }
+  }
+
+  return best;
+}
+
+function smartShuffleBoard() {
+  const original = cloneGrid(boardState.grid);
+  let bestGrid = cloneGrid(boardState.grid);
+  let bestScore = countAdjacentEqualPairs(bestGrid);
+
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const trial = cloneGrid(original);
+    shuffleBoardTiles(trial);
+    const adjacency = countAdjacentEqualPairs(trial);
+    if (adjacency >= bestScore) {
+      bestScore = adjacency;
+      bestGrid = trial;
+    }
+  }
+
+  boardState.grid = bestGrid;
+  boardState.maxTile = getMaxTile(boardState.grid);
+}
+
+function countAdjacentEqualPairs(grid) {
+  let score = 0;
+  for (let row = 0; row < grid.length; row += 1) {
+    for (let col = 0; col < grid[row].length; col += 1) {
+      const value = grid[row][col];
+      if (value <= 0 || value === BLOCKER_TILE) {
+        continue;
+      }
+      if (col + 1 < grid[row].length && grid[row][col + 1] === value) {
+        score += 1;
+      }
+      if (row + 1 < grid.length && grid[row + 1][col] === value) {
+        score += 1;
+      }
+    }
+  }
+  return score;
+}
+
 function renderThemeScreen() {
   const activeTheme = themeManager.getTheme();
   const unlocked = new Set(themeManager.getUnlockedThemeIds());
@@ -1022,6 +1621,17 @@ function renderLevels() {
   renderScoreboard();
 }
 
+function getRunPayout(result) {
+  const base = 28 + state.activeLevel * 6;
+  const scorePart = Math.min(220, Math.floor(boardState.score / 180));
+  const resultBonus =
+    result === "player-win" ? 120 :
+    result === "ai-win" ? 42 :
+    result === "timeout" ? 34 :
+    26;
+  return base + scorePart + resultBonus;
+}
+
 function startSelectedLevel() {
   state.activeLevel = state.selectedLevel;
   activeAiProfile = getAiProfileForLevel(state.activeLevel);
@@ -1065,6 +1675,7 @@ function restartLevel() {
 function resetRound() {
   stopAiLoop();
   stopModeTimer();
+  closePowerDrawer();
   resetBoard(boardState);
   resetActor(player);
   resetActor(ai);
@@ -1072,6 +1683,8 @@ function resetRound() {
   setupModeState();
   hideGameOverPanel();
   updateBoardScale();
+  state.moveHistory = [];
+  storeGameSnapshot();
 }
 
 function resetBoard(board) {
@@ -1195,6 +1808,14 @@ function applyModeAfterShot(actor, mergeResult) {
     if (state.magnetTurns > 0) {
       state.magnetTurns = Math.max(0, state.magnetTurns - 1);
     }
+
+    if (state.freezeTurns > 0) {
+      state.freezeTurns = Math.max(0, state.freezeTurns - 1);
+    }
+
+    state.lockedTiles = state.lockedTiles
+      .map((tile) => ({ ...tile, turns: tile.turns - 1 }))
+      .filter((tile) => tile.turns > 0 && getSelectedCellValue(tile.row, tile.col) > 0);
   }
 
   if (isChaosMode()) {
@@ -1317,22 +1938,29 @@ async function executeShot(actor, column, withAudio) {
 
   boardState.isAnimating = true;
 
+  const isWildShot = actor.kind === "player" && state.wildTileArmed;
+  const shotDisplayValue = isWildShot ? Math.max(64, actor.currentAmmo) : actor.currentAmmo;
+
   if (withAudio) {
-    playShotSound(actor.currentAmmo);
+    playShotSound(shotDisplayValue);
   }
 
   try {
-    await animateShot(boardState, column, actor.currentAmmo, outcome.row);
+    await animateShot(boardState, column, shotDisplayValue, outcome.row);
   } catch (error) {
     clearAnimationLayer(boardState);
   }
 
-  boardState.grid[outcome.row][column] = actor.currentAmmo;
+  const placedValue = isWildShot ? getWildPlacementValue(outcome.row, column, actor.currentAmmo) : actor.currentAmmo;
+  boardState.grid[outcome.row][column] = placedValue;
+  if (isWildShot) {
+    state.wildTileArmed = false;
+  }
   addTileEffectClass(boardState, outcome.row, column, "tile-spawn-pop");
-  themeEffects.applySpawnEffect(getTileElement(boardState, outcome.row, column), actor.currentAmmo);
+  themeEffects.applySpawnEffect(getTileElement(boardState, outcome.row, column), placedValue);
 
   if (withAudio) {
-    playLandingSound(actor.currentAmmo);
+    playLandingSound(placedValue);
   }
 
   const mergeResult = resolveAdjacentMerges(boardState.grid);
@@ -1393,6 +2021,7 @@ async function executeShot(actor, column, withAudio) {
   boardState.isAnimating = false;
 
   checkRunProgressMilestones();
+  storeGameSnapshot();
   renderAll();
 
   if (hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
@@ -1448,8 +2077,14 @@ function finishRound(result) {
     showGameOverPanel("Level Failed", "Board Locked", `No more valid shots were left before anyone reached ${targetText}.`);
   }
 
+  const payout = getRunPayout(result);
+  state.powerBalance += payout;
+  savePowerState();
   syncThemeProgress();
   renderAll();
+  window.setTimeout(() => {
+    showSystemBanner(`+${payout} CORES`);
+  }, 120);
 }
 
 function showGameOverPanel(kicker, title, copy) {
@@ -1469,12 +2104,15 @@ function renderAll() {
   renderAmmo();
   renderScoreboard();
   renderGameHeader();
-  renderLiveMeta();
   renderStatus();
   renderSound();
   renderSettingsPanel();
   renderMetaButtons();
   renderThemeScreen();
+  renderPowerShop();
+  if (state.powerDrawerOpen) {
+    renderPowerDrawer();
+  }
   renderLevels();
 }
 
@@ -1497,6 +2135,7 @@ function renderBoard(board) {
       tile.classList.toggle("tile-pulse", value >= 512);
       tile.classList.toggle("tile-aura", value >= 2048);
       tile.classList.toggle("tile-flash", Boolean(state.flashTile && state.flashTile.row === row && state.flashTile.col === col));
+      tile.classList.toggle("tile-locked", state.lockedTiles.some((locked) => locked.row === row && locked.col === col));
       tile.classList.toggle("tile-near-miss", state.nearMissCells.has(key));
       applyTileVisualStyle(tile, value, visualLevel);
       index += 1;
@@ -1521,12 +2160,21 @@ function renderAmmo() {
 
 function renderAmmoTile(element, value, label) {
   const baseClass = element.classList.contains("shot-tile") ? "shot-tile" : "shot-next";
-  element.className = `${baseClass} tile ${getTileClass(value)}`;
-  element.dataset.value = String(value);
-  element.dataset.digits = String(value).length;
-  element.textContent = String(value);
-  element.setAttribute("aria-label", `${label}: ${value}`);
-  applyTileVisualStyle(element, value, getVisualLevel());
+  const isWild = element === player.currentAmmoElement && state.wildTileArmed;
+  element.className = `${baseClass} tile ${isWild ? "tile-wild" : getTileClass(value)}`;
+  element.dataset.value = isWild ? "wild" : String(value);
+  element.dataset.digits = isWild ? "1" : String(value).length;
+  element.textContent = isWild ? "W" : String(value);
+  element.setAttribute("aria-label", `${label}: ${isWild ? "wild" : value}`);
+
+  if (isWild) {
+    element.style.background = "linear-gradient(180deg, #fff4ba, #ffb96d)";
+    element.style.color = "#3a2202";
+    element.style.borderColor = "rgba(255,255,255,0.72)";
+    element.style.boxShadow = "0 0 0 1px rgba(255,236,163,0.9), 0 0 16px rgba(255,193,105,0.62), inset 0 1px 0 rgba(255,255,255,0.34)";
+  } else {
+    applyTileVisualStyle(element, value, getVisualLevel());
+  }
 }
 
 function renderScoreboard() {
@@ -1617,7 +2265,8 @@ function renderStatus() {
     const modeText = isPuzzleMode() ? ` ${state.playerMovesLeft} moves left.` : "";
     const momentumText = state.momentumLevel > 1 ? ` Momentum x${state.momentumLevel}.` : "";
     const chainText = state.chainBoostArmed ? " Chain boost armed." : "";
-    el.status.textContent = `Your turn. Place ${player.currentAmmo}.${modeText}${momentumText}${chainText}`;
+    const powerText = state.selectedPowerId ? ` ${getPowerById(state.selectedPowerId)?.name || "Power-Up"} armed.` : "";
+    el.status.textContent = `Your turn. Place ${state.wildTileArmed ? "Wild" : player.currentAmmo}.${modeText}${momentumText}${chainText}${powerText}`;
     return;
   }
 
@@ -1632,8 +2281,9 @@ function renderSound() {
 }
 
 function renderMetaButtons() {
-  el.themeBtn.textContent = `Themes - ${themeManager.getTheme().name}`;
-  el.modeBtn.textContent = `Mode - ${MODES[state.modeIndex].label}`;
+  el.themeBtn.innerHTML = `&#10024; ${themeManager.getTheme().name}`;
+  el.modeBtn.innerHTML = `&#9866; ${MODES[state.modeIndex].label}`;
+  el.powerBtn.innerHTML = `&#9889; Power-Ups`;
 }
 
 function updateBoardScale() {
@@ -1740,6 +2390,13 @@ function stopAiLoop() {
 
 async function runAiTurn() {
   if (!state.roundActive || state.roundFinished || isSoloMode() || state.currentTurn !== "ai" || boardState.isAnimating || !isGameVisible()) {
+    return;
+  }
+
+  if (state.freezeTurns > 0) {
+    state.currentTurn = "player";
+    showSystemBanner("TIME FROZEN");
+    renderStatus();
     return;
   }
 
@@ -2189,15 +2846,26 @@ function resolveAdjacentMerges(grid, { simulate = false } = {}) {
 function collapseColumnsTopToBottom(grid) {
   for (let col = 0; col < grid[0].length; col += 1) {
     const values = [];
+    const lockedRows = new Map();
 
     for (let row = 0; row < grid.length; row += 1) {
+      const locked = state.lockedTiles.find((tile) => tile.row === row && tile.col === col);
+      if (locked && grid[row][col] > 0) {
+        lockedRows.set(row, grid[row][col]);
+        continue;
+      }
+
       if (grid[row][col] !== 0) {
         values.push(grid[row][col]);
       }
     }
 
     for (let row = 0; row < grid.length; row += 1) {
-      grid[row][col] = values[row] ?? 0;
+      if (lockedRows.has(row)) {
+        grid[row][col] = lockedRows.get(row) ?? 0;
+      } else {
+        grid[row][col] = values.shift() ?? 0;
+      }
     }
   }
 }

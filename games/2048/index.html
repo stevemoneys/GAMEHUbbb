@@ -31,8 +31,8 @@
         <section class="hero home-hero-product" aria-label="Live board preview">
           <div class="home-hero-left">
             <div class="home-cta-row">
-              <button class="play-btn home-play-btn" type="button" data-play-btn>PLAY NOW</button>
-              <button class="secondary-btn home-resume-btn" type="button" data-resume-btn>RESUME</button>
+              <button class="play-btn home-play-btn" type="button" data-play-btn>&#9654; Play</button>
+              <button class="secondary-btn home-resume-btn" type="button" data-resume-btn>&#8635; Resume</button>
             </div>
           </div>
 
@@ -44,8 +44,9 @@
         </section>
 
         <section class="home-labs" aria-label="Game setup actions">
-          <button class="secondary-btn home-lab-btn" type="button" data-theme-btn>Theme Lab</button>
-          <button class="secondary-btn home-lab-btn" type="button" data-mode-btn>Mode Vault</button>
+          <button class="secondary-btn home-lab-btn" type="button" data-theme-btn>&#10024; Themes</button>
+          <button class="secondary-btn home-lab-btn" type="button" data-mode-btn>&#9866; Modes</button>
+          <button class="secondary-btn home-lab-btn home-power-btn" type="button" data-power-btn>&#9889; Power-Ups</button>
         </section>
 
         <section class="home-footnote" aria-label="Game identity">
@@ -70,6 +71,25 @@
         </section>
 
         <section class="theme-grid" data-theme-grid aria-label="Theme cards"></section>
+      </section>
+
+      <section class="powers hidden" data-power-screen aria-label="Power-up shop">
+        <header class="theme-header">
+          <button class="icon-btn" type="button" data-power-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Power-Ups</div>
+            <div class="level-subtitle">Stock your run</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#9889;</span><span data-power-balance>0</span></div>
+        </header>
+
+        <section class="power-progress-card" aria-label="Power-up balance">
+          <div>Cores: <span data-power-balance-large>0</span></div>
+          <div>Owned: <span data-power-owned-count>0</span></div>
+          <div>Tap to buy, then use in-game</div>
+        </section>
+
+        <section class="power-grid" data-power-grid aria-label="Power-up cards"></section>
       </section>
 
       <section class="levels hidden" data-level-screen aria-label="Level selection">
@@ -112,21 +132,11 @@
             <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
           </div>
           <div class="game-controls" aria-label="Gameplay controls">
+            <button class="dock-btn game-mini-btn" type="button" data-power-drawer-btn aria-label="Power-ups">&#9889;</button>
             <button class="dock-btn game-mini-btn" type="button" data-restart aria-label="Restart level">R</button>
             <button class="dock-btn game-mini-btn" type="button" data-sound-toggle aria-label="Sound on">||</button>
           </div>
         </header>
-        <section class="game-live-meta" aria-label="Live run stats">
-          <div class="momentum-pill" data-momentum-pill>
-            <span class="momentum-label">Momentum</span>
-            <span class="momentum-level" data-momentum-level>x1</span>
-            <div class="momentum-bar"><span class="momentum-fill" data-momentum-fill></span></div>
-          </div>
-          <div class="run-progress-pill" data-run-progress-pill>
-            <span class="run-progress-label" data-run-progress-label>0%</span>
-            <div class="run-progress-bar"><span class="run-progress-fill" data-run-progress-fill></span></div>
-          </div>
-        </section>
 
         <section class="arena-wrap arena-wrap-single" aria-label="Shared board area">
           <article class="board-shell board-shell-shared" aria-label="Shared game board">
@@ -144,6 +154,15 @@
             </div>
           </div>
         </section>
+
+        <div class="power-drawer hidden" data-power-drawer aria-label="Owned power-ups" aria-live="polite">
+          <div class="power-drawer-head">
+            <strong>Power-Ups</strong>
+            <button class="icon-btn settings-close-btn" type="button" data-power-drawer-close-btn aria-label="Close power-ups">x</button>
+          </div>
+          <div class="power-drawer-note" data-power-drawer-note>Tap a power-up to use it. Some require selecting a tile.</div>
+          <div class="power-drawer-grid" data-power-drawer-grid></div>
+        </div>
 
         <section class="bottom-dock bottom-dock-compact" aria-label="Current shots">
           <div class="launcher-wrap launcher-wrap-compact" aria-label="Current shots">
