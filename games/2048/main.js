@@ -56,14 +56,110 @@ const COMBO_CELEBRATIONS = Object.freeze([
   { min: 8, label: "INSANE" }
 ]);
 const POWER_UPS = Object.freeze([
-  { id: "rewind", icon: "&#8630;", name: "Time Rewind", price: 280, description: "Go back 3 moves with a slick rewind pulse.", target: "instant" },
-  { id: "breaker", icon: "&#10006;", name: "Tile Breaker", price: 180, description: "Remove one tile, except the current highest tile.", target: "tile" },
-  { id: "merge-boost", icon: "&#8649;", name: "Merge Boost", price: 220, description: "Force a selected tile to merge with its nearest match.", target: "tile" },
-  { id: "freeze-time", icon: "&#10052;", name: "Freeze Time", price: 240, description: "Freeze pressure and skip AI turns for 3 player moves.", target: "instant" },
-  { id: "wild-tile", icon: "&#10022;", name: "Wild Tile", price: 320, description: "Your next shot becomes a wild tile that fuses with any neighbor.", target: "instant" },
-  { id: "smart-shuffle", icon: "&#8635;", name: "Smart Shuffle", price: 210, description: "Rearrange the board into a safer, merge-friendly shape.", target: "instant" },
-  { id: "lock-tile", icon: "&#128274;", name: "Lock Tile", price: 200, description: "Keep one tile anchored in place for 3 turns.", target: "tile" },
-  { id: "evolve-tile", icon: "&#11014;", name: "Evolve Tile", price: 260, description: "Upgrade a selected tile one tier instantly.", target: "tile" }
+  {
+    id: "rewind",
+    icon: "&#8630;",
+    name: "Time Rewind",
+    price: 280,
+    description: "Go back 3 moves with a slick rewind pulse.",
+    target: "instant",
+    rarity: "Legendary",
+    effect: "Undo the last 3 moves instantly.",
+    shopTag: "Safety Net",
+    accentA: "#79e5ff",
+    accentB: "#4c62ff"
+  },
+  {
+    id: "breaker",
+    icon: "&#128165;",
+    name: "Tile Breaker",
+    price: 180,
+    description: "Remove one tile, except the current highest tile.",
+    target: "tile",
+    rarity: "Rare",
+    effect: "Delete a blocking tile with precision.",
+    shopTag: "Precision",
+    accentA: "#ffb07c",
+    accentB: "#ff5b6f"
+  },
+  {
+    id: "merge-boost",
+    icon: "&#8649;",
+    name: "Merge Boost",
+    price: 220,
+    description: "Force a selected tile to merge with its nearest match.",
+    target: "tile",
+    rarity: "Epic",
+    effect: "Snap a tile into its nearest matching merge.",
+    shopTag: "Combo Tool",
+    accentA: "#9bf5aa",
+    accentB: "#43d9ff"
+  },
+  {
+    id: "freeze-time",
+    icon: "&#10052;",
+    name: "Freeze Time",
+    price: 240,
+    description: "Freeze pressure and skip AI turns for 3 player moves.",
+    target: "instant",
+    rarity: "Epic",
+    effect: "Earn 3 pressure-free player moves.",
+    shopTag: "Control",
+    accentA: "#baf0ff",
+    accentB: "#6ea6ff"
+  },
+  {
+    id: "wild-tile",
+    icon: "&#10022;",
+    name: "Wild Tile",
+    price: 320,
+    description: "Your next shot becomes a wild tile that fuses with any neighbor.",
+    target: "instant",
+    rarity: "Mythic",
+    effect: "Your next shot merges with any neighbor.",
+    shopTag: "Wildcard",
+    accentA: "#ffe78a",
+    accentB: "#ff9f5a"
+  },
+  {
+    id: "smart-shuffle",
+    icon: "&#8646;",
+    name: "Smart Shuffle",
+    price: 210,
+    description: "Rearrange the board into a safer, merge-friendly shape.",
+    target: "instant",
+    rarity: "Rare",
+    effect: "Rebuild the board into a safer layout.",
+    shopTag: "Recovery",
+    accentA: "#93f4ff",
+    accentB: "#34c8b6"
+  },
+  {
+    id: "lock-tile",
+    icon: "&#128274;",
+    name: "Lock Tile",
+    price: 200,
+    description: "Keep one tile anchored in place for 3 turns.",
+    target: "tile",
+    rarity: "Rare",
+    effect: "Anchor a valuable tile for 3 turns.",
+    shopTag: "Defense",
+    accentA: "#d7b7ff",
+    accentB: "#7784ff"
+  },
+  {
+    id: "evolve-tile",
+    icon: "&#11014;",
+    name: "Evolve Tile",
+    price: 260,
+    description: "Upgrade a selected tile one tier instantly.",
+    target: "tile",
+    rarity: "Epic",
+    effect: "Upgrade a chosen tile by one tier.",
+    shopTag: "Growth",
+    accentA: "#ffe09a",
+    accentB: "#f36dff"
+  }
 ]);
 const LEVEL_SCENE_BACKGROUNDS = Object.freeze([
   "linear-gradient(135deg, #FFF0F5, #FFE4E1)",
@@ -185,9 +281,15 @@ const el = {
   themeProgressScore: document.querySelector("[data-theme-progress-score]"),
   themeProgressMaxTile: document.querySelector("[data-theme-progress-max-tile]"),
   themeProgressGames: document.querySelector("[data-theme-progress-games]"),
+  themeSpotlightCard: document.querySelector("[data-theme-spotlight-card]"),
+  themeSpotlightTitle: document.querySelector("[data-theme-spotlight-title]"),
+  themeSpotlightCopy: document.querySelector("[data-theme-spotlight-copy]"),
+  themeSpotlightTagline: document.querySelector("[data-theme-spotlight-tagline]"),
+  themeSpotlightTier: document.querySelector("[data-theme-spotlight-tier]"),
   powerBalance: document.querySelector("[data-power-balance]"),
   powerBalanceLarge: document.querySelector("[data-power-balance-large]"),
   powerOwnedCount: document.querySelector("[data-power-owned-count]"),
+  powerFeatureStrip: document.querySelector("[data-power-feature-strip]"),
   unlockedLevel: document.querySelector("[data-unlocked-level]"),
   selectedLevel: document.querySelector("[data-selected-level]"),
   selectedAiName: document.querySelector("[data-selected-ai-name]"),
@@ -429,6 +531,233 @@ function savePowerState() {
 
 function getPowerById(powerId) {
   return POWER_UPS.find((power) => power.id === powerId) || null;
+}
+
+function hexToRgba(hex, alpha = 1) {
+  const value = String(hex || "").trim();
+  const match = value.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+
+  if (!match) {
+    return `rgba(255, 255, 255, ${alpha})`;
+  }
+
+  let normalized = match[1];
+  if (normalized.length === 3) {
+    normalized = normalized.split("").map((char) => char + char).join("");
+  }
+
+  const parsed = Number.parseInt(normalized, 16);
+  const r = (parsed >> 16) & 255;
+  const g = (parsed >> 8) & 255;
+  const b = parsed & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function normalizeHue(value) {
+  const hue = Number(value) || 0;
+  return ((hue % 360) + 360) % 360;
+}
+
+function getThemeIndex(themeId) {
+  return Math.max(0, THEME_DEFINITIONS.findIndex((theme) => theme.id === themeId));
+}
+
+function getThemePrestige(themeId) {
+  return getThemeIndex(themeId) / Math.max(1, THEME_DEFINITIONS.length - 1);
+}
+
+function getThemeVariant(themeId) {
+  if (/(neon|cyber|sky|synthwave|pixel)/.test(themeId)) {
+    return "electric";
+  }
+
+  if (/(zen|moon|mono|ocean)/.test(themeId)) {
+    return "soft";
+  }
+
+  if (/(magma|ember|midnight|desert)/.test(themeId)) {
+    return "ember";
+  }
+
+  if (/(forest|coral)/.test(themeId)) {
+    return "organic";
+  }
+
+  return "luxe";
+}
+
+function getThemeTierLabel(prestige) {
+  if (prestige >= 0.94) {
+    return "Mythic Finish";
+  }
+
+  if (prestige >= 0.78) {
+    return "Legend Finish";
+  }
+
+  if (prestige >= 0.58) {
+    return "Elite Finish";
+  }
+
+  if (prestige >= 0.34) {
+    return "Signature Finish";
+  }
+
+  return "Core Finish";
+}
+
+function getThemeTempoLabel(theme) {
+  const speed = Number(theme.animationProfile?.speed || 1);
+
+  if (speed <= 0.84) {
+    return "Fast Tempo";
+  }
+
+  if (speed <= 0.96) {
+    return "Arcade Tempo";
+  }
+
+  if (speed >= 1.12) {
+    return "Slow Drift";
+  }
+
+  return "Balanced Flow";
+}
+
+function getThemeFxLabel(theme) {
+  const effects = theme.specialEffects || {};
+
+  if (effects.explosion) {
+    return "Burst FX";
+  }
+
+  if (effects.trail) {
+    return "Trail FX";
+  }
+
+  if (effects.glow) {
+    return "Glow FX";
+  }
+
+  return "Clean FX";
+}
+
+function getThemeMoodLabel(themeId) {
+  const variant = getThemeVariant(themeId);
+
+  if (variant === "electric") {
+    return "Arcade Pulse";
+  }
+
+  if (variant === "soft") {
+    return "Calm Atmosphere";
+  }
+
+  if (variant === "ember") {
+    return "Heavy Contrast";
+  }
+
+  if (variant === "organic") {
+    return "Living Color";
+  }
+
+  return "Luxe Surface";
+}
+
+function getThemeUiLook(theme) {
+  const palette = theme.palette || {};
+  const colors = theme.colors || {};
+  const prestige = getThemePrestige(theme.id);
+  const hueBase = normalizeHue(
+    216 +
+      Number(palette.hueShift || 0) +
+      Number(palette.tileHueShift || 0) * 0.42 +
+      getThemeIndex(theme.id) * 13
+  );
+  const baseSaturation = clamp(72 + prestige * 18 + Number(palette.saturationBoost || 0) * 0.2, 48, 98);
+  const accentA = `hsl(${hueBase} ${baseSaturation}% ${clamp(62 - prestige * 8, 38, 70)}%)`;
+  const accentB = `hsl(${normalizeHue(hueBase + 62 + prestige * 32)} ${clamp(baseSaturation + 8, 54, 99)}% ${clamp(54 - prestige * 4, 34, 64)}%)`;
+  const glow = `hsla(${hueBase}, 96%, 68%, ${(0.2 + prestige * 0.26).toFixed(3)})`;
+  const halo = `hsla(${normalizeHue(hueBase + 26)}, 98%, 74%, ${(0.16 + prestige * 0.22).toFixed(3)})`;
+
+  return {
+    prestige,
+    accentA,
+    accentB,
+    glow,
+    halo,
+    variant: getThemeVariant(theme.id),
+    tierLabel: getThemeTierLabel(prestige),
+    motionLabel: getThemeTempoLabel(theme),
+    fxLabel: getThemeFxLabel(theme),
+    moodLabel: getThemeMoodLabel(theme.id),
+    panelTop: colors.panelTop || "rgba(30, 40, 63, 0.96)",
+    panelBottom: colors.panelBottom || "rgba(18, 24, 38, 0.96)",
+    boardTop: colors.boardCellTop || "#151c2d",
+    boardBottom: colors.boardCellBottom || "#090c14",
+    textMain: colors.textMain || "#f3f6ff",
+    textSoft: colors.textSoft || "#aab5cc"
+  };
+}
+
+function applyThemeShowcaseStyles(element, theme) {
+  if (!element) {
+    return;
+  }
+
+  const look = getThemeUiLook(theme);
+  element.dataset.themeVariant = look.variant;
+  element.style.setProperty("--theme-accent-a", look.accentA);
+  element.style.setProperty("--theme-accent-b", look.accentB);
+  element.style.setProperty("--theme-accent-glow", look.glow);
+  element.style.setProperty("--theme-accent-halo", look.halo);
+  element.style.setProperty("--theme-surface-top", look.panelTop);
+  element.style.setProperty("--theme-surface-bottom", look.panelBottom);
+  element.style.setProperty("--theme-board-top", look.boardTop);
+  element.style.setProperty("--theme-board-bottom", look.boardBottom);
+  element.style.setProperty("--theme-card-text", look.textMain);
+  element.style.setProperty("--theme-card-soft", look.textSoft);
+  element.style.setProperty("--theme-prestige", look.prestige.toFixed(3));
+}
+
+function getPowerTargetLabel(power) {
+  return power.target === "instant" ? "Instant Cast" : "Tile Target";
+}
+
+function getPowerActionLabel(power) {
+  return power.target === "instant" ? "Activates on tap" : "Tap to arm";
+}
+
+function getPowerRarityWeight(rarity) {
+  if (rarity === "Mythic") {
+    return 4;
+  }
+
+  if (rarity === "Legendary") {
+    return 3;
+  }
+
+  if (rarity === "Epic") {
+    return 2;
+  }
+
+  return 1;
+}
+
+function applyPowerVisualStyles(element, power) {
+  if (!element) {
+    return;
+  }
+
+  const accentA = power.accentA || "#8cc8ff";
+  const accentB = power.accentB || "#4f72ff";
+
+  element.style.setProperty("--power-accent-a", accentA);
+  element.style.setProperty("--power-accent-b", accentB);
+  element.style.setProperty("--power-accent-glow", hexToRgba(accentA, 0.36));
+  element.style.setProperty("--power-accent-halo", hexToRgba(accentB, 0.28));
+  element.style.setProperty("--power-accent-soft", hexToRgba(accentA, 0.12));
+  element.style.setProperty("--power-accent-line", hexToRgba(accentB, 0.46));
 }
 
 function getMomentumLevelFromPoints(points) {
@@ -1012,7 +1341,7 @@ function closePowerDrawer() {
     el.powerDrawer.classList.add("hidden");
   }
   if (el.powerDrawerNote) {
-    el.powerDrawerNote.textContent = "Tap a power-up to use it. Some require selecting a tile.";
+    el.powerDrawerNote.textContent = "Choose a stocked power-up. Instant casts fire immediately, while tile tools arm and wait for your tap.";
   }
 }
 
@@ -1059,8 +1388,9 @@ function buildThemeGrid() {
   el.themeGrid.innerHTML = "";
   themeCards.length = 0;
 
-  for (const theme of THEME_DEFINITIONS) {
+  for (const [index, theme] of THEME_DEFINITIONS.entries()) {
     const button = document.createElement("button");
+    const look = getThemeUiLook(theme);
     const previewTiles = theme.preview
       .map((value) => `<span class="theme-preview-tile" data-preview-value="${value}">${value}</span>`)
       .join("");
@@ -1068,16 +1398,26 @@ function buildThemeGrid() {
     button.type = "button";
     button.className = "theme-card";
     button.dataset.themeId = theme.id;
+    applyThemeShowcaseStyles(button, theme);
     button.innerHTML = `
       <div class="theme-card-head">
-        <h3 class="theme-card-title">${theme.name}</h3>
+        <div class="theme-card-heading">
+          <span class="theme-card-tier">${look.tierLabel}</span>
+          <h3 class="theme-card-title">${theme.name}</h3>
+        </div>
         <span class="theme-card-status" data-theme-card-status>${theme.unlock.type === "default" ? "Default" : "Locked"}</span>
       </div>
       <p class="theme-card-tagline">${theme.tagline}</p>
+      <div class="theme-card-chips" aria-label="Theme profile">
+        <span class="theme-card-chip">${look.moodLabel}</span>
+        <span class="theme-card-chip">${look.motionLabel}</span>
+        <span class="theme-card-chip">${look.fxLabel}</span>
+      </div>
       <div class="theme-preview" data-theme-preview>${previewTiles}</div>
       <p class="theme-card-copy">${theme.description}</p>
       <div class="theme-card-footer">
         <span class="theme-card-unlock">${getUnlockLabel(theme)}</span>
+        <span class="theme-card-rank">Theme ${index + 1}</span>
       </div>
     `;
 
@@ -1110,18 +1450,30 @@ function buildPowerGrid() {
     card.type = "button";
     card.className = "power-card";
     card.dataset.powerId = power.id;
+    applyPowerVisualStyles(card, power);
     card.innerHTML = `
+      <div class="power-card-topline">
+        <span class="power-card-rarity">${power.rarity}</span>
+        <span class="power-card-target">${getPowerTargetLabel(power)}</span>
+      </div>
       <div class="power-card-head">
-        <span class="power-card-icon">${power.icon}</span>
+        <span class="power-card-icon-wrap"><span class="power-card-icon">${power.icon}</span></span>
         <div class="power-card-titles">
           <strong class="power-card-title">${power.name}</strong>
-          <span class="power-card-price">${power.price} cores</span>
+          <span class="power-card-effect">${power.effect}</span>
         </div>
       </div>
       <p class="power-card-copy">${power.description}</p>
+      <div class="power-card-meta">
+        <span class="power-card-chip">${power.shopTag}</span>
+        <span class="power-card-chip">${getPowerActionLabel(power)}</span>
+      </div>
       <div class="power-card-footer">
         <span class="power-card-owned" data-power-owned>Owned 0</span>
-        <span class="power-card-buy">Buy</span>
+        <div class="power-card-cta">
+          <span class="power-card-price">${power.price} cores</span>
+          <span class="power-card-buy" data-power-buy-label>Buy</span>
+        </div>
       </div>
     `;
 
@@ -1134,12 +1486,44 @@ function buildPowerGrid() {
   }
 }
 
+function renderPowerFeatureStrip() {
+  if (!el.powerFeatureStrip) {
+    return;
+  }
+
+  el.powerFeatureStrip.innerHTML = "";
+
+  const featured = [...POWER_UPS]
+    .sort((left, right) => {
+      const rarityDelta = getPowerRarityWeight(right.rarity) - getPowerRarityWeight(left.rarity);
+      if (rarityDelta !== 0) {
+        return rarityDelta;
+      }
+
+      return right.price - left.price;
+    })
+    .slice(0, 3);
+
+  for (const power of featured) {
+    const badge = document.createElement("div");
+    badge.className = "power-feature-card";
+    applyPowerVisualStyles(badge, power);
+    badge.innerHTML = `
+      <span class="power-feature-icon">${power.icon}</span>
+      <span class="power-feature-name">${power.name}</span>
+      <span class="power-feature-copy">${power.effect}</span>
+    `;
+    el.powerFeatureStrip.append(badge);
+  }
+}
+
 function renderPowerShop() {
   const ownedCount = POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
 
   el.powerBalance.textContent = state.powerBalance.toLocaleString();
   el.powerBalanceLarge.textContent = state.powerBalance.toLocaleString();
   el.powerOwnedCount.textContent = String(ownedCount);
+  renderPowerFeatureStrip();
 
   for (const card of powerCards) {
     const power = getPowerById(card.dataset.powerId || "");
@@ -1150,10 +1534,16 @@ function renderPowerShop() {
     const owned = Number(state.powerInventory[power.id] || 0);
     const affordable = state.powerBalance >= power.price;
     const ownedEl = card.querySelector("[data-power-owned]");
+    const buyEl = card.querySelector("[data-power-buy-label]");
 
     card.classList.toggle("is-disabled", !affordable);
+    card.classList.toggle("is-owned", owned > 0);
     if (ownedEl) {
       ownedEl.textContent = `Owned ${owned}`;
+    }
+    if (buyEl) {
+      buyEl.textContent =
+        affordable ? (owned > 0 ? "Stock Up" : "Buy Now") : `Need ${Math.max(0, power.price - state.powerBalance)}`;
     }
   }
 }
@@ -1187,9 +1577,10 @@ function renderPowerDrawer() {
   powerDrawerButtons.length = 0;
 
   if (el.powerDrawerNote) {
-    el.powerDrawerNote.textContent = state.selectedPowerId
-      ? `${getPowerById(state.selectedPowerId)?.name || "Power-Up"} armed. Tap a tile on the board.`
-      : "Tap a power-up to use it. Some require selecting a tile.";
+    const selectedPower = getPowerById(state.selectedPowerId);
+    el.powerDrawerNote.textContent = selectedPower
+      ? `${selectedPower.name} armed. ${selectedPower.effect} Tap a tile on the board.`
+      : "Choose a stocked power-up. Instant casts fire immediately, while tile tools arm and wait for your tap.";
   }
 
   for (const power of POWER_UPS) {
@@ -1199,12 +1590,20 @@ function renderPowerDrawer() {
     button.className = "power-drawer-btn";
     button.dataset.powerId = power.id;
     button.disabled = count <= 0 || !state.roundActive || state.roundFinished;
+    applyPowerVisualStyles(button, power);
     button.innerHTML = `
-      <span class="power-drawer-icon">${power.icon}</span>
-      <span class="power-drawer-name">${power.name}</span>
+      <span class="power-drawer-icon-wrap"><span class="power-drawer-icon">${power.icon}</span></span>
+      <span class="power-drawer-copy">
+        <span class="power-drawer-name-row">
+          <span class="power-drawer-name">${power.name}</span>
+          <span class="power-drawer-type">${getPowerTargetLabel(power)}</span>
+        </span>
+        <span class="power-drawer-effect">${power.effect}</span>
+      </span>
       <span class="power-drawer-count">${count}</span>
     `;
     button.classList.toggle("is-selected", state.selectedPowerId === power.id);
+    button.classList.toggle("is-empty", count <= 0);
     button.addEventListener("click", () => {
       armOrUsePowerUp(power.id);
     });
@@ -1562,11 +1961,28 @@ function renderThemeScreen() {
   const activeTheme = themeManager.getTheme();
   const unlocked = new Set(themeManager.getUnlockedThemeIds());
   const progress = themeManager.getProgress();
+  const activeLook = getThemeUiLook(activeTheme);
 
   el.bestScoreTheme.textContent = state.bestScore.toLocaleString();
   el.themeProgressScore.textContent = progress.bestScore.toLocaleString();
   el.themeProgressMaxTile.textContent = String(progress.maxTile);
   el.themeProgressGames.textContent = String(progress.gamesPlayed);
+
+  if (el.themeSpotlightCard) {
+    applyThemeShowcaseStyles(el.themeSpotlightCard, activeTheme);
+  }
+  if (el.themeSpotlightTitle) {
+    el.themeSpotlightTitle.textContent = activeTheme.name;
+  }
+  if (el.themeSpotlightCopy) {
+    el.themeSpotlightCopy.textContent = activeTheme.description;
+  }
+  if (el.themeSpotlightTagline) {
+    el.themeSpotlightTagline.textContent = activeTheme.tagline;
+  }
+  if (el.themeSpotlightTier) {
+    el.themeSpotlightTier.textContent = `${activeLook.tierLabel} - ${activeLook.fxLabel}`;
+  }
 
   for (const card of themeCards) {
     const themeId = card.dataset.themeId || "";
@@ -1581,14 +1997,14 @@ function renderThemeScreen() {
     card.disabled = false;
 
     if (status) {
-      status.textContent = isUnlocked ? (isActive ? "Active" : "Unlocked") : "Locked";
+      status.textContent = isUnlocked ? (isActive ? "Equipped" : "Unlocked") : "Locked";
       status.classList.toggle("is-locked", !isUnlocked);
     }
 
     const previewTiles = card.querySelectorAll("[data-preview-value]");
     for (const previewTile of previewTiles) {
       const value = Number.parseInt(previewTile.dataset.previewValue || "0", 10);
-      applyTileVisualStyle(previewTile, value, getVisualLevel());
+      applyTileVisualStyle(previewTile, value, getVisualLevel(), theme);
     }
   }
 }
@@ -2281,9 +2697,13 @@ function renderSound() {
 }
 
 function renderMetaButtons() {
+  const ownedCount = POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
   el.themeBtn.innerHTML = `&#10024; ${themeManager.getTheme().name}`;
   el.modeBtn.innerHTML = `&#9866; ${MODES[state.modeIndex].label}`;
   el.powerBtn.innerHTML = `&#9889; Power-Ups`;
+  el.powerDrawerBtn.innerHTML = `&#9889;<span class="dock-btn-count">${ownedCount}</span>`;
+  el.powerDrawerBtn.classList.toggle("has-stock", ownedCount > 0);
+  el.powerDrawerBtn.setAttribute("aria-label", `Power-ups. ${ownedCount} owned`);
 }
 
 function updateBoardScale() {
@@ -3322,12 +3742,13 @@ function getTileToneByValue(value) {
   };
 }
 
-function applyTileVisualStyle(element, value, level) {
+function applyTileVisualStyle(element, value, level, themeOverride = null) {
   if (value === 0) {
     element.style.background = "";
     element.style.color = "";
     element.style.borderColor = "";
     element.style.boxShadow = "";
+    element.style.textShadow = "";
     return;
   }
 
@@ -3336,32 +3757,85 @@ function applyTileVisualStyle(element, value, level) {
     element.style.color = "#eef4ff";
     element.style.borderColor = "rgba(255,255,255,0.18)";
     element.style.boxShadow = "0 10px 18px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.18)";
+    element.style.textShadow = "0 1px 0 rgba(0, 0, 0, 0.24)";
     return;
   }
 
-  const theme = themeManager.getTheme();
+  const theme = themeOverride || themeManager.getTheme();
   const palette = theme.palette || {};
   const scene = getLevelScenePreset(level);
   const tone = getTileToneByValue(value);
+  const prestige = getThemePrestige(theme.id);
+  const variant = getThemeVariant(theme.id);
   const hueShift = Number(palette.tileHueShift || 0);
   const saturationBoost = Number(palette.saturationBoost || 0) * 0.42;
   const intensity = Number(theme.effectIntensity?.multiplier || 1);
   const progress = clamp((scene.sceneLevel - 1) / Math.max(1, LEVEL_SCENE_BACKGROUNDS.length - 1), 0, 1);
   const levelHueShift = (scene.sceneLevel - 1) * 4.7;
-  const hueA = (tone.h + hueShift + levelHueShift) % 360;
-  const hueB = (hueA + 7 + progress * 10) % 360;
-  const satA = clamp(tone.s + saturationBoost + scene.sceneLevel * 0.18, 22, 96);
-  const satB = clamp(tone.s + saturationBoost + 4 + scene.sceneLevel * 0.22, 22, 98);
-  const topLight = clamp(tone.l1 + intensity * 1.2 + (progress < 0.5 ? 2 : 1), 34, 86);
-  const bottomLight = clamp(tone.l2 + intensity * 0.9 - progress * 2.4, 24, 78);
-  const strokeLight = clamp(topLight + 12, 42, 95);
-  const shadowStrength = 0.24 + Math.min(0.26, Math.log2(Math.max(2, value)) * 0.02) + progress * 0.08;
-  const rimGlow = clamp(0.08 + progress * 0.2 + Math.log2(Math.max(2, value)) * 0.012, 0.1, 0.5);
+  const hueA = normalizeHue(tone.h + hueShift + levelHueShift + prestige * 12);
+  const hueB = normalizeHue(hueA + 7 + progress * 10 + prestige * 16);
+  let satA = clamp(tone.s + saturationBoost + scene.sceneLevel * 0.18 + prestige * 10, 22, 98);
+  let satB = clamp(tone.s + saturationBoost + 4 + scene.sceneLevel * 0.22 + prestige * 12, 22, 99);
+  let topLight = clamp(tone.l1 + intensity * 1.2 + (progress < 0.5 ? 2 : 1) - prestige * 1.4, 32, 88);
+  let bottomLight = clamp(tone.l2 + intensity * 0.9 - progress * 2.4 - prestige * 2.2, 22, 80);
+  let shadowStrength = 0.24 + Math.min(0.26, Math.log2(Math.max(2, value)) * 0.02) + progress * 0.08 + prestige * 0.05;
+  let rimGlow = clamp(0.1 + progress * 0.22 + Math.log2(Math.max(2, value)) * 0.012 + prestige * 0.1, 0.12, 0.68);
+  let highlightOpacity = 0.18 + progress * 0.06 + prestige * 0.1;
+  let sheenOpacity = 0.12 + prestige * 0.18;
+  let innerGlowOpacity = 0.08 + prestige * 0.14;
+  let textColor = tone.text;
 
-  element.style.background = `linear-gradient(180deg, hsl(${hueA} ${satA}% ${topLight}%), hsl(${hueB} ${satB}% ${bottomLight}%))`;
-  element.style.color = tone.text;
-  element.style.borderColor = `hsla(${hueA}, 84%, ${strokeLight}%, 0.35)`;
-  element.style.boxShadow = `0 10px 16px rgba(0, 0, 0, ${shadowStrength}), 0 0 0 1px hsla(${hueA}, 88%, 84%, ${rimGlow}), inset 0 1px 0 rgba(255, 255, 255, 0.26)`;
+  if (variant === "electric") {
+    topLight = clamp(topLight - 3, 28, 84);
+    bottomLight = clamp(bottomLight - 6, 18, 72);
+    shadowStrength += 0.04;
+    rimGlow = clamp(rimGlow + 0.08, 0.16, 0.76);
+    highlightOpacity += 0.04;
+    innerGlowOpacity += 0.08;
+  } else if (variant === "soft") {
+    topLight = clamp(topLight + 4, 36, 90);
+    bottomLight = clamp(bottomLight + 3, 26, 82);
+    shadowStrength = Math.max(0.22, shadowStrength - 0.04);
+    rimGlow = Math.max(0.12, rimGlow - 0.05);
+    sheenOpacity = Math.max(0.1, sheenOpacity - 0.04);
+    innerGlowOpacity = Math.max(0.06, innerGlowOpacity - 0.03);
+  } else if (variant === "ember") {
+    topLight = clamp(topLight - 2, 28, 84);
+    bottomLight = clamp(bottomLight - 4, 20, 74);
+    shadowStrength += 0.06;
+    rimGlow = clamp(rimGlow + 0.05, 0.14, 0.74);
+    sheenOpacity += 0.05;
+  } else if (variant === "organic") {
+    satA = clamp(satA + 4, 24, 99);
+    satB = clamp(satB + 5, 26, 99);
+    highlightOpacity += 0.03;
+  } else {
+    sheenOpacity += 0.06;
+    innerGlowOpacity += 0.04;
+  }
+
+  const strokeLight = clamp(topLight + 12, 42, 95);
+  const surfaceHighlight = `rgba(255, 255, 255, ${highlightOpacity.toFixed(3)})`;
+  const sheenColor = `hsla(${normalizeHue(hueA + 22)}, 94%, 82%, ${sheenOpacity.toFixed(3)})`;
+  const innerGlow = `hsla(${normalizeHue(hueB + 12)}, 96%, 78%, ${innerGlowOpacity.toFixed(3)})`;
+
+  element.style.background = `
+    radial-gradient(circle at 22% 18%, ${surfaceHighlight}, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(135deg, ${sheenColor}, rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, hsl(${hueA} ${satA}% ${topLight}%), hsl(${hueB} ${satB}% ${bottomLight}%))
+  `;
+  element.style.color = textColor;
+  element.style.borderColor = `hsla(${hueA}, 84%, ${strokeLight}%, ${clamp(0.32 + prestige * 0.16, 0.3, 0.52)})`;
+  element.style.boxShadow = `
+    0 12px 18px rgba(0, 0, 0, ${shadowStrength.toFixed(3)}),
+    0 0 0 1px hsla(${hueA}, 92%, 84%, ${rimGlow.toFixed(3)}),
+    0 0 ${Math.round(10 + prestige * 12)}px ${innerGlow},
+    inset 0 1px 0 rgba(255, 255, 255, ${clamp(0.24 + prestige * 0.08, 0.22, 0.38).toFixed(3)})
+  `;
+  element.style.textShadow =
+    variant === "soft"
+      ? "0 1px 0 rgba(255, 255, 255, 0.16)"
+      : `0 1px 0 rgba(255, 255, 255, ${clamp(0.12 + prestige * 0.06, 0.12, 0.22).toFixed(3)})`;
 }
 
 function createHeroState() {
