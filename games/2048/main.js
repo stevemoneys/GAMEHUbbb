@@ -311,6 +311,11 @@ const el = {
   powerDrawer: document.querySelector("[data-power-drawer]"),
   powerDrawerCloseBtn: document.querySelector("[data-power-drawer-close-btn]"),
   powerDrawerGrid: document.querySelector("[data-power-drawer-grid]"),
+  powerActiveCard: document.querySelector("[data-power-active-card]"),
+  powerActiveCount: document.querySelector("[data-power-active-count]"),
+  powerActiveIcon: document.querySelector("[data-power-active-icon]"),
+  powerActiveName: document.querySelector("[data-power-active-name]"),
+  powerActiveHint: document.querySelector("[data-power-active-hint]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -345,6 +350,7 @@ const state = {
   powerInventory: loadStoredInventory(),
   powerDrawerOpen: false,
   selectedPowerId: "",
+  powerPreviewId: "",
   sessionModifier: null,
   momentumPoints: 0,
   momentumLevel: 1,
@@ -529,6 +535,42 @@ function formatCoins(value) {
 
 function getOwnedPowerUpCount() {
   return POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
+}
+
+function getPowerUseHint(powerId) {
+  if (powerId === "rewind") {
+    return "Tap to rewind one move at a time. Tap again to step back another move.";
+  }
+
+  if (powerId === "breaker") {
+    return "Tap a particular number to break it from the board.";
+  }
+
+  if (powerId === "merge-boost") {
+    return "Tap a number to merge it with the nearest matching block.";
+  }
+
+  if (powerId === "freeze-time") {
+    return "Tap once to freeze AI pressure for your next 3 turns.";
+  }
+
+  if (powerId === "wild-tile") {
+    return "Tap once to arm a wild shot that merges with any neighbor.";
+  }
+
+  if (powerId === "smart-shuffle") {
+    return "Tap once to reshuffle the board into a safer pattern.";
+  }
+
+  if (powerId === "lock-tile") {
+    return "Tap a particular number to lock it in place for 3 turns.";
+  }
+
+  if (powerId === "evolve-tile") {
+    return "Tap a particular number to evolve it into the next value.";
+  }
+
+  return "Tap a power-up icon to use it in this run.";
 }
 
 function hexToRgba(hex, alpha = 1) {
@@ -1339,13 +1381,18 @@ function openPowerDrawer() {
   state.powerDrawerOpen = true;
   el.powerDrawer.classList.remove("hidden");
   renderPowerDrawer();
+  renderPowerActiveCard();
 }
 
 function closePowerDrawer() {
   state.powerDrawerOpen = false;
   state.selectedPowerId = "";
+  state.powerPreviewId = "";
   if (el.powerDrawer) {
     el.powerDrawer.classList.add("hidden");
+  }
+  if (el.powerActiveCard) {
+    el.powerActiveCard.classList.add("hidden");
   }
 }
 
@@ -1446,6 +1493,7 @@ function buildPowerGrid() {
     card.innerHTML = `
       <span class="power-card-icon-wrap"><span class="power-card-icon">${power.icon}</span></span>
       <strong class="power-card-title">${power.name}</strong>
+      <span class="power-card-effect">${power.effect}</span>
       <div class="power-card-footer">
         <span class="power-card-price">${formatCoins(power.price)} coins</span>
         <span class="power-card-owned" data-power-owned>x0</span>
@@ -1484,6 +1532,37 @@ function renderPowerShop() {
   }
 }
 
+function renderPowerActiveCard() {
+  if (!el.powerActiveCard) {
+    return;
+  }
+
+  const powerId = state.selectedPowerId || state.powerPreviewId;
+  const power = getPowerById(powerId);
+  if (!power) {
+    el.powerActiveCard.classList.add("hidden");
+    return;
+  }
+
+  const owned = Number(state.powerInventory[power.id] || 0);
+  if (el.powerActiveIcon) {
+    el.powerActiveIcon.innerHTML = power.icon;
+  }
+  if (el.powerActiveCount) {
+    el.powerActiveCount.textContent = `x${owned}`;
+  }
+  if (el.powerActiveName) {
+    el.powerActiveName.textContent = power.name;
+  }
+  if (el.powerActiveHint) {
+    el.powerActiveHint.textContent = getPowerUseHint(power.id);
+  }
+
+  applyPowerVisualStyles(el.powerActiveCard, power);
+  el.powerActiveCard.classList.remove("hidden");
+  el.powerActiveCard.classList.toggle("is-armed", state.selectedPowerId === power.id);
+}
+
 function buyPowerUp(powerId) {
   const power = getPowerById(powerId);
   if (!power) {
@@ -1502,6 +1581,7 @@ function buyPowerUp(powerId) {
   renderPowerShop();
   renderThemeScreen();
   renderPowerDrawer();
+  renderPowerActiveCard();
   showSystemBanner(`${power.name.toUpperCase()} BOUGHT`);
   return true;
 }
@@ -1520,23 +1600,24 @@ function renderPowerDrawer() {
       continue;
     }
 
-    for (let instance = 0; instance < count; instance += 1) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "power-drawer-btn";
-      button.dataset.powerId = power.id;
-      button.disabled = !state.roundActive || state.roundFinished;
-      applyPowerVisualStyles(button, power);
-      button.setAttribute("aria-label", `${power.name}. ${count - instance} remaining.`);
-      button.title = power.name;
-      button.innerHTML = `<span class="power-drawer-icon-wrap"><span class="power-drawer-icon">${power.icon}</span></span>`;
-      button.classList.toggle("is-selected", state.selectedPowerId === power.id);
-      button.addEventListener("click", () => {
-        armOrUsePowerUp(power.id);
-      });
-      el.powerDrawerGrid.append(button);
-      powerDrawerButtons.push(button);
-    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "power-drawer-btn";
+    button.dataset.powerId = power.id;
+    button.disabled = !state.roundActive || state.roundFinished;
+    applyPowerVisualStyles(button, power);
+    button.setAttribute("aria-label", `${power.name}. ${count} available.`);
+    button.title = `${power.name}: ${getPowerUseHint(power.id)}`;
+    button.innerHTML = `
+      <span class="power-drawer-icon-wrap"><span class="power-drawer-icon">${power.icon}</span></span>
+      <span class="power-drawer-count">${count}</span>
+    `;
+    button.classList.toggle("is-selected", state.selectedPowerId === power.id || state.powerPreviewId === power.id);
+    button.addEventListener("click", () => {
+      armOrUsePowerUp(power.id);
+    });
+    el.powerDrawerGrid.append(button);
+    powerDrawerButtons.push(button);
   }
 
   if (powerDrawerButtons.length === 0) {
@@ -1556,14 +1637,21 @@ function armOrUsePowerUp(powerId) {
     return false;
   }
 
+  state.powerPreviewId = power.id;
+
   if (power.target === "instant") {
     state.selectedPowerId = "";
     const didUse = useInstantPowerUp(power.id);
+    renderPowerActiveCard();
     renderPowerDrawer();
     return didUse;
   }
 
   state.selectedPowerId = state.selectedPowerId === power.id ? "" : power.id;
+  if (!state.selectedPowerId) {
+    state.powerPreviewId = power.id;
+  }
+  renderPowerActiveCard();
   renderPowerDrawer();
   renderStatus();
   return true;
@@ -1577,6 +1665,7 @@ function consumePowerUp(powerId) {
   state.powerInventory[powerId] = owned - 1;
   savePowerState();
   renderPowerShop();
+  renderPowerActiveCard();
   return true;
 }
 
@@ -1686,7 +1775,7 @@ function useInstantPowerUp(powerId) {
       return false;
     }
 
-    const targetIndex = Math.max(0, state.moveHistory.length - 4);
+    const targetIndex = Math.max(0, state.moveHistory.length - 2);
     const snapshot = state.moveHistory[targetIndex];
     if (!consumePowerUp(powerId)) {
       return false;
@@ -1749,7 +1838,40 @@ function removeLockedTile(row, col) {
   state.lockedTiles = state.lockedTiles.filter((tile) => !(tile.row === row && tile.col === col));
 }
 
-function useTargetedPowerUp(powerId, row, col) {
+async function animatePowerTileAction(powerId, row, col, extra = {}) {
+  const primaryTile = getTileElement(boardState, row, col);
+  const linkedTile = extra.match ? getTileElement(boardState, extra.match.row, extra.match.col) : null;
+
+  if (powerId === "breaker") {
+    addTileEffectClass(boardState, row, col, "tile-power-break");
+    await wait(220);
+    return;
+  }
+
+  if (powerId === "evolve-tile") {
+    addTileEffectClass(boardState, row, col, "tile-power-evolve");
+    await wait(200);
+    return;
+  }
+
+  if (powerId === "lock-tile") {
+    addTileEffectClass(boardState, row, col, "tile-power-lock");
+    await wait(190);
+    return;
+  }
+
+  if (powerId === "merge-boost") {
+    if (primaryTile) {
+      addTileEffectClass(boardState, row, col, "tile-power-boost");
+    }
+    if (linkedTile) {
+      addTileEffectClass(boardState, extra.match.row, extra.match.col, "tile-power-boost");
+    }
+    await wait(220);
+  }
+}
+
+async function useTargetedPowerUp(powerId, row, col) {
   const value = getSelectedCellValue(row, col);
   const maxTile = getMaxTile(boardState.grid);
 
@@ -1768,24 +1890,36 @@ function useTargetedPowerUp(powerId, row, col) {
     if (value >= maxTile) {
       state.powerInventory[powerId] += 1;
       savePowerState();
+      renderPowerShop();
+      renderPowerDrawer();
+      renderPowerActiveCard();
       showSystemBanner("HIGHEST TILE SAFE");
       return false;
     }
 
+    boardState.isAnimating = true;
+    await animatePowerTileAction(powerId, row, col);
     boardState.grid[row][col] = 0;
     removeLockedTile(row, col);
     collapseColumnsTopToBottom(boardState.grid);
+    boardState.isAnimating = false;
     didApply = true;
     showSystemBanner("TILE BROKEN");
   } else if (powerId === "evolve-tile") {
+    boardState.isAnimating = true;
+    await animatePowerTileAction(powerId, row, col);
     boardState.grid[row][col] = value * 2;
     boardState.score += value * 2;
     updateBestScore(boardState.score);
+    boardState.isAnimating = false;
     didApply = true;
     showSystemBanner("TILE EVOLVED");
   } else if (powerId === "lock-tile") {
+    boardState.isAnimating = true;
+    await animatePowerTileAction(powerId, row, col);
     removeLockedTile(row, col);
     state.lockedTiles.push({ row, col, turns: 3 });
+    boardState.isAnimating = false;
     didApply = true;
     showSystemBanner("TILE LOCKED");
   } else if (powerId === "merge-boost") {
@@ -1793,23 +1927,33 @@ function useTargetedPowerUp(powerId, row, col) {
     if (!match) {
       state.powerInventory[powerId] += 1;
       savePowerState();
+      renderPowerShop();
+      renderPowerDrawer();
+      renderPowerActiveCard();
       showSystemBanner("NO MATCH FOUND");
       return false;
     }
 
+    boardState.isAnimating = true;
+    await animatePowerTileAction(powerId, row, col, { match });
     boardState.grid[row][col] = value * 2;
     boardState.grid[match.row][match.col] = 0;
     removeLockedTile(match.row, match.col);
     collapseColumnsTopToBottom(boardState.grid);
     boardState.score += value * 2;
     updateBestScore(boardState.score);
+    boardState.isAnimating = false;
     didApply = true;
+    playMergeSound(value * 2, 1);
     showSystemBanner("MERGE BOOST");
   }
 
   if (!didApply) {
     state.powerInventory[powerId] += 1;
     savePowerState();
+    renderPowerShop();
+    renderPowerDrawer();
+    renderPowerActiveCard();
     return false;
   }
 
@@ -1954,14 +2098,7 @@ function renderLevels() {
 }
 
 function getRunPayout(result) {
-  const base = 28 + state.activeLevel * 6;
-  const scorePart = Math.min(220, Math.floor(boardState.score / 180));
-  const resultBonus =
-    result === "player-win" ? 120 :
-    result === "ai-win" ? 42 :
-    result === "timeout" ? 34 :
-    26;
-  return base + scorePart + resultBonus;
+  return Math.max(0, Math.floor(boardState.score / 10));
 }
 
 function startSelectedLevel() {
@@ -2417,7 +2554,7 @@ function finishRound(result) {
   syncThemeProgress();
   renderAll();
   window.setTimeout(() => {
-    showSystemBanner(`+${payout} COINS`);
+    showSystemBanner(`+${payout} COINS FROM SCORE`);
   }, 120);
 }
 
@@ -2444,6 +2581,7 @@ function renderAll() {
   renderMetaButtons();
   renderThemeScreen();
   renderPowerShop();
+  renderPowerActiveCard();
   if (state.powerDrawerOpen) {
     renderPowerDrawer();
   }
@@ -2611,7 +2749,7 @@ function renderStatus() {
     const modeText = isPuzzleMode() ? ` ${state.playerMovesLeft} moves left.` : "";
     const momentumText = state.momentumLevel > 1 ? ` Momentum x${state.momentumLevel}.` : "";
     const chainText = state.chainBoostArmed ? " Chain boost armed." : "";
-    const powerText = state.selectedPowerId ? ` ${getPowerById(state.selectedPowerId)?.name || "Power-Up"} armed.` : "";
+    const powerText = state.selectedPowerId ? ` ${getPowerUseHint(state.selectedPowerId)}` : "";
     el.status.textContent = `Your turn. Place ${state.wildTileArmed ? "Wild" : player.currentAmmo}.${modeText}${momentumText}${chainText}${powerText}`;
     return;
   }

@@ -1421,6 +1421,13 @@ body[data-active-theme="zen-minimal"] {
   text-align: center;
 }
 
+.power-card-effect {
+  font-size: 0.68rem;
+  line-height: 1.35;
+  text-align: center;
+  color: #d8e4fb;
+}
+
 .power-card-footer {
   width: 100%;
   align-items: center;
@@ -1941,6 +1948,22 @@ body[data-active-theme="zen-minimal"] {
   animation: mergeBurst 280ms ease-out;
 }
 
+.tile-power-break {
+  animation: tilePowerBreak 220ms cubic-bezier(0.18, 0.9, 0.26, 1) forwards;
+}
+
+.tile-power-evolve {
+  animation: tilePowerEvolve 200ms cubic-bezier(0.18, 0.9, 0.26, 1);
+}
+
+.tile-power-lock {
+  animation: tilePowerLock 190ms cubic-bezier(0.18, 0.9, 0.26, 1);
+}
+
+.tile-power-boost {
+  animation: tilePowerBoost 220ms cubic-bezier(0.12, 0.96, 0.22, 1);
+}
+
 .tile-near-merge {
   box-shadow:
     0 0 0 1px rgba(255, 248, 178, 0.85),
@@ -2320,6 +2343,30 @@ body[data-active-theme="zen-minimal"] {
   100% { transform: scale(1.16); opacity: 0; }
 }
 
+@keyframes tilePowerBreak {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  35% { transform: translateY(4px) scale(0.98); opacity: 1; }
+  100% { transform: translateY(28px) scale(0.88); opacity: 0; }
+}
+
+@keyframes tilePowerEvolve {
+  0% { transform: scale(1); filter: brightness(1); }
+  45% { transform: scale(1.16); filter: brightness(1.28); }
+  100% { transform: scale(1); filter: brightness(1.02); }
+}
+
+@keyframes tilePowerLock {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(180, 208, 255, 0); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 2px rgba(180, 208, 255, 0.72); }
+  100% { transform: scale(1); box-shadow: 0 0 0 1px rgba(180, 208, 255, 0.4); }
+}
+
+@keyframes tilePowerBoost {
+  0% { transform: scale(1); filter: brightness(1); }
+  40% { transform: scale(1.14); filter: brightness(1.26); }
+  100% { transform: scale(1); filter: brightness(1.04); }
+}
+
 @keyframes comboBurst {
   0% { opacity: 0; transform: translateX(-50%) translateY(-12px) scale(0.86); }
   18% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.08); }
@@ -2502,6 +2549,7 @@ body[data-active-theme="zen-minimal"] {
 .game-pills {
   justify-content: center;
   gap: 4px;
+  display: none;
 }
 
 .target-pill,
@@ -2623,7 +2671,97 @@ body[data-active-theme="zen-minimal"] {
 }
 
 .power-drawer-count {
-  display: none;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(8, 14, 24, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: #f7fbff;
+}
+
+.power-active-card {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 150px;
+  z-index: 28;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at 16% 14%, var(--power-accent-glow), rgba(255, 255, 255, 0) 34%),
+    linear-gradient(180deg, rgba(19, 28, 44, 0.96), rgba(9, 13, 22, 0.98));
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.power-active-card.is-armed {
+  box-shadow:
+    0 18px 30px rgba(0, 0, 0, 0.32),
+    0 0 24px var(--power-accent-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.power-active-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.power-active-count {
+  min-width: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #f7fbff;
+}
+
+.power-active-icon-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, var(--power-accent-a), var(--power-accent-b));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 22px var(--power-accent-glow);
+}
+
+.power-active-icon {
+  font-size: 1.22rem;
+  color: #081118;
+}
+
+.power-active-name {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #f7fbff;
+}
+
+.power-active-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #cedaf2;
 }
 
 @media (max-width: 390px) {
@@ -2697,6 +2835,11 @@ body[data-active-theme="zen-minimal"] {
 
   .game-score-stack .score-value {
     font-size: clamp(1rem, 5.8vw, 1.34rem);
+  }
+
+  .power-active-card {
+    bottom: 146px;
+    padding: 10px;
   }
 
   .game-mini-btn {
