@@ -33,12 +33,8 @@ export function createThemeManager({ storage = window.localStorage, documentRef 
   const body = documentRef.body;
 
   let progress = normalizeThemeProgress(readJson(storage, THEME_PROGRESS_STORAGE_KEY, createDefaultThemeProgress()));
-  let unlocked = readJson(storage, THEME_UNLOCK_STORAGE_KEY, [DEFAULT_THEME_ID]);
+  let unlocked = [DEFAULT_THEME_ID];
   let activeTheme = getThemeById(DEFAULT_THEME_ID);
-
-  if (!Array.isArray(unlocked)) {
-    unlocked = [DEFAULT_THEME_ID];
-  }
 
   if (!unlocked.includes(DEFAULT_THEME_ID)) {
     unlocked.push(DEFAULT_THEME_ID);
@@ -165,7 +161,8 @@ export function createThemeManager({ storage = window.localStorage, documentRef 
     const safeNext = normalizeThemeProgress({
       gamesPlayed: Math.max(progress.gamesPlayed, Number(nextProgress?.gamesPlayed || 0)),
       bestScore: Math.max(progress.bestScore, Number(nextProgress?.bestScore || 0)),
-      maxTile: Math.max(progress.maxTile, Number(nextProgress?.maxTile || 0))
+      maxTile: Math.max(progress.maxTile, Number(nextProgress?.maxTile || 0)),
+      coins: Math.max(progress.coins || 0, Number(nextProgress?.coins || 0))
     });
 
     progress = safeNext;

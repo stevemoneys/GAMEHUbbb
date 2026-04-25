@@ -11,7 +11,7 @@
       <section class="home" data-home-screen>
         <header class="home-header" aria-label="Home header">
           <div class="logo-pill" aria-label="Game name">2048+</div>
-          <div class="best-pill" aria-label="Best score"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-home>0</span></div>
+          <div class="best-pill" aria-label="Coins"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-best-score-home>0</span></div>
           <button class="icon-btn" type="button" aria-label="Settings" data-settings-btn>&#9881;</button>
         </header>
 
@@ -59,28 +59,9 @@
           <button class="icon-btn" type="button" data-theme-back-btn aria-label="Back to home">&lt;</button>
           <div class="level-title-wrap">
             <div class="level-title">Themes</div>
-            <div class="level-subtitle">Choose your mood</div>
           </div>
-          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-theme>0</span></div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-best-score-theme>0</span></div>
         </header>
-
-        <section class="theme-progress-card" aria-label="Theme progression">
-          <div>Best: <span data-theme-progress-score>0</span></div>
-          <div>Max Tile: <span data-theme-progress-max-tile>0</span></div>
-          <div>Games: <span data-theme-progress-games>0</span></div>
-        </section>
-
-        <section class="theme-spotlight-card" data-theme-spotlight-card aria-label="Selected theme spotlight">
-          <div class="theme-spotlight-copy">
-            <span class="theme-spotlight-kicker">Selected Theme</span>
-            <h2 class="theme-spotlight-title" data-theme-spotlight-title>Glass Premium</h2>
-            <p class="theme-spotlight-text" data-theme-spotlight-copy>Glossy panels, clean light bloom, and smooth premium pacing.</p>
-          </div>
-          <div class="theme-spotlight-meta">
-            <span class="theme-spotlight-pill" data-theme-spotlight-tagline>Polished clarity, elite balance.</span>
-            <span class="theme-spotlight-pill" data-theme-spotlight-tier>Signature Finish</span>
-          </div>
-        </section>
 
         <section class="theme-grid" data-theme-grid aria-label="Theme cards"></section>
       </section>
@@ -90,25 +71,9 @@
           <button class="icon-btn" type="button" data-power-back-btn aria-label="Back to home">&lt;</button>
           <div class="level-title-wrap">
             <div class="level-title">Power-Ups</div>
-            <div class="level-subtitle">Stock your run</div>
           </div>
-          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#9889;</span><span data-power-balance>0</span></div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-power-balance>0</span></div>
         </header>
-
-        <section class="power-progress-card" aria-label="Power-up balance">
-          <div>Cores: <span data-power-balance-large>0</span></div>
-          <div>Owned: <span data-power-owned-count>0</span></div>
-          <div>Tap to buy, then use in-game</div>
-        </section>
-
-        <section class="power-shop-hero" aria-label="Power-up arsenal">
-          <div class="power-shop-copy">
-            <span class="power-shop-kicker">Premium Arsenal</span>
-            <h2 class="power-shop-title">Build a stronger run with tactical power-ups.</h2>
-            <p class="power-shop-text">Instant rescues, board control, and high-value combo tools tuned for competitive play.</p>
-          </div>
-          <div class="power-feature-strip" data-power-feature-strip aria-label="Featured power-ups"></div>
-        </section>
 
         <section class="power-grid" data-power-grid aria-label="Power-up cards"></section>
       </section>
@@ -146,11 +111,18 @@
 
       <section class="game hidden" data-game-screen>
         <header class="game-header" aria-label="Gameplay header">
-          <button class="icon-btn game-icon-btn" type="button" data-home-btn aria-label="Back to home">&lt;</button>
-          <div class="game-pills" aria-label="Gameplay indicators">
-            <div class="target-pill" aria-label="Level target">Target <span data-target-value>256</span></div>
-            <div class="mode-pill" aria-label="Current mode"><span data-game-mode>Classic</span></div>
-            <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
+          <div class="game-header-side">
+            <button class="icon-btn game-icon-btn" type="button" data-home-btn aria-label="Back to home">&lt;</button>
+            <div class="best-pill game-wallet-pill" aria-label="Coins"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-game-balance>0</span></div>
+          </div>
+          <div class="score-stack game-score-stack" aria-label="Current score and match target">
+            <span class="score-label">Score</span>
+            <strong class="score-value" data-game-score>0</strong>
+            <div class="game-pills" aria-label="Gameplay indicators">
+              <div class="target-pill" aria-label="Level target">Target <span data-target-value>256</span></div>
+              <div class="mode-pill" aria-label="Current mode"><span data-game-mode>Classic</span></div>
+              <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
+            </div>
           </div>
           <div class="game-controls" aria-label="Gameplay controls">
             <button class="dock-btn game-mini-btn" type="button" data-power-drawer-btn aria-label="Power-ups">&#9889;</button>
@@ -178,13 +150,9 @@
 
         <div class="power-drawer hidden" data-power-drawer aria-label="Owned power-ups" aria-live="polite">
           <div class="power-drawer-head">
-            <div class="power-drawer-head-copy">
-              <strong>Power-Ups</strong>
-              <span class="power-drawer-subtitle">Use stocked abilities during your run.</span>
-            </div>
+            <strong>Power-Ups</strong>
             <button class="icon-btn settings-close-btn" type="button" data-power-drawer-close-btn aria-label="Close power-ups">x</button>
           </div>
-          <div class="power-drawer-note" data-power-drawer-note>Tap a power-up to use it. Some require selecting a tile.</div>
           <div class="power-drawer-grid" data-power-drawer-grid></div>
         </div>
 

@@ -2,7 +2,7 @@ import { GRID_COLUMNS, GRID_ROWS, cloneGrid, createEmptyGrid, gridsEqual } from 
 import { loadBestScore, saveBestScore } from "./state.js";
 import { createThemeManager } from "./js/theme/themeManager.js";
 import { createThemeEffects } from "./js/theme/themeEffects.js";
-import { THEME_DEFINITIONS, getThemeById, getUnlockLabel } from "./js/theme/themes.js";
+import { THEME_DEFINITIONS, getThemeById } from "./js/theme/themes.js";
 
 const SHOT_TRAVEL_MS = 200;
 const SHOT_EASING = "cubic-bezier(0.2, 0.95, 0.2, 1)";
@@ -278,18 +278,7 @@ const el = {
   themeGrid: document.querySelector("[data-theme-grid]"),
   powerGrid: document.querySelector("[data-power-grid]"),
   bestScoreTheme: document.querySelector("[data-best-score-theme]"),
-  themeProgressScore: document.querySelector("[data-theme-progress-score]"),
-  themeProgressMaxTile: document.querySelector("[data-theme-progress-max-tile]"),
-  themeProgressGames: document.querySelector("[data-theme-progress-games]"),
-  themeSpotlightCard: document.querySelector("[data-theme-spotlight-card]"),
-  themeSpotlightTitle: document.querySelector("[data-theme-spotlight-title]"),
-  themeSpotlightCopy: document.querySelector("[data-theme-spotlight-copy]"),
-  themeSpotlightTagline: document.querySelector("[data-theme-spotlight-tagline]"),
-  themeSpotlightTier: document.querySelector("[data-theme-spotlight-tier]"),
   powerBalance: document.querySelector("[data-power-balance]"),
-  powerBalanceLarge: document.querySelector("[data-power-balance-large]"),
-  powerOwnedCount: document.querySelector("[data-power-owned-count]"),
-  powerFeatureStrip: document.querySelector("[data-power-feature-strip]"),
   unlockedLevel: document.querySelector("[data-unlocked-level]"),
   selectedLevel: document.querySelector("[data-selected-level]"),
   selectedAiName: document.querySelector("[data-selected-ai-name]"),
@@ -307,6 +296,8 @@ const el = {
   comboBanner: document.querySelector("[data-combo-banner]"),
   bestScoreHome: document.querySelector("[data-best-score-home]"),
   bestScoreLevel: document.querySelector("[data-best-score-level]"),
+  gameBalance: document.querySelector("[data-game-balance]"),
+  gameScore: document.querySelector("[data-game-score]"),
   ammoPlayerCurrent: document.querySelector("[data-current-ammo]"),
   ammoPlayerNext: document.querySelector("[data-next-ammo]"),
   ammoAiCurrent: document.querySelector("[data-ai-current-ammo]"),
@@ -320,7 +311,6 @@ const el = {
   powerDrawer: document.querySelector("[data-power-drawer]"),
   powerDrawerCloseBtn: document.querySelector("[data-power-drawer-close-btn]"),
   powerDrawerGrid: document.querySelector("[data-power-drawer-grid]"),
-  powerDrawerNote: document.querySelector("[data-power-drawer-note]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -533,6 +523,14 @@ function getPowerById(powerId) {
   return POWER_UPS.find((power) => power.id === powerId) || null;
 }
 
+function formatCoins(value) {
+  return Math.max(0, Math.round(Number(value) || 0)).toLocaleString();
+}
+
+function getOwnedPowerUpCount() {
+  return POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
+}
+
 function hexToRgba(hex, alpha = 1) {
   const value = String(hex || "").trim();
   const match = value.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
@@ -726,6 +724,10 @@ function getPowerTargetLabel(power) {
 
 function getPowerActionLabel(power) {
   return power.target === "instant" ? "Activates on tap" : "Tap to arm";
+}
+
+function getThemeCoinPrice(theme) {
+  return Math.max(0, Number(theme?.unlock?.target || 0));
 }
 
 function getPowerRarityWeight(rarity) {
@@ -1329,6 +1331,11 @@ function closeSettingsPanel() {
 }
 
 function openPowerDrawer() {
+  if (getOwnedPowerUpCount() <= 0) {
+    showSystemBanner("BUY POWER-UPS FIRST");
+    return;
+  }
+
   state.powerDrawerOpen = true;
   el.powerDrawer.classList.remove("hidden");
   renderPowerDrawer();
@@ -1339,9 +1346,6 @@ function closePowerDrawer() {
   state.selectedPowerId = "";
   if (el.powerDrawer) {
     el.powerDrawer.classList.add("hidden");
-  }
-  if (el.powerDrawerNote) {
-    el.powerDrawerNote.textContent = "Choose a stocked power-up. Instant casts fire immediately, while tile tools arm and wait for your tap.";
   }
 }
 
@@ -1388,9 +1392,8 @@ function buildThemeGrid() {
   el.themeGrid.innerHTML = "";
   themeCards.length = 0;
 
-  for (const [index, theme] of THEME_DEFINITIONS.entries()) {
+  for (const theme of THEME_DEFINITIONS) {
     const button = document.createElement("button");
-    const look = getThemeUiLook(theme);
     const previewTiles = theme.preview
       .map((value) => `<span class="theme-preview-tile" data-preview-value="${value}">${value}</span>`)
       .join("");
@@ -1400,24 +1403,13 @@ function buildThemeGrid() {
     button.dataset.themeId = theme.id;
     applyThemeShowcaseStyles(button, theme);
     button.innerHTML = `
-      <div class="theme-card-head">
-        <div class="theme-card-heading">
-          <span class="theme-card-tier">${look.tierLabel}</span>
-          <h3 class="theme-card-title">${theme.name}</h3>
-        </div>
-        <span class="theme-card-status" data-theme-card-status>${theme.unlock.type === "default" ? "Default" : "Locked"}</span>
-      </div>
-      <p class="theme-card-tagline">${theme.tagline}</p>
-      <div class="theme-card-chips" aria-label="Theme profile">
-        <span class="theme-card-chip">${look.moodLabel}</span>
-        <span class="theme-card-chip">${look.motionLabel}</span>
-        <span class="theme-card-chip">${look.fxLabel}</span>
+      <div class="theme-card-topline">
+        <span class="theme-card-status" data-theme-card-status>${theme.unlock.type === "default" ? "Open" : "Locked"}</span>
       </div>
       <div class="theme-preview" data-theme-preview>${previewTiles}</div>
-      <p class="theme-card-copy">${theme.description}</p>
       <div class="theme-card-footer">
-        <span class="theme-card-unlock">${getUnlockLabel(theme)}</span>
-        <span class="theme-card-rank">Theme ${index + 1}</span>
+        <strong class="theme-card-title">${theme.name}</strong>
+        <span class="theme-card-price" data-theme-card-price>${theme.unlock.type === "default" ? "Unlocked" : `${formatCoins(getThemeCoinPrice(theme))} coins`}</span>
       </div>
     `;
 
@@ -1452,28 +1444,11 @@ function buildPowerGrid() {
     card.dataset.powerId = power.id;
     applyPowerVisualStyles(card, power);
     card.innerHTML = `
-      <div class="power-card-topline">
-        <span class="power-card-rarity">${power.rarity}</span>
-        <span class="power-card-target">${getPowerTargetLabel(power)}</span>
-      </div>
-      <div class="power-card-head">
-        <span class="power-card-icon-wrap"><span class="power-card-icon">${power.icon}</span></span>
-        <div class="power-card-titles">
-          <strong class="power-card-title">${power.name}</strong>
-          <span class="power-card-effect">${power.effect}</span>
-        </div>
-      </div>
-      <p class="power-card-copy">${power.description}</p>
-      <div class="power-card-meta">
-        <span class="power-card-chip">${power.shopTag}</span>
-        <span class="power-card-chip">${getPowerActionLabel(power)}</span>
-      </div>
+      <span class="power-card-icon-wrap"><span class="power-card-icon">${power.icon}</span></span>
+      <strong class="power-card-title">${power.name}</strong>
       <div class="power-card-footer">
-        <span class="power-card-owned" data-power-owned>Owned 0</span>
-        <div class="power-card-cta">
-          <span class="power-card-price">${power.price} cores</span>
-          <span class="power-card-buy" data-power-buy-label>Buy</span>
-        </div>
+        <span class="power-card-price">${formatCoins(power.price)} coins</span>
+        <span class="power-card-owned" data-power-owned>x0</span>
       </div>
     `;
 
@@ -1486,44 +1461,10 @@ function buildPowerGrid() {
   }
 }
 
-function renderPowerFeatureStrip() {
-  if (!el.powerFeatureStrip) {
-    return;
-  }
-
-  el.powerFeatureStrip.innerHTML = "";
-
-  const featured = [...POWER_UPS]
-    .sort((left, right) => {
-      const rarityDelta = getPowerRarityWeight(right.rarity) - getPowerRarityWeight(left.rarity);
-      if (rarityDelta !== 0) {
-        return rarityDelta;
-      }
-
-      return right.price - left.price;
-    })
-    .slice(0, 3);
-
-  for (const power of featured) {
-    const badge = document.createElement("div");
-    badge.className = "power-feature-card";
-    applyPowerVisualStyles(badge, power);
-    badge.innerHTML = `
-      <span class="power-feature-icon">${power.icon}</span>
-      <span class="power-feature-name">${power.name}</span>
-      <span class="power-feature-copy">${power.effect}</span>
-    `;
-    el.powerFeatureStrip.append(badge);
-  }
-}
-
 function renderPowerShop() {
-  const ownedCount = POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
-
-  el.powerBalance.textContent = state.powerBalance.toLocaleString();
-  el.powerBalanceLarge.textContent = state.powerBalance.toLocaleString();
-  el.powerOwnedCount.textContent = String(ownedCount);
-  renderPowerFeatureStrip();
+  if (el.powerBalance) {
+    el.powerBalance.textContent = formatCoins(state.powerBalance);
+  }
 
   for (const card of powerCards) {
     const power = getPowerById(card.dataset.powerId || "");
@@ -1534,16 +1475,11 @@ function renderPowerShop() {
     const owned = Number(state.powerInventory[power.id] || 0);
     const affordable = state.powerBalance >= power.price;
     const ownedEl = card.querySelector("[data-power-owned]");
-    const buyEl = card.querySelector("[data-power-buy-label]");
 
     card.classList.toggle("is-disabled", !affordable);
     card.classList.toggle("is-owned", owned > 0);
     if (ownedEl) {
-      ownedEl.textContent = `Owned ${owned}`;
-    }
-    if (buyEl) {
-      buyEl.textContent =
-        affordable ? (owned > 0 ? "Stock Up" : "Buy Now") : `Need ${Math.max(0, power.price - state.powerBalance)}`;
+      ownedEl.textContent = `x${owned}`;
     }
   }
 }
@@ -1555,14 +1491,16 @@ function buyPowerUp(powerId) {
   }
 
   if (state.powerBalance < power.price) {
-    showSystemBanner("NOT ENOUGH CORES");
+    showSystemBanner("NOT ENOUGH COINS");
     return false;
   }
 
   state.powerBalance -= power.price;
   state.powerInventory[power.id] = Number(state.powerInventory[power.id] || 0) + 1;
   savePowerState();
+  renderScoreboard();
   renderPowerShop();
+  renderThemeScreen();
   renderPowerDrawer();
   showSystemBanner(`${power.name.toUpperCase()} BOUGHT`);
   return true;
@@ -1576,39 +1514,33 @@ function renderPowerDrawer() {
   el.powerDrawerGrid.innerHTML = "";
   powerDrawerButtons.length = 0;
 
-  if (el.powerDrawerNote) {
-    const selectedPower = getPowerById(state.selectedPowerId);
-    el.powerDrawerNote.textContent = selectedPower
-      ? `${selectedPower.name} armed. ${selectedPower.effect} Tap a tile on the board.`
-      : "Choose a stocked power-up. Instant casts fire immediately, while tile tools arm and wait for your tap.";
-  }
-
   for (const power of POWER_UPS) {
     const count = Number(state.powerInventory[power.id] || 0);
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "power-drawer-btn";
-    button.dataset.powerId = power.id;
-    button.disabled = count <= 0 || !state.roundActive || state.roundFinished;
-    applyPowerVisualStyles(button, power);
-    button.innerHTML = `
-      <span class="power-drawer-icon-wrap"><span class="power-drawer-icon">${power.icon}</span></span>
-      <span class="power-drawer-copy">
-        <span class="power-drawer-name-row">
-          <span class="power-drawer-name">${power.name}</span>
-          <span class="power-drawer-type">${getPowerTargetLabel(power)}</span>
-        </span>
-        <span class="power-drawer-effect">${power.effect}</span>
-      </span>
-      <span class="power-drawer-count">${count}</span>
-    `;
-    button.classList.toggle("is-selected", state.selectedPowerId === power.id);
-    button.classList.toggle("is-empty", count <= 0);
-    button.addEventListener("click", () => {
-      armOrUsePowerUp(power.id);
-    });
-    el.powerDrawerGrid.append(button);
-    powerDrawerButtons.push(button);
+    if (count <= 0) {
+      continue;
+    }
+
+    for (let instance = 0; instance < count; instance += 1) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "power-drawer-btn";
+      button.dataset.powerId = power.id;
+      button.disabled = !state.roundActive || state.roundFinished;
+      applyPowerVisualStyles(button, power);
+      button.setAttribute("aria-label", `${power.name}. ${count - instance} remaining.`);
+      button.title = power.name;
+      button.innerHTML = `<span class="power-drawer-icon-wrap"><span class="power-drawer-icon">${power.icon}</span></span>`;
+      button.classList.toggle("is-selected", state.selectedPowerId === power.id);
+      button.addEventListener("click", () => {
+        armOrUsePowerUp(power.id);
+      });
+      el.powerDrawerGrid.append(button);
+      powerDrawerButtons.push(button);
+    }
+  }
+
+  if (powerDrawerButtons.length === 0) {
+    closePowerDrawer();
   }
 }
 
@@ -1960,28 +1892,8 @@ function countAdjacentEqualPairs(grid) {
 function renderThemeScreen() {
   const activeTheme = themeManager.getTheme();
   const unlocked = new Set(themeManager.getUnlockedThemeIds());
-  const progress = themeManager.getProgress();
-  const activeLook = getThemeUiLook(activeTheme);
-
-  el.bestScoreTheme.textContent = state.bestScore.toLocaleString();
-  el.themeProgressScore.textContent = progress.bestScore.toLocaleString();
-  el.themeProgressMaxTile.textContent = String(progress.maxTile);
-  el.themeProgressGames.textContent = String(progress.gamesPlayed);
-
-  if (el.themeSpotlightCard) {
-    applyThemeShowcaseStyles(el.themeSpotlightCard, activeTheme);
-  }
-  if (el.themeSpotlightTitle) {
-    el.themeSpotlightTitle.textContent = activeTheme.name;
-  }
-  if (el.themeSpotlightCopy) {
-    el.themeSpotlightCopy.textContent = activeTheme.description;
-  }
-  if (el.themeSpotlightTagline) {
-    el.themeSpotlightTagline.textContent = activeTheme.tagline;
-  }
-  if (el.themeSpotlightTier) {
-    el.themeSpotlightTier.textContent = `${activeLook.tierLabel} - ${activeLook.fxLabel}`;
+  if (el.bestScoreTheme) {
+    el.bestScoreTheme.textContent = formatCoins(state.powerBalance);
   }
 
   for (const card of themeCards) {
@@ -1990,6 +1902,7 @@ function renderThemeScreen() {
     const isUnlocked = unlocked.has(themeId);
     const isActive = activeTheme.id === themeId;
     const status = card.querySelector("[data-theme-card-status]");
+    const price = card.querySelector("[data-theme-card-price]");
 
     card.classList.toggle("is-locked", !isUnlocked);
     card.classList.toggle("is-active", isActive);
@@ -1997,8 +1910,11 @@ function renderThemeScreen() {
     card.disabled = false;
 
     if (status) {
-      status.textContent = isUnlocked ? (isActive ? "Equipped" : "Unlocked") : "Locked";
+      status.textContent = isUnlocked ? (isActive ? "Active" : "Open") : "Locked";
       status.classList.toggle("is-locked", !isUnlocked);
+    }
+    if (price) {
+      price.textContent = isUnlocked ? (isActive ? "Using now" : "Unlocked") : `${formatCoins(getThemeCoinPrice(theme))} coins`;
     }
 
     const previewTiles = card.querySelectorAll("[data-preview-value]");
@@ -2407,6 +2323,8 @@ async function executeShot(actor, column, withAudio) {
       showComboBanner(actor, mergeResult.comboCount);
       await maybePlayComboCinematic(mergeResult.comboCount);
       await wait(Math.min(150, 55 + mergeResult.comboCount * 20));
+    } else {
+      await wait(72);
     }
   } else if (actor.kind === "player" && opportunitiesBefore.length > 0) {
     triggerNearMissEffect(opportunitiesBefore, column);
@@ -2499,7 +2417,7 @@ function finishRound(result) {
   syncThemeProgress();
   renderAll();
   window.setTimeout(() => {
-    showSystemBanner(`+${payout} CORES`);
+    showSystemBanner(`+${payout} COINS`);
   }, 120);
 }
 
@@ -2595,9 +2513,21 @@ function renderAmmoTile(element, value, label) {
 
 function renderScoreboard() {
   const best = state.bestScore.toLocaleString();
-  el.bestScoreHome.textContent = best;
+  const coins = formatCoins(state.powerBalance);
+  el.bestScoreHome.textContent = formatCoins(state.powerBalance);
   el.bestScoreLevel.textContent = best;
-  el.bestScoreTheme.textContent = best;
+  if (el.bestScoreTheme) {
+    el.bestScoreTheme.textContent = coins;
+  }
+  if (el.powerBalance) {
+    el.powerBalance.textContent = coins;
+  }
+  if (el.gameBalance) {
+    el.gameBalance.textContent = coins;
+  }
+  if (el.gameScore) {
+    el.gameScore.textContent = boardState.score.toLocaleString();
+  }
 }
 
 function renderGameHeader() {
@@ -2697,8 +2627,8 @@ function renderSound() {
 }
 
 function renderMetaButtons() {
-  const ownedCount = POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
-  el.themeBtn.innerHTML = `&#10024; ${themeManager.getTheme().name}`;
+  const ownedCount = getOwnedPowerUpCount();
+  el.themeBtn.innerHTML = "&#10024; Themes";
   el.modeBtn.innerHTML = `&#9866; ${MODES[state.modeIndex].label}`;
   el.powerBtn.innerHTML = `&#9889; Power-Ups`;
   el.powerDrawerBtn.innerHTML = `&#9889;<span class="dock-btn-count">${ownedCount}</span>`;
@@ -2730,7 +2660,7 @@ function updateBoardScaleFor(board) {
   const widthCell = (hostWidth - pad * 2 - gap * (board.cols - 1)) / board.cols;
 
   const viewportHeight = window.innerHeight || 800;
-  const maxBoardHeight = viewportHeight * 0.69;
+  const maxBoardHeight = viewportHeight * 0.76;
   const heightCell = (maxBoardHeight - pad * 2 - gap * (board.rows - 1)) / board.rows;
   const cellSize = Math.max(24, Math.floor(Math.min(widthCell, heightCell)));
 
@@ -3471,7 +3401,8 @@ function syncThemeProgress() {
   const unlockedNow = themeManager.updateProgress({
     gamesPlayed: themeManager.getProgress().gamesPlayed,
     bestScore: state.bestScore,
-    maxTile: boardState.maxTile
+    maxTile: boardState.maxTile,
+    coins: state.powerBalance
   });
 
   if (unlockedNow.length > 0) {
@@ -4206,17 +4137,24 @@ function playMergeSound(value, comboCount = 1) {
   const volume = Number(profile.volumeMultiplier || 1);
 
   const now = ctx.currentTime;
-  const shift = Math.max(0, Math.min(10, Math.log2(value) - 1));
-  const root = (360 + shift * 26) * pitch;
+  const shift = Math.max(0, Math.min(14, Math.log2(Math.max(2, value)) - 1));
+  const root = (310 + shift * 24) * pitch;
+  const sparkle = value >= 256 ? 1.9 : 1.65;
+  const peak = Math.min(0.26, 0.12 + shift * 0.008) * volume;
 
-  playMergeTone(ctx, now, profile.mergeWave || "sine", root, 0.16 * volume, 0.24);
-  playMergeTone(ctx, now + 0.02, profile.mergeWave || "triangle", root * 1.5, 0.12 * volume, 0.23);
+  playMergeTone(ctx, now, "triangle", root * 0.52, peak * 0.72, 0.15);
+  playMergeTone(ctx, now + 0.01, profile.mergeWave || "sine", root, peak, 0.22);
+  playMergeTone(ctx, now + 0.035, "triangle", root * sparkle, peak * 0.84, 0.2);
+
+  if (value >= 2048) {
+    playMergeTone(ctx, now + 0.06, "sine", root * 2.35, peak * 0.58, 0.18);
+  }
 
   if (comboCount > 1) {
     const layers = Math.min(3, comboCount - 1);
 
     for (let i = 0; i < layers; i += 1) {
-      playMergeTone(ctx, now + 0.03 + i * 0.016, profile.mergeWave || "sine", root * (1.2 + i * 0.15), 0.08 * volume, 0.18);
+      playMergeTone(ctx, now + 0.05 + i * 0.018, "triangle", root * (1.28 + i * 0.14), peak * 0.5, 0.16);
     }
   }
 }

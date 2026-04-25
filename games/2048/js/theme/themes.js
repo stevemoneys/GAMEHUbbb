@@ -67,7 +67,7 @@ function createTheme({
   };
 }
 
-export const THEME_DEFINITIONS = Object.freeze([
+const RAW_THEME_DEFINITIONS = [
   createTheme({
     id: "glass-premium",
     name: "Glass Premium",
@@ -598,7 +598,55 @@ export const THEME_DEFINITIONS = Object.freeze([
     palette: { hueShift: 268, tileHueShift: 244, saturationBoost: 30, glowBoost: 1.76 },
     preview: [8, 64, 1024, 4096]
   })
+];
+
+const THEME_COIN_TARGETS = Object.freeze([
+  0,
+  300,
+  800,
+  1600,
+  2600,
+  3900,
+  5500,
+  7400,
+  9600,
+  12200,
+  15100,
+  18300,
+  21800,
+  25600,
+  29700,
+  34100,
+  38800,
+  43800,
+  49100,
+  54700,
+  60600,
+  66800,
+  73300,
+  80100
 ]);
+
+function withSequentialCoinUnlocks(theme, index) {
+  if (index === 0) {
+    return {
+      ...theme,
+      unlock: { type: "default", target: 0, label: "Unlocked" }
+    };
+  }
+
+  const target = THEME_COIN_TARGETS[index] || THEME_COIN_TARGETS[THEME_COIN_TARGETS.length - 1];
+  return {
+    ...theme,
+    unlock: {
+      type: "coins",
+      target,
+      label: `${target.toLocaleString()} coins`
+    }
+  };
+}
+
+export const THEME_DEFINITIONS = Object.freeze(RAW_THEME_DEFINITIONS.map(withSequentialCoinUnlocks));
 
 export const THEME_BY_ID = new Map(THEME_DEFINITIONS.map((theme) => [theme.id, theme]));
 
@@ -614,7 +662,8 @@ export function createDefaultThemeProgress() {
   return {
     gamesPlayed: 0,
     bestScore: 0,
-    maxTile: 0
+    maxTile: 0,
+    coins: 0
   };
 }
 
@@ -623,7 +672,8 @@ export function normalizeThemeProgress(progress) {
   return {
     gamesPlayed: Math.max(0, Number(progress?.gamesPlayed || defaults.gamesPlayed)),
     bestScore: Math.max(0, Number(progress?.bestScore || defaults.bestScore)),
-    maxTile: Math.max(0, Number(progress?.maxTile || defaults.maxTile))
+    maxTile: Math.max(0, Number(progress?.maxTile || defaults.maxTile)),
+    coins: Math.max(0, Number(progress?.coins || defaults.coins))
   };
 }
 
@@ -649,6 +699,10 @@ export function isThemeUnlockedByProgress(theme, progress) {
 
   if (unlock.type === "games_and_score") {
     return safeProgress.gamesPlayed >= Number(unlock.gamesPlayed || 0) && safeProgress.bestScore >= Number(unlock.score || 0);
+  }
+
+  if (unlock.type === "coins") {
+    return safeProgress.coins >= Number(unlock.target || 0);
   }
 
   return false;
