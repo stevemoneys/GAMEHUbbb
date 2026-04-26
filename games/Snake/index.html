@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEO SNAKE ARENA - Phase 5</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <canvas id="menuBgCanvas" width="1280" height="720" aria-hidden="true"></canvas>
+
+  <main id="appRoot" class="app-root">
+    <section id="homeScreen" class="screen active">
+      <header class="top-nav glass">
+        <div class="brand-wrap">
+          <div class="left-icon">&#x1F40D;</div>
+          <h1 class="logo">NEO SNAKE ARENA</h1>
+        </div>
+        <div class="top-status">
+          <div id="streakChip" class="status-chip streak-chip">&#x1F525; <strong id="streakValue">1</strong> <span id="streakMult">x1.0</span></div>
+          <div id="coinChip" class="status-chip coin-chip">&#x1FA99; <strong id="coinBalanceTop">0</strong></div>
+        </div>
+        <div class="top-actions">
+          <button id="settingsBtn" class="icon-btn" title="Settings">&#x2699;&#xFE0F;</button>
+          <button id="profileBtn" class="icon-btn" title="Profile">&#x1F464;</button>
+        </div>
+      </header>
+
+      <section class="home-showcase glass">
+        <div class="showcase-preview">
+          <canvas id="homeSnakePreview" width="220" height="130" aria-label="Equipped snake preview"></canvas>
+        </div>
+        <div class="showcase-copy">
+          <p class="showcase-kicker">Equipped Loadout</p>
+          <h2 id="homeEquippedSkin">Classic Green</h2>
+          <p id="homeEquippedPerk" class="showcase-perk">Starter skin. Balanced baseline.</p>
+          <div class="showcase-meta">
+            <span>Theme: <strong id="homeEquippedTheme">Neon Grid</strong></span>
+            <span>Collection: <strong id="homeCollectionCount">1/24</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="center-menu glass">
+        <button id="playBtn" class="menu-btn primary pulse">PLAY</button>
+        <button id="arcadeBtn" class="menu-btn secondary">ARCADE &#x1F579;&#xFE0F;</button>
+        <button id="collectionBtn" class="menu-btn premium">COLLECTION &#x1F9EA;</button>
+        <button id="shopBtn" class="menu-btn tertiary">SHOP &#x1F6D2;</button>
+        <button id="achievementsBtn" class="menu-btn secondary">ACHIEVEMENTS &#x1F3C6;</button>
+      </section>
+
+      <section class="home-feature-grid">
+        <article class="feature-card glass challenge-card">
+          <div class="feature-head">
+            <span class="feature-icon">&#x1F4C5;</span>
+            <div>
+              <p class="feature-kicker">Daily Challenge</p>
+              <h3 id="dailyChallengeTitle">Reach length 30 in any mode</h3>
+            </div>
+          </div>
+          <p id="dailyChallengeDesc" class="feature-copy">Push your run length higher to claim today's bonus.</p>
+          <div class="progress-track"><div id="dailyChallengeFill" class="progress-fill"></div></div>
+          <div class="feature-meta">
+            <span id="dailyChallengeProgress">0 / 30</span>
+            <span id="dailyChallengeReward">250 coins</span>
+          </div>
+          <div class="feature-meta">
+            <span id="dailyChallengeBadge">Badge reward active</span>
+            <span id="dailyChallengeReset">Resets in 0h 0m</span>
+          </div>
+        </article>
+
+        <article class="feature-card glass wheel-card">
+          <div class="feature-head">
+            <span class="feature-icon">&#x1F3B0;</span>
+            <div>
+              <p class="feature-kicker">Daily Bonus Wheel</p>
+              <h3 id="wheelStatusTitle">Free Spin Available</h3>
+            </div>
+          </div>
+          <p id="wheelStatusCopy" class="feature-copy">Spin once per day for bonus coins and jackpot chances.</p>
+          <div class="feature-meta">
+            <span id="wheelCountdown">Ready now</span>
+            <span>Rewards up to 1,000 coins</span>
+          </div>
+          <button id="wheelBtn" class="menu-btn premium">FREE SPIN</button>
+        </article>
+      </section>
+
+      <footer class="home-footer glass">
+        <span>COINS: <strong id="footerCoins">0</strong></span>
+        <span>LEVEL: <strong id="footerLevel">1</strong>/150</span>
+        <span id="footerVersion">v5.0</span>
+      </footer>
+    </section>
+
+    <section id="levelScreen" class="screen panel-screen">
+      <header class="panel-head">
+        <h2>Campaign - 150 Levels</h2>
+        <button id="closeLevelBtn" class="small-btn">Back</button>
+      </header>
+      <div class="panel-body">
+        <div id="levelGrid" class="level-grid"></div>
+      </div>
+      <footer class="panel-foot">
+        <div class="selected-level-info">
+          <h3 id="selectedLevelTitle">Select an unlocked level</h3>
+          <p id="selectedLevelObjective">Objective appears here.</p>
+        </div>
+        <button id="startLevelBtn" class="menu-btn primary" disabled>START GAME</button>
+      </footer>
+    </section>
+
+    <section id="arcadeScreen" class="screen panel-screen">
+      <header class="panel-head">
+        <h2>Arcade Modes</h2>
+        <button id="closeArcadeBtn" class="small-btn">Back</button>
+      </header>
+      <div class="mode-grid">
+        <button class="mode-card" data-mode="CLASSIC">&#x1F40D;<span>Classic</span></button>
+        <button class="mode-card" data-mode="TIME_ATTACK">&#x23F1;&#xFE0F;<span>Time Attack</span></button>
+        <button class="mode-card" data-mode="MAZE">&#x1F9F1;<span>Maze</span></button>
+        <button class="mode-card" data-mode="ZEN">&#x262E;&#xFE0F;<span>Zen</span></button>
+        <button class="mode-card boss" data-mode="BOSS_RUSH">&#x1F451;<span>Boss Rush</span></button>
+      </div>
+    </section>
+
+    <section id="shopScreen" class="screen panel-screen">
+      <header class="panel-head">
+        <h2>Snake Shop</h2>
+        <button id="closeShopBtn" class="small-btn">Back</button>
+      </header>
+      <div id="shopItems" class="shop-grid"></div>
+    </section>
+
+    <section id="profileScreen" class="screen panel-screen modalish">
+      <header class="panel-head">
+        <h2>Player Profile</h2>
+        <button id="closeProfileBtn" class="small-btn">Close</button>
+      </header>
+      <div class="profile-body">
+        <p>Total Coins: <strong id="profileCoins">0</strong></p>
+        <p>Highest Level: <strong id="profileLevel">1</strong></p>
+        <p>Completed Levels: <strong id="profileCompleted">0</strong></p>
+        <p>Total Play Time: <strong id="profilePlayTime">0m</strong></p>
+      </div>
+    </section>
+
+    <section id="settingsScreen" class="screen panel-screen modalish">
+      <header class="panel-head">
+        <h2>Settings</h2>
+        <button id="closeSettingsBtn" class="small-btn">Close</button>
+      </header>
+      <div class="settings-body">
+        <label class="toggle-row">
+          <span>SFX Enabled</span>
+          <input id="sfxToggle" type="checkbox" checked />
+        </label>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen">
+      <header class="game-hud glass">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>LENGTH: <span id="length">5</span></div>
+        <div>HIGH: <span id="highScore">0</span></div>
+      </header>
+
+      <section class="game-sub-hud glass">
+        <div id="comboBox" class="combo-box">COMBO: <span id="comboValue">0x</span> &#x1F525;</div>
+        <div class="fever-wrap">
+          <span>FEVER <span id="feverTime">0.0s</span></span>
+          <div class="fever-track"><div id="feverFill" class="fever-fill"></div></div>
+        </div>
+        <div id="objectiveText" class="objective">OBJECTIVE: Reach length 10</div>
+      </section>
+
+      <section class="arena-wrap">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div id="powerHud" class="power-hud">
+          <div id="powerRing" class="power-ring"><div id="powerIcon" class="power-icon">---</div></div>
+          <div class="power-meta">
+            <div id="powerName">Power-up</div>
+            <div id="powerTimer">0.0s</div>
+          </div>
+        </div>
+
+        <div id="gameEndOverlay" class="overlay">
+          <div class="overlay-card">
+            <h2 id="endTitle">GAME OVER</h2>
+            <p id="endMessage">You were defeated.</p>
+            <p>SCORE: <span id="finalScore">0</span></p>
+            <p>HIGH SCORE: <span id="finalHighScore">0</span></p>
+            <p>COINS EARNED: <span id="finalCoins">0</span></p>
+            <button id="returnHubBtn" class="menu-btn primary">RETURN TO HUB</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="game-controls glass">
+        <div class="game-control-topline">
+          <div id="powerIncoming" class="power-incoming"></div>
+          <div id="runCoinInfo" class="run-coin-info">RUN COINS: 0</div>
+        </div>
+        <div class="buttons">
+          <button id="pauseBtn">PAUSE</button>
+          <button id="restartBtn">RESTART</button>
+          <button id="exitBtn">EXIT</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <section id="collectionModal" class="collection-modal" aria-hidden="true">
+    <div id="collectionBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Phase 5 Collection</p>
+          <h2>Your Skins & Themes</h2>
+        </div>
+        <button id="closeCollectionBtn" class="small-btn">Close</button>
+      </header>
+
+      <div class="collection-summary glass">
+        <span>Skins Unlocked: <strong id="collectionSkinCount">1/24</strong></span>
+        <span>Themes Unlocked: <strong id="collectionThemeCount">1/12</strong></span>
+        <span>Badges Earned: <strong id="collectionBadgeCount">0</strong></span>
+        <span>Equipped: <strong id="collectionEquippedName">Classic Green</strong></span>
+      </div>
+
+      <div class="collection-tabs">
+        <button id="skinsTabBtn" class="collection-tab active" data-tab="skins">&#x1F40D; SKINS</button>
+        <button id="themesTabBtn" class="collection-tab" data-tab="themes">&#x1F304; THEMES</button>
+        <button id="badgesTabBtn" class="collection-tab" data-tab="badges">&#x1F3C5; BADGES</button>
+        <button id="achievementsTabBtn" class="collection-tab" data-tab="achievements">&#x1F3C6; ACHIEVEMENTS</button>
+      </div>
+
+      <div id="collectionGrid" class="collection-grid"></div>
+    </div>
+  </section>
+
+  <section id="shopModal" class="collection-modal" aria-hidden="true">
+    <div id="shopBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel shop-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Phase 5 Economy</p>
+          <h2>Premium Shop</h2>
+        </div>
+        <button id="closeShopModalBtn" class="small-btn">Close</button>
+      </header>
+
+      <div class="collection-summary glass">
+        <span>Balance: <strong id="shopCoinBalance">0</strong> coins</span>
+        <span>Owned Skins: <strong id="shopSkinOwnedCount">1</strong></span>
+        <span>Owned Themes: <strong id="shopThemeOwnedCount">1</strong></span>
+        <span>Upgrades: <strong id="shopUpgradeCount">0/12</strong></span>
+      </div>
+
+      <div class="collection-tabs">
+        <button id="shopSkinsTabBtn" class="collection-tab active" data-shop-tab="skins">SKINS</button>
+        <button id="shopThemesTabBtn" class="collection-tab" data-shop-tab="themes">THEMES</button>
+        <button id="shopUpgradesTabBtn" class="collection-tab" data-shop-tab="upgrades">UPGRADES</button>
+      </div>
+
+      <div id="shopGrid" class="collection-grid"></div>
+    </div>
+  </section>
+
+  <section id="wheelModal" class="collection-modal" aria-hidden="true">
+    <div id="wheelBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel wheel-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Daily Free Spin</p>
+          <h2>Bonus Wheel</h2>
+        </div>
+        <button id="closeWheelBtn" class="small-btn">Close</button>
+      </header>
+      <div class="collection-summary glass">
+        <span>Status: <strong id="wheelModalStatus">Available</strong></span>
+        <span>Best Prize: <strong>1,000 coins</strong></span>
+        <span>Resets: <strong id="wheelModalReset">Midnight</strong></span>
+      </div>
+      <div class="wheel-stage">
+        <div class="wheel-pointer"></div>
+        <canvas id="wheelCanvas" width="420" height="420" aria-label="Bonus wheel"></canvas>
+      </div>
+      <div class="wheel-actions">
+        <button id="spinWheelBtn" class="menu-btn premium">SPIN NOW</button>
+        <p id="wheelResultText" class="wheel-result-text">Spin for your daily bonus.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+
+  <script src="./utils.js"></script>
+  <script src="./cosmetics.js"></script>
+  <script src="./progression.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
