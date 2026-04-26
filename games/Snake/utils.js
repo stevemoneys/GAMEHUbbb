@@ -115,6 +115,7 @@
       highestLevelUnlocked: 1,
       completedLevels: [],
       totalCoins: 0,
+      totalCoinsSpent: 0,
       lifetimeCoinsEarned: 0,
       totalPlayMs: 0,
       highScore: 0,
@@ -131,6 +132,43 @@
       equippedSkinHistory: ["classic_green"],
       completedDailyChallenges: [],
       achievementsEarned: [],
+      replayMetaByMode: {
+        campaign: null,
+        classic: null,
+        time_attack: null,
+        maze: null,
+        zen: null,
+        boss_rush: null
+      },
+      stats: {
+        playerName: "Guest",
+        totalGamesStarted: 0,
+        totalGamesFinished: 0,
+        totalTimePlayed: 0,
+        totalCoinsEarned: 0,
+        totalCoinsSpent: 0,
+        highestScoreOverall: 0,
+        highestCombo: 0,
+        longestSnake: 5,
+        totalAISnakesEaten: 0,
+        totalPowerUpsCollected: 0,
+        totalFeverModesActivated: 0,
+        highestLevelCompleted: 0,
+        totalLevelsCompleted: 0,
+        bestScoresByMode: {
+          campaign: 0,
+          classic: 0,
+          time_attack: 0,
+          maze: 0,
+          zen: 0,
+          boss_rush: 0
+        },
+        longestStreak: 1,
+        totalDailyChallengesCompleted: 0,
+        skinsUnlocked: 1,
+        themesUnlocked: 1,
+        upgradesPurchased: 0
+      },
       unlockedSkins: ["classic_green"],
       equippedSkin: "classic_green",
       unlockedThemes: ["neon_grid"],
@@ -167,7 +205,12 @@
         doublePointsDurationBonus: 0
       },
       settings: {
-        sfx: true
+        sfx: true,
+        soundEnabled: true,
+        musicEnabled: true,
+        soundVolume: 0.72,
+        musicVolume: 0.48,
+        hapticsEnabled: true
       }
     };
   }
@@ -220,6 +263,18 @@
       equippedSkinHistory: Array.isArray(parsed.equippedSkinHistory) ? parsed.equippedSkinHistory : fallback.equippedSkinHistory,
       completedDailyChallenges: Array.isArray(parsed.completedDailyChallenges) ? parsed.completedDailyChallenges : [],
       achievementsEarned: Array.isArray(parsed.achievementsEarned) ? parsed.achievementsEarned : [],
+      replayMetaByMode: {
+        ...fallback.replayMetaByMode,
+        ...(parsed.replayMetaByMode || {})
+      },
+      stats: {
+        ...fallback.stats,
+        ...(parsed.stats || {}),
+        bestScoresByMode: {
+          ...fallback.stats.bestScoresByMode,
+          ...(parsed.stats?.bestScoresByMode || {})
+        }
+      },
       boosters: {
         ...fallback.boosters,
         ...(parsed.boosters || {})
@@ -242,8 +297,11 @@
       },
       settings: {
         ...fallback.settings,
-        ...(parsed.settings || {})
+        ...(parsed.settings || {}),
+        soundEnabled: parsed.settings?.soundEnabled ?? parsed.settings?.sfx ?? fallback.settings.soundEnabled,
+        sfx: parsed.settings?.sfx ?? parsed.settings?.soundEnabled ?? fallback.settings.sfx
       },
+      totalCoinsSpent: Number.isFinite(parsed.totalCoinsSpent) ? parsed.totalCoinsSpent : 0,
       gamesPlayed: Number.isFinite(parsed.gamesPlayed) ? parsed.gamesPlayed : 0,
       totalAISnakesEaten: Number.isFinite(parsed.totalAISnakesEaten) ? parsed.totalAISnakesEaten : 0,
       totalPowerUpsCollected: Number.isFinite(parsed.totalPowerUpsCollected) ? parsed.totalPowerUpsCollected : 0,

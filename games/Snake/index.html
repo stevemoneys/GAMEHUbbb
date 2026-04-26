@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEO SNAKE ARENA - Phase 5</title>
+  <title>NEO SNAKE ARENA - Phase 6</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@400;500;700;800&display=swap" rel="stylesheet" />
@@ -50,6 +50,7 @@
         <button id="collectionBtn" class="menu-btn premium">COLLECTION &#x1F9EA;</button>
         <button id="shopBtn" class="menu-btn tertiary">SHOP &#x1F6D2;</button>
         <button id="achievementsBtn" class="menu-btn secondary">ACHIEVEMENTS &#x1F3C6;</button>
+        <button id="statsBtn" class="menu-btn premium">STATS &#x1F4CA;</button>
       </section>
 
       <section class="home-feature-grid">
@@ -93,7 +94,7 @@
       <footer class="home-footer glass">
         <span>COINS: <strong id="footerCoins">0</strong></span>
         <span>LEVEL: <strong id="footerLevel">1</strong>/150</span>
-        <span id="footerVersion">v5.0</span>
+        <span id="footerVersion">v6.0</span>
       </footer>
     </section>
 
@@ -196,7 +197,22 @@
             <p>SCORE: <span id="finalScore">0</span></p>
             <p>HIGH SCORE: <span id="finalHighScore">0</span></p>
             <p>COINS EARNED: <span id="finalCoins">0</span></p>
+            <button id="watchReplayEndBtn" class="menu-btn premium" hidden>WATCH BEST REPLAY</button>
             <button id="returnHubBtn" class="menu-btn primary">RETURN TO HUB</button>
+          </div>
+        </div>
+
+        <div id="pauseMenuOverlay" class="overlay phase6-overlay">
+          <div class="overlay-card pause-menu-card">
+            <p class="collection-kicker">Paused</p>
+            <h2>Run Frozen</h2>
+            <div class="pause-menu-actions">
+              <button id="pauseResumeBtn" class="menu-btn primary">RESUME</button>
+              <button id="pauseRestartBtn" class="menu-btn secondary">RESTART</button>
+              <button id="pauseQuitBtn" class="menu-btn tertiary">QUIT TO MENU</button>
+              <button id="pauseSettingsBtn" class="menu-btn premium">SETTINGS</button>
+              <button id="pauseReplayBtn" class="menu-btn secondary" hidden>WATCH REPLAY</button>
+            </div>
           </div>
         </div>
       </section>
@@ -298,6 +314,122 @@
     </div>
   </section>
 
+  <section id="settingsModal" class="collection-modal" aria-hidden="true">
+    <div id="settingsBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel settings-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Phase 6 Audio & Feel</p>
+          <h2>Settings</h2>
+        </div>
+        <button id="closeSettingsModalBtn" class="small-btn">Close</button>
+      </header>
+      <div class="collection-summary glass">
+        <span>Music and SFX start after your first interaction.</span>
+        <span>Haptics work on supported mobile devices only.</span>
+      </div>
+      <div class="settings-grid">
+        <article class="settings-card glass">
+          <h3>Audio Toggles</h3>
+          <label class="toggle-row">
+            <span>Music</span>
+            <input id="musicToggle" type="checkbox" checked />
+          </label>
+          <label class="toggle-row">
+            <span>Sound Effects</span>
+            <input id="soundToggle" type="checkbox" checked />
+          </label>
+          <label class="toggle-row">
+            <span>Haptic Feedback</span>
+            <input id="hapticsToggle" type="checkbox" checked />
+          </label>
+        </article>
+        <article class="settings-card glass">
+          <h3>Volume</h3>
+          <label class="slider-row">
+            <span>Music Volume <strong id="musicVolumeValue">48%</strong></span>
+            <input id="musicVolume" type="range" min="0" max="100" value="48" />
+          </label>
+          <label class="slider-row">
+            <span>SFX Volume <strong id="soundVolumeValue">72%</strong></span>
+            <input id="soundVolume" type="range" min="0" max="100" value="72" />
+          </label>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="tutorialModal" class="collection-modal tutorial-modal" aria-hidden="true">
+    <div class="collection-backdrop"></div>
+    <div class="collection-panel tutorial-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Welcome To Neo Snake Arena</p>
+          <h2 id="tutorialTitle">How To Move</h2>
+        </div>
+        <button id="tutorialCloseBtn" class="small-btn">Skip</button>
+      </header>
+      <div class="tutorial-body glass">
+        <div id="tutorialIcon" class="tutorial-icon">🐍</div>
+        <p id="tutorialText" class="tutorial-text">Use the arrow keys or swipe on mobile to stay alive and keep growing.</p>
+      </div>
+      <footer class="tutorial-footer">
+        <span id="tutorialStep">Slide 1 of 7</span>
+        <div class="tutorial-actions">
+          <button id="tutorialPrevBtn" class="small-btn">Previous</button>
+          <button id="tutorialSkipBtn" class="small-btn">Skip Tutorial</button>
+          <button id="tutorialNextBtn" class="menu-btn primary">Next</button>
+        </div>
+      </footer>
+    </div>
+  </section>
+
+  <section id="statsModal" class="collection-modal" aria-hidden="true">
+    <div id="statsBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel stats-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Phase 6 Performance Dashboard</p>
+          <h2>Stats</h2>
+        </div>
+        <button id="statsCloseBtn" class="small-btn">Close</button>
+      </header>
+      <div id="statsGrid" class="stats-grid"></div>
+      <footer class="stats-footer">
+        <button id="statsResetBtn" class="small-btn debug-btn">Reset Phase 6 Stats</button>
+      </footer>
+    </div>
+  </section>
+
+  <section id="replayModal" class="collection-modal" aria-hidden="true">
+    <div id="replayBackdrop" class="collection-backdrop"></div>
+    <div class="collection-panel replay-panel">
+      <header class="collection-head">
+        <div>
+          <p class="collection-kicker">Ghost Replay System</p>
+          <h2 id="replayTitle">Best Replay</h2>
+          <p id="replayMeta" class="collection-desc">Best score 0 • Length 0 • 0:00</p>
+        </div>
+        <button id="replayCloseBtn" class="small-btn">Close</button>
+      </header>
+      <div class="replay-stage glass">
+        <canvas id="replayCanvas" width="800" height="600" aria-label="Replay viewer canvas"></canvas>
+      </div>
+      <div class="replay-controls glass">
+        <div class="replay-button-row">
+          <button id="replayPlayBtn" class="menu-btn primary">PLAY</button>
+          <button id="replayPauseBtn" class="menu-btn secondary">PAUSE</button>
+          <button id="replayStopBtn" class="menu-btn tertiary">STOP</button>
+        </div>
+        <div class="replay-scrubber-row">
+          <span id="replayTimeCurrent">0:00</span>
+          <input id="replayScrubber" type="range" min="0" max="1" value="0" />
+          <span id="replayTimeTotal">0:00</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
 
   <script src="./utils.js"></script>
@@ -305,5 +437,6 @@
   <script src="./progression.js"></script>
   <script src="./engine.js"></script>
   <script src="./app.js"></script>
+  <script src="./phase6.js"></script>
 </body>
 </html>
