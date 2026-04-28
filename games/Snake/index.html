@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEO SNAKE ARENA - Phase 6</title>
+  <title>NEO SNAKE ARENA - Phase 7</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@400;500;700;800&display=swap" rel="stylesheet" />
@@ -37,6 +37,11 @@
           <p class="showcase-kicker">Equipped Loadout</p>
           <h2 id="homeEquippedSkin">Classic Green</h2>
           <p id="homeEquippedPerk" class="showcase-perk">Starter skin. Balanced baseline.</p>
+          <div class="showcase-badges">
+            <span class="showcase-pill">Toroid World 2048 x 2048</span>
+            <span class="showcase-pill">Camera Follow Active</span>
+            <span class="showcase-pill">Premium Progression Online</span>
+          </div>
           <div class="showcase-meta">
             <span>Theme: <strong id="homeEquippedTheme">Neon Grid</strong></span>
             <span>Collection: <strong id="homeCollectionCount">1/24</strong></span>
@@ -45,12 +50,48 @@
       </section>
 
       <section class="center-menu glass">
-        <button id="playBtn" class="menu-btn primary pulse">PLAY</button>
-        <button id="arcadeBtn" class="menu-btn secondary">ARCADE &#x1F579;&#xFE0F;</button>
-        <button id="collectionBtn" class="menu-btn premium">COLLECTION &#x1F9EA;</button>
-        <button id="shopBtn" class="menu-btn tertiary">SHOP &#x1F6D2;</button>
-        <button id="achievementsBtn" class="menu-btn secondary">ACHIEVEMENTS &#x1F3C6;</button>
-        <button id="statsBtn" class="menu-btn premium">STATS &#x1F4CA;</button>
+        <button id="playBtn" class="menu-btn primary pulse menu-tile">
+          <span class="menu-tile-icon">&#x25B6;</span>
+          <span class="menu-tile-copy">
+            <strong>Play Campaign</strong>
+            <small>Push through all 150 levels</small>
+          </span>
+        </button>
+        <button id="arcadeBtn" class="menu-btn secondary menu-tile">
+          <span class="menu-tile-icon">&#x1F579;&#xFE0F;</span>
+          <span class="menu-tile-copy">
+            <strong>Arcade Modes</strong>
+            <small>Classic, Time Attack, Maze, Zen, Boss Rush</small>
+          </span>
+        </button>
+        <button id="collectionBtn" class="menu-btn premium menu-tile">
+          <span class="menu-tile-icon">&#x1F9EA;</span>
+          <span class="menu-tile-copy">
+            <strong>Collection</strong>
+            <small>Equip skins, themes, and daily badges</small>
+          </span>
+        </button>
+        <button id="shopBtn" class="menu-btn tertiary menu-tile">
+          <span class="menu-tile-icon">&#x1F6D2;</span>
+          <span class="menu-tile-copy">
+            <strong>Shop</strong>
+            <small>Buy unlocks and permanent upgrades</small>
+          </span>
+        </button>
+        <button id="achievementsBtn" class="menu-btn secondary menu-tile">
+          <span class="menu-tile-icon">&#x1F3C6;</span>
+          <span class="menu-tile-copy">
+            <strong>Achievements</strong>
+            <small>Claim milestone rewards and exclusives</small>
+          </span>
+        </button>
+        <button id="statsBtn" class="menu-btn premium menu-tile">
+          <span class="menu-tile-icon">&#x1F4CA;</span>
+          <span class="menu-tile-copy">
+            <strong>Stats</strong>
+            <small>Review records, replays, and run history</small>
+          </span>
+        </button>
       </section>
 
       <section class="home-feature-grid">
@@ -94,7 +135,7 @@
       <footer class="home-footer glass">
         <span>COINS: <strong id="footerCoins">0</strong></span>
         <span>LEVEL: <strong id="footerLevel">1</strong>/150</span>
-        <span id="footerVersion">v6.0</span>
+        <span id="footerVersion">v7.0</span>
       </footer>
     </section>
 
@@ -438,5 +479,6 @@
   <script src="./engine.js"></script>
   <script src="./app.js"></script>
   <script src="./phase6.js"></script>
+  <script src="./phase7.js"></script>
 </body>
 </html>

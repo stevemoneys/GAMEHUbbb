@@ -1,5 +1,6 @@
 import { GRID_COLUMNS, GRID_ROWS, cloneGrid, createEmptyGrid, gridsEqual } from "./grid.js";
 import { loadBestScore, saveBestScore } from "./state.js";
+import { createPuzzleManager } from "./js/puzzle/puzzleManager.js";
 import { createThemeManager } from "./js/theme/themeManager.js";
 import { createThemeEffects } from "./js/theme/themeEffects.js";
 import { THEME_DEFINITIONS, getThemeById } from "./js/theme/themes.js";
@@ -307,6 +308,14 @@ const el = {
   gameMode: document.querySelector("[data-game-mode]"),
   modeDetailWrap: document.querySelector("[data-mode-detail-wrap]"),
   modeDetail: document.querySelector("[data-mode-detail]"),
+  puzzleBrief: document.querySelector("[data-puzzle-brief]"),
+  puzzleZone: document.querySelector("[data-puzzle-zone]"),
+  puzzleType: document.querySelector("[data-puzzle-type]"),
+  puzzleStars: document.querySelector("[data-puzzle-stars]"),
+  puzzleGoal: document.querySelector("[data-puzzle-goal]"),
+  puzzleMoves: document.querySelector("[data-puzzle-moves]"),
+  puzzleHintBtn: document.querySelector("[data-puzzle-hint-btn]"),
+  puzzleRetryBtn: document.querySelector("[data-puzzle-retry-btn]"),
   powerDrawerBtn: document.querySelector("[data-power-drawer-btn]"),
   powerDrawer: document.querySelector("[data-power-drawer]"),
   powerDrawerCloseBtn: document.querySelector("[data-power-drawer-close-btn]"),
@@ -351,6 +360,7 @@ const state = {
   powerDrawerOpen: false,
   selectedPowerId: "",
   powerPreviewId: "",
+  puzzleSession: null,
   sessionModifier: null,
   momentumPoints: 0,
   momentumLevel: 1,
@@ -393,6 +403,7 @@ const levelButtons = [];
 const themeCards = [];
 const powerCards = [];
 const powerDrawerButtons = [];
+const puzzleManager = createPuzzleManager();
 const themeManager = createThemeManager();
 const themeEffects = createThemeEffects({ getTheme: () => themeManager.getTheme() });
 
@@ -1272,6 +1283,10 @@ function bindEvents() {
   el.overlayHomeBtn.addEventListener("click", showHome);
   el.restartBtn.addEventListener("click", restartLevel);
   el.overlayRestartBtn.addEventListener("click", restartLevel);
+  el.puzzleRetryBtn.addEventListener("click", restartLevel);
+  el.puzzleHintBtn.addEventListener("click", () => {
+    showPuzzleHint(true);
+  });
   el.powerDrawerBtn.addEventListener("click", () => {
     if (state.powerDrawerOpen) {
       closePowerDrawer();
@@ -2072,26 +2087,39 @@ function renderThemeScreen() {
 function renderLevels() {
   const profile = getAiProfileForLevel(state.selectedLevel);
   const targetText = formatBigInt(getLevelTarget(state.selectedLevel));
+  const puzzleConfig = isPuzzleMode() ? puzzleManager.getLevel(state.selectedLevel) : null;
 
   el.unlockedLevel.textContent = String(state.unlockedLevel);
   el.selectedLevel.textContent = String(state.selectedLevel);
-  el.selectedAiName.textContent = profile.name;
-
-  el.profileTitle.textContent = profile.name;
-  el.profileSummary.textContent = `${profile.summary} Target: ${targetText}`;
-  el.profileDepth.textContent = `Depth: ${profile.depthDisplay}`;
-  el.profileMistake.textContent = `Mistake: ${Math.round(profile.mistakeRate * 100)}%`;
-  el.profileSpeed.textContent = `Speed: ${profile.speedLabel}`;
-
-  el.startLevelBtn.textContent = `START LEVEL ${state.selectedLevel} - ${targetText}`;
+  if (puzzleConfig) {
+    el.selectedAiName.textContent = puzzleConfig.typeLabel;
+    el.profileTitle.textContent = puzzleConfig.name;
+    el.profileSummary.textContent = puzzleConfig.goal.text;
+    el.profileDepth.textContent = `Zone: ${puzzleConfig.zoneName}`;
+    el.profileMistake.textContent = `Moves: ${puzzleConfig.moveLimit}`;
+    el.profileSpeed.textContent = `AI: ${puzzleConfig.aiDifficulty}`;
+    el.startLevelBtn.textContent = `START PUZZLE ${state.selectedLevel}`;
+  } else {
+    el.selectedAiName.textContent = profile.name;
+    el.profileTitle.textContent = profile.name;
+    el.profileSummary.textContent = `${profile.summary} Target: ${targetText}`;
+    el.profileDepth.textContent = `Depth: ${profile.depthDisplay}`;
+    el.profileMistake.textContent = `Mistake: ${Math.round(profile.mistakeRate * 100)}%`;
+    el.profileSpeed.textContent = `Speed: ${profile.speedLabel}`;
+    el.startLevelBtn.textContent = `START LEVEL ${state.selectedLevel} - ${targetText}`;
+  }
 
   for (const button of levelButtons) {
     const level = Number.parseInt(button.dataset.level || "", 10);
     const locked = level > state.unlockedLevel;
+    const label = button.querySelector(".level-btn-label");
 
     button.classList.toggle("is-locked", locked);
     button.classList.toggle("is-selected", level === state.selectedLevel);
     button.disabled = locked;
+    if (label) {
+      label.textContent = puzzleConfig ? puzzleManager.getLevel(level).typeLabel.split(" ")[0] : getAiProfileForLevel(level).name.split(" ")[0];
+    }
   }
 
   renderScoreboard();
@@ -2120,7 +2148,13 @@ function startSelectedLevel() {
   showGame();
   window.setTimeout(() => {
     if (state.roundActive && !state.roundFinished && isGameVisible()) {
-      showSystemBanner(state.sessionModifier?.title || "SESSION MODIFIER");
+      if (isPuzzleMode() && state.puzzleSession) {
+        showSystemBanner(state.puzzleSession.goalLabel.toUpperCase());
+      } else if (isSpeedMode()) {
+        showSystemBanner("BEAT THE CLOCK");
+      } else {
+        showSystemBanner(state.sessionModifier?.title || "SESSION MODIFIER");
+      }
     }
   }, 180);
 }
@@ -2168,8 +2202,8 @@ function resetBoard(board) {
 function resetActor(actor) {
   actor.score = 0;
   actor.shotCount = 0;
-  actor.currentAmmo = createAmmoValue(state.modeIndex, actor.kind);
-  actor.nextAmmo = createAmmoValue(state.modeIndex, actor.kind);
+  actor.currentAmmo = isPuzzleMode() ? drawPuzzleAmmoValue(actor.kind) : createAmmoValue(state.modeIndex, actor.kind);
+  actor.nextAmmo = isPuzzleMode() ? drawPuzzleAmmoValue(actor.kind) : createAmmoValue(state.modeIndex, actor.kind);
 }
 
 function getCurrentMode() {
@@ -2192,20 +2226,182 @@ function isChaosMode() {
   return getCurrentMode().id === "chaos";
 }
 
+function hasAiOpponent() {
+  return !isSoloMode() && !isPuzzleMode() && !isSpeedMode();
+}
+
+function drawPuzzleAmmoValue(actorKind = "player") {
+  const queue = state.puzzleSession?.playerAmmoQueue;
+  if (actorKind === "player" && Array.isArray(queue) && queue.length > 0) {
+    return Number(queue.shift() || 2);
+  }
+  return createAmmoValue(state.modeIndex, actorKind);
+}
+
+function renderPuzzleBrief() {
+  if (!el.puzzleBrief) {
+    return;
+  }
+
+  if (!isPuzzleMode() || !state.puzzleSession) {
+    el.puzzleBrief.classList.add("hidden");
+    return;
+  }
+
+  const header = puzzleManager.getHeaderUi(state.puzzleSession);
+  el.puzzleZone.textContent = header.special || header.zone;
+  el.puzzleType.textContent = header.type;
+  el.puzzleStars.textContent = header.stars;
+  el.puzzleGoal.textContent = header.goal;
+  el.puzzleMoves.textContent = header.moves;
+  el.puzzleBrief.classList.remove("hidden");
+}
+
+function highlightPuzzleHintColumn(column) {
+  for (let row = 0; row < boardState.rows; row += 1) {
+    const cell = boardState.cellElements[getCellIndex(boardState, row, column)];
+    if (!cell) {
+      continue;
+    }
+    cell.classList.remove("puzzle-hint-cell");
+    void cell.offsetWidth;
+    cell.classList.add("puzzle-hint-cell");
+    window.setTimeout(() => cell.classList.remove("puzzle-hint-cell"), 950);
+  }
+}
+
+function showPuzzleHint(force = false) {
+  if (!isPuzzleMode() || !state.puzzleSession || !state.roundActive || state.roundFinished) {
+    return false;
+  }
+
+  const threshold = Number(state.puzzleSession.config.hintThreshold || 2);
+  if (!force && state.puzzleSession.movesUsed < threshold) {
+    showSystemBanner("PLAY A LITTLE MORE");
+    return false;
+  }
+
+  const hint = puzzleManager.getHint(state.puzzleSession, boardState.grid, player.currentAmmo);
+  if (!hint) {
+    showSystemBanner("NO HINT READY");
+    return false;
+  }
+
+  highlightPuzzleHintColumn(hint.column);
+  showSystemBanner(`HINT: ${hint.text.toUpperCase()}`);
+  renderPuzzleBrief();
+  return true;
+}
+
+function applyPuzzleSessionState() {
+  if (!isPuzzleMode()) {
+    state.puzzleSession = null;
+    return;
+  }
+
+  state.puzzleSession = puzzleManager.createSession(state.activeLevel);
+  state.playerMovesLeft = state.puzzleSession.moveLimit;
+  boardState.grid = cloneGrid(state.puzzleSession.board);
+  boardState.maxTile = getMaxTile(boardState.grid);
+  state.lockedTiles = state.puzzleSession.config.lockedTiles.map((tile) => ({ ...tile }));
+}
+
+function applyPuzzleSpecialRuleAfterMove() {
+  if (!isPuzzleMode() || !state.puzzleSession) {
+    return;
+  }
+
+  if (state.puzzleSession.specialRule !== "gravity-shift") {
+    return;
+  }
+
+  for (const row of boardState.grid) {
+    row.reverse();
+  }
+
+  collapseColumnsTopToBottom(boardState.grid);
+  boardState.maxTile = getMaxTile(boardState.grid);
+  boardState.boardElement.classList.remove("is-shaking");
+  void boardState.boardElement.offsetWidth;
+  boardState.boardElement.classList.add("is-shaking");
+  showSystemBanner("GRAVITY SHIFT");
+}
+
+function resolvePuzzleTurn(mergeResult) {
+  if (!isPuzzleMode() || !state.puzzleSession) {
+    return false;
+  }
+
+  if (mergeResult.scoreGained > 0) {
+    const puzzlePraise = puzzleManager.checkOutcome(
+      state.puzzleSession,
+      boardState.score,
+      boardState.maxTile,
+      state.lockedTiles,
+      boardState.grid
+    ).praise;
+    if (puzzlePraise) {
+      showSystemBanner(puzzlePraise.toUpperCase());
+    }
+  }
+
+  applyPuzzleSpecialRuleAfterMove();
+  const outcome = puzzleManager.checkOutcome(
+    state.puzzleSession,
+    boardState.score,
+    boardState.maxTile,
+    state.lockedTiles,
+    boardState.grid
+  );
+  renderPuzzleBrief();
+
+  if (outcome.solved) {
+    const stars = puzzleManager.recordWin(state.activeLevel, state.puzzleSession.movesUsed);
+    if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
+      state.unlockedLevel += 1;
+      saveStoredLevel(LEVEL_UNLOCK_KEY, state.unlockedLevel);
+    }
+
+    state.roundFinished = true;
+    state.roundResult = `${outcome.praise || "Solved"} - ${stars} star${stars === 1 ? "" : "s"}.`;
+    stopAiLoop();
+    stopModeTimer();
+    showGameOverPanel("Puzzle Cleared", "Room Solved", `${outcome.praise || "Brilliant"} - ${stars} star${stars === 1 ? "" : "s"} earned.`);
+    renderAll();
+    return true;
+  }
+
+  if (outcome.failed) {
+    state.roundFinished = true;
+    puzzleManager.markFailure(state.activeLevel);
+    stopAiLoop();
+    stopModeTimer();
+    state.roundResult = puzzleManager.getFailureCopy(state.activeLevel, state.puzzleSession.movesUsed);
+    showGameOverPanel("Almost!", "Retry Puzzle", state.roundResult);
+    renderAll();
+    return true;
+  }
+
+  if (outcome.almost) {
+    showSystemBanner(outcome.almost.toUpperCase());
+  }
+
+  return false;
+}
+
 function setupModeState() {
   state.timeLeftMs = 0;
   state.playerMovesLeft = null;
   state.lastChaosEvent = "";
+  state.puzzleSession = null;
 
   if (isSpeedMode()) {
-    state.timeLeftMs = 60000;
+    state.timeLeftMs = 45000;
     startModeTimer();
   }
 
   if (isPuzzleMode()) {
-    state.playerMovesLeft = getPuzzleMoveLimit(state.activeLevel);
-    boardState.grid = createPuzzleBoard(state.activeLevel);
-    boardState.maxTile = getMaxTile(boardState.grid);
+    applyPuzzleSessionState();
   }
 }
 
@@ -2361,9 +2557,15 @@ async function handleHumanShot(column) {
     return;
   }
 
+  if (isPuzzleMode() && state.puzzleSession && !puzzleManager.isColumnAllowed(state.puzzleSession, column)) {
+    triggerBlockedFeedback(boardState);
+    showSystemBanner("LANE LOCKED");
+    return;
+  }
+
   const result = await executeShot(player, column, true);
   if (result === "placed" && !state.roundFinished) {
-    if (isSoloMode()) {
+    if (!hasAiOpponent()) {
       state.currentTurn = "player";
     } else {
       state.currentTurn = "ai";
@@ -2477,7 +2679,7 @@ async function executeShot(actor, column, withAudio) {
 
   actor.shotCount += 1;
   actor.currentAmmo = actor.nextAmmo;
-  actor.nextAmmo = createAmmoValue(state.modeIndex, actor.kind);
+  actor.nextAmmo = isPuzzleMode() ? drawPuzzleAmmoValue(actor.kind) : createAmmoValue(state.modeIndex, actor.kind);
   maybeAssignRiskTile(actor);
   applyModeAfterShot(actor, mergeResult);
 
@@ -2492,10 +2694,19 @@ async function executeShot(actor, column, withAudio) {
   boardState.isAnimating = false;
 
   checkRunProgressMilestones();
-  storeGameSnapshot();
-  renderAll();
+  if (isPuzzleMode() && actor.kind === "player") {
+    const puzzleResolved = resolvePuzzleTurn(mergeResult);
+    storeGameSnapshot();
+    renderAll();
+    if (puzzleResolved) {
+      return "placed";
+    }
+  } else {
+    storeGameSnapshot();
+    renderAll();
+  }
 
-  if (hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
+  if (!isPuzzleMode() && !isSpeedMode() && hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
     finishRound(actor.kind === "player" ? "player-win" : "ai-win");
     return "placed";
   }
@@ -2575,6 +2786,7 @@ function renderAll() {
   renderAmmo();
   renderScoreboard();
   renderGameHeader();
+  renderPuzzleBrief();
   renderStatus();
   renderSound();
   renderSettingsPanel();
@@ -2672,7 +2884,7 @@ function renderGameHeader() {
   el.targetValue.textContent = formatBigInt(getLevelTarget(state.activeLevel));
   const mode = getCurrentMode();
   el.gameMode.textContent = mode.label;
-  el.aiLauncher.classList.toggle("hidden", isSoloMode());
+  el.aiLauncher.classList.toggle("hidden", !hasAiOpponent());
 
   let detailText = "";
   if (isSpeedMode()) {
@@ -2854,7 +3066,7 @@ function markNearMerge(board, row, col) {
 }
 
 function scheduleAiTurn(immediate = false) {
-  if (!state.roundActive || state.roundFinished || isSoloMode() || state.currentTurn !== "ai" || boardState.isAnimating || !isGameVisible()) {
+  if (!state.roundActive || state.roundFinished || !hasAiOpponent() || state.currentTurn !== "ai" || boardState.isAnimating || !isGameVisible()) {
     return;
   }
 
@@ -2877,7 +3089,7 @@ function stopAiLoop() {
 }
 
 async function runAiTurn() {
-  if (!state.roundActive || state.roundFinished || isSoloMode() || state.currentTurn !== "ai" || boardState.isAnimating || !isGameVisible()) {
+  if (!state.roundActive || state.roundFinished || !hasAiOpponent() || state.currentTurn !== "ai" || boardState.isAnimating || !isGameVisible()) {
     return;
   }
 
