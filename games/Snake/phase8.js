@@ -117,6 +117,7 @@
           ? (dx > 0 ? "right" : "left")
           : (dy > 0 ? "down" : "up");
         this.handleAudioUnlock?.();
+        this.wakeGameplayHud?.(1400);
         this.engine.queueDirection(dir);
       };
 

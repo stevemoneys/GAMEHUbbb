@@ -1030,28 +1030,51 @@
       const bottom = camera.y + camera.viewportHeight * 0.5;
 
       this.ctx.save();
-      this.ctx.strokeStyle = this.state.fever ? "rgba(255,255,255,0.12)" : themeStyles?.gridColor || "rgba(255,255,255,0.07)";
+      const orbSpacing = 30;
+      const startY = Math.floor(top / orbSpacing) * orbSpacing - orbSpacing;
+      const endY = Math.ceil(bottom / orbSpacing) * orbSpacing + orbSpacing;
+      const startX = Math.floor(left / orbSpacing) * orbSpacing - orbSpacing;
+      const endX = Math.ceil(right / orbSpacing) * orbSpacing + orbSpacing;
+      const orbRadius = Math.max(2.5, this.pixelsPerUnit * 2.2);
+
+      for (let y = startY; y <= endY; y += orbSpacing) {
+        const rowShift = Math.floor(y / orbSpacing) % 2 === 0 ? 0 : orbSpacing * 0.5;
+        for (let x = startX; x <= endX; x += orbSpacing) {
+          const point = this.worldToScreen(wrapValue(x + rowShift, WORLD_WIDTH), wrapValue(y, WORLD_HEIGHT));
+          const orb = this.ctx.createRadialGradient(point.x, point.y, orbRadius * 0.15, point.x, point.y, orbRadius * 1.8);
+          orb.addColorStop(0, this.state.fever ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.085)");
+          orb.addColorStop(0.55, this.state.fever ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)");
+          orb.addColorStop(1, "rgba(255,255,255,0)");
+          this.ctx.fillStyle = orb;
+          this.ctx.beginPath();
+          this.ctx.arc(point.x, point.y, orbRadius * 1.8, 0, Math.PI * 2);
+          this.ctx.fill();
+        }
+      }
+
+      const streaks = 8;
+      this.ctx.strokeStyle = this.state.fever ? "rgba(255,255,255,0.055)" : "rgba(120, 180, 255, 0.035)";
       this.ctx.lineWidth = 1;
-
-      const startX = Math.floor(left / WORLD_GRID_SPACING) * WORLD_GRID_SPACING;
-      const endX = Math.ceil(right / WORLD_GRID_SPACING) * WORLD_GRID_SPACING;
-      for (let x = startX; x <= endX; x += WORLD_GRID_SPACING) {
-        const screen = this.worldToScreen(wrapValue(x, WORLD_WIDTH), camera.y);
+      for (let i = 0; i < streaks; i += 1) {
+        const sx = ((i * 173) + (ts * 0.018)) % (this.renderWidth + 220) - 110;
         this.ctx.beginPath();
-        this.ctx.moveTo(screen.x + 0.5, 0);
-        this.ctx.lineTo(screen.x + 0.5, this.renderHeight);
+        this.ctx.moveTo(sx, -40);
+        this.ctx.quadraticCurveTo(sx + 90, this.renderHeight * 0.32, sx - 40, this.renderHeight + 40);
         this.ctx.stroke();
       }
 
-      const startY = Math.floor(top / WORLD_GRID_SPACING) * WORLD_GRID_SPACING;
-      const endY = Math.ceil(bottom / WORLD_GRID_SPACING) * WORLD_GRID_SPACING;
-      for (let y = startY; y <= endY; y += WORLD_GRID_SPACING) {
-        const screen = this.worldToScreen(camera.x, wrapValue(y, WORLD_HEIGHT));
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, screen.y + 0.5);
-        this.ctx.lineTo(this.renderWidth, screen.y + 0.5);
-        this.ctx.stroke();
-      }
+      const vignette = this.ctx.createRadialGradient(
+        this.renderWidth * 0.5,
+        this.renderHeight * 0.48,
+        this.renderWidth * 0.12,
+        this.renderWidth * 0.5,
+        this.renderHeight * 0.48,
+        this.renderWidth * 0.72
+      );
+      vignette.addColorStop(0, "rgba(255,255,255,0)");
+      vignette.addColorStop(1, "rgba(0,0,0,0.34)");
+      this.ctx.fillStyle = vignette;
+      this.ctx.fillRect(0, 0, this.renderWidth, this.renderHeight);
       this.ctx.restore();
     },
 

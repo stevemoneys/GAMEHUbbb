@@ -204,6 +204,7 @@
     lastCombo: 0,
     activeRun: null,
     audioCtx: null,
+    gameplayHudUntil: 0,
 
     init() {
       this.normalizeProgress();
@@ -766,6 +767,7 @@
     startGame(config, returnScreen) {
       this.currentConfig = config;
       this.returnScreenAfterGame = returnScreen;
+      this.gameplayHudUntil = performance.now() + 3200;
       this.closeCollection(true);
       this.closeShop(true);
       this.closeWheel(true);
@@ -775,6 +777,7 @@
 
     returnFromGame() {
       this.activeRun = null;
+      this.screens?.game?.classList.remove("hud-attention", "hud-calm");
       this.updateRunCoinInfo();
       this.updateHomeStats();
       this.updateHomeShowcase();
@@ -801,6 +804,28 @@
       return "CLASSIC MODE: Survive and build the highest score you can.";
     },
 
+    wakeGameplayHud(ms = 2200) {
+      this.gameplayHudUntil = Math.max(this.gameplayHudUntil || 0, performance.now() + ms);
+      if (!this.screens?.game) return;
+      this.screens.game.classList.add("hud-attention");
+      this.screens.game.classList.remove("hud-calm");
+    },
+
+    refreshGameplayHudState(state = this.engine?.state) {
+      if (!this.screens?.game) return;
+      const important = !!(
+        this.engine?.paused ||
+        this.dom.gameEndOverlay.classList.contains("show") ||
+        (state?.fever) ||
+        (state?.activePower) ||
+        ((state?.combo || 0) > 1) ||
+        (state?.powerIncoming && !state?.powerCube)
+      );
+      const active = important || performance.now() < (this.gameplayHudUntil || 0);
+      this.screens.game.classList.toggle("hud-attention", active);
+      this.screens.game.classList.toggle("hud-calm", !active);
+    },
+
     updateGameHud(state, config) {
       this.gameUi.score.textContent = String(state.score);
       this.gameUi.length.textContent = String(state.player.targetLength);
@@ -810,6 +835,7 @@
         this.gameUi.comboBox.classList.remove("pop");
         void this.gameUi.comboBox.offsetWidth;
         this.gameUi.comboBox.classList.add("pop");
+        this.wakeGameplayHud(2400);
       }
       this.lastCombo = state.combo;
 
@@ -822,6 +848,7 @@
         const remain = Math.max(0, state.feverEnd - performance.now());
         this.gameUi.feverFill.style.width = `${Math.max(0, Math.min(100, (remain / 8000) * 100)).toFixed(1)}%`;
         this.gameUi.feverTime.textContent = formatSeconds(remain);
+        this.wakeGameplayHud(1800);
       } else {
         this.gameUi.feverFill.style.width = "0%";
         this.gameUi.feverTime.textContent = "0.0s";
@@ -835,6 +862,7 @@
         this.gameUi.powerIcon.textContent = state.activePower.icon;
         this.gameUi.powerName.textContent = state.activePower.name;
         this.gameUi.powerTimer.textContent = formatSeconds(remain);
+        this.wakeGameplayHud(1800);
       } else {
         this.gameUi.powerHud.classList.remove("show");
       }
@@ -842,6 +870,7 @@
       if (state.powerIncoming && !state.powerCube) {
         this.gameUi.powerIncoming.textContent = "Power-up incoming!";
         this.gameUi.powerIncoming.classList.add("show");
+        this.wakeGameplayHud(2200);
       } else {
         this.gameUi.powerIncoming.classList.remove("show");
         this.gameUi.powerIncoming.textContent = "";
@@ -849,6 +878,7 @@
 
       this.trackRunState(state, config);
       this.updateRunCoinInfo();
+      this.refreshGameplayHudState(state);
     },
 
     createRunTracker(config) {

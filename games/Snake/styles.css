@@ -2201,9 +2201,11 @@ body.game-immersive .game-controls {
   right: 16px;
   z-index: 10;
   border-radius: 20px;
-  background: rgba(6, 10, 22, 0.58);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(6, 10, 22, 0.32);
+  border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+  transition: opacity 240ms ease, transform 240ms ease, background-color 240ms ease, border-color 240ms ease;
 }
 
 body.game-immersive .game-hud {
@@ -2223,6 +2225,40 @@ body.game-immersive .game-controls {
   right: 16px;
   bottom: max(10px, env(safe-area-inset-bottom));
   padding: 10px 14px;
+}
+
+body.game-immersive #gameScreen.hud-calm .game-sub-hud,
+body.game-immersive #gameScreen.hud-calm .game-controls .game-control-topline,
+body.game-immersive #gameScreen.hud-calm .touch-drag-hint {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+body.game-immersive #gameScreen.hud-calm .game-hud {
+  opacity: 0.42;
+  background: rgba(6, 10, 22, 0.18);
+  border-color: rgba(255,255,255,0.05);
+}
+
+body.game-immersive #gameScreen.hud-calm .game-controls {
+  background: rgba(6, 10, 22, 0.12);
+  border-color: rgba(255,255,255,0.04);
+}
+
+body.game-immersive #gameScreen.hud-calm .buttons {
+  opacity: 0.18;
+  transition: opacity 240ms ease;
+}
+
+body.game-immersive #gameScreen.hud-attention .game-hud,
+body.game-immersive #gameScreen.hud-attention .game-sub-hud,
+body.game-immersive #gameScreen.hud-attention .game-controls {
+  opacity: 1;
+}
+
+body.game-immersive #gameScreen.hud-attention .buttons {
+  opacity: 1;
 }
 
 body.game-immersive .arena-wrap,
@@ -2258,6 +2294,21 @@ body.game-immersive .minimap-canvas {
 
 body.game-immersive .touch-drag-hint {
   bottom: calc(max(78px, env(safe-area-inset-bottom) + 72px));
+}
+
+body.game-immersive .power-hud,
+body.game-immersive .minimap-canvas,
+body.game-immersive .touch-drag-hint {
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+body.game-immersive #gameScreen.hud-calm .minimap-canvas {
+  opacity: 0.28;
+}
+
+body.game-immersive #gameScreen.hud-calm .power-hud:not(.show) {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 body.game-immersive .buttons {
