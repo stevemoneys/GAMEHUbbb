@@ -22,6 +22,7 @@ const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
 const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
 const POWER_BALANCE_STORAGE_KEY = "gamehub_2048_power_balance_v1";
 const POWER_INVENTORY_STORAGE_KEY = "gamehub_2048_power_inventory_v1";
+const MERGE_SFX_URL = "./assets/audio/merge-sfx.mp3";
 const BLOCKER_TILE = -1;
 const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
 const SESSION_MODIFIERS = Object.freeze([
@@ -325,6 +326,9 @@ const el = {
   powerActiveIcon: document.querySelector("[data-power-active-icon]"),
   powerActiveName: document.querySelector("[data-power-active-name]"),
   powerActiveHint: document.querySelector("[data-power-active-hint]"),
+  goalCallout: document.querySelector("[data-goal-callout]"),
+  goalCalloutValue: document.querySelector("[data-goal-callout-value]"),
+  goalCalloutCopy: document.querySelector("[data-goal-callout-copy]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -360,6 +364,8 @@ const state = {
   powerDrawerOpen: false,
   selectedPowerId: "",
   powerPreviewId: "",
+  overlayAction: "restart",
+  showGoalIntroPending: false,
   puzzleSession: null,
   sessionModifier: null,
   momentumPoints: 0,
@@ -395,6 +401,7 @@ let sfxBusGain = null;
 let bgmBusGain = null;
 let bgmLoopIntervalId = null;
 let bgmStep = 0;
+let mergeSfxAudio = null;
 let heroState = createHeroState();
 let heroIntervalId = null;
 let aiMoveTimeoutId = null;
@@ -428,7 +435,8 @@ function createBoardState(boardElement, comboElement) {
     cellElements: [],
     animationLayer: null,
     comboTimeoutId: null,
-    feedbackTimeoutId: null
+    feedbackTimeoutId: null,
+    goalCalloutTimeoutId: null
   };
 }
 
@@ -582,6 +590,72 @@ function getPowerUseHint(powerId) {
   }
 
   return "Tap a power-up icon to use it in this run.";
+}
+
+function getPowerAnnouncementText(powerId) {
+  const power = getPowerById(powerId);
+  return power?.effect || "Power-Up Ready";
+}
+
+function goToNextLevel() {
+  const nextLevel = Math.min(LEVEL_COUNT, state.activeLevel + 1);
+  if (nextLevel === state.activeLevel) {
+    showHome();
+    return;
+  }
+
+  state.selectedLevel = Math.min(state.unlockedLevel, nextLevel);
+  saveStoredLevel(LEVEL_SELECTED_KEY, state.selectedLevel);
+  startSelectedLevel();
+}
+
+function handleOverlayAction() {
+  if (state.overlayAction === "next") {
+    goToNextLevel();
+    return;
+  }
+
+  restartLevel();
+}
+
+function showGoalCallout() {
+  if (!el.goalCallout || !state.roundActive) {
+    return;
+  }
+
+  let tileValue = "";
+  let copy = "Reach this tile to win.";
+
+  if (isPuzzleMode() && state.puzzleSession) {
+    const goal = state.puzzleSession.config.goal || {};
+    tileValue =
+      goal.kind === "tile" ? formatBigInt(BigInt(Number(goal.target || 0))) :
+      goal.kind === "score" ? Number(goal.target || 0).toLocaleString() :
+      `${state.puzzleSession.level}`;
+    copy = goal.text || "Solve this puzzle room.";
+  } else if (isSpeedMode()) {
+    tileValue = formatTimeLeft(state.timeLeftMs);
+    copy = "Score as much as you can before time runs out.";
+  } else {
+    tileValue = formatBigInt(getLevelTarget(state.activeLevel));
+    copy = "Merge up to this block to clear the level.";
+  }
+
+  el.goalCalloutValue.textContent = tileValue;
+  el.goalCalloutCopy.textContent = copy;
+  el.goalCallout.classList.remove("hidden");
+  el.goalCallout.classList.remove("is-visible");
+  void el.goalCallout.offsetWidth;
+  el.goalCallout.classList.add("is-visible");
+
+  if (boardState.goalCalloutTimeoutId) {
+    window.clearTimeout(boardState.goalCalloutTimeoutId);
+  }
+
+  boardState.goalCalloutTimeoutId = window.setTimeout(() => {
+    el.goalCallout.classList.remove("is-visible");
+    el.goalCallout.classList.add("hidden");
+  }, 2000);
 }
 
 function hexToRgba(hex, alpha = 1) {
@@ -1148,6 +1222,7 @@ function initialize() {
   resetRound();
   syncThemeProgress();
   renderAll();
+  primeMergeSfxAudio();
   applyMusicState();
   showHome();
 }
@@ -1282,7 +1357,7 @@ function bindEvents() {
   el.homeBtn.addEventListener("click", showHome);
   el.overlayHomeBtn.addEventListener("click", showHome);
   el.restartBtn.addEventListener("click", restartLevel);
-  el.overlayRestartBtn.addEventListener("click", restartLevel);
+  el.overlayRestartBtn.addEventListener("click", handleOverlayAction);
   el.puzzleRetryBtn.addEventListener("click", restartLevel);
   el.puzzleHintBtn.addEventListener("click", () => {
     showPuzzleHint(true);
@@ -1311,6 +1386,13 @@ function showHome() {
   stopModeTimer();
   closeSettingsPanel();
   closePowerDrawer();
+  if (boardState.goalCalloutTimeoutId) {
+    window.clearTimeout(boardState.goalCalloutTimeoutId);
+    boardState.goalCalloutTimeoutId = null;
+  }
+  if (el.goalCallout) {
+    el.goalCallout.classList.add("hidden");
+  }
   el.home.classList.remove("hidden");
   el.themes.classList.add("hidden");
   el.powers.classList.add("hidden");
@@ -1369,7 +1451,13 @@ function showGame() {
   if (isSpeedMode() && state.roundActive && !state.roundFinished) {
     startModeTimer();
   }
-  window.requestAnimationFrame(updateBoardScale);
+  window.requestAnimationFrame(() => {
+    updateBoardScale();
+    if (state.showGoalIntroPending) {
+      state.showGoalIntroPending = false;
+      showGoalCallout();
+    }
+  });
 }
 
 function isGameVisible() {
@@ -1567,7 +1655,7 @@ function renderPowerActiveCard() {
     el.powerActiveCount.textContent = `x${owned}`;
   }
   if (el.powerActiveName) {
-    el.powerActiveName.textContent = power.name;
+    el.powerActiveName.textContent = power.effect;
   }
   if (el.powerActiveHint) {
     el.powerActiveHint.textContent = getPowerUseHint(power.id);
@@ -1653,6 +1741,7 @@ function armOrUsePowerUp(powerId) {
   }
 
   state.powerPreviewId = power.id;
+  showPowerAnnouncement(power.id);
 
   if (power.target === "instant") {
     state.selectedPowerId = "";
@@ -2129,6 +2218,22 @@ function getRunPayout(result) {
   return Math.max(0, Math.floor(boardState.score / 10));
 }
 
+function awardRunCoins(result, bannerDelay = 120) {
+  const payout = getRunPayout(result);
+  state.powerBalance += payout;
+  savePowerState();
+  syncThemeProgress();
+  renderAll();
+
+  if (payout > 0) {
+    window.setTimeout(() => {
+      showSystemBanner(`+${payout} COINS FROM SCORE`);
+    }, bannerDelay);
+  }
+
+  return payout;
+}
+
 function startSelectedLevel() {
   state.activeLevel = state.selectedLevel;
   activeAiProfile = getAiProfileForLevel(state.activeLevel);
@@ -2136,6 +2241,7 @@ function startSelectedLevel() {
   state.roundFinished = false;
   state.roundResult = "";
   state.currentTurn = "player";
+  state.showGoalIntroPending = true;
 
   const unlockedNow = themeManager.incrementGamesPlayed();
   if (unlockedNow.length > 0) {
@@ -2169,6 +2275,7 @@ function restartLevel() {
   state.roundFinished = false;
   state.roundResult = "";
   state.currentTurn = "player";
+  state.showGoalIntroPending = true;
 
   resetRound();
   renderAll();
@@ -2366,8 +2473,13 @@ function resolvePuzzleTurn(mergeResult) {
     state.roundResult = `${outcome.praise || "Solved"} - ${stars} star${stars === 1 ? "" : "s"}.`;
     stopAiLoop();
     stopModeTimer();
-    showGameOverPanel("Puzzle Cleared", "Room Solved", `${outcome.praise || "Brilliant"} - ${stars} star${stars === 1 ? "" : "s"} earned.`);
-    renderAll();
+    showGameOverPanel(
+      "Puzzle Cleared",
+      "Room Solved",
+      `${outcome.praise || "Brilliant"} - ${stars} star${stars === 1 ? "" : "s"} earned.`,
+      { action: "next", label: "Next" }
+    );
+    awardRunCoins("player-win");
     return true;
   }
 
@@ -2377,8 +2489,8 @@ function resolvePuzzleTurn(mergeResult) {
     stopAiLoop();
     stopModeTimer();
     state.roundResult = puzzleManager.getFailureCopy(state.activeLevel, state.puzzleSession.movesUsed);
-    showGameOverPanel("Almost!", "Retry Puzzle", state.roundResult);
-    renderAll();
+    showGameOverPanel("Almost!", "Retry Puzzle", state.roundResult, { action: "restart", label: "Play Again" });
+    awardRunCoins("moves-over");
     return true;
   }
 
@@ -2402,6 +2514,10 @@ function setupModeState() {
 
   if (isPuzzleMode()) {
     applyPuzzleSessionState();
+    player.currentAmmo = drawPuzzleAmmoValue("player");
+    player.nextAmmo = drawPuzzleAmmoValue("player");
+    ai.currentAmmo = createAmmoValue(state.modeIndex, "ai");
+    ai.nextAmmo = createAmmoValue(state.modeIndex, "ai");
   }
 }
 
@@ -2461,6 +2577,9 @@ function applyScoreMultiplier(score, actor, mergeResult) {
 function applyModeAfterShot(actor, mergeResult) {
   if (isPuzzleMode() && actor.kind === "player") {
     state.playerMovesLeft = Math.max(0, (state.playerMovesLeft ?? 0) - 1);
+    if (state.puzzleSession) {
+      state.puzzleSession.movesUsed += 1;
+    }
   }
 
   if (actor.kind === "player") {
@@ -2737,6 +2856,21 @@ function finishRound(result) {
 
   const targetText = formatBigInt(getLevelTarget(state.activeLevel));
 
+  if (isSpeedMode()) {
+    state.roundResult =
+      result === "timeout"
+        ? `Time up. Final score ${boardState.score.toLocaleString()}.`
+        : `Run over. Final score ${boardState.score.toLocaleString()}.`;
+    showGameOverPanel(
+      "Speed Complete",
+      result === "timeout" ? "Time Up" : "Board Locked",
+      `You finished with ${boardState.score.toLocaleString()} points in Speed Mode.`,
+      { action: "restart", label: "Play Again" }
+    );
+    awardRunCoins(result);
+    return;
+  }
+
   if (result === "player-win") {
     if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
       state.unlockedLevel += 1;
@@ -2744,35 +2878,30 @@ function finishRound(result) {
     }
 
     state.roundResult = `You reached ${targetText}.`;
-    showGameOverPanel("Level Cleared", "You Win", `You reached the ${targetText} tile before the AI.`);
+    showGameOverPanel("Level Cleared", "You Win", `You reached the ${targetText} tile.`, { action: "next", label: "Next" });
   } else if (result === "ai-win") {
     state.roundResult = `AI reached ${targetText}.`;
-    showGameOverPanel("Level Lost", "AI Wins", `The AI reached the ${targetText} tile first.`);
+    showGameOverPanel("Level Lost", "AI Wins", `The AI reached the ${targetText} tile first.`, { action: "restart", label: "Play Again" });
   } else if (result === "timeout") {
     state.roundResult = `Time expired before ${targetText}.`;
-    showGameOverPanel("Time Up", "Level Failed", `The timer hit zero before anyone reached ${targetText}.`);
+    showGameOverPanel("Time Up", "Level Failed", `The timer hit zero before you reached ${targetText}.`, { action: "restart", label: "Play Again" });
   } else if (result === "moves-over") {
     state.roundResult = `Moves exhausted before ${targetText}.`;
-    showGameOverPanel("Puzzle Failed", "Out of Moves", `You used all available moves before reaching ${targetText}.`);
+    showGameOverPanel("Puzzle Failed", "Out of Moves", `You used all available moves before reaching ${targetText}.`, { action: "restart", label: "Play Again" });
   } else {
     state.roundResult = `Board locked before ${targetText}.`;
-    showGameOverPanel("Level Failed", "Board Locked", `No more valid shots were left before anyone reached ${targetText}.`);
+    showGameOverPanel("Level Failed", "Board Locked", `No more valid shots were left before reaching ${targetText}.`, { action: "restart", label: "Play Again" });
   }
 
-  const payout = getRunPayout(result);
-  state.powerBalance += payout;
-  savePowerState();
-  syncThemeProgress();
-  renderAll();
-  window.setTimeout(() => {
-    showSystemBanner(`+${payout} COINS FROM SCORE`);
-  }, 120);
+  awardRunCoins(result);
 }
 
-function showGameOverPanel(kicker, title, copy) {
+function showGameOverPanel(kicker, title, copy, { action = "restart", label = "Play Again" } = {}) {
+  state.overlayAction = action;
   el.gameOverKicker.textContent = kicker;
   el.gameOverTitle.textContent = title;
   el.gameOverCopy.textContent = copy;
+  el.overlayRestartBtn.textContent = label;
   el.gameOverPanel.classList.remove("hidden");
 }
 
@@ -4424,6 +4553,46 @@ function getThemeSoundProfile() {
   };
 }
 
+function getMergeSfxAudio() {
+  if (typeof Audio === "undefined") {
+    return null;
+  }
+
+  if (!mergeSfxAudio) {
+    mergeSfxAudio = new Audio(MERGE_SFX_URL);
+    mergeSfxAudio.preload = "auto";
+    mergeSfxAudio.volume = 0.65;
+  }
+
+  return mergeSfxAudio;
+}
+
+function primeMergeSfxAudio() {
+  const audio = getMergeSfxAudio();
+  if (!audio) {
+    return;
+  }
+
+  try {
+    audio.load();
+  } catch (error) {
+    // Ignore preload failures and fall back to synth merges.
+  }
+}
+
+function playMergeAsset(value, comboCount = 1) {
+  const baseAudio = getMergeSfxAudio();
+  if (!baseAudio || baseAudio.readyState < 2) {
+    return false;
+  }
+
+  const playback = baseAudio.cloneNode();
+  playback.volume = Math.min(1, 0.48 + Math.log2(Math.max(2, value)) * 0.03 + comboCount * 0.04);
+  playback.playbackRate = Math.min(1.22, 0.94 + Math.log2(Math.max(2, value)) * 0.015);
+  playback.play().catch(() => undefined);
+  return true;
+}
+
 function playShotSound(value = 2) {
   if (!state.sfxEnabled) return;
   const ctx = ensureAudioContext();
@@ -4480,6 +4649,7 @@ function playLandingSound(value) {
 
 function playMergeSound(value, comboCount = 1) {
   if (!state.sfxEnabled) return;
+  if (playMergeAsset(value, comboCount)) return;
   const ctx = ensureAudioContext();
   if (!ctx || !sfxBusGain) return;
   const profile = getThemeSoundProfile();
@@ -4595,11 +4765,8 @@ function getLandingFrequency(value) {
 }
 
 function getLevelTarget(level) {
-  const safeLevel = Math.max(1, level);
-  const levelOffset = safeLevel - 1;
-  const growthBand = Math.floor(levelOffset / 6);
-  const growthStep = BigInt(96 + growthBand * 32);
-  return 128n + BigInt(levelOffset) * growthStep;
+  const safeLevel = Math.max(1, Math.round(Number(level) || 1));
+  return 64n << BigInt(safeLevel - 1);
 }
 
 function hasReachedLevelTarget(maxTile, level) {
@@ -4686,7 +4853,7 @@ function getEmptyCoordinates(grid) {
 function showSystemBanner(text) {
   boardState.comboElement.textContent = text;
   boardState.comboElement.classList.add("is-ai");
-  boardState.comboElement.classList.remove("is-big", "is-huge");
+  boardState.comboElement.classList.remove("is-big", "is-huge", "is-power-callout");
   boardState.comboElement.classList.remove("is-visible");
   void boardState.comboElement.offsetWidth;
   boardState.comboElement.classList.add("is-visible");
@@ -4698,6 +4865,24 @@ function showSystemBanner(text) {
   boardState.comboTimeoutId = window.setTimeout(() => {
     boardState.comboElement.classList.remove("is-visible");
   }, 560);
+}
+
+function showPowerAnnouncement(powerId) {
+  boardState.comboElement.textContent = getPowerAnnouncementText(powerId).toUpperCase();
+  boardState.comboElement.classList.remove("is-ai");
+  boardState.comboElement.classList.add("is-big", "is-huge", "is-power-callout");
+  boardState.comboElement.classList.remove("is-visible");
+  void boardState.comboElement.offsetWidth;
+  boardState.comboElement.classList.add("is-visible");
+
+  if (boardState.comboTimeoutId) {
+    window.clearTimeout(boardState.comboTimeoutId);
+  }
+
+  boardState.comboTimeoutId = window.setTimeout(() => {
+    boardState.comboElement.classList.remove("is-visible");
+    boardState.comboElement.classList.remove("is-power-callout");
+  }, 1800);
 }
 
 function shuffleBoardTiles(grid) {

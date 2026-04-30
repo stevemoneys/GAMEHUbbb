@@ -119,7 +119,7 @@
             <span class="score-label">Score</span>
             <strong class="score-value" data-game-score>0</strong>
             <div class="game-pills" aria-label="Gameplay indicators">
-              <div class="target-pill" aria-label="Level target">Target <span data-target-value>256</span></div>
+              <div class="target-pill hidden" aria-label="Level target">Target <span data-target-value>256</span></div>
               <div class="mode-pill" aria-label="Current mode"><span data-game-mode>Classic</span></div>
               <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
             </div>
@@ -144,6 +144,12 @@
             <button class="secondary-btn puzzle-action-btn" type="button" data-puzzle-retry-btn>Retry</button>
           </div>
         </section>
+
+        <div class="goal-callout hidden" data-goal-callout aria-live="polite">
+          <span class="goal-callout-label">Goal</span>
+          <div class="goal-callout-tile" data-goal-callout-value>64</div>
+          <p class="goal-callout-copy" data-goal-callout-copy>Reach this tile to win.</p>
+        </div>
 
         <section class="arena-wrap arena-wrap-single" aria-label="Shared board area">
           <article class="board-shell board-shell-shared" aria-label="Shared game board">

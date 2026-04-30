@@ -1,0 +1,7 @@
+Save your merge sound file in this folder as:
+
+merge-sfx.mp3
+
+Expected runtime path:
+
+./assets/audio/merge-sfx.mp3

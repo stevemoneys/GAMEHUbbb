@@ -31,5 +31,5 @@ export function getPuzzleFailureMessage(config, movesUsed) {
 
 export function formatStars(stars) {
   const safeStars = Math.max(0, Math.min(3, Number(stars) || 0));
-  return `${safeStars >= 1 ? "★" : "☆"}${safeStars >= 2 ? "★" : "☆"}${safeStars >= 3 ? "★" : "☆"}`;
+  return `${safeStars >= 1 ? "\u2605" : "\u2606"}${safeStars >= 2 ? "\u2605" : "\u2606"}${safeStars >= 3 ? "\u2605" : "\u2606"}`;
 }

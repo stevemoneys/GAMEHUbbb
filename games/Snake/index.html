@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="orientation" content="landscape" />
   <title>NEO SNAKE ARENA - Phase 7</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -220,8 +222,10 @@
         <div id="objectiveText" class="objective">OBJECTIVE: Reach length 10</div>
       </section>
 
-      <section class="arena-wrap">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+      <section id="gameContainer" class="arena-wrap game-container">
+        <canvas id="gameCanvas" width="800" height="600" aria-label="Snake arena"></canvas>
+        <canvas id="minimapCanvas" class="minimap-canvas" width="180" height="180" aria-label="World minimap"></canvas>
+        <div id="touchDragHint" class="touch-drag-hint">Drag anywhere to steer</div>
 
         <div id="powerHud" class="power-hud">
           <div id="powerRing" class="power-ring"><div id="powerIcon" class="power-icon">---</div></div>
@@ -271,6 +275,14 @@
       </footer>
     </section>
   </main>
+
+  <div id="orientationWarning" class="orientation-warning" aria-hidden="true">
+    <div class="orientation-warning-card">
+      <div class="orientation-rotate-icon">&#x21BB;</div>
+      <h2>Rotate To Landscape</h2>
+      <p>For the best arena view, rotate your device and continue in landscape mode.</p>
+    </div>
+  </div>
 
   <section id="collectionModal" class="collection-modal" aria-hidden="true">
     <div id="collectionBackdrop" class="collection-backdrop"></div>
@@ -480,5 +492,6 @@
   <script src="./app.js"></script>
   <script src="./phase6.js"></script>
   <script src="./phase7.js"></script>
+  <script src="./phase8.js"></script>
 </body>
 </html>

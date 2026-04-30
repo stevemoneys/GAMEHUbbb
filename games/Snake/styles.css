@@ -25,6 +25,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -36,6 +37,8 @@ body {
     var(--bg);
   background-attachment: fixed;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
 }
 
 #menuBgCanvas {
@@ -1722,6 +1725,96 @@ body {
   touch-action: none;
 }
 
+.game-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+.minimap-canvas {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 112px;
+  height: 112px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(4, 8, 18, 0.52);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+  pointer-events: none;
+  z-index: 6;
+}
+
+.touch-drag-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(8, 12, 28, 0.62);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.82);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.orientation-warning {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.82);
+  z-index: 120;
+}
+
+.orientation-warning.show {
+  display: flex;
+}
+
+.orientation-warning-card {
+  width: min(420px, 100%);
+  padding: 28px 24px;
+  border-radius: 28px;
+  text-align: center;
+  background:
+    linear-gradient(160deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04)),
+    rgba(8, 12, 28, 0.95);
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+}
+
+.orientation-warning-card h2 {
+  margin: 0 0 10px;
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.orientation-warning-card p {
+  margin: 0;
+  line-height: 1.55;
+  color: rgba(255,255,255,0.82);
+}
+
+.orientation-rotate-icon {
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.08);
+  font-size: 34px;
+}
+
 /* Phase 7 Premium Layout Refresh */
 
 #homeScreen {
@@ -2065,6 +2158,136 @@ body {
 
   #gameCanvas {
     max-height: calc(100vh - 210px);
+  }
+}
+
+body.game-immersive {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+body.game-immersive #menuBgCanvas {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.game-immersive .app-root {
+  padding: 0;
+  height: 100dvh;
+}
+
+body.game-immersive #gameScreen.active {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100dvh;
+  background: #000;
+  z-index: 40;
+  gap: 0;
+  grid-template-rows: 1fr;
+}
+
+body.game-immersive .game-hud,
+body.game-immersive .game-sub-hud,
+body.game-immersive .game-controls {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  z-index: 10;
+  border-radius: 20px;
+  background: rgba(6, 10, 22, 0.58);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(14px);
+}
+
+body.game-immersive .game-hud {
+  top: max(10px, env(safe-area-inset-top));
+  left: 16px;
+  right: 16px;
+}
+
+body.game-immersive .game-sub-hud {
+  top: calc(max(10px, env(safe-area-inset-top)) + 68px);
+  left: 16px;
+  right: 16px;
+}
+
+body.game-immersive .game-controls {
+  left: 16px;
+  right: 16px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 10px 14px;
+}
+
+body.game-immersive .arena-wrap,
+body.game-immersive .game-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body.game-immersive #gameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  object-fit: contain;
+}
+
+body.game-immersive .power-hud {
+  top: calc(max(10px, env(safe-area-inset-top)) + 128px);
+  right: 16px;
+  z-index: 11;
+}
+
+body.game-immersive .minimap-canvas {
+  top: calc(max(10px, env(safe-area-inset-top)) + 126px);
+  left: 16px;
+}
+
+body.game-immersive .touch-drag-hint {
+  bottom: calc(max(78px, env(safe-area-inset-bottom) + 72px));
+}
+
+body.game-immersive .buttons {
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+body.game-immersive .buttons button,
+body.game-immersive #pauseBtn,
+body.game-immersive #restartBtn,
+body.game-immersive #exitBtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+@media (pointer: coarse) {
+  body.game-immersive .touch-drag-hint {
+    display: inline-flex;
+  }
+}
+
+@media (pointer: fine) {
+  .touch-drag-hint {
+    display: none;
+  }
+}
+
+@media (orientation: portrait) and (max-width: 900px) {
+  body.game-immersive #gameScreen.active {
+    visibility: visible;
   }
 }
 

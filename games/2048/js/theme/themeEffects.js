@@ -24,6 +24,52 @@ function applyTransientClass(element, className, duration) {
   }, duration);
 }
 
+function createScorePopup(tileEl, value) {
+  const popup = document.createElement("div");
+  const rect = tileEl.getBoundingClientRect();
+  popup.className = "score-popup";
+  popup.textContent = `+${value}`;
+  popup.style.left = `${rect.left + rect.width / 2}px`;
+  popup.style.top = `${rect.top}px`;
+  document.body.append(popup);
+
+  window.requestAnimationFrame(() => {
+    popup.classList.add("is-visible");
+  });
+
+  window.setTimeout(() => {
+    popup.remove();
+  }, 620);
+}
+
+function applyMicroShake(tileEl) {
+  tileEl.animate(
+    [
+      { transform: "translate3d(0px, 0px, 0px)" },
+      { transform: "translate3d(2px, -2px, 0px)" },
+      { transform: "translate3d(-2px, 2px, 0px)" },
+      { transform: "translate3d(0px, 0px, 0px)" }
+    ],
+    {
+      duration: 120,
+      easing: "ease-out"
+    }
+  );
+}
+
+function applyMergeSlowMo(value) {
+  if (value < 128) {
+    return;
+  }
+
+  document.body.style.transition = "transform 80ms ease";
+  document.body.style.transform = "scale(0.98)";
+
+  window.setTimeout(() => {
+    document.body.style.transform = "scale(1)";
+  }, 80);
+}
+
 export function createThemeEffects({ getTheme }) {
   function getProfile(value = 0) {
     const theme = getTheme();
@@ -50,18 +96,28 @@ export function createThemeEffects({ getTheme }) {
     }
 
     const profile = getProfile(value);
-    const duration = Math.round((220 + profile.tier * 140) * profile.speed);
-    const boost = profile.intensity * (0.8 + profile.tier);
-    const scale = 1 + 0.06 * boost * profile.scale;
-    const glowPx = Math.round(8 + 20 * boost);
+    const intensity = Math.max(1, Math.log2(Math.max(2, value))) * profile.intensity;
+    const outerGlow = Math.min(40, intensity * 5);
+    const innerGlow = Math.min(72, intensity * 10);
+    const baseShadow = tile.style.boxShadow;
 
-    tile.style.setProperty("--fx-duration", `${duration}ms`);
-    tile.style.setProperty("--fx-scale", scale.toFixed(3));
-    tile.style.setProperty("--fx-glow", `${glowPx}px`);
-    tile.style.setProperty("--fx-easing", profile.easing);
-    tile.classList.toggle("fx-glow-enabled", profile.glow);
+    tile.classList.remove("tile-merge", "tile-glow");
+    void tile.offsetWidth;
+    tile.classList.add("tile-merge", "tile-glow");
+    const glowShadow = `0 0 ${outerGlow}px rgba(255, 200, 0, 0.6), 0 0 ${innerGlow}px rgba(255, 120, 0, 0.4)`;
+    tile.style.boxShadow = baseShadow ? `${baseShadow}, ${glowShadow}` : glowShadow;
+
+    createScorePopup(tile, value);
+    applyMicroShake(tile);
+    applyMergeSlowMo(value);
+
     tile.classList.toggle("fx-explosion-enabled", profile.explosion);
-    applyTransientClass(tile, "fx-merge", duration + 24);
+    applyTransientClass(tile, "fx-merge", 200);
+
+    window.setTimeout(() => {
+      tile.classList.remove("tile-merge", "tile-glow");
+      tile.style.boxShadow = baseShadow;
+    }, 180);
   }
 
   function applyMoveEffect(tile, value = 0) {
