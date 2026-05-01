@@ -29,29 +29,29 @@ function getZoneAnchor(level, drift = 0) {
   const zoneOffset = Math.max(0, level - zone.range[0] + drift);
   const step = Math.min(2, Math.floor(zoneOffset / 6));
   const base =
-    zone.id === "foundation" ? 4 :
-    zone.id === "strategy" ? 8 :
-    zone.id === "advanced" ? 16 :
-    zone.id === "expert" ? 32 :
-    64;
+    zone.id === "foundation" ? 8 :
+    zone.id === "strategy" ? 16 :
+    zone.id === "advanced" ? 32 :
+    zone.id === "expert" ? 64 :
+    128;
 
   return base * 2 ** step;
 }
 
 function getZoneMoveLimit(zoneId, type, zoneOffset) {
   const base =
-    zoneId === "foundation" ? 7 :
-    zoneId === "strategy" ? 6 :
-    zoneId === "advanced" ? 5 :
-    zoneId === "expert" ? 5 :
-    4;
+    zoneId === "foundation" ? 6 :
+    zoneId === "strategy" ? 5 :
+    zoneId === "advanced" ? 4 :
+    zoneId === "expert" ? 4 :
+    3;
 
   const typeAdjust =
     type === "escape" ? 1 :
     type === "limited" || type === "trick" ? -1 :
     0;
 
-  const tighten = Math.floor(Math.max(0, zoneOffset) / 7);
+  const tighten = Math.floor(Math.max(0, zoneOffset) / 6);
   return Math.max(3, base + typeAdjust - tighten);
 }
 
@@ -60,133 +60,141 @@ const EXAMPLE_LEVELS = Object.freeze([
     level: 1,
     name: "Warm Welcome",
     type: "merge",
-    moveLimit: 6,
-    optimalMoves: 3,
+    moveLimit: 5,
+    optimalMoves: 4,
     board: boardFromRows([
-      [2, 0, 2, 0, 0],
-      [4, 0, 0, 4, 0]
+      [4, 0, 4, 0, 0],
+      [8, 0, 0, 8, 0],
+      [0, 0, 16, 0, 0]
     ]),
-    ammoQueue: [2, 2, 4, 2, 4, 8, 2, 4],
-    goal: { kind: "tile", target: 16, text: "Reach tile 16" },
+    ammoQueue: [4, 8, 4, 8, 16, 8, 4],
+    goal: { kind: "tile", target: 32, text: "Reach tile 32" },
     aiDifficulty: "forgiving",
     feedbackBias: "positive",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 2,
     name: "Soft Pair",
     type: "merge",
-    moveLimit: 6,
-    optimalMoves: 3,
+    moveLimit: 5,
+    optimalMoves: 4,
     board: boardFromRows([
-      [0, 2, 0, 2, 0],
-      [0, 4, 0, 4, 0]
+      [0, 4, 0, 4, 0],
+      [0, 8, 0, 8, 0],
+      [0, 0, 16, 0, 0]
     ]),
-    ammoQueue: [2, 4, 2, 4, 8, 2, 4],
-    goal: { kind: "tile", target: 16, text: "Create a 16 with easy merges" },
+    ammoQueue: [4, 8, 8, 4, 16, 8, 4],
+    goal: { kind: "tile", target: 32, text: "Create a 32 with clean merges" },
     aiDifficulty: "forgiving",
     feedbackBias: "positive",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 3,
     name: "Center Lane",
     type: "positioning",
-    moveLimit: 7,
+    moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [2, 0, 4, 0, 2],
-      [2, 0, 4, 0, 2],
-      [0, 0, 8, 0, 0]
+      [4, 0, 8, 0, 4],
+      [4, 0, 8, 0, 4],
+      [0, 0, 16, 0, 0],
+      [0, 8, 0, 8, 0]
     ]),
-    ammoQueue: [4, 4, 2, 8, 2, 4, 8, 16],
-    goal: { kind: "tile", target: 32, text: "Open the middle and reach 32" },
+    ammoQueue: [8, 8, 4, 16, 8, 4, 16],
+    goal: { kind: "tile", target: 64, text: "Open the middle and reach 64" },
     aiDifficulty: "forgiving",
     feedbackBias: "coach",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 4,
     name: "Careful Steps",
     type: "limited",
-    moveLimit: 5,
+    moveLimit: 4,
     optimalMoves: 4,
     board: boardFromRows([
-      [2, 4, 0, 4, 2],
-      [0, 0, 8, 0, 0]
+      [4, 8, 0, 8, 4],
+      [0, 0, 16, 0, 0],
+      [0, 8, 0, 8, 0]
     ]),
-    ammoQueue: [4, 8, 2, 8, 4, 16, 2],
-    goal: { kind: "tile", target: 32, text: "Solve it in only 5 moves" },
+    ammoQueue: [8, 16, 8, 16, 4, 8],
+    goal: { kind: "tile", target: 64, text: "Solve it in only 4 moves" },
     aiDifficulty: "forgiving",
     feedbackBias: "coach",
-    hintThreshold: 1
+    hintThreshold: 2
   },
   {
     level: 5,
     name: "Little Cascade",
     type: "chain",
-    moveLimit: 6,
+    moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [2, 2, 4, 0, 0],
       [4, 4, 8, 0, 0],
-      [0, 0, 8, 0, 0]
+      [8, 8, 16, 0, 0],
+      [0, 0, 16, 0, 0],
+      [0, 8, 0, 8, 0]
     ]),
-    ammoQueue: [2, 4, 8, 2, 4, 8, 16],
-    goal: { kind: "score", target: 64, text: "Trigger a chain and score 64" },
+    ammoQueue: [4, 8, 16, 8, 16, 4, 32],
+    goal: { kind: "score", target: 192, text: "Trigger a deeper chain and score 192" },
     aiDifficulty: "forgiving",
     feedbackBias: "celebrate",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 6,
     name: "Clean Stack",
     type: "merge",
-    moveLimit: 6,
+    moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [0, 2, 0, 2, 0],
       [0, 4, 0, 4, 0],
-      [0, 8, 0, 8, 0]
+      [0, 8, 0, 8, 0],
+      [0, 16, 0, 16, 0],
+      [0, 0, 32, 0, 0]
     ]),
-    ammoQueue: [2, 4, 8, 8, 4, 2, 16],
-    goal: { kind: "tile", target: 32, text: "Stack neatly and reach 32" },
+    ammoQueue: [4, 8, 16, 16, 8, 4, 32],
+    goal: { kind: "tile", target: 64, text: "Stack neatly and reach 64" },
     aiDifficulty: "forgiving",
     feedbackBias: "positive",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 7,
     name: "Combo Door",
     type: "combo",
-    moveLimit: 6,
+    moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [2, 2, 4, 4, 0],
-      [8, 0, 8, 0, 0]
+      [4, 4, 8, 8, 0],
+      [16, 0, 16, 0, 0],
+      [0, 0, 32, 0, 0]
     ]),
-    ammoQueue: [4, 8, 2, 8, 4, 16, 2],
-    goal: { kind: "score", target: 96, text: "Chain your moves into a combo finish" },
+    ammoQueue: [8, 16, 8, 16, 32, 8, 16],
+    goal: { kind: "score", target: 256, text: "Chain your moves into a premium combo finish" },
     aiDifficulty: "forgiving",
     feedbackBias: "celebrate",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 8,
     name: "Quiet Crossroads",
     type: "positioning",
-    moveLimit: 7,
-    optimalMoves: 5,
+    moveLimit: 5,
+    optimalMoves: 4,
     board: boardFromRows([
-      [2, 0, 2, 0, 2],
       [4, 0, 4, 0, 4],
-      [8, 0, 0, 0, 8]
+      [8, 0, 8, 0, 8],
+      [16, 0, 0, 0, 16],
+      [0, 16, 0, 16, 0]
     ]),
-    ammoQueue: [2, 4, 8, 4, 2, 8, 16],
-    goal: { kind: "tile", target: 64, text: "Choose the right lane and build 64" },
+    ammoQueue: [8, 16, 16, 8, 32, 16, 8],
+    goal: { kind: "tile", target: 128, text: "Choose the right lane and build 128" },
     aiDifficulty: "forgiving",
     feedbackBias: "coach",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 9,
@@ -195,32 +203,34 @@ const EXAMPLE_LEVELS = Object.freeze([
     moveLimit: 4,
     optimalMoves: 4,
     board: boardFromRows([
-      [4, 2, 4, 2, 4],
-      [0, 8, 0, 8, 0],
-      [0, 0, 16, 0, 0]
+      [8, 4, 8, 4, 8],
+      [0, 16, 0, 16, 0],
+      [0, 0, 32, 0, 0],
+      [0, 8, 0, 8, 0]
     ]),
-    ammoQueue: [4, 8, 16, 4, 8, 2],
-    goal: { kind: "tile", target: 32, text: "Perfect lines only. You have 4 moves." },
+    ammoQueue: [8, 16, 32, 8, 16, 4],
+    goal: { kind: "tile", target: 128, text: "Perfect lines only. You have 4 moves." },
     aiDifficulty: "balanced",
     feedbackBias: "coach",
-    hintThreshold: 1
+    hintThreshold: 2
   },
   {
     level: 10,
     name: "Combo Showcase",
     type: "combo",
-    moveLimit: 7,
-    optimalMoves: 5,
+    moveLimit: 5,
+    optimalMoves: 4,
     board: boardFromRows([
-      [2, 2, 4, 4, 8],
-      [4, 4, 8, 8, 0],
-      [0, 0, 16, 0, 0]
+      [4, 4, 8, 8, 16],
+      [8, 8, 16, 16, 0],
+      [0, 0, 32, 0, 0],
+      [0, 16, 0, 16, 0]
     ]),
-    ammoQueue: [2, 4, 8, 16, 8, 4, 2, 16],
-    goal: { kind: "score", target: 160, text: "Special Level: unleash a big combo" },
+    ammoQueue: [8, 16, 32, 16, 8, 32, 16],
+    goal: { kind: "score", target: 384, text: "Special Level: unleash a big combo" },
     aiDifficulty: "balanced",
     feedbackBias: "celebrate",
-    hintThreshold: 2,
+    hintThreshold: 3,
     specialTag: "Special Level"
   }
 ]);
@@ -232,9 +242,10 @@ function createBaseConfig(level) {
   const zoneOffset = level - zone.range[0];
   const anchor = getZoneAnchor(level);
   const moveLimit = getZoneMoveLimit(zone.id, type, zoneOffset);
-  const optimalMoves = Math.max(2, moveLimit - (zone.id === "foundation" ? 2 : 1));
-  const tileTarget = Math.min(4096, anchor * 4);
-  const scoreTarget = Math.max(96, tileTarget * 2);
+  const optimalMoves = Math.max(2, moveLimit - 1);
+  const tileTarget = Math.min(8192, anchor * 8);
+  const scoreTarget = Math.max(160, tileTarget * 2 + level * 16);
+  const side = Math.max(2, anchor / 2);
 
   return {
     level,
@@ -245,12 +256,12 @@ function createBaseConfig(level) {
     typeLabel: typeMeta.label,
     name: `${zone.name} ${typeMeta.label} ${zoneOffset + 1}`,
     board: boardFromRows([]),
-    ammoQueue: [2, 4, anchor, 4, anchor, anchor * 2],
+    ammoQueue: [side, anchor, side, anchor, anchor * 2, side],
     moveLimit,
     optimalMoves,
     aiDifficulty: level <= 20 ? "forgiving" : level <= 60 ? "balanced" : "sharp",
     feedbackBias: type === "combo" || type === "chain" ? "celebrate" : "coach",
-    hintThreshold: level <= 20 ? 2 : level <= 60 ? 3 : 4,
+    hintThreshold: level <= 20 ? 3 : level <= 60 ? 4 : 5,
     goal: {
       kind: type === "combo" ? "score" : "tile",
       target: type === "combo" ? scoreTarget : tileTarget,
@@ -455,9 +466,21 @@ function buildGeneratedLevel(level) {
     }
   }
 
+  if (config.level >= 12 && config.type !== "escape" && config.board[4][2] === 0) {
+    config.board[4][2] = Math.max(2, getZoneAnchor(level) / 2);
+  }
+
+  if (config.level >= 16 && config.type !== "escape" && config.board[2][1] === 0) {
+    config.board[2][1] = BLOCKER;
+  }
+
   if (config.level >= 28 && (config.type === "limited" || config.type === "trick")) {
     config.moveLimit = Math.max(3, config.moveLimit - 1);
     config.optimalMoves = Math.max(2, config.moveLimit - 1);
+  }
+
+  if (config.level >= 36 && config.type !== "escape") {
+    config.lockedTiles = config.lockedTiles.concat([lockedTile(1, (config.level + 3) % COLS, 4)]);
   }
 
   if (config.level >= 44) {
@@ -471,6 +494,10 @@ function buildGeneratedLevel(level) {
 
   if (config.level >= 64 && config.type !== "escape" && config.board[4][2] === 0) {
     config.board[4][2] = BLOCKER;
+  }
+
+  if (config.level >= 72 && config.type !== "escape" && config.board[5][1] === 0) {
+    config.board[5][1] = BLOCKER;
   }
 
   if (config.level >= 81 && config.type !== "escape") {

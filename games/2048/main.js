@@ -678,8 +678,8 @@ function showGoalCallout() {
       `${state.puzzleSession.level}`;
     copy = goal.text || "Solve this puzzle room.";
   } else if (isSpeedMode()) {
-    tileValue = formatTimeLeft(state.timeLeftMs);
-    copy = "Score as much as you can before time runs out.";
+    tileValue = formatBigInt(getLevelTarget(state.activeLevel));
+    copy = `Reach this tile before ${formatTimeLeft(getSpeedModeTimeLimit(state.activeLevel))} runs out.`;
   } else {
     tileValue = formatBigInt(getLevelTarget(state.activeLevel));
     copy = "Merge up to this block to clear the level.";
@@ -1018,14 +1018,14 @@ function getComboCelebration(comboCount) {
 function getDynamicPlayerShotCap(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
   const safeTile = Math.max(2, maxTile || 2);
   const safeLevel = Math.max(1, Math.round(Number(activeLevel) || 1));
-  const emergedCap = 2 ** Math.max(6, Math.floor(Math.log2(safeTile)) - 1);
-  const levelCap = 2 ** Math.max(6, Math.min(16, safeLevel - 2));
-  return Math.min(65536, Math.max(64, emergedCap, levelCap));
+  const emergedCap = 2 ** Math.max(5, Math.floor(Math.log2(safeTile)) - 2);
+  const levelCap = 2 ** Math.max(5, Math.min(15, safeLevel + 3));
+  return Math.min(65536, Math.max(32, emergedCap, levelCap));
 }
 
 function getDynamicPlayerShotFloor(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
   const safeTile = Math.max(2, maxTile || 2);
-  return 2 ** Math.max(1, Math.floor(Math.log2(safeTile)) - 7);
+  return 2 ** Math.max(1, Math.floor(Math.log2(safeTile)) - 6);
 }
 
 function getMergeOpportunityForColumn(grid, column, ammo) {
@@ -2250,9 +2250,9 @@ function renderLevels() {
   } else if (isSpeedMode()) {
     el.selectedAiName.textContent = "Speed Run";
     el.profileTitle.textContent = `Speed Level ${state.selectedLevel}`;
-    el.profileSummary.textContent = `Beat the clock. Timer: ${speedTimeText}.`;
+    el.profileSummary.textContent = `Classic target under pressure. Reach ${targetText} before the timer ends.`;
     el.profileDepth.textContent = `Target: ${targetText}`;
-    el.profileMistake.textContent = `Coins: score / 10`;
+    el.profileMistake.textContent = `Coins: (score / 10) x 1.5`;
     el.profileSpeed.textContent = `Time: ${speedTimeText}`;
     el.startLevelBtn.textContent = `START SPEED ${state.selectedLevel} - ${speedTimeText}`;
   } else {
@@ -2282,7 +2282,8 @@ function renderLevels() {
 }
 
 function getRunPayout(result) {
-  return Math.max(0, Math.floor(boardState.score / 10));
+  const classicPayout = Math.max(0, Math.floor(boardState.score / 10));
+  return isSpeedMode() ? Math.max(0, Math.floor(classicPayout * 1.5)) : classicPayout;
 }
 
 function awardRunCoins(result, bannerDelay = 120) {
@@ -2892,7 +2893,7 @@ async function executeShot(actor, column, withAudio) {
     renderAll();
   }
 
-  if (!isPuzzleMode() && !isSpeedMode() && hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
+  if (!isPuzzleMode() && hasReachedLevelTarget(boardState.maxTile, state.activeLevel)) {
     finishRound(actor.kind === "player" ? "player-win" : "ai-win");
     return "placed";
   }
@@ -2924,16 +2925,21 @@ function finishRound(result) {
   const targetText = formatBigInt(getLevelTarget(state.activeLevel));
 
   if (isSpeedMode()) {
-    state.roundResult =
-      result === "timeout"
-        ? `Time up. Final score ${boardState.score.toLocaleString()}.`
-        : `Run over. Final score ${boardState.score.toLocaleString()}.`;
-    showGameOverPanel(
-      "Speed Complete",
-      result === "timeout" ? "Time Up" : "Board Locked",
-      `You finished with ${boardState.score.toLocaleString()} points in Speed Mode.`,
-      { action: "restart", label: "Play Again" }
-    );
+    if (result === "player-win") {
+      if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
+        state.unlockedLevel += 1;
+        saveStoredLevel(LEVEL_UNLOCK_KEY, state.unlockedLevel);
+      }
+
+      state.roundResult = `You reached ${targetText} before time ran out.`;
+      showGameOverPanel("Speed Cleared", "You Win", `You reached ${targetText} before ${formatTimeLeft(getSpeedModeTimeLimit(state.activeLevel))} expired.`, { action: "next", label: "Next" });
+    } else if (result === "timeout") {
+      state.roundResult = `Time expired before ${targetText}.`;
+      showGameOverPanel("Time Up", "Speed Failed", `The timer hit zero before you reached ${targetText}.`, { action: "restart", label: "Play Again" });
+    } else {
+      state.roundResult = `Board locked before ${targetText}.`;
+      showGameOverPanel("Speed Failed", "Board Locked", `No more valid shots were left before you reached ${targetText}.`, { action: "restart", label: "Play Again" });
+    }
     awardRunCoins(result);
     return;
   }
@@ -3100,7 +3106,7 @@ function renderGameHeader() {
 }
 
 function getLevelTargetExponent(level) {
-  return Math.max(1, Math.round(Number(level) || 1));
+  return Math.max(5, Math.round(Number(level) || 1) + 4);
 }
 
 function getRunProgressRatio() {
@@ -4836,7 +4842,7 @@ function getLandingFrequency(value) {
 
 function getLevelTarget(level) {
   const safeLevel = Math.max(1, Math.round(Number(level) || 1));
-  return 2n << BigInt(safeLevel - 1);
+  return 32n << BigInt(safeLevel - 1);
 }
 
 function hasReachedLevelTarget(maxTile, level) {
@@ -4867,7 +4873,7 @@ function formatTileLabel(value) {
     return `${safeValue / 1024n}k`;
   }
 
-  return safeValue.toLocaleString();
+  return safeValue.toString();
 }
 
 function formatBigInt(value) {
@@ -4883,7 +4889,7 @@ function formatTimeLeft(ms) {
 
 function getSpeedModeTimeLimit(level) {
   const safeLevel = Math.max(1, Math.round(Number(level) || 1));
-  return 120000 + (safeLevel - 1) * 30000;
+  return 180000 + (safeLevel - 1) * 30000;
 }
 
 function getPuzzleMoveLimit(level) {
