@@ -22,6 +22,8 @@ const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
 const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
 const POWER_BALANCE_STORAGE_KEY = "gamehub_2048_power_balance_v1";
 const POWER_INVENTORY_STORAGE_KEY = "gamehub_2048_power_inventory_v1";
+const STORAGE_RESET_VERSION_KEY = "gamehub_2048_storage_reset_version_v1";
+const STORAGE_RESET_VERSION = "2026-05-01-progress-reset";
 const MERGE_SFX_URL = "./assets/audio/merge-sfx.mp3";
 const BLOCKER_TILE = -1;
 const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
@@ -63,10 +65,10 @@ const POWER_UPS = Object.freeze([
     icon: "&#8630;",
     name: "Time Rewind",
     price: 280,
-    description: "Go back 3 moves with a slick rewind pulse.",
+    description: "Step back one move per tap with a slick rewind pulse.",
     target: "instant",
     rarity: "Legendary",
-    effect: "Undo the last 3 moves instantly.",
+    effect: "Undo the latest move each time you tap it.",
     shopTag: "Safety Net",
     accentA: "#79e5ff",
     accentB: "#4c62ff"
@@ -329,6 +331,9 @@ const el = {
   goalCallout: document.querySelector("[data-goal-callout]"),
   goalCalloutValue: document.querySelector("[data-goal-callout-value]"),
   goalCalloutCopy: document.querySelector("[data-goal-callout-copy]"),
+  powerTipPopup: document.querySelector("[data-power-tip-popup]"),
+  powerTipTitle: document.querySelector("[data-power-tip-title]"),
+  powerTipCopy: document.querySelector("[data-power-tip-copy]"),
   status: document.querySelector("[data-status]"),
   gameOverPanel: document.querySelector("[data-game-over-panel]"),
   gameOverKicker: document.querySelector("[data-game-over-kicker]"),
@@ -341,6 +346,8 @@ for (const [key, value] of Object.entries(el)) {
     throw new Error(`Missing UI element: ${key}`);
   }
 }
+
+resetGameStorageIfNeeded();
 
 const state = {
   modeIndex: 0,
@@ -437,9 +444,35 @@ function createBoardState(boardElement, comboElement) {
     comboTimeoutId: null,
     feedbackTimeoutId: null,
     goalCalloutTimeoutId: null,
+    powerTipTimeoutId: null,
     powerBannerUntil: 0,
     queuedBannerText: ""
   };
+}
+
+function resetGameStorageIfNeeded() {
+  try {
+    const storage = window.localStorage;
+    if (storage.getItem(STORAGE_RESET_VERSION_KEY) === STORAGE_RESET_VERSION) {
+      return;
+    }
+
+    const keysToClear = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (key && key.startsWith("gamehub_2048_")) {
+        keysToClear.push(key);
+      }
+    }
+
+    for (const key of keysToClear) {
+      storage.removeItem(key);
+    }
+
+    storage.setItem(STORAGE_RESET_VERSION_KEY, STORAGE_RESET_VERSION);
+  } catch (error) {
+    // Ignore storage reset failures.
+  }
 }
 
 function createActor(kind, currentAmmoElement, nextAmmoElement) {
@@ -597,6 +630,15 @@ function getPowerUseHint(powerId) {
 function getPowerAnnouncementText(powerId) {
   const power = getPowerById(powerId);
   return power?.effect || "Power-Up Ready";
+}
+
+function getPowerAnnouncementCopy(powerId) {
+  const power = getPowerById(powerId);
+  if (!power) {
+    return "Use this power-up to improve the board.";
+  }
+
+  return `${power.effect} ${getPowerUseHint(powerId)}`.trim();
 }
 
 function goToNextLevel() {
@@ -975,16 +1017,15 @@ function getComboCelebration(comboCount) {
 
 function getDynamicPlayerShotCap(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
   const safeTile = Math.max(2, maxTile || 2);
-  const tileStep = Math.max(0, Math.floor(Math.log2(safeTile)) - 9);
-  const levelStep = Math.max(0, Math.floor((Math.max(1, activeLevel) - 1) / 6));
-  const step = Math.max(tileStep, levelStep);
-  const cappedStep = Math.min(5, step);
-  return 64 * 2 ** cappedStep;
+  const safeLevel = Math.max(1, Math.round(Number(activeLevel) || 1));
+  const emergedCap = 2 ** Math.max(6, Math.floor(Math.log2(safeTile)) - 1);
+  const levelCap = 2 ** Math.max(6, Math.min(16, safeLevel - 2));
+  return Math.min(65536, Math.max(64, emergedCap, levelCap));
 }
 
 function getDynamicPlayerShotFloor(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
-  const cap = getDynamicPlayerShotCap(maxTile, activeLevel);
-  return Math.max(2, Math.floor(cap / 32));
+  const safeTile = Math.max(2, maxTile || 2);
+  return 2 ** Math.max(1, Math.floor(Math.log2(safeTile)) - 7);
 }
 
 function getMergeOpportunityForColumn(grid, column, ammo) {
@@ -1397,10 +1438,18 @@ function showHome() {
     window.clearTimeout(boardState.goalCalloutTimeoutId);
     boardState.goalCalloutTimeoutId = null;
   }
+  if (boardState.powerTipTimeoutId) {
+    window.clearTimeout(boardState.powerTipTimeoutId);
+    boardState.powerTipTimeoutId = null;
+  }
   boardState.powerBannerUntil = 0;
   boardState.queuedBannerText = "";
   if (el.goalCallout) {
     el.goalCallout.classList.add("hidden");
+  }
+  if (el.powerTipPopup) {
+    el.powerTipPopup.classList.remove("is-visible");
+    el.powerTipPopup.classList.add("hidden");
   }
   el.home.classList.remove("hidden");
   el.themes.classList.add("hidden");
@@ -2957,11 +3006,12 @@ function renderBoard(board) {
       const value = board.grid[row][col];
       const tile = board.tileElements[index];
       const key = `${row},${col}`;
+      const tileLabel = value > 0 ? formatTileLabel(value) : "";
 
       tile.className = `tile ${getTileClass(value)}`;
       tile.dataset.value = String(value);
-      tile.dataset.digits = String(value).length;
-      tile.textContent = value === 0 ? "" : value === BLOCKER_TILE ? "X" : String(value);
+      tile.dataset.digits = value === BLOCKER_TILE ? "1" : String(tileLabel.length || 1);
+      tile.textContent = value === 0 ? "" : value === BLOCKER_TILE ? "X" : tileLabel;
       tile.classList.toggle("tile-alive", value >= 32);
       tile.classList.toggle("tile-pulse", value >= 512);
       tile.classList.toggle("tile-aura", value >= 2048);
@@ -2992,11 +3042,12 @@ function renderAmmo() {
 function renderAmmoTile(element, value, label) {
   const baseClass = element.classList.contains("shot-tile") ? "shot-tile" : "shot-next";
   const isWild = element === player.currentAmmoElement && state.wildTileArmed;
+  const tileLabel = isWild ? "W" : formatTileLabel(value);
   element.className = `${baseClass} tile ${isWild ? "tile-wild" : getTileClass(value)}`;
   element.dataset.value = isWild ? "wild" : String(value);
-  element.dataset.digits = isWild ? "1" : String(value).length;
-  element.textContent = isWild ? "W" : String(value);
-  element.setAttribute("aria-label", `${label}: ${isWild ? "wild" : value}`);
+  element.dataset.digits = String(tileLabel.length || 1);
+  element.textContent = tileLabel;
+  element.setAttribute("aria-label", `${label}: ${isWild ? "wild" : tileLabel}`);
 
   if (isWild) {
     element.style.background = "linear-gradient(180deg, #fff4ba, #ffb96d)";
@@ -3109,11 +3160,11 @@ function renderStatus() {
     const momentumText = state.momentumLevel > 1 ? ` Momentum x${state.momentumLevel}.` : "";
     const chainText = state.chainBoostArmed ? " Chain boost armed." : "";
     const powerText = state.selectedPowerId ? ` ${getPowerUseHint(state.selectedPowerId)}` : "";
-    el.status.textContent = `Your turn. Place ${state.wildTileArmed ? "Wild" : player.currentAmmo}.${modeText}${momentumText}${chainText}${powerText}`;
+    el.status.textContent = `Your turn. Place ${state.wildTileArmed ? "Wild" : formatTileLabel(player.currentAmmo)}.${modeText}${momentumText}${chainText}${powerText}`;
     return;
   }
 
-  el.status.textContent = `AI is placing ${ai.currentAmmo}.`;
+  el.status.textContent = `AI is placing ${formatTileLabel(ai.currentAmmo)}.`;
 }
 
 function renderSound() {
@@ -4806,8 +4857,21 @@ function getMaxTile(grid) {
   return maxTile;
 }
 
+function formatTileLabel(value) {
+  const safeValue =
+    typeof value === "bigint"
+      ? value
+      : BigInt(Math.max(0, Math.round(Number(value) || 0)));
+
+  if (safeValue >= 16384n && safeValue % 1024n === 0n) {
+    return `${safeValue / 1024n}k`;
+  }
+
+  return safeValue.toLocaleString();
+}
+
 function formatBigInt(value) {
-  return value.toLocaleString();
+  return formatTileLabel(value);
 }
 
 function formatTimeLeft(ms) {
@@ -4896,7 +4960,31 @@ function showSystemBanner(text, { force = false } = {}) {
   }, 560);
 }
 
+function showPowerTipPopup(powerId) {
+  const power = getPowerById(powerId);
+  if (!power || !el.powerTipPopup || !el.powerTipTitle || !el.powerTipCopy) {
+    return;
+  }
+
+  el.powerTipTitle.textContent = power.name;
+  el.powerTipCopy.textContent = getPowerAnnouncementCopy(powerId);
+  el.powerTipPopup.classList.remove("hidden");
+  el.powerTipPopup.classList.remove("is-visible");
+  void el.powerTipPopup.offsetWidth;
+  el.powerTipPopup.classList.add("is-visible");
+
+  if (boardState.powerTipTimeoutId) {
+    window.clearTimeout(boardState.powerTipTimeoutId);
+  }
+
+  boardState.powerTipTimeoutId = window.setTimeout(() => {
+    el.powerTipPopup.classList.remove("is-visible");
+    el.powerTipPopup.classList.add("hidden");
+  }, 5000);
+}
+
 function showPowerAnnouncement(powerId) {
+  showPowerTipPopup(powerId);
   boardState.powerBannerUntil = Date.now() + 5000;
   boardState.queuedBannerText = "";
   boardState.comboElement.textContent = getPowerAnnouncementText(powerId).toUpperCase();
