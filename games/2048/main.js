@@ -77,7 +77,7 @@ const POWER_UPS = Object.freeze([
     id: "breaker",
     icon: "&#128165;",
     name: "Tile Breaker",
-    price: 180,
+    price: 280,
     description: "Remove one tile, except the current highest tile.",
     target: "tile",
     rarity: "Rare",
@@ -103,7 +103,7 @@ const POWER_UPS = Object.freeze([
     id: "freeze-time",
     icon: "&#10052;",
     name: "Freeze Time",
-    price: 240,
+    price: 360,
     description: "Freeze pressure and skip AI turns for 3 player moves.",
     target: "instant",
     rarity: "Epic",
@@ -2407,11 +2407,16 @@ function renderPuzzleBrief() {
   }
 
   const header = puzzleManager.getHeaderUi(state.puzzleSession);
+  const movesLeft = Math.max(0, state.puzzleSession.moveLimit - state.puzzleSession.movesUsed);
   el.puzzleZone.textContent = header.special || header.zone;
   el.puzzleType.textContent = header.type;
   el.puzzleStars.textContent = header.stars;
   el.puzzleGoal.textContent = header.goal;
   el.puzzleMoves.textContent = header.moves;
+  el.puzzleBrief.dataset.puzzlePressure =
+    movesLeft <= 1 ? "critical" :
+    movesLeft <= 2 ? "warning" :
+    "stable";
   el.puzzleBrief.classList.remove("hidden");
 }
 
@@ -2461,7 +2466,9 @@ function applyPuzzleSessionState() {
   state.playerMovesLeft = state.puzzleSession.moveLimit;
   boardState.grid = cloneGrid(state.puzzleSession.board);
   boardState.maxTile = getMaxTile(boardState.grid);
-  state.lockedTiles = state.puzzleSession.config.lockedTiles.map((tile) => ({ ...tile }));
+  state.lockedTiles = Array.isArray(state.puzzleSession.config.lockedTiles)
+    ? state.puzzleSession.config.lockedTiles.map((tile) => ({ ...tile }))
+    : [];
 }
 
 function applyPuzzleSpecialRuleAfterMove() {
@@ -3796,11 +3803,14 @@ function createShotGhost(board, value, boardRect, targetRect) {
   const top = boardRect.height + targetRect.height * 0.25;
 
   ghost.className = `tile ${getTileClass(value)} tile-ghost tile-shot`;
-  ghost.textContent = String(value);
+  ghost.dataset.digits = String(formatTileLabel(value).length || 1);
+  ghost.dataset.rawValue = String(value);
+  ghost.textContent = formatTileLabel(value);
   ghost.style.width = `${targetRect.width}px`;
   ghost.style.height = `${targetRect.height}px`;
   ghost.style.left = `${left}px`;
   ghost.style.top = `${top}px`;
+  applyTileVisualStyle(ghost, value, getVisualLevel());
 
   board.animationLayer.append(ghost);
   return ghost;
@@ -3813,13 +3823,16 @@ function animateShotGhost(ghost, boardRect, targetRect) {
   const duration = getShotTravelMs();
   const easing = getThemeAnimationEasing();
 
-  themeEffects.applyMoveEffect(ghost, Number.parseInt(ghost.textContent || "0", 10));
+  themeEffects.applyMoveEffect(ghost, Number.parseInt(ghost.dataset.rawValue || ghost.textContent || "0", 10));
 
   if (typeof ghost.animate === "function") {
+    const anticipation = Math.max(-12, -4 - Math.abs(deltaY) * 0.04);
     const animation = ghost.animate(
       [
-        { transform: "translate3d(0px, 0px, 0px) scale(0.92)", opacity: 0.96 },
-        { transform: `translate3d(0px, ${deltaY}px, 0px) scale(1)`, opacity: 1 }
+        { transform: "translate3d(0px, 0px, 0px) scale(0.84, 1.14) rotate(-4deg)", opacity: 0.88, filter: "brightness(1.08)" },
+        { offset: 0.16, transform: `translate3d(0px, ${anticipation}px, 0px) scale(1.02, 0.96) rotate(0deg)`, opacity: 1, filter: "brightness(1.22)" },
+        { offset: 0.82, transform: `translate3d(0px, ${Math.round(deltaY * 0.92)}px, 0px) scale(0.98, 1.04) rotate(1deg)`, opacity: 1, filter: "brightness(1.1)" },
+        { transform: `translate3d(0px, ${deltaY}px, 0px) scale(1.02) rotate(0deg)`, opacity: 1, filter: "brightness(1)" }
       ],
       { duration, easing, fill: "forwards" }
     );
@@ -3871,9 +3884,20 @@ function triggerMergeFeedback(board, maxMergedValue) {
   const progressive = Math.min(1, Math.max(0, Math.log2(Math.max(2, maxMergedValue)) / 12));
   const glowStrength = 0.24 + progressive * 0.42 * intensity;
   const shakeThreshold = theme.id === "neon-energy" ? 64 : 128;
+  const impactOpacity = Math.min(0.9, 0.34 + progressive * 0.38 * intensity);
+  const impactScale = Math.max(0.82, 0.94 - progressive * 0.12);
+  const impactHue = Math.round((204 + Math.log2(Math.max(2, maxMergedValue)) * 10) % 360);
+  const impactDuration = Math.max(220, Math.round((320 + progressive * 160) * speed));
 
   board.boardElement.style.filter = `drop-shadow(0 0 ${Math.round(10 + 20 * progressive * intensity)}px rgba(120, 186, 255, ${glowStrength.toFixed(2)}))`;
+  board.boardElement.style.setProperty("--impact-opacity", impactOpacity.toFixed(3));
+  board.boardElement.style.setProperty("--impact-scale", impactScale.toFixed(3));
+  board.boardElement.style.setProperty("--impact-hue", String(impactHue));
+  board.boardElement.style.setProperty("--impact-duration", `${impactDuration}ms`);
   board.boardElement.classList.add("is-glow");
+  board.boardElement.classList.remove("is-impact");
+  void board.boardElement.offsetWidth;
+  board.boardElement.classList.add("is-impact");
 
   if (maxMergedValue >= shakeThreshold) {
     board.boardElement.classList.remove("is-shaking");
@@ -3886,10 +3910,15 @@ function triggerMergeFeedback(board, maxMergedValue) {
   }
 
   board.feedbackTimeoutId = window.setTimeout(() => {
+    board.boardElement.classList.remove("is-impact");
     board.boardElement.classList.remove("is-glow");
     board.boardElement.classList.remove("is-shaking");
     board.boardElement.style.filter = "";
-  }, Math.max(120, Math.round(220 * speed)));
+    board.boardElement.style.removeProperty("--impact-opacity");
+    board.boardElement.style.removeProperty("--impact-scale");
+    board.boardElement.style.removeProperty("--impact-hue");
+    board.boardElement.style.removeProperty("--impact-duration");
+  }, Math.max(impactDuration, Math.round(220 * speed)));
 }
 
 async function maybePlayComboCinematic(comboCount) {
@@ -3921,7 +3950,7 @@ function showComboBanner(actor, comboCount) {
 
   boardState.comboTimeoutId = window.setTimeout(() => {
     boardState.comboElement.classList.remove("is-visible");
-  }, 560);
+  }, Math.min(820, 560 + comboCount * 36));
 }
 
 function clearAnimationLayer(board) {

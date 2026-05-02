@@ -85,7 +85,7 @@ export function createPuzzleManager({ storage = window.localStorage } = {}) {
       board: cloneGrid(config.board),
       moveLimit: config.moveLimit,
       movesUsed: 0,
-      playerAmmoQueue: config.ammoQueue.slice(),
+      playerAmmoQueue: Array.isArray(config.ammoQueue) ? config.ammoQueue.slice() : [],
       hintCount: 0,
       failCount: getFailCount(level),
       goalLabel: getPuzzleGoalLabel(config),

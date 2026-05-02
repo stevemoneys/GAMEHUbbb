@@ -24,6 +24,11 @@ function lockedTile(rowIndex, colIndex, turns = 3) {
   return { row: rowIndex, col: colIndex, turns };
 }
 
+function normalizePositivePower(value, fallback = 2) {
+  const numeric = Math.max(0, Math.round(Number(value) || 0));
+  return numeric >= 2 ? numeric : fallback;
+}
+
 function getZoneAnchor(level, drift = 0) {
   const zone = getPuzzleZone(level);
   const zoneOffset = Math.max(0, level - zone.range[0] + drift);
@@ -532,22 +537,85 @@ function buildGeneratedLevel(level) {
   return applySpecialLevelAdjustments(config);
 }
 
-function enrichConfig(config) {
-  const zone = getPuzzleZone(config.level);
-  const typeMeta = getPuzzleTypeMeta(config.type);
+function normalizeGoal(config, fallbackTarget) {
+  const kind = config.goal?.kind || (config.type === "combo" ? "score" : "tile");
+  const target =
+    kind === "survive"
+      ? 1
+      : Math.max(1, Math.round(Number(config.goal?.target || fallbackTarget || 1)));
+  const text =
+    config.goal?.text ||
+    (kind === "score"
+      ? `Score ${target}`
+      : kind === "survive"
+        ? "Open space before the board locks"
+        : kind === "clear"
+          ? "Clear the marked blockers"
+          : `Reach tile ${target}`);
+
   return {
+    kind,
+    target,
+    text
+  };
+}
+
+function normalizePuzzleConfig(config) {
+  const safeLevel = Math.max(1, Math.min(100, Number(config?.level) || 1));
+  const zone = getPuzzleZone(safeLevel);
+  const type = config?.type || getPuzzleTypeForLevel(safeLevel);
+  const typeMeta = getPuzzleTypeMeta(type);
+  const fallbackTarget =
+    type === "combo"
+      ? Math.max(512, getZoneAnchor(safeLevel) * 8)
+      : Math.max(256, getZoneAnchor(safeLevel) * 8);
+  const ammoQueue = Array.isArray(config?.ammoQueue)
+    ? config.ammoQueue
+        .map((value) => normalizePositivePower(value, 2))
+        .filter((value) => value >= 2)
+    : [];
+  const fallbackAmmo = normalizePositivePower(config?.fallbackAmmo || ammoQueue.at(-1) || 2, 2);
+  const moveLimit = Math.max(3, Math.round(Number(config?.moveLimit || 5)));
+  const optimalMoves = Math.max(2, Math.min(moveLimit, Math.round(Number(config?.optimalMoves || moveLimit - 1))));
+
+  return {
+    ...config,
+    level: safeLevel,
     zoneId: zone.id,
     zoneName: zone.name,
     zoneMood: zone.mood,
+    type,
     typeLabel: typeMeta.label,
-    ...config
+    name: config?.name || `${zone.name} ${typeMeta.label} ${safeLevel - zone.range[0] + 1}`,
+    board: boardFromRows(config?.board || []),
+    ammoQueue: ammoQueue.length > 0 ? ammoQueue : [fallbackAmmo, fallbackAmmo],
+    fallbackAmmo,
+    moveLimit,
+    optimalMoves,
+    aiDifficulty: config?.aiDifficulty || (safeLevel <= 20 ? "balanced" : "sharp"),
+    feedbackBias: config?.feedbackBias || (type === "combo" || type === "chain" ? "celebrate" : "coach"),
+    hintThreshold: Math.max(2, Math.round(Number(config?.hintThreshold || 4))),
+    goal: normalizeGoal(config || {}, fallbackTarget),
+    restrictedColumns: Array.isArray(config?.restrictedColumns)
+      ? Array.from(new Set(config.restrictedColumns.map((value) => Math.max(0, Math.min(COLS - 1, Math.round(Number(value) || 0))))))
+      : [],
+    lockedTiles: Array.isArray(config?.lockedTiles)
+      ? config.lockedTiles
+          .map((tile) => ({
+            row: Math.max(0, Math.min(ROWS - 1, Math.round(Number(tile?.row) || 0))),
+            col: Math.max(0, Math.min(COLS - 1, Math.round(Number(tile?.col) || 0))),
+            turns: Math.max(1, Math.round(Number(tile?.turns) || 3))
+          }))
+      : [],
+    specialRule: config?.specialRule || null,
+    specialTag: config?.specialTag || ""
   };
 }
 
 const generatedLevels = [];
 for (let level = 1; level <= 100; level += 1) {
   const example = EXAMPLE_LEVELS.find((entry) => entry.level === level);
-  generatedLevels.push(enrichConfig(example ? example : buildGeneratedLevel(level)));
+  generatedLevels.push(normalizePuzzleConfig(example ? example : buildGeneratedLevel(level)));
 }
 
 export const PUZZLE_LEVELS = Object.freeze(generatedLevels);

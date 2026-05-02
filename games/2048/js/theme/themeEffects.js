@@ -57,17 +57,63 @@ function applyMicroShake(tileEl) {
   );
 }
 
-function applyMergeSlowMo(value) {
+function createMergeBurst(tileEl, value, profile) {
+  const rect = tileEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const intensity = Math.max(1, Math.log2(Math.max(2, value))) * profile.intensity;
+  const hue = Math.round((34 + Math.log2(Math.max(2, value)) * 9) % 360);
+  const haloSize = Math.round(rect.width * (1.15 + Math.min(0.65, intensity * 0.03)));
+  const sparkCount = profile.explosion ? 6 : 4;
+
+  const halo = document.createElement("div");
+  halo.className = "merge-halo";
+  halo.style.left = `${centerX}px`;
+  halo.style.top = `${centerY}px`;
+  halo.style.width = `${haloSize}px`;
+  halo.style.height = `${haloSize}px`;
+  halo.style.setProperty("--merge-hue", String(hue));
+  halo.style.setProperty("--merge-strength", Math.min(1.5, 0.8 + intensity * 0.035).toFixed(3));
+  document.body.append(halo);
+
+  for (let index = 0; index < sparkCount; index += 1) {
+    const spark = document.createElement("div");
+    const angle = (360 / sparkCount) * index + (profile.trail ? 12 : 0);
+    const distance = Math.round(rect.width * (0.68 + intensity * 0.02));
+    spark.className = "merge-spark";
+    spark.style.left = `${centerX}px`;
+    spark.style.top = `${centerY}px`;
+    spark.style.setProperty("--spark-angle", `${angle}deg`);
+    spark.style.setProperty("--spark-distance", `${-distance}px`);
+    spark.style.setProperty("--spark-delay", `${index * 18}ms`);
+    spark.style.setProperty("--merge-hue", String((hue + index * 9) % 360));
+    document.body.append(spark);
+
+    window.setTimeout(() => {
+      spark.remove();
+    }, 560 + index * 20);
+  }
+
+  window.setTimeout(() => {
+    halo.remove();
+  }, 620);
+}
+
+function applyMergeSlowMo(value, profile) {
   if (value < 128) {
     return;
   }
 
-  document.body.style.transition = "transform 80ms ease";
-  document.body.style.transform = "scale(0.98)";
+  const duration = Math.round(Math.max(80, 72 + Math.log2(value) * 4));
+  const scale = Math.max(0.975, 0.988 - Math.min(0.012, profile.intensity * 0.004));
+  document.body.style.transition = `transform ${duration}ms ease, filter ${duration}ms ease`;
+  document.body.style.transform = `scale(${scale})`;
+  document.body.style.filter = `saturate(${Math.min(1.16, 1 + profile.intensity * 0.08)})`;
 
   window.setTimeout(() => {
     document.body.style.transform = "scale(1)";
-  }, 80);
+    document.body.style.filter = "";
+  }, duration);
 }
 
 export function createThemeEffects({ getTheme }) {
@@ -108,8 +154,9 @@ export function createThemeEffects({ getTheme }) {
     tile.style.boxShadow = baseShadow ? `${baseShadow}, ${glowShadow}` : glowShadow;
 
     createScorePopup(tile, value);
+    createMergeBurst(tile, value, profile);
     applyMicroShake(tile);
-    applyMergeSlowMo(value);
+    applyMergeSlowMo(value, profile);
 
     tile.classList.toggle("fx-explosion-enabled", profile.explosion);
     applyTransientClass(tile, "fx-merge", 200);
@@ -130,6 +177,7 @@ export function createThemeEffects({ getTheme }) {
 
     tile.style.setProperty("--fx-duration", `${duration}ms`);
     tile.style.setProperty("--fx-easing", profile.easing);
+    tile.style.setProperty("--fx-shift", `${Math.round(12 + profile.tier * 14)}px`);
     tile.classList.toggle("fx-trail-enabled", profile.trail);
     applyTransientClass(tile, "fx-move", duration + 20);
   }
@@ -147,6 +195,7 @@ export function createThemeEffects({ getTheme }) {
     tile.style.setProperty("--fx-duration", `${duration}ms`);
     tile.style.setProperty("--fx-scale", scale.toFixed(3));
     tile.style.setProperty("--fx-easing", profile.easing);
+    tile.style.setProperty("--fx-glow", `${Math.round(10 + boost * 8)}px`);
     tile.classList.toggle("fx-glow-enabled", profile.glow);
     applyTransientClass(tile, "fx-spawn", duration + 18);
   }
@@ -163,6 +212,7 @@ export function createThemeEffects({ getTheme }) {
 
     targetElement.style.setProperty("--combo-duration", `${duration}ms`);
     targetElement.style.setProperty("--combo-scale", scale.toFixed(3));
+    targetElement.style.setProperty("--combo-glow", `${Math.round(20 + boost * 10)}px`);
     targetElement.classList.toggle("fx-trail-enabled", profile.trail);
     targetElement.classList.toggle("fx-glow-enabled", profile.glow);
     applyTransientClass(targetElement, "fx-combo", duration + 24);
