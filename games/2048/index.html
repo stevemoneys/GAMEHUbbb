@@ -91,17 +91,6 @@
         <section class="level-progress-card" aria-label="Level progress">
           <div>Unlocked: <span data-unlocked-level>1</span>/100</div>
           <div>Selected: <span data-selected-level>1</span></div>
-          <div>AI: <span data-selected-ai-name>Clueless Player</span></div>
-        </section>
-
-        <section class="level-profile-card" aria-label="Selected AI profile">
-          <h2 class="profile-title" data-profile-title>Clueless Player</h2>
-          <p class="profile-summary" data-profile-summary>Random moves with no strategy.</p>
-          <div class="profile-meta">
-            <span data-profile-depth>Depth: 0</span>
-            <span data-profile-mistake>Mistake: 80%</span>
-            <span data-profile-speed>Speed: Slow</span>
-          </div>
         </section>
 
         <section class="level-grid" data-level-grid aria-label="Level buttons"></section>
@@ -191,6 +180,11 @@
         </div>
 
         <section class="bottom-dock bottom-dock-compact" aria-label="Current shots">
+          <div class="speed-timer hidden" data-speed-timer-wrap aria-live="polite">
+            <span class="speed-timer-label">Timer</span>
+            <strong class="speed-timer-value" data-speed-timer-value>3:00</strong>
+          </div>
+
           <div class="launcher-wrap launcher-wrap-compact" aria-label="Current shots">
             <div class="launcher-card">
               <div class="launcher-label">You</div>

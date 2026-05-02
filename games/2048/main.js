@@ -285,12 +285,6 @@ const el = {
   powerBalance: document.querySelector("[data-power-balance]"),
   unlockedLevel: document.querySelector("[data-unlocked-level]"),
   selectedLevel: document.querySelector("[data-selected-level]"),
-  selectedAiName: document.querySelector("[data-selected-ai-name]"),
-  profileTitle: document.querySelector("[data-profile-title]"),
-  profileSummary: document.querySelector("[data-profile-summary]"),
-  profileDepth: document.querySelector("[data-profile-depth]"),
-  profileMistake: document.querySelector("[data-profile-mistake]"),
-  profileSpeed: document.querySelector("[data-profile-speed]"),
   homeBtn: document.querySelector("[data-home-btn]"),
   overlayHomeBtn: document.querySelector("[data-overlay-home]"),
   overlayRestartBtn: document.querySelector("[data-overlay-restart]"),
@@ -331,6 +325,8 @@ const el = {
   goalCallout: document.querySelector("[data-goal-callout]"),
   goalCalloutValue: document.querySelector("[data-goal-callout-value]"),
   goalCalloutCopy: document.querySelector("[data-goal-callout-copy]"),
+  speedTimerWrap: document.querySelector("[data-speed-timer-wrap]"),
+  speedTimerValue: document.querySelector("[data-speed-timer-value]"),
   powerTipPopup: document.querySelector("[data-power-tip-popup]"),
   powerTipTitle: document.querySelector("[data-power-tip-title]"),
   powerTipCopy: document.querySelector("[data-power-tip-copy]"),
@@ -2232,7 +2228,6 @@ function renderThemeScreen() {
 }
 
 function renderLevels() {
-  const profile = getAiProfileForLevel(state.selectedLevel);
   const targetText = formatBigInt(getLevelTarget(state.selectedLevel));
   const puzzleConfig = isPuzzleMode() ? puzzleManager.getLevel(state.selectedLevel) : null;
   const speedTimeText = formatTimeLeft(getSpeedModeTimeLimit(state.selectedLevel));
@@ -2240,28 +2235,10 @@ function renderLevels() {
   el.unlockedLevel.textContent = String(state.unlockedLevel);
   el.selectedLevel.textContent = String(state.selectedLevel);
   if (puzzleConfig) {
-    el.selectedAiName.textContent = puzzleConfig.typeLabel;
-    el.profileTitle.textContent = puzzleConfig.name;
-    el.profileSummary.textContent = puzzleConfig.goal.text;
-    el.profileDepth.textContent = `Zone: ${puzzleConfig.zoneName}`;
-    el.profileMistake.textContent = `Moves: ${puzzleConfig.moveLimit}`;
-    el.profileSpeed.textContent = `AI: ${puzzleConfig.aiDifficulty}`;
     el.startLevelBtn.textContent = `START PUZZLE ${state.selectedLevel}`;
   } else if (isSpeedMode()) {
-    el.selectedAiName.textContent = "Speed Run";
-    el.profileTitle.textContent = `Speed Level ${state.selectedLevel}`;
-    el.profileSummary.textContent = `Classic target under pressure. Reach ${targetText} before the timer ends.`;
-    el.profileDepth.textContent = `Target: ${targetText}`;
-    el.profileMistake.textContent = `Coins: (score / 10) x 1.5`;
-    el.profileSpeed.textContent = `Time: ${speedTimeText}`;
     el.startLevelBtn.textContent = `START SPEED ${state.selectedLevel} - ${speedTimeText}`;
   } else {
-    el.selectedAiName.textContent = profile.name;
-    el.profileTitle.textContent = profile.name;
-    el.profileSummary.textContent = `${profile.summary} Target: ${targetText}`;
-    el.profileDepth.textContent = `Depth: ${profile.depthDisplay}`;
-    el.profileMistake.textContent = `Mistake: ${Math.round(profile.mistakeRate * 100)}%`;
-    el.profileSpeed.textContent = `Speed: ${profile.speedLabel}`;
     el.startLevelBtn.textContent = `START LEVEL ${state.selectedLevel} - ${targetText}`;
   }
 
@@ -2410,6 +2387,12 @@ function drawPuzzleAmmoValue(actorKind = "player") {
   if (actorKind === "player" && Array.isArray(queue) && queue.length > 0) {
     return Number(queue.shift() || 2);
   }
+
+  if (actorKind === "player" && state.puzzleSession?.config) {
+    const fallback = state.puzzleSession.config.fallbackAmmo || state.puzzleSession.config.ammoQueue?.at(-1) || 2;
+    return Number(fallback || 2);
+  }
+
   return createAmmoValue(state.modeIndex, actorKind);
 }
 
@@ -2988,6 +2971,7 @@ function renderAll() {
   renderAmmo();
   renderScoreboard();
   renderGameHeader();
+  renderSpeedTimer();
   renderPuzzleBrief();
   renderStatus();
   renderSound();
@@ -3091,9 +3075,7 @@ function renderGameHeader() {
   el.aiLauncher.classList.toggle("hidden", !hasAiOpponent());
 
   let detailText = "";
-  if (isSpeedMode()) {
-    detailText = formatTimeLeft(state.timeLeftMs);
-  } else if (isPuzzleMode()) {
+  if (isPuzzleMode()) {
     detailText = `${state.playerMovesLeft ?? 0} moves`;
   } else if (isChaosMode() && state.lastChaosEvent) {
     detailText = state.lastChaosEvent;
@@ -3103,6 +3085,23 @@ function renderGameHeader() {
 
   el.modeDetailWrap.classList.toggle("hidden", detailText === "");
   el.modeDetail.textContent = detailText;
+}
+
+function renderSpeedTimer() {
+  if (!el.speedTimerWrap || !el.speedTimerValue) {
+    return;
+  }
+
+  const visible = isSpeedMode() && state.roundActive;
+  el.speedTimerWrap.classList.toggle("hidden", !visible);
+  if (!visible) {
+    el.speedTimerWrap.classList.remove("is-warning", "is-critical");
+    return;
+  }
+
+  el.speedTimerValue.textContent = formatTimeLeft(state.timeLeftMs);
+  el.speedTimerWrap.classList.toggle("is-warning", state.timeLeftMs <= 30000 && state.timeLeftMs > 12000);
+  el.speedTimerWrap.classList.toggle("is-critical", state.timeLeftMs <= 12000);
 }
 
 function getLevelTargetExponent(level) {
@@ -4868,6 +4867,14 @@ function formatTileLabel(value) {
     typeof value === "bigint"
       ? value
       : BigInt(Math.max(0, Math.round(Number(value) || 0)));
+
+  if (safeValue >= 1073741824n && safeValue % 1073741824n === 0n) {
+    return `${safeValue / 1073741824n}b`;
+  }
+
+  if (safeValue >= 1048576n && safeValue % 1048576n === 0n) {
+    return `${safeValue / 1048576n}m`;
+  }
 
   if (safeValue >= 16384n && safeValue % 1024n === 0n) {
     return `${safeValue / 1024n}k`;

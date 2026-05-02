@@ -257,6 +257,7 @@ function createBaseConfig(level) {
     name: `${zone.name} ${typeMeta.label} ${zoneOffset + 1}`,
     board: boardFromRows([]),
     ammoQueue: [side, anchor, side, anchor, anchor * 2, side],
+    fallbackAmmo: side,
     moveLimit,
     optimalMoves,
     aiDifficulty: level <= 20 ? "forgiving" : level <= 60 ? "balanced" : "sharp",

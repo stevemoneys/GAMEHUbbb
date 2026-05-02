@@ -1548,6 +1548,56 @@ body[data-active-theme="zen-minimal"] {
   padding-top: 4px;
 }
 
+.bottom-dock-compact {
+  gap: 8px;
+}
+
+.speed-timer {
+  min-height: 34px;
+  border-radius: 14px;
+  border: 1px solid rgba(143, 227, 255, 0.18);
+  background: linear-gradient(180deg, rgba(18, 30, 49, 0.96), rgba(10, 18, 30, 0.98));
+  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.speed-timer-label {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9ac2e8;
+}
+
+.speed-timer-value {
+  font-size: 1rem;
+  font-weight: 900;
+  color: #eef6ff;
+}
+
+.speed-timer.is-warning {
+  border-color: rgba(255, 194, 95, 0.44);
+  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.24), 0 0 20px rgba(255, 190, 92, 0.18);
+}
+
+.speed-timer.is-warning .speed-timer-value {
+  color: #ffd58e;
+}
+
+.speed-timer.is-critical {
+  border-color: rgba(255, 112, 112, 0.54);
+  box-shadow: 0 14px 22px rgba(0, 0, 0, 0.24), 0 0 24px rgba(255, 96, 96, 0.26);
+  animation: timerWarningPulse 780ms ease-in-out infinite;
+}
+
+.speed-timer.is-critical .speed-timer-value {
+  color: #ffd0d0;
+}
+
 .launcher-wrap {
   gap: 6px;
 }
@@ -2515,6 +2565,12 @@ body[data-active-theme="zen-minimal"] {
   0%,
   100% { filter: brightness(1); }
   50% { filter: brightness(1.35); }
+}
+
+@keyframes timerWarningPulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.015); filter: brightness(1.1); }
+  100% { transform: scale(1); filter: brightness(1); }
 }
 
 @keyframes nearMissFlash {
