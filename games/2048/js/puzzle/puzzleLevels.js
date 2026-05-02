@@ -29,21 +29,21 @@ function getZoneAnchor(level, drift = 0) {
   const zoneOffset = Math.max(0, level - zone.range[0] + drift);
   const step = Math.min(2, Math.floor(zoneOffset / 6));
   const base =
-    zone.id === "foundation" ? 8 :
-    zone.id === "strategy" ? 16 :
-    zone.id === "advanced" ? 32 :
-    zone.id === "expert" ? 64 :
-    128;
+    zone.id === "foundation" ? 16 :
+    zone.id === "strategy" ? 32 :
+    zone.id === "advanced" ? 64 :
+    zone.id === "expert" ? 128 :
+    256;
 
   return base * 2 ** step;
 }
 
 function getZoneMoveLimit(zoneId, type, zoneOffset) {
   const base =
-    zoneId === "foundation" ? 6 :
-    zoneId === "strategy" ? 5 :
+    zoneId === "foundation" ? 5 :
+    zoneId === "strategy" ? 4 :
     zoneId === "advanced" ? 4 :
-    zoneId === "expert" ? 4 :
+    zoneId === "expert" ? 3 :
     3;
 
   const typeAdjust =
@@ -51,7 +51,7 @@ function getZoneMoveLimit(zoneId, type, zoneOffset) {
     type === "limited" || type === "trick" ? -1 :
     0;
 
-  const tighten = Math.floor(Math.max(0, zoneOffset) / 6);
+  const tighten = Math.floor(Math.max(0, zoneOffset) / 5);
   return Math.max(3, base + typeAdjust - tighten);
 }
 
@@ -60,70 +60,77 @@ const EXAMPLE_LEVELS = Object.freeze([
     level: 1,
     name: "Warm Welcome",
     type: "merge",
-    moveLimit: 5,
-    optimalMoves: 4,
+    moveLimit: 6,
+    optimalMoves: 5,
     board: boardFromRows([
-      [4, 0, 4, 0, 0],
-      [8, 0, 0, 8, 0],
-      [0, 0, 16, 0, 0]
+      [16, 0, 16, 0, 0],
+      [32, 0, 0, 32, 0],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
     ]),
-    ammoQueue: [4, 8, 4, 8, 16, 8, 4],
-    goal: { kind: "tile", target: 32, text: "Reach tile 32" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [16, 32, 16, 32, 64, 32, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 256, text: "Build carefully and reach 256" },
+    aiDifficulty: "balanced",
     feedbackBias: "positive",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 2,
     name: "Soft Pair",
     type: "merge",
-    moveLimit: 5,
-    optimalMoves: 4,
+    moveLimit: 6,
+    optimalMoves: 5,
     board: boardFromRows([
-      [0, 4, 0, 4, 0],
-      [0, 8, 0, 8, 0],
-      [0, 0, 16, 0, 0]
+      [0, 16, 0, 16, 0],
+      [0, 32, 0, 32, 0],
+      [0, 0, 64, 0, 0],
+      [0, 16, 0, 16, 0]
     ]),
-    ammoQueue: [4, 8, 8, 4, 16, 8, 4],
-    goal: { kind: "tile", target: 32, text: "Create a 32 with clean merges" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [16, 32, 32, 16, 64, 32, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 256, text: "Create a 256 through clean sequencing" },
+    aiDifficulty: "balanced",
     feedbackBias: "positive",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 3,
     name: "Center Lane",
     type: "positioning",
     moveLimit: 5,
-    optimalMoves: 4,
+    optimalMoves: 5,
     board: boardFromRows([
-      [4, 0, 8, 0, 4],
-      [4, 0, 8, 0, 4],
-      [0, 0, 16, 0, 0],
-      [0, 8, 0, 8, 0]
+      [16, 0, 32, 0, 16],
+      [16, 0, 32, 0, 16],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
     ]),
-    ammoQueue: [8, 8, 4, 16, 8, 4, 16],
-    goal: { kind: "tile", target: 64, text: "Open the middle and reach 64" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [32, 16, 32, 64, 32, 16, 64],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Open the middle and reach 512" },
+    aiDifficulty: "balanced",
     feedbackBias: "coach",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 4,
     name: "Careful Steps",
     type: "limited",
-    moveLimit: 4,
+    moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [4, 8, 0, 8, 4],
-      [0, 0, 16, 0, 0],
-      [0, 8, 0, 8, 0]
+      [16, 32, 0, 32, 16],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0],
+      [0, 16, 0, 16, 0]
     ]),
-    ammoQueue: [8, 16, 8, 16, 4, 8],
-    goal: { kind: "tile", target: 64, text: "Solve it in only 4 moves" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [32, 64, 32, 64, 16, 32],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Solve it in only 5 moves" },
+    aiDifficulty: "balanced",
     feedbackBias: "coach",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 5,
@@ -132,34 +139,36 @@ const EXAMPLE_LEVELS = Object.freeze([
     moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [4, 4, 8, 0, 0],
-      [8, 8, 16, 0, 0],
-      [0, 0, 16, 0, 0],
-      [0, 8, 0, 8, 0]
+      [16, 16, 32, 0, 0],
+      [32, 32, 64, 0, 0],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
     ]),
-    ammoQueue: [4, 8, 16, 8, 16, 4, 32],
-    goal: { kind: "score", target: 192, text: "Trigger a deeper chain and score 192" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [16, 32, 64, 32, 64, 16, 128],
+    fallbackAmmo: 16,
+    goal: { kind: "score", target: 768, text: "Trigger a deep chain and score 768" },
+    aiDifficulty: "balanced",
     feedbackBias: "celebrate",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 6,
     name: "Clean Stack",
     type: "merge",
     moveLimit: 5,
-    optimalMoves: 4,
+    optimalMoves: 5,
     board: boardFromRows([
-      [0, 4, 0, 4, 0],
-      [0, 8, 0, 8, 0],
       [0, 16, 0, 16, 0],
-      [0, 0, 32, 0, 0]
+      [0, 32, 0, 32, 0],
+      [0, 64, 0, 64, 0],
+      [0, 0, 128, 0, 0]
     ]),
-    ammoQueue: [4, 8, 16, 16, 8, 4, 32],
-    goal: { kind: "tile", target: 64, text: "Stack neatly and reach 64" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [16, 32, 64, 64, 32, 16, 128],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Stack deeply and reach 512" },
+    aiDifficulty: "balanced",
     feedbackBias: "positive",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 7,
@@ -168,33 +177,35 @@ const EXAMPLE_LEVELS = Object.freeze([
     moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [4, 4, 8, 8, 0],
-      [16, 0, 16, 0, 0],
-      [0, 0, 32, 0, 0]
+      [16, 16, 32, 32, 0],
+      [64, 0, 64, 0, 0],
+      [0, 0, 128, 0, 0]
     ]),
-    ammoQueue: [8, 16, 8, 16, 32, 8, 16],
-    goal: { kind: "score", target: 256, text: "Chain your moves into a premium combo finish" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [32, 64, 32, 64, 128, 32, 64],
+    fallbackAmmo: 32,
+    goal: { kind: "score", target: 1024, text: "Chain your moves into a premium combo finish" },
+    aiDifficulty: "balanced",
     feedbackBias: "celebrate",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 8,
     name: "Quiet Crossroads",
     type: "positioning",
     moveLimit: 5,
-    optimalMoves: 4,
+    optimalMoves: 5,
     board: boardFromRows([
-      [4, 0, 4, 0, 4],
-      [8, 0, 8, 0, 8],
-      [16, 0, 0, 0, 16],
-      [0, 16, 0, 16, 0]
+      [16, 0, 16, 0, 16],
+      [32, 0, 32, 0, 32],
+      [64, 0, 0, 0, 64],
+      [0, 64, 0, 64, 0]
     ]),
-    ammoQueue: [8, 16, 16, 8, 32, 16, 8],
-    goal: { kind: "tile", target: 128, text: "Choose the right lane and build 128" },
-    aiDifficulty: "forgiving",
+    ammoQueue: [32, 64, 64, 32, 128, 64, 32],
+    fallbackAmmo: 32,
+    goal: { kind: "tile", target: 1024, text: "Choose the right lane and build 1024" },
+    aiDifficulty: "sharp",
     feedbackBias: "coach",
-    hintThreshold: 3
+    hintThreshold: 4
   },
   {
     level: 9,
@@ -203,16 +214,17 @@ const EXAMPLE_LEVELS = Object.freeze([
     moveLimit: 4,
     optimalMoves: 4,
     board: boardFromRows([
-      [8, 4, 8, 4, 8],
-      [0, 16, 0, 16, 0],
-      [0, 0, 32, 0, 0],
-      [0, 8, 0, 8, 0]
+      [32, 16, 32, 16, 32],
+      [0, 64, 0, 64, 0],
+      [0, 0, 128, 0, 0],
+      [0, 32, 0, 32, 0]
     ]),
-    ammoQueue: [8, 16, 32, 8, 16, 4],
-    goal: { kind: "tile", target: 128, text: "Perfect lines only. You have 4 moves." },
-    aiDifficulty: "balanced",
+    ammoQueue: [32, 64, 128, 32, 64, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 1024, text: "Perfect lines only. You have 4 moves." },
+    aiDifficulty: "sharp",
     feedbackBias: "coach",
-    hintThreshold: 2
+    hintThreshold: 3
   },
   {
     level: 10,
@@ -221,16 +233,17 @@ const EXAMPLE_LEVELS = Object.freeze([
     moveLimit: 5,
     optimalMoves: 4,
     board: boardFromRows([
-      [4, 4, 8, 8, 16],
-      [8, 8, 16, 16, 0],
-      [0, 0, 32, 0, 0],
-      [0, 16, 0, 16, 0]
+      [16, 16, 32, 32, 64],
+      [32, 32, 64, 64, 0],
+      [0, 0, 128, 0, 0],
+      [0, 64, 0, 64, 0]
     ]),
-    ammoQueue: [8, 16, 32, 16, 8, 32, 16],
-    goal: { kind: "score", target: 384, text: "Special Level: unleash a big combo" },
-    aiDifficulty: "balanced",
+    ammoQueue: [32, 64, 128, 64, 32, 128, 64],
+    fallbackAmmo: 32,
+    goal: { kind: "score", target: 1536, text: "Special Level: unleash a big combo" },
+    aiDifficulty: "sharp",
     feedbackBias: "celebrate",
-    hintThreshold: 3,
+    hintThreshold: 4,
     specialTag: "Special Level"
   }
 ]);
@@ -243,8 +256,8 @@ function createBaseConfig(level) {
   const anchor = getZoneAnchor(level);
   const moveLimit = getZoneMoveLimit(zone.id, type, zoneOffset);
   const optimalMoves = Math.max(2, moveLimit - 1);
-  const tileTarget = Math.min(8192, anchor * 8);
-  const scoreTarget = Math.max(160, tileTarget * 2 + level * 16);
+  const tileTarget = Math.min(65536, Math.max(512, anchor * 16));
+  const scoreTarget = Math.max(1024, tileTarget * 2 + level * 32);
   const side = Math.max(2, anchor / 2);
 
   return {
@@ -257,12 +270,12 @@ function createBaseConfig(level) {
     name: `${zone.name} ${typeMeta.label} ${zoneOffset + 1}`,
     board: boardFromRows([]),
     ammoQueue: [side, anchor, side, anchor, anchor * 2, side],
-    fallbackAmmo: side,
+    fallbackAmmo: anchor,
     moveLimit,
     optimalMoves,
-    aiDifficulty: level <= 20 ? "forgiving" : level <= 60 ? "balanced" : "sharp",
+    aiDifficulty: level <= 20 ? "balanced" : level <= 60 ? "sharp" : "sharp",
     feedbackBias: type === "combo" || type === "chain" ? "celebrate" : "coach",
-    hintThreshold: level <= 20 ? 3 : level <= 60 ? 4 : 5,
+    hintThreshold: level <= 20 ? 4 : level <= 60 ? 5 : 6,
     goal: {
       kind: type === "combo" ? "score" : "tile",
       target: type === "combo" ? scoreTarget : tileTarget,
@@ -282,9 +295,10 @@ function createMergeBoard(level, intensity) {
     board: boardFromRows([
       [side, 0, side, 0, 0],
       [base, 0, base, 0, 0],
-      [0, 0, base * 2, 0, 0]
+      [0, 0, base * 2, 0, 0],
+      intensity >= 1 ? [0, side, 0, side, 0] : []
     ]),
-    ammoQueue: [side, base, side, base, base * 2, side, base * 2]
+    ammoQueue: [side, base, side, base, base * 2, side]
   };
 }
 
@@ -309,10 +323,11 @@ function createPositioningBoard(level, intensity) {
       [side, 0, base, 0, side],
       [side, 0, base, 0, side],
       [base, 0, base * 2, 0, base],
-      intensity >= 2 ? [0, base, 0, base, 0] : []
+      intensity >= 1 ? [0, base, 0, base, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
     ]),
-    ammoQueue: [base, side, base, base * 2, side, base, base * 2],
-    restrictedColumns: intensity >= 2 ? [level % COLS] : []
+    ammoQueue: [base, side, base, base * 2, side, base],
+    restrictedColumns: intensity >= 1 ? [level % COLS] : []
   };
 }
 
@@ -325,9 +340,10 @@ function createEscapeBoard(level, intensity) {
       [base, side, base * 2, side, base],
       [side, base * 2, 0, base, side],
       [base, side, base, base * 2, side],
-      [side, base, intensity >= 2 ? BLOCKER : 0, side, base]
+      [side, base, intensity >= 1 ? BLOCKER : 0, side, base],
+      intensity >= 2 ? [0, side, 0, side, 0] : []
     ]),
-    ammoQueue: [side, base, side, base * 2, base, side, base * 2],
+    ammoQueue: [side, base, side, base * 2, base, side],
     goal: { kind: "survive", target: 1, text: "Stay alive and open the board" }
   };
 }
@@ -340,9 +356,10 @@ function createTrickBoard(level, intensity) {
       [base, side, base, side, base],
       [side, side * 2, base * 2, side * 2, side],
       [0, 0, base * 2, 0, 0],
-      intensity >= 2 ? [0, BLOCKER, 0, BLOCKER, 0] : []
+      intensity >= 1 ? [0, BLOCKER, 0, BLOCKER, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
     ]),
-    ammoQueue: [side * 2, base, side, base * 2, side * 2, base, side],
+    ammoQueue: [side * 2, base, side, base * 2, side * 2, base],
     restrictedColumns: intensity >= 1 ? [0, 4] : []
   };
 }
@@ -355,9 +372,10 @@ function createLimitedBoard(level, intensity) {
       [side * 2, side, side * 2, side, side * 2],
       [0, base, 0, base, 0],
       [0, 0, base * 2, 0, 0],
-      intensity >= 2 ? [0, side, 0, side, 0] : []
+      intensity >= 1 ? [0, side, 0, side, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
     ]),
-    ammoQueue: [side * 2, base, base * 2, side * 2, base, side]
+    ammoQueue: [side * 2, base, base * 2, side * 2, base]
   };
 }
 
@@ -369,9 +387,10 @@ function createComboBoard(level, intensity) {
       [side, side, base, base, base],
       [base, base, base * 2, base * 2, 0],
       [0, 0, base * 4, 0, 0],
-      intensity >= 1 ? [0, side, 0, side, 0] : []
+      intensity >= 1 ? [0, side, 0, side, 0] : [],
+      intensity >= 2 ? [0, 0, base, 0, 0] : []
     ]),
-    ammoQueue: [side, base, base * 2, base, side, base * 4, base * 2, side]
+    ammoQueue: [side, base, base * 2, base, side, base * 4]
   };
 }
 
@@ -467,20 +486,24 @@ function buildGeneratedLevel(level) {
     }
   }
 
+  if (config.level >= 8 && config.type !== "escape" && config.board[4][2] === 0) {
+    config.board[4][2] = Math.max(2, getZoneAnchor(level));
+  }
+
   if (config.level >= 12 && config.type !== "escape" && config.board[4][2] === 0) {
     config.board[4][2] = Math.max(2, getZoneAnchor(level) / 2);
   }
 
-  if (config.level >= 16 && config.type !== "escape" && config.board[2][1] === 0) {
+  if (config.level >= 12 && config.type !== "escape" && config.board[2][1] === 0) {
     config.board[2][1] = BLOCKER;
   }
 
-  if (config.level >= 28 && (config.type === "limited" || config.type === "trick")) {
+  if (config.level >= 20 && (config.type === "limited" || config.type === "trick")) {
     config.moveLimit = Math.max(3, config.moveLimit - 1);
     config.optimalMoves = Math.max(2, config.moveLimit - 1);
   }
 
-  if (config.level >= 36 && config.type !== "escape") {
+  if (config.level >= 24 && config.type !== "escape") {
     config.lockedTiles = config.lockedTiles.concat([lockedTile(1, (config.level + 3) % COLS, 4)]);
   }
 
@@ -489,7 +512,7 @@ function buildGeneratedLevel(level) {
     config.lockedTiles = config.lockedTiles.concat([lockedTile(0, anchorColumn)]);
   }
 
-  if (config.level >= 52 && (config.type === "positioning" || config.type === "escape")) {
+  if (config.level >= 32 && (config.type === "positioning" || config.type === "escape")) {
     config.restrictedColumns = Array.from(new Set(config.restrictedColumns.concat([(config.level + 2) % COLS])));
   }
 

@@ -23,7 +23,7 @@ const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
 const POWER_BALANCE_STORAGE_KEY = "gamehub_2048_power_balance_v1";
 const POWER_INVENTORY_STORAGE_KEY = "gamehub_2048_power_inventory_v1";
 const STORAGE_RESET_VERSION_KEY = "gamehub_2048_storage_reset_version_v1";
-const STORAGE_RESET_VERSION = "2026-05-01-progress-reset";
+const STORAGE_RESET_VERSION = "2026-05-02-full-reset-v2";
 const MERGE_SFX_URL = "./assets/audio/merge-sfx.mp3";
 const BLOCKER_TILE = -1;
 const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
@@ -3105,7 +3105,7 @@ function renderSpeedTimer() {
 }
 
 function getLevelTargetExponent(level) {
-  return Math.max(5, Math.round(Number(level) || 1) + 4);
+  return Math.max(9, Math.round(Number(level) || 1) + 8);
 }
 
 function getRunProgressRatio() {
@@ -4841,7 +4841,7 @@ function getLandingFrequency(value) {
 
 function getLevelTarget(level) {
   const safeLevel = Math.max(1, Math.round(Number(level) || 1));
-  return 32n << BigInt(safeLevel - 1);
+  return 512n << BigInt(safeLevel - 1);
 }
 
 function hasReachedLevelTarget(maxTile, level) {
