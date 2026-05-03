@@ -54,7 +54,9 @@ body {
   z-index: 2;
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   padding: 18px;
+  overflow: hidden;
 }
 
 .screen {
@@ -2377,5 +2379,437 @@ body.game-immersive #exitBtn {
   .replay-scrubber-row {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+}
+
+/* Phase 8.5 mobile landscape home + full-surface control overrides */
+
+#homeScreen {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.center-menu {
+  display: grid;
+}
+
+.home-feature-grid {
+  min-height: 0;
+}
+
+body.game-immersive .game-hud,
+body.game-immersive .game-sub-hud,
+body.game-immersive .power-hud,
+body.game-immersive .minimap-canvas,
+body.game-immersive .touch-drag-hint,
+body.game-immersive .game-control-topline {
+  pointer-events: none;
+}
+
+body.game-immersive .buttons {
+  pointer-events: auto;
+}
+
+@media (max-width: 960px) and (orientation: landscape) {
+  #homeScreen {
+    grid-template-columns: minmax(0, 1.06fr) minmax(272px, 0.94fr);
+    grid-template-areas:
+      "nav nav"
+      "showcase menu"
+      "features menu"
+      "footer footer";
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .top-nav {
+    padding: 10px 12px;
+    border-radius: 18px;
+  }
+
+  .logo {
+    font-size: clamp(18px, 4vw, 28px);
+    letter-spacing: 0.08em;
+  }
+
+  .top-status {
+    gap: 8px;
+  }
+
+  .status-chip {
+    padding: 8px 10px;
+    font-size: 10px;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .home-showcase {
+    padding: 16px;
+    gap: 14px;
+    min-height: 0;
+    border-radius: 22px;
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+
+  .showcase-preview {
+    min-height: 112px;
+  }
+
+  #homeSnakePreview {
+    max-width: 150px;
+  }
+
+  .showcase-copy {
+    gap: 8px;
+  }
+
+  .showcase-copy h2 {
+    font-size: clamp(18px, 3.2vw, 24px);
+  }
+
+  .showcase-perk {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .showcase-badges {
+    gap: 6px;
+  }
+
+  .showcase-pill,
+  .showcase-meta span {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .center-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+    gap: 8px;
+    padding: 12px;
+    border-radius: 22px;
+    align-content: stretch;
+  }
+
+  .menu-tile {
+    min-height: 68px;
+    grid-template-columns: 38px 1fr;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .menu-tile-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 18px;
+  }
+
+  .menu-tile-copy strong {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .menu-tile-copy small {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .home-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .feature-card {
+    min-height: 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .feature-head {
+    gap: 10px;
+  }
+
+  .feature-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .feature-kicker {
+    font-size: 10px;
+  }
+
+  .feature-card h3,
+  #dailyChallengeTitle,
+  #wheelStatusTitle {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .feature-copy,
+  .feature-meta,
+  #dailyChallengeDesc,
+  #wheelStatusCopy {
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  .home-footer {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+}
+
+/* Phase 8.6 premium playfield overlay refinement */
+
+#gameScreen,
+#gameContainer,
+#gameCanvas,
+.minimap-canvas {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+body.game-immersive #gameScreen.active {
+  overflow: hidden;
+}
+
+body.game-immersive .game-hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+body.game-immersive .game-hud > div {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 52px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03)),
+    rgba(8, 14, 32, 0.5);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+body.game-immersive .game-hud > div span {
+  font-size: clamp(16px, 2.4vw, 22px);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+body.game-immersive .game-sub-hud {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+body.game-immersive .combo-box,
+body.game-immersive .objective,
+body.game-immersive .fever-wrap {
+  min-height: 50px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02)),
+    rgba(8, 14, 32, 0.48);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+body.game-immersive .combo-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+body.game-immersive .fever-wrap {
+  display: grid;
+  gap: 6px;
+  padding: 9px 12px;
+}
+
+body.game-immersive .fever-wrap span {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+body.game-immersive .objective {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+body.game-immersive .power-hud {
+  border-radius: 18px;
+  background: rgba(7, 12, 28, 0.42);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.28);
+  backdrop-filter: blur(14px);
+}
+
+body.game-immersive .minimap-canvas {
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.24);
+}
+
+body.game-immersive .touch-drag-hint {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(6, 10, 22, 0.42);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.24);
+  letter-spacing: 0.08em;
+}
+
+body.game-immersive .game-controls {
+  padding: 12px 14px 14px;
+}
+
+body.game-immersive .game-control-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+body.game-immersive .power-incoming,
+body.game-immersive .run-coin-info {
+  min-height: 40px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: rgba(8, 14, 32, 0.48);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: inline-flex;
+  align-items: center;
+}
+
+body.game-immersive .buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  justify-content: end;
+  gap: 10px;
+}
+
+body.game-immersive .buttons button,
+body.game-immersive #pauseBtn,
+body.game-immersive #restartBtn,
+body.game-immersive #exitBtn {
+  border-radius: 999px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.03)),
+    rgba(9, 15, 34, 0.72);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.22);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+}
+
+body.game-immersive #pauseBtn {
+  background:
+    linear-gradient(180deg, rgba(84, 214, 255, 0.28), rgba(84, 214, 255, 0.05)),
+    rgba(9, 15, 34, 0.76);
+}
+
+body.game-immersive #restartBtn {
+  background:
+    linear-gradient(180deg, rgba(255, 219, 106, 0.24), rgba(255, 219, 106, 0.04)),
+    rgba(9, 15, 34, 0.76);
+}
+
+body.game-immersive #exitBtn {
+  background:
+    linear-gradient(180deg, rgba(255, 118, 118, 0.24), rgba(255, 118, 118, 0.04)),
+    rgba(9, 15, 34, 0.76);
+}
+
+@media (max-width: 960px) and (orientation: landscape) {
+  body.game-immersive .game-hud,
+  body.game-immersive .game-sub-hud,
+  body.game-immersive .game-controls {
+    left: 10px;
+    right: 10px;
+  }
+
+  body.game-immersive .game-sub-hud {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+    grid-template-areas:
+      "combo fever"
+      "objective objective";
+  }
+
+  body.game-immersive .combo-box {
+    grid-area: combo;
+    min-width: 0;
+  }
+
+  body.game-immersive .fever-wrap {
+    grid-area: fever;
+    min-width: 0;
+  }
+
+  body.game-immersive .objective {
+    grid-area: objective;
+    min-width: 0;
+  }
+
+  body.game-immersive .game-hud {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  body.game-immersive .game-hud > div,
+  body.game-immersive .combo-box,
+  body.game-immersive .objective,
+  body.game-immersive .fever-wrap {
+    min-height: 44px;
+  }
+
+  body.game-immersive .game-hud > div {
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+
+  body.game-immersive .game-hud > div span {
+    font-size: clamp(14px, 2.8vw, 18px);
+  }
+
+  body.game-immersive .combo-box,
+  body.game-immersive .objective,
+  body.game-immersive .fever-wrap span,
+  body.game-immersive .buttons button {
+    font-size: 10px;
+  }
+
+  body.game-immersive .game-controls {
+    padding: 10px 12px 12px;
+  }
+
+  body.game-immersive .buttons {
+    grid-template-columns: repeat(3, minmax(78px, max-content));
+    width: 100%;
   }
 }

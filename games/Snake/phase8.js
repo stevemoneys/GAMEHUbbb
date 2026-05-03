@@ -107,12 +107,16 @@
       this.requestGameFullscreen();
     }, true));
 
+    const surface = this.screens?.game;
     const canvas = this.dom.gameCanvas;
-    if (canvas) {
+    if (surface && canvas) {
       let anchor = null;
+      const isInteractiveTarget = (target) => !!target?.closest?.("button, input, label, [role='button']");
+      surface.style.touchAction = "none";
+
       const applyVector = (dx, dy) => {
         if (!this.engine?.queueDirection) return;
-        if (Math.hypot(dx, dy) < 16) return;
+        if (Math.hypot(dx, dy) < 6) return;
         const dir = Math.abs(dx) > Math.abs(dy)
           ? (dx > 0 ? "right" : "left")
           : (dy > 0 ? "down" : "up");
@@ -121,44 +125,70 @@
         this.engine.queueDirection(dir);
       };
 
-      canvas.addEventListener("touchstart", (event) => {
+      const steerTowardPoint = (clientX, clientY) => {
+        const rect = surface.getBoundingClientRect();
+        const dx = clientX - (rect.left + rect.width * 0.5);
+        const dy = clientY - (rect.top + rect.height * 0.5);
+        applyVector(dx, dy);
+      };
+
+      surface.addEventListener("touchstart", (event) => {
         if (!event.touches[0]) return;
+        if (isInteractiveTarget(event.target)) return;
         event.preventDefault();
-        const rect = canvas.getBoundingClientRect();
+        event.stopImmediatePropagation();
+        this.wakeGameplayHud?.(1400);
+        steerTowardPoint(event.touches[0].clientX, event.touches[0].clientY);
         anchor = {
-          x: event.touches[0].clientX - rect.left,
-          y: event.touches[0].clientY - rect.top
+          x: event.touches[0].clientX,
+          y: event.touches[0].clientY
         };
       }, { passive: false, capture: true });
 
-      canvas.addEventListener("touchmove", (event) => {
+      surface.addEventListener("touchmove", (event) => {
         if (!anchor || !event.touches[0]) return;
         event.preventDefault();
-        const rect = canvas.getBoundingClientRect();
+        event.stopImmediatePropagation();
         const point = {
-          x: event.touches[0].clientX - rect.left,
-          y: event.touches[0].clientY - rect.top
+          x: event.touches[0].clientX,
+          y: event.touches[0].clientY
         };
         applyVector(point.x - anchor.x, point.y - anchor.y);
         anchor = point;
       }, { passive: false, capture: true });
 
-      canvas.addEventListener("touchend", () => {
+      surface.addEventListener("touchend", (event) => {
+        event.stopImmediatePropagation();
         anchor = null;
       }, { passive: true, capture: true });
 
-      canvas.addEventListener("pointerdown", (event) => {
+      surface.addEventListener("touchcancel", () => {
+        anchor = null;
+      }, { passive: true, capture: true });
+
+      surface.addEventListener("pointerdown", (event) => {
         if (event.pointerType !== "mouse" || event.button !== 0) return;
-        anchor = { x: event.offsetX, y: event.offsetY };
+        if (isInteractiveTarget(event.target)) return;
+        steerTowardPoint(event.clientX, event.clientY);
+        anchor = { x: event.clientX, y: event.clientY };
+        this.wakeGameplayHud?.(1200);
       });
 
-      canvas.addEventListener("pointermove", (event) => {
+      surface.addEventListener("pointermove", (event) => {
         if (!anchor || event.pointerType !== "mouse" || event.buttons !== 1) return;
-        applyVector(event.offsetX - anchor.x, event.offsetY - anchor.y);
-        anchor = { x: event.offsetX, y: event.offsetY };
+        applyVector(event.clientX - anchor.x, event.clientY - anchor.y);
+        anchor = { x: event.clientX, y: event.clientY };
       });
 
-      canvas.addEventListener("pointerup", () => {
+      surface.addEventListener("pointerup", () => {
+        anchor = null;
+      });
+
+      surface.addEventListener("pointercancel", () => {
+        anchor = null;
+      });
+
+      surface.addEventListener("pointerleave", () => {
         anchor = null;
       });
     }
