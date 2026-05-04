@@ -25,10 +25,13 @@
   const WORLD_HEIGHT = 2048;
   const VIEWPORT_SHORT_UNITS = 120;
   const VIEWPORT_LONG_UNITS = 180;
+  const CAMERA_FOLLOW_LERP = 0.2;
+  const CAMERA_ZOOM_MIN = 0.92;
+  const CAMERA_ZOOM_MAX = 1.34;
   const WORLD_GRID_SPACING = 32;
   const PLAYER_BASE_SPEED = 62;
   const AI_BASE_SPEED = 50;
-  const SEGMENT_SPACING = 12;
+  const SEGMENT_SPACING = 10;
   const PLAYER_RADIUS = 7.2;
   const AI_RADIUS = 6.2;
   const FOOD_RADIUS = 4.4;
@@ -148,18 +151,41 @@
       this.renderWidth = logicalWidth;
       this.renderHeight = logicalHeight;
       this.dpr = dpr;
-      this.viewport = getViewportForSize(logicalWidth, logicalHeight);
-      this.pixelsPerUnit = Math.min(logicalWidth / this.viewport.width, logicalHeight / this.viewport.height);
+      this.baseViewport = getViewportForSize(logicalWidth, logicalHeight);
+      this.viewport = this.baseViewport;
+      this.pixelsPerUnit = Math.min(logicalWidth / this.baseViewport.width, logicalHeight / this.baseViewport.height);
+      this.cameraFrameStamp = -1;
     },
 
     getCamera() {
       const head = this.state?.player?.segments?.[0] || { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2 };
-      return {
-        x: head.x,
-        y: head.y,
-        viewportWidth: this.viewport?.width || VIEWPORT_LONG_UNITS,
-        viewportHeight: this.viewport?.height || VIEWPORT_SHORT_UNITS
+      const frameStamp = this.lastTs || 0;
+      if (this.camera && this.cameraFrameStamp === frameStamp) return this.camera;
+      if (!this.cameraState) {
+        this.cameraState = { x: head.x, y: head.y };
+      }
+      const follow = clamp(CAMERA_FOLLOW_LERP + (this.frameDtSec || 0.016) * 2.8, 0.16, 0.4);
+      this.cameraState.x = wrapValue(this.cameraState.x + shortestDelta(this.cameraState.x, head.x, WORLD_WIDTH) * follow, WORLD_WIDTH);
+      this.cameraState.y = wrapValue(this.cameraState.y + shortestDelta(this.cameraState.y, head.y, WORLD_HEIGHT) * follow, WORLD_HEIGHT);
+
+      const length = this.state?.player?.targetLength || 5;
+      const growthRatio = clamp((length - 5) / 120, 0, 1);
+      const feverBoost = this.state?.fever ? 0.07 : 0;
+      const zoom = clamp(lerp(CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX, growthRatio) + feverBoost, CAMERA_ZOOM_MIN, CAMERA_ZOOM_MAX + 0.08);
+      const baseViewport = this.baseViewport || this.viewport || { width: VIEWPORT_LONG_UNITS, height: VIEWPORT_SHORT_UNITS };
+      const viewportWidth = baseViewport.width * zoom;
+      const viewportHeight = baseViewport.height * zoom;
+      const pixelsPerUnit = Math.min(this.renderWidth / viewportWidth, this.renderHeight / viewportHeight);
+
+      this.camera = {
+        x: this.cameraState.x,
+        y: this.cameraState.y,
+        viewportWidth,
+        viewportHeight,
+        pixelsPerUnit
       };
+      this.cameraFrameStamp = frameStamp;
+      return this.camera;
     },
 
     worldToScreen(x, y) {
@@ -167,14 +193,14 @@
       const dx = shortestDelta(camera.x, x, WORLD_WIDTH);
       const dy = shortestDelta(camera.y, y, WORLD_HEIGHT);
       return {
-        x: this.renderWidth * 0.5 + dx * this.pixelsPerUnit,
-        y: this.renderHeight * 0.5 + dy * this.pixelsPerUnit,
+        x: this.renderWidth * 0.5 + dx * camera.pixelsPerUnit,
+        y: this.renderHeight * 0.5 + dy * camera.pixelsPerUnit,
         visible: Math.abs(dx) <= camera.viewportWidth * 0.55 && Math.abs(dy) <= camera.viewportHeight * 0.55
       };
     },
 
     worldRadiusToPixels(radius) {
-      return radius * this.pixelsPerUnit;
+      return radius * this.getCamera().pixelsPerUnit;
     },
 
     forEachWrappedRect(rect, callback) {
@@ -329,6 +355,8 @@
       this.paused = false;
       this.lastTs = 0;
       this.acc = 0;
+      this.cameraState = null;
+      this.frameDtSec = 0.016;
       this.setCanvasResolution();
 
       const now = performance.now();
@@ -382,6 +410,10 @@
       };
 
       this.state.player = this.makeSnake(this.getRandomSpawnPoint(PLAYER_RADIUS + 10, 220), "right", 5, equippedSkin.baseColor, equippedSkin.patternColor || equippedSkin.accentColor || "#00bb66", true);
+      this.cameraState = {
+        x: this.state.player.segments[0].x,
+        y: this.state.player.segments[0].y
+      };
       this.spawnAISnakes();
       this.spawnFood();
       this.stepMs = Math.round(1000 / Math.max(1, getSnakeSpeed(this, this.state.player, true) / SEGMENT_SPACING));
@@ -1011,6 +1043,7 @@
     drawBackground(ts) {
       const theme = this.ui.getArenaTheme ? this.ui.getArenaTheme() : null;
       const themeStyles = theme ? theme.styles : null;
+      const camera = this.getCamera();
       if (this.state.fever) {
         const hue = (ts * 0.03 + this.state.hue) % 360;
         const gradient = this.ctx.createLinearGradient(0, 0, this.renderWidth, this.renderHeight);
@@ -1023,7 +1056,6 @@
       }
       this.ctx.fillRect(0, 0, this.renderWidth, this.renderHeight);
 
-      const camera = this.getCamera();
       const left = camera.x - camera.viewportWidth * 0.5;
       const right = camera.x + camera.viewportWidth * 0.5;
       const top = camera.y - camera.viewportHeight * 0.5;
@@ -1035,7 +1067,7 @@
       const endY = Math.ceil(bottom / orbSpacing) * orbSpacing + orbSpacing;
       const startX = Math.floor(left / orbSpacing) * orbSpacing - orbSpacing;
       const endX = Math.ceil(right / orbSpacing) * orbSpacing + orbSpacing;
-      const orbRadius = Math.max(2.5, this.pixelsPerUnit * 2.2);
+      const orbRadius = Math.max(2.5, camera.pixelsPerUnit * 2.2);
 
       for (let y = startY; y <= endY; y += orbSpacing) {
         const rowShift = Math.floor(y / orbSpacing) % 2 === 0 ? 0 : orbSpacing * 0.5;
@@ -1081,14 +1113,15 @@
     drawWalls() {
       const walls = this.state.maze?.walls || [];
       if (!walls.length) return;
+      const ppu = this.getCamera().pixelsPerUnit;
       this.ctx.save();
       this.ctx.fillStyle = "rgba(46, 65, 116, 0.85)";
       this.ctx.strokeStyle = "rgba(160, 220, 255, 0.18)";
       for (const rect of walls) {
         this.forEachWrappedRect(rect, (x, y) => {
           const topLeft = this.worldToScreen(x, y);
-          const w = rect.w * this.pixelsPerUnit;
-          const h = rect.h * this.pixelsPerUnit;
+          const w = rect.w * ppu;
+          const h = rect.h * ppu;
           drawRoundedRectPath(this.ctx, topLeft.x, topLeft.y, w, h, Math.max(6, 0.14 * Math.min(w, h)));
           this.ctx.fill();
           this.ctx.stroke();
@@ -1148,49 +1181,99 @@
     drawSnake(snake, isPlayer, ts) {
       if (!snake?.segments?.length) return;
       const head = snake.segments[0];
-      const sizePx = this.worldRadiusToPixels(snake.radius) * 2;
       const skin = isPlayer ? this.state.playerSkin : null;
 
-      this.ctx.save();
-      for (let i = snake.segments.length - 1; i >= 0; i -= 1) {
+      const growth = clamp(1 + Math.max(0, snake.targetLength - 5) * (isPlayer ? 0.0038 : 0.0026), 1, isPlayer ? 1.36 : 1.24);
+      const sizePx = this.worldRadiusToPixels(snake.radius) * 2 * growth;
+      const radiusPx = sizePx * 0.5;
+      const visiblePad = sizePx * 2.1;
+
+      const points = [];
+      for (let i = 0; i < snake.segments.length; i += 1) {
         const seg = snake.segments[i];
         const point = this.worldToScreen(seg.x, seg.y);
-        const visiblePad = sizePx * 1.8;
         if (point.x < -visiblePad || point.x > this.renderWidth + visiblePad || point.y < -visiblePad || point.y > this.renderHeight + visiblePad) continue;
-        const alpha = Math.max(0.1, 0.46 - i * 0.012);
-        this.ctx.fillStyle = isPlayer ? `rgba(0,255,136,${alpha})` : hexToRgba(snake.color, alpha * 0.9);
-        if (isPlayer && this.state.fever) {
-          const hue = (this.state.hue + i * 9 + ts * 0.04) % 360;
-          this.ctx.fillStyle = `hsla(${hue},95%,62%,${Math.max(0.08, alpha + 0.05)})`;
-        }
-        this.ctx.beginPath();
-        this.ctx.arc(point.x, point.y, Math.max(2, sizePx * 0.44), 0, Math.PI * 2);
-        this.ctx.fill();
+        points.push({ x: point.x, y: point.y, index: i });
       }
+      if (!points.length) return;
+
+      this.ctx.save();
+      this.ctx.lineJoin = "round";
+      this.ctx.lineCap = "round";
+
+      const drawBodyPath = () => {
+        const tail = points[points.length - 1];
+        this.ctx.beginPath();
+        this.ctx.moveTo(tail.x, tail.y);
+        let cursor = tail;
+        for (let i = points.length - 2; i >= 0; i -= 1) {
+          const next = points[i];
+          const midX = (cursor.x + next.x) * 0.5;
+          const midY = (cursor.y + next.y) * 0.5;
+          this.ctx.quadraticCurveTo(cursor.x, cursor.y, midX, midY);
+          cursor = next;
+        }
+        this.ctx.lineTo(points[0].x, points[0].y);
+      };
+
+      const playerBase = this.state.fever
+        ? `hsla(${(this.state.hue + ts * 0.04) % 360}, 96%, 61%, 0.86)`
+        : (skin?.baseColor || "#18db88");
+      const playerOutline = this.state.fever
+        ? `hsla(${(this.state.hue + 120 + ts * 0.04) % 360}, 98%, 64%, 0.9)`
+        : (skin?.patternColor || skin?.accentColor || "#0ca766");
+      const aiBase = hexToRgba(snake.color, 0.9);
+      const aiOutline = hexToRgba(snake.outline || "#111111", 0.9);
+
+      this.ctx.shadowBlur = Math.max(8, radiusPx * 1.2);
+      this.ctx.shadowColor = isPlayer
+        ? (this.state.fever ? "rgba(255,255,255,0.55)" : hexToRgba(playerBase, 0.8))
+        : hexToRgba(snake.color, 0.45);
+      this.ctx.strokeStyle = isPlayer ? playerBase : aiBase;
+      this.ctx.lineWidth = radiusPx * 1.86;
+      drawBodyPath();
+      this.ctx.stroke();
+
+      this.ctx.shadowBlur = 0;
+      this.ctx.strokeStyle = isPlayer ? playerOutline : aiOutline;
+      this.ctx.lineWidth = Math.max(2, radiusPx * 0.7);
+      drawBodyPath();
+      this.ctx.stroke();
       this.ctx.restore();
 
-      for (let i = snake.segments.length - 1; i >= 0; i -= 1) {
-        const seg = snake.segments[i];
-        const point = this.worldToScreen(seg.x, seg.y);
-        if (point.x < -sizePx || point.x > this.renderWidth + sizePx || point.y < -sizePx || point.y > this.renderHeight + sizePx) continue;
-        const left = point.x - sizePx * 0.5;
-        const top = point.y - sizePx * 0.5;
+      for (let i = points.length - 1; i >= 0; i -= 1) {
+        const point = points[i];
+        const segIndex = point.index;
+        const taper = clamp(1 - (segIndex / Math.max(1, snake.segments.length - 1)) * 0.16, 0.78, 1);
+        const segSize = sizePx * taper;
+        const left = point.x - segSize * 0.5;
+        const top = point.y - segSize * 0.5;
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.arc(point.x, point.y, segSize * 0.5, 0, Math.PI * 2);
+        this.ctx.clip();
         if (isPlayer && skin) {
-          drawSkinSegment(this.ctx, left, top, sizePx, skin, i === 0, i, { direction: snake.direction, ts });
+          drawSkinSegment(this.ctx, left, top, segSize, skin, segIndex === 0, segIndex, { direction: snake.direction, ts });
         } else {
-          const gradient = this.ctx.createLinearGradient(left, top, left + sizePx, top + sizePx);
-          gradient.addColorStop(0, hexToRgba(snake.color, 0.95));
-          gradient.addColorStop(1, hexToRgba(snake.outline || "#111111", 0.9));
-          drawRoundedRectPath(this.ctx, left, top, sizePx, sizePx, Math.max(4, sizePx * 0.26));
+          const gradient = this.ctx.createRadialGradient(
+            point.x - segSize * 0.16,
+            point.y - segSize * 0.2,
+            segSize * 0.12,
+            point.x,
+            point.y,
+            segSize * 0.6
+          );
+          gradient.addColorStop(0, hexToRgba(snake.color, 0.98));
+          gradient.addColorStop(1, hexToRgba(snake.outline || "#101010", 0.92));
           this.ctx.fillStyle = gradient;
-          this.ctx.fill();
-          this.ctx.lineWidth = Math.max(1, sizePx * 0.06);
-          this.ctx.strokeStyle = "rgba(0,0,0,0.45)";
-          this.ctx.stroke();
+          this.ctx.fillRect(left, top, segSize, segSize);
         }
+        this.ctx.restore();
       }
 
       const headPoint = this.worldToScreen(head.x, head.y);
+      const headVisible = !(headPoint.x < -visiblePad || headPoint.x > this.renderWidth + visiblePad || headPoint.y < -visiblePad || headPoint.y > this.renderHeight + visiblePad);
+      if (!headVisible) return;
       const eyeOffset = sizePx * 0.18;
       const eyeRadius = Math.max(1.8, sizePx * 0.1);
       const dx = snake.direction === "left" ? -eyeOffset : snake.direction === "right" ? eyeOffset : 0;
@@ -1221,6 +1304,7 @@
 
   Object.assign(SnakeEngine.prototype, {
     drawParticles() {
+      const ppu = this.getCamera().pixelsPerUnit;
       for (const particle of this.state.particles) {
         const point = this.worldToScreen(particle.x, particle.y);
         const alpha = Math.max(0, particle.life / particle.maxLife);
@@ -1228,7 +1312,7 @@
           ? `hsla(${(particle.hue + alpha * 120) % 360},95%,62%,${alpha})`
           : hexToRgba(particle.color, alpha);
         this.ctx.beginPath();
-        this.ctx.arc(point.x, point.y, Math.max(1, particle.size * this.pixelsPerUnit * 0.18), 0, Math.PI * 2);
+        this.ctx.arc(point.x, point.y, Math.max(1, particle.size * ppu * 0.18), 0, Math.PI * 2);
         this.ctx.fill();
       }
     },
@@ -1295,6 +1379,7 @@
       if (!this.lastTs) this.lastTs = ts;
       const dtSec = Math.min(0.033, Math.max(0.001, (ts - this.lastTs) / 1000));
       this.lastTs = ts;
+      this.frameDtSec = dtSec;
 
       if (!this.paused && this.running && !this.state.over) {
         this.updateCombo(ts);
