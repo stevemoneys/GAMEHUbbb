@@ -602,29 +602,56 @@ const RAW_THEME_DEFINITIONS = [
 
 const THEME_COIN_TARGETS = Object.freeze([
   0,
-  900,
-  2400,
-  4600,
-  7400,
-  10800,
-  14800,
-  19400,
-  24600,
-  30400,
-  36800,
-  43800,
-  51400,
-  59600,
-  68400,
-  77800,
-  87800,
-  98400,
-  109600,
-  121400,
-  133800,
-  146800,
-  160400,
-  174600
+  2800,
+  6200,
+  10400,
+  15400,
+  21200,
+  27800,
+  35200,
+  43400,
+  52400,
+  62200,
+  72800,
+  84200,
+  96400,
+  109400,
+  123200,
+  137800,
+  153200,
+  169400,
+  186400,
+  204200,
+  222800,
+  242200,
+  262400
+]);
+
+const THEME_WIN_TARGETS = Object.freeze([
+  0,
+  4,
+  8,
+  12,
+  16,
+  20,
+  24,
+  28,
+  32,
+  36,
+  40,
+  44,
+  48,
+  52,
+  56,
+  60,
+  64,
+  68,
+  72,
+  76,
+  80,
+  84,
+  88,
+  92
 ]);
 
 function withSequentialCoinUnlocks(theme, index) {
@@ -636,12 +663,14 @@ function withSequentialCoinUnlocks(theme, index) {
   }
 
   const target = THEME_COIN_TARGETS[index] || THEME_COIN_TARGETS[THEME_COIN_TARGETS.length - 1];
+  const wins = THEME_WIN_TARGETS[index] || THEME_WIN_TARGETS[THEME_WIN_TARGETS.length - 1];
   return {
     ...theme,
     unlock: {
-      type: "coins",
+      type: "coins_and_wins",
       target,
-      label: `${target.toLocaleString()} coins`
+      wins,
+      label: `${target.toLocaleString()} coins + ${wins} wins`
     }
   };
 }
@@ -661,6 +690,7 @@ export function getUnlockLabel(theme) {
 export function createDefaultThemeProgress() {
   return {
     gamesPlayed: 0,
+    levelWins: 0,
     bestScore: 0,
     maxTile: 0,
     coins: 0
@@ -671,6 +701,7 @@ export function normalizeThemeProgress(progress) {
   const defaults = createDefaultThemeProgress();
   return {
     gamesPlayed: Math.max(0, Number(progress?.gamesPlayed || defaults.gamesPlayed)),
+    levelWins: Math.max(0, Number(progress?.levelWins || defaults.levelWins)),
     bestScore: Math.max(0, Number(progress?.bestScore || defaults.bestScore)),
     maxTile: Math.max(0, Number(progress?.maxTile || defaults.maxTile)),
     coins: Math.max(0, Number(progress?.coins || defaults.coins))
@@ -703,6 +734,13 @@ export function isThemeUnlockedByProgress(theme, progress) {
 
   if (unlock.type === "coins") {
     return safeProgress.coins >= Number(unlock.target || 0);
+  }
+
+  if (unlock.type === "coins_and_wins") {
+    return (
+      safeProgress.coins >= Number(unlock.target || 0) &&
+      safeProgress.levelWins >= Number(unlock.wins || 0)
+    );
   }
 
   return false;

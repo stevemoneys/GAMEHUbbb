@@ -160,6 +160,7 @@ export function createThemeManager({ storage = window.localStorage, documentRef 
     const previousUnlocked = new Set(getUnlockedThemeIds());
     const safeNext = normalizeThemeProgress({
       gamesPlayed: Math.max(progress.gamesPlayed, Number(nextProgress?.gamesPlayed || 0)),
+      levelWins: Math.max(progress.levelWins || 0, Number(nextProgress?.levelWins || 0)),
       bestScore: Math.max(progress.bestScore, Number(nextProgress?.bestScore || 0)),
       maxTile: Math.max(progress.maxTile, Number(nextProgress?.maxTile || 0)),
       coins: Math.max(progress.coins || 0, Number(nextProgress?.coins || 0))
@@ -182,6 +183,10 @@ export function createThemeManager({ storage = window.localStorage, documentRef 
     return updateProgress({ ...progress, gamesPlayed: progress.gamesPlayed + 1 });
   }
 
+  function incrementLevelWins() {
+    return updateProgress({ ...progress, levelWins: progress.levelWins + 1 });
+  }
+
   function subscribe(listener) {
     listeners.add(listener);
     return () => {
@@ -200,6 +205,7 @@ export function createThemeManager({ storage = window.localStorage, documentRef 
     getProgress,
     updateProgress,
     incrementGamesPlayed,
+    incrementLevelWins,
     subscribe
   };
 }

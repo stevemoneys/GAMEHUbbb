@@ -17,6 +17,7 @@ const MODES = [
 const LEVEL_COUNT = 100;
 const LEVEL_UNLOCK_KEY = "gamehub_2048_unlocked_level_v2";
 const LEVEL_SELECTED_KEY = "gamehub_2048_selected_level_v2";
+const MODE_LEVEL_PROGRESS_KEY_PREFIX = "gamehub_2048_mode_level_progress_v1_";
 const SFX_ENABLED_KEY = "gamehub_2048_sfx_enabled_v1";
 const MUSIC_ENABLED_KEY = "gamehub_2048_music_enabled_v1";
 const SESSION_MODIFIER_STORAGE_KEY = "gamehub_2048_session_modifier_v1";
@@ -24,7 +25,7 @@ const POWER_BALANCE_STORAGE_KEY = "gamehub_2048_power_balance_v1";
 const POWER_INVENTORY_STORAGE_KEY = "gamehub_2048_power_inventory_v1";
 const STORAGE_RESET_VERSION_KEY = "gamehub_2048_storage_reset_version_v1";
 const STORAGE_RESET_VERSION = "2026-05-02-full-reset-v2";
-const MERGE_SFX_URL = "./assets/audio/merge-sfx.mp3";
+const MERGE_SFX_URL = "./assets/audio/merge.wav";
 const BLOCKER_TILE = -1;
 const MOMENTUM_THRESHOLDS = Object.freeze([0, 26, 56, 82]);
 const SESSION_MODIFIERS = Object.freeze([
@@ -64,7 +65,7 @@ const POWER_UPS = Object.freeze([
     id: "rewind",
     icon: "&#8630;",
     name: "Time Rewind",
-    price: 280,
+    price: 1350,
     description: "Step back one move per tap with a slick rewind pulse.",
     target: "instant",
     rarity: "Legendary",
@@ -77,7 +78,7 @@ const POWER_UPS = Object.freeze([
     id: "breaker",
     icon: "&#128165;",
     name: "Tile Breaker",
-    price: 280,
+    price: 1250,
     description: "Remove one tile, except the current highest tile.",
     target: "tile",
     rarity: "Rare",
@@ -90,7 +91,7 @@ const POWER_UPS = Object.freeze([
     id: "merge-boost",
     icon: "&#8649;",
     name: "Merge Boost",
-    price: 220,
+    price: 980,
     description: "Force a selected tile to merge with its nearest match.",
     target: "tile",
     rarity: "Epic",
@@ -103,7 +104,7 @@ const POWER_UPS = Object.freeze([
     id: "freeze-time",
     icon: "&#10052;",
     name: "Freeze Time",
-    price: 360,
+    price: 1500,
     description: "Freeze pressure and skip AI turns for 3 player moves.",
     target: "instant",
     rarity: "Epic",
@@ -116,7 +117,7 @@ const POWER_UPS = Object.freeze([
     id: "wild-tile",
     icon: "&#10022;",
     name: "Wild Tile",
-    price: 320,
+    price: 1650,
     description: "Your next shot becomes a wild tile that fuses with any neighbor.",
     target: "instant",
     rarity: "Mythic",
@@ -129,7 +130,7 @@ const POWER_UPS = Object.freeze([
     id: "smart-shuffle",
     icon: "&#8646;",
     name: "Smart Shuffle",
-    price: 210,
+    price: 920,
     description: "Rearrange the board into a safer, merge-friendly shape.",
     target: "instant",
     rarity: "Rare",
@@ -142,7 +143,7 @@ const POWER_UPS = Object.freeze([
     id: "lock-tile",
     icon: "&#128274;",
     name: "Lock Tile",
-    price: 200,
+    price: 900,
     description: "Keep one tile anchored in place for 3 turns.",
     target: "tile",
     rarity: "Rare",
@@ -155,7 +156,7 @@ const POWER_UPS = Object.freeze([
     id: "evolve-tile",
     icon: "&#11014;",
     name: "Evolve Tile",
-    price: 260,
+    price: 1120,
     description: "Upgrade a selected tile one tier instantly.",
     target: "tile",
     rarity: "Epic",
@@ -347,8 +348,9 @@ resetGameStorageIfNeeded();
 
 const state = {
   modeIndex: 0,
+  modeProgress: loadAllModeLevelProgress(),
   bestScore: loadBestScore(),
-  unlockedLevel: clampLevel(loadStoredLevel(LEVEL_UNLOCK_KEY, 1)),
+  unlockedLevel: 1,
   selectedLevel: 1,
   activeLevel: 1,
   sfxEnabled: loadStoredBool(SFX_ENABLED_KEY, true),
@@ -389,10 +391,7 @@ const state = {
   nearMissCells: new Set()
 };
 
-state.selectedLevel = clampLevel(loadStoredLevel(LEVEL_SELECTED_KEY, state.unlockedLevel));
-if (state.selectedLevel > state.unlockedLevel) {
-  state.selectedLevel = state.unlockedLevel;
-}
+applyModeProgress(getCurrentMode().id);
 state.sessionModifier = loadSessionModifier();
 
 const boardState = createBoardState(el.board, el.comboBanner);
@@ -583,6 +582,22 @@ function formatCoins(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString();
 }
 
+function formatHudScore(value) {
+  const safeValue = Math.max(0, Math.round(Number(value) || 0));
+  if (safeValue < 10000) {
+    return safeValue.toLocaleString();
+  }
+
+  if (typeof Intl !== "undefined" && Intl.NumberFormat) {
+    return new Intl.NumberFormat("en", {
+      notation: "compact",
+      maximumFractionDigits: safeValue >= 1000000 ? 1 : 0
+    }).format(safeValue);
+  }
+
+  return formatCoins(safeValue);
+}
+
 function getOwnedPowerUpCount() {
   return POWER_UPS.reduce((sum, power) => sum + Number(state.powerInventory[power.id] || 0), 0);
 }
@@ -645,7 +660,7 @@ function goToNextLevel() {
   }
 
   state.selectedLevel = Math.min(state.unlockedLevel, nextLevel);
-  saveStoredLevel(LEVEL_SELECTED_KEY, state.selectedLevel);
+  persistCurrentModeProgress();
   startSelectedLevel();
 }
 
@@ -897,6 +912,14 @@ function getThemeCoinPrice(theme) {
   return Math.max(0, Number(theme?.unlock?.target || 0));
 }
 
+function getThemeWinRequirement(theme) {
+  return Math.max(0, Number(theme?.unlock?.wins || 0));
+}
+
+function getThemePriceMarkup(theme) {
+  return `<span class="theme-card-price-main"><span class="theme-card-price-icon">&#128142;</span><span>${formatCoins(getThemeCoinPrice(theme))}</span></span>`;
+}
+
 function getPowerRarityWeight(rarity) {
   if (rarity === "Mythic") {
     return 4;
@@ -1014,9 +1037,9 @@ function getComboCelebration(comboCount) {
 function getDynamicPlayerShotCap(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
   const safeTile = Math.max(2, maxTile || 2);
   const safeLevel = Math.max(1, Math.round(Number(activeLevel) || 1));
-  const emergedCap = 2 ** Math.max(5, Math.floor(Math.log2(safeTile)) - 2);
-  const levelCap = 2 ** Math.max(5, Math.min(15, safeLevel + 3));
-  return Math.min(65536, Math.max(32, emergedCap, levelCap));
+  const emergedCap = 2 ** Math.max(5, Math.floor(Math.log2(safeTile)) - 1);
+  const levelCap = 2 ** Math.max(5, Math.min(30, safeLevel + 4));
+  return Math.min(1073741824, Math.max(32, emergedCap, levelCap));
 }
 
 function getDynamicPlayerShotFloor(maxTile = boardState.maxTile, activeLevel = state.activeLevel) {
@@ -1351,8 +1374,13 @@ function bindEvents() {
       state.currentTurn = "player";
     }
 
+    persistCurrentModeProgress();
     state.modeIndex = (state.modeIndex + 1) % MODES.length;
+    applyModeProgress(getCurrentMode().id);
+    activeAiProfile = getAiProfileForLevel(state.selectedLevel);
     renderMetaButtons();
+    renderLevels();
+    renderScoreboard();
     renderGameHeader();
   });
 
@@ -1583,7 +1611,7 @@ function buildLevelGrid() {
       }
 
       state.selectedLevel = level;
-      saveStoredLevel(LEVEL_SELECTED_KEY, level);
+      persistCurrentModeProgress();
       renderLevels();
     });
 
@@ -1613,7 +1641,8 @@ function buildThemeGrid() {
       <div class="theme-preview" data-theme-preview>${previewTiles}</div>
       <div class="theme-card-footer">
         <strong class="theme-card-title">${theme.name}</strong>
-        <span class="theme-card-price" data-theme-card-price>${theme.unlock.type === "default" ? "Unlocked" : `${formatCoins(getThemeCoinPrice(theme))} coins`}</span>
+        <span class="theme-card-price" data-theme-card-price>${theme.unlock.type === "default" ? "Unlocked" : getThemePriceMarkup(theme)}</span>
+        <span class="theme-card-win-gate" data-theme-card-win-gate>${theme.unlock.type === "default" ? "" : `${getThemeWinRequirement(theme)} wins`}</span>
       </div>
     `;
 
@@ -2194,6 +2223,7 @@ function countAdjacentEqualPairs(grid) {
 function renderThemeScreen() {
   const activeTheme = themeManager.getTheme();
   const unlocked = new Set(themeManager.getUnlockedThemeIds());
+  const progress = themeManager.getProgress();
   if (el.bestScoreTheme) {
     el.bestScoreTheme.textContent = formatCoins(state.powerBalance);
   }
@@ -2205,6 +2235,9 @@ function renderThemeScreen() {
     const isActive = activeTheme.id === themeId;
     const status = card.querySelector("[data-theme-card-status]");
     const price = card.querySelector("[data-theme-card-price]");
+    const winGate = card.querySelector("[data-theme-card-win-gate]");
+    const winsNeeded = getThemeWinRequirement(theme);
+    const winsText = `${progress.levelWins}/${winsNeeded} wins`;
 
     card.classList.toggle("is-locked", !isUnlocked);
     card.classList.toggle("is-active", isActive);
@@ -2216,7 +2249,11 @@ function renderThemeScreen() {
       status.classList.toggle("is-locked", !isUnlocked);
     }
     if (price) {
-      price.textContent = isUnlocked ? (isActive ? "Using now" : "Unlocked") : `${formatCoins(getThemeCoinPrice(theme))} coins`;
+      price.innerHTML = isUnlocked ? (isActive ? "Using now" : "Unlocked") : getThemePriceMarkup(theme);
+    }
+    if (winGate) {
+      winGate.textContent = isUnlocked ? `${winsNeeded} wins cleared` : winsText;
+      winGate.classList.toggle("is-hidden", winsNeeded <= 0);
     }
 
     const previewTiles = card.querySelectorAll("[data-preview-value]");
@@ -2277,6 +2314,25 @@ function awardRunCoins(result, bannerDelay = 120) {
   }
 
   return payout;
+}
+
+function unlockNextLevelForCurrentMode() {
+  if (state.activeLevel !== state.unlockedLevel || state.unlockedLevel >= LEVEL_COUNT) {
+    persistCurrentModeProgress();
+    return false;
+  }
+
+  state.unlockedLevel += 1;
+  state.selectedLevel = Math.max(state.selectedLevel, state.unlockedLevel);
+  persistCurrentModeProgress();
+  return true;
+}
+
+function registerThemeLevelWin() {
+  const unlockedNow = themeManager.incrementLevelWins();
+  if (unlockedNow.length > 0) {
+    showSystemBanner(`THEME UNLOCKED: ${unlockedNow[0].name.toUpperCase()}`);
+  }
 }
 
 function startSelectedLevel() {
@@ -2366,6 +2422,10 @@ function isSoloMode() {
   return getCurrentMode().id === "solo";
 }
 
+function isClassicMode() {
+  return getCurrentMode().id === "classic";
+}
+
 function isSpeedMode() {
   return getCurrentMode().id === "speed";
 }
@@ -2378,8 +2438,12 @@ function isChaosMode() {
   return getCurrentMode().id === "chaos";
 }
 
+function isClassicAssistWindow() {
+  return isClassicMode() && state.activeLevel <= 30;
+}
+
 function hasAiOpponent() {
-  return !isSoloMode() && !isPuzzleMode() && !isSpeedMode();
+  return !isSoloMode() && !isPuzzleMode() && !isSpeedMode() && !isClassicAssistWindow();
 }
 
 function drawPuzzleAmmoValue(actorKind = "player") {
@@ -2522,10 +2586,8 @@ function resolvePuzzleTurn(mergeResult) {
 
   if (outcome.solved) {
     const stars = puzzleManager.recordWin(state.activeLevel, state.puzzleSession.movesUsed);
-    if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
-      state.unlockedLevel += 1;
-      saveStoredLevel(LEVEL_UNLOCK_KEY, state.unlockedLevel);
-    }
+    unlockNextLevelForCurrentMode();
+    registerThemeLevelWin();
 
     state.roundFinished = true;
     state.roundResult = `${outcome.praise || "Solved"} - ${stars} star${stars === 1 ? "" : "s"}.`;
@@ -2916,10 +2978,8 @@ function finishRound(result) {
 
   if (isSpeedMode()) {
     if (result === "player-win") {
-      if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
-        state.unlockedLevel += 1;
-        saveStoredLevel(LEVEL_UNLOCK_KEY, state.unlockedLevel);
-      }
+      unlockNextLevelForCurrentMode();
+      registerThemeLevelWin();
 
       state.roundResult = `You reached ${targetText} before time ran out.`;
       showGameOverPanel("Speed Cleared", "You Win", `You reached ${targetText} before ${formatTimeLeft(getSpeedModeTimeLimit(state.activeLevel))} expired.`, { action: "next", label: "Next" });
@@ -2935,10 +2995,8 @@ function finishRound(result) {
   }
 
   if (result === "player-win") {
-    if (state.activeLevel === state.unlockedLevel && state.unlockedLevel < LEVEL_COUNT) {
-      state.unlockedLevel += 1;
-      saveStoredLevel(LEVEL_UNLOCK_KEY, state.unlockedLevel);
-    }
+    unlockNextLevelForCurrentMode();
+    registerThemeLevelWin();
 
     state.roundResult = `You reached ${targetText}.`;
     showGameOverPanel("Level Cleared", "You Win", `You reached the ${targetText} tile.`, { action: "next", label: "Next" });
@@ -3071,7 +3129,7 @@ function renderScoreboard() {
     el.gameBalance.textContent = coins;
   }
   if (el.gameScore) {
-    el.gameScore.textContent = boardState.score.toLocaleString();
+    el.gameScore.textContent = formatHudScore(boardState.score);
   }
 }
 
@@ -3982,6 +4040,7 @@ function updateBestScore(score) {
 function syncThemeProgress() {
   const unlockedNow = themeManager.updateProgress({
     gamesPlayed: themeManager.getProgress().gamesPlayed,
+    levelWins: themeManager.getProgress().levelWins,
     bestScore: state.bestScore,
     maxTile: boardState.maxTile,
     coins: state.powerBalance
@@ -4476,6 +4535,7 @@ function placeHeroRandomTile(grid) {
 
 function unlockAudio() {
   ensureAudioContext();
+  primeMergeSfxAudio();
   applyMusicState();
 }
 
@@ -4663,8 +4723,10 @@ function getMergeSfxAudio() {
   }
 
   if (!mergeSfxAudio) {
-    mergeSfxAudio = new Audio(MERGE_SFX_URL);
+    mergeSfxAudio = document.querySelector('audio[data-merge-sfx]') || new Audio(MERGE_SFX_URL);
+    mergeSfxAudio.src = mergeSfxAudio.currentSrc || mergeSfxAudio.src || MERGE_SFX_URL;
     mergeSfxAudio.preload = "auto";
+    mergeSfxAudio.playsInline = true;
     mergeSfxAudio.volume = 0.65;
   }
 
@@ -4686,13 +4748,25 @@ function primeMergeSfxAudio() {
 
 function playMergeAsset(value, comboCount = 1) {
   const baseAudio = getMergeSfxAudio();
-  if (!baseAudio || baseAudio.readyState < 2) {
+  if (!baseAudio) {
     return false;
   }
 
-  const playback = baseAudio.cloneNode();
+  const playback =
+    baseAudio.paused
+      ? baseAudio
+      : new Audio(baseAudio.currentSrc || baseAudio.src || MERGE_SFX_URL);
+
+  playback.preload = "auto";
+  playback.playsInline = true;
   playback.volume = Math.min(1, 0.48 + Math.log2(Math.max(2, value)) * 0.03 + comboCount * 0.04);
   playback.playbackRate = Math.min(1.22, 0.94 + Math.log2(Math.max(2, value)) * 0.015);
+  try {
+    playback.currentTime = 0;
+  } catch (error) {
+    // Ignore current time reset errors.
+  }
+
   playback.play().catch(() => undefined);
   return true;
 }
@@ -5151,6 +5225,73 @@ function saveStoredLevel(key, value) {
   } catch (error) {
     // Ignore storage write errors.
   }
+}
+
+function getModeProgressStorageKey(modeId) {
+  return `${MODE_LEVEL_PROGRESS_KEY_PREFIX}${modeId}`;
+}
+
+function loadModeLevelProgress(modeId) {
+  const fallbackUnlocked = modeId === "classic" ? clampLevel(loadStoredLevel(LEVEL_UNLOCK_KEY, 1)) : 1;
+  const fallbackSelected = modeId === "classic" ? clampLevel(loadStoredLevel(LEVEL_SELECTED_KEY, fallbackUnlocked)) : fallbackUnlocked;
+
+  try {
+    const raw = window.localStorage.getItem(getModeProgressStorageKey(modeId));
+    if (!raw) {
+      return {
+        unlocked: fallbackUnlocked,
+        selected: Math.min(fallbackUnlocked, fallbackSelected)
+      };
+    }
+
+    const parsed = JSON.parse(raw);
+    const unlocked = clampLevel(parsed?.unlocked ?? fallbackUnlocked);
+    const selected = Math.min(unlocked, clampLevel(parsed?.selected ?? fallbackSelected));
+    return { unlocked, selected };
+  } catch (error) {
+    return {
+      unlocked: fallbackUnlocked,
+      selected: Math.min(fallbackUnlocked, fallbackSelected)
+    };
+  }
+}
+
+function loadAllModeLevelProgress() {
+  return Object.fromEntries(MODES.map((mode) => [mode.id, loadModeLevelProgress(mode.id)]));
+}
+
+function saveModeLevelProgress(modeId, progress) {
+  const safeProgress = {
+    unlocked: clampLevel(progress?.unlocked ?? 1),
+    selected: clampLevel(progress?.selected ?? 1)
+  };
+  safeProgress.selected = Math.min(safeProgress.unlocked, safeProgress.selected);
+
+  try {
+    window.localStorage.setItem(getModeProgressStorageKey(modeId), JSON.stringify(safeProgress));
+  } catch (error) {
+    // Ignore storage write errors.
+  }
+}
+
+function persistModeProgress(modeId, unlocked, selected) {
+  const next = {
+    unlocked: clampLevel(unlocked),
+    selected: Math.min(clampLevel(unlocked), clampLevel(selected))
+  };
+  state.modeProgress[modeId] = next;
+  saveModeLevelProgress(modeId, next);
+}
+
+function applyModeProgress(modeId) {
+  const progress = state.modeProgress[modeId] || loadModeLevelProgress(modeId);
+  state.modeProgress[modeId] = progress;
+  state.unlockedLevel = clampLevel(progress.unlocked);
+  state.selectedLevel = Math.min(state.unlockedLevel, clampLevel(progress.selected));
+}
+
+function persistCurrentModeProgress() {
+  persistModeProgress(getCurrentMode().id, state.unlockedLevel, state.selectedLevel);
 }
 
 function loadStoredBool(key, fallback) {
