@@ -2296,6 +2296,10 @@ function renderLevels() {
 }
 
 function getRunPayout(result) {
+  if (getLevelTarget(state.activeLevel) >= 1048576n) {
+    return Math.max(0, Math.floor(boardState.score / 1000000));
+  }
+
   const classicPayout = Math.max(0, Math.floor(boardState.score / 10));
   return isSpeedMode() ? Math.max(0, Math.floor(classicPayout * 1.5)) : classicPayout;
 }
@@ -2438,12 +2442,8 @@ function isChaosMode() {
   return getCurrentMode().id === "chaos";
 }
 
-function isClassicAssistWindow() {
-  return isClassicMode() && state.activeLevel <= 30;
-}
-
 function hasAiOpponent() {
-  return !isSoloMode() && !isPuzzleMode() && !isSpeedMode() && !isClassicAssistWindow();
+  return !isSoloMode() && !isPuzzleMode() && !isSpeedMode();
 }
 
 function drawPuzzleAmmoValue(actorKind = "player") {
