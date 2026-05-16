@@ -1,0 +1,1 @@
+export { FrameTimingSystem } from "../../src/performance/FrameTimingSystem.js";

@@ -1,0 +1,1 @@
+export { MemoryManager } from "../../src/performance/MemoryManager.js";

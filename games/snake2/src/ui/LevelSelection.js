@@ -1,0 +1,72 @@
+export class LevelSelection {
+  constructor(root) {
+    this.root = root;
+    this.track = root ? root.querySelector("[data-level-track]") : null;
+    this.stageTrack = root ? root.querySelector("[data-stage-track]") : null;
+    this.selected = null;
+    this.selectedStage = 1;
+    this.unlockedLevel = 1;
+    this.currentLevel = 1;
+    this.currentStage = 1;
+    this.stagesPerLevel = 3;
+    this.onSelect = () => {};
+  }
+
+  render(snapshot) {
+    if (!this.track || !snapshot) return;
+    const current = snapshot.stage;
+    const unlockedLevel = snapshot.progress.unlockedLevel || snapshot.progress.level;
+    const maxLevels = snapshot.meta?.maxLevels || 24;
+    this.stagesPerLevel = snapshot.meta?.stagesPerLevel || 3;
+    this.unlockedLevel = unlockedLevel;
+    this.currentLevel = current.level;
+    this.currentStage = current.stage;
+    if (!this.selected) this.selected = current.level;
+    if (!this.selectedStage) this.selectedStage = current.stage;
+    const nodes = [];
+    for (let i = 1; i <= maxLevels; i += 1) {
+      const unlocked = i <= unlockedLevel;
+      const active = i === this.selected;
+      nodes.push(`
+        <button class="level-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""}" data-level="${i}" type="button" ${unlocked ? "" : "disabled"}>
+          <span class="level-node-label">L${i}</span>
+          <span class="level-node-stars">${active ? "*" : unlocked ? "." : "x"}</span>
+        </button>
+      `);
+    }
+    this.track.innerHTML = nodes.join("");
+    Array.from(this.track.querySelectorAll(".level-node.unlocked")).forEach((node) => {
+      node.addEventListener("click", () => {
+        this.selected = Number(node.dataset.level);
+        this.selectedStage = 1;
+        this.onSelect({ level: this.selected, stage: this.selectedStage });
+        this.#renderStages();
+      });
+    });
+    this.#renderStages();
+  }
+
+  #renderStages() {
+    if (!this.stageTrack) return;
+    const stageButtons = [];
+    const selectedLevel = this.selected || this.currentLevel;
+    const unlockedStageInCurrentLevel = selectedLevel < this.unlockedLevel ? this.stagesPerLevel : this.currentStage;
+    for (let stage = 1; stage <= this.stagesPerLevel; stage += 1) {
+      const unlocked = stage <= unlockedStageInCurrentLevel;
+      const active = stage === this.selectedStage;
+      stageButtons.push(`
+        <button class="stage-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""}" data-stage="${stage}" type="button" ${unlocked ? "" : "disabled"}>
+          Stage ${stage}
+        </button>
+      `);
+    }
+    this.stageTrack.innerHTML = stageButtons.join("");
+    Array.from(this.stageTrack.querySelectorAll(".stage-node.unlocked")).forEach((node) => {
+      node.addEventListener("click", () => {
+        this.selectedStage = Number(node.dataset.stage);
+        this.onSelect({ level: selectedLevel, stage: this.selectedStage });
+        this.#renderStages();
+      });
+    });
+  }
+}

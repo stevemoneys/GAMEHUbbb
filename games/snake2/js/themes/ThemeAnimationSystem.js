@@ -1,0 +1,1 @@
+export { ThemeAnimationSystem } from "../../src/themes/ThemeAnimationSystem.js";

@@ -1,0 +1,86 @@
+:root {
+  --landscape-shell-width: min(96vw, 72rem);
+  --landscape-canvas-width: min(94vw, 60rem);
+  --landscape-controls-width: min(92vw, 24rem);
+}
+
+.canvas-wrap,
+#gameCanvas {
+  touch-action: none;
+}
+
+body.game-active .app {
+  width: min(100%, 72rem);
+}
+
+body.game-active .game-shell {
+  justify-items: center;
+}
+
+body.game-active .canvas-wrap {
+  width: min(100%, 50rem);
+}
+
+@media (orientation: landscape) and (max-height: 760px) {
+  body.game-active {
+    overflow: hidden;
+  }
+
+  body.game-active .app {
+    width: var(--landscape-shell-width);
+    min-height: 100dvh;
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-right: max(12px, env(safe-area-inset-right));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+    justify-content: center;
+    gap: 8px;
+  }
+
+  body.game-active .game-shell {
+    align-items: center;
+  }
+
+  body.game-active .canvas-wrap {
+    width: var(--landscape-canvas-width);
+    min-height: 0;
+    max-height: min(74dvh, calc(94vw * 0.5625));
+    border-radius: 24px;
+  }
+
+  body.game-active .touch-controls {
+    width: var(--landscape-controls-width);
+    gap: 6px;
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.28));
+  }
+
+  body.game-active .touch-row {
+    gap: 6px;
+  }
+
+  body.game-active .touch-btn {
+    width: 56px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 1.05rem;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  body.game-active .canvas-wrap {
+    width: min(95vw, 54rem);
+    max-height: min(70dvh, calc(95vw * 0.5625));
+  }
+
+  body.game-active .touch-controls {
+    width: min(90vw, 20rem);
+  }
+
+  body.game-active .touch-btn {
+    width: 52px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 1rem;
+  }
+}

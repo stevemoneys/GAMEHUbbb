@@ -1,0 +1,1 @@
+export { PerformanceOverlay } from "../../src/debug/PerformanceOverlay.js";

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Neon Viper</title>
+  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="stylesheet" href="./css/ui.css">
+  <link rel="stylesheet" href="./css/animations.css">
+  <link rel="stylesheet" href="./css/hud.css">
+  <link rel="stylesheet" href="./css/ui-effects.css">
+  <link rel="stylesheet" href="./css/themes.css">
+  <link rel="stylesheet" href="./css/cosmetics.css">
+  <link rel="stylesheet" href="./css/food-effects.css">
+  <link rel="stylesheet" href="./css/powerup-effects.css">
+  <link rel="stylesheet" href="./css/landscape-mode.css">
+  <link rel="stylesheet" href="./css/responsive-layout.css">
+  <link rel="stylesheet" href="./css/cinematic-effects.css">
+  <link rel="stylesheet" href="./css/production-ui.css">
+</head>
+<body>
+  <section id="homeScreen" class="home-screen" aria-label="Home screen">
+    <canvas class="home-particles" data-home-particles aria-hidden="true"></canvas>
+
+    <div class="home-content">
+      <header class="home-top">
+        <h1 class="game-logo">NEON VIPER</h1>
+        <p class="game-tagline">Premium Arcade Snake Experience</p>
+        <p class="progress-hint" data-progress-hint>Continue: Level 1 Stage 1</p>
+      </header>
+
+      <section class="home-center">
+        <button class="play-button" data-play-btn type="button" aria-label="Play now">PLAY</button>
+
+        <div class="mode-selection" data-mode-selection>
+          <div class="mode-track" data-mode-track aria-label="Game mode cards"></div>
+        </div>
+      </section>
+
+      <nav class="home-bottom-nav" aria-label="Quick actions">
+        <button class="quick-btn" data-nav="levels" type="button">Levels</button>
+        <button class="quick-btn" data-nav="settings" type="button">Settings</button>
+        <button class="quick-btn" data-nav="themes" type="button">Themes</button>
+        <button class="quick-btn" data-audio-toggle type="button">Audio On</button>
+      </nav>
+
+      <section class="ui-panel ui-hidden" data-panel="levels" data-level-selection>
+        <h2 class="panel-title">Level Select</h2>
+        <div class="level-track" data-level-track></div>
+        <h2 class="panel-title">Stage Select</h2>
+        <div class="stage-track" data-stage-track></div>
+      </section>
+
+      <section class="ui-panel ui-hidden" data-panel="settings" data-settings-panel>
+        <h2 class="panel-title">Settings</h2>
+        <div class="settings-grid">
+          <label class="setting-row">
+            <span>Graphics Quality</span>
+            <select name="quality" aria-label="Graphics quality">
+              <option value="auto">Auto</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="ultra">Ultra</option>
+            </select>
+          </label>
+          <label class="setting-row">
+            <span>Vibration</span>
+            <input name="vibration" type="checkbox" checked>
+          </label>
+          <label class="setting-row">
+            <span>Audio</span>
+            <input name="audio" type="checkbox" checked>
+          </label>
+        </div>
+      </section>
+
+      <section class="ui-panel ui-hidden" data-panel="themes" data-theme-preview>
+        <h2 class="panel-title">Theme Preview</h2>
+        <div class="theme-track" data-theme-track></div>
+      </section>
+    </div>
+  </section>
+
+  <div class="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <div class="brand-text">
+          <h1>Neon Viper</h1>
+          <p>Mobile Arcade Build</p>
+        </div>
+      </div>
+      <button id="pauseBtn" class="glass-btn" type="button" aria-label="Pause game">Pause</button>
+    </header>
+
+    <main class="game-shell">
+      <section class="canvas-wrap">
+        <canvas id="gameCanvas" aria-label="Snake game canvas"></canvas>
+      </section>
+    </main>
+
+    <section class="touch-controls" aria-label="Directional controls">
+      <button class="touch-btn" data-dir="up" aria-label="Move up">&uarr;</button>
+      <div class="touch-row">
+        <button class="touch-btn" data-dir="left" aria-label="Move left">&larr;</button>
+        <button class="touch-btn touch-btn-center" type="button" aria-label="Control center"></button>
+        <button class="touch-btn" data-dir="right" aria-label="Move right">&rarr;</button>
+      </div>
+      <button class="touch-btn" data-dir="down" aria-label="Move down">&darr;</button>
+    </section>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
