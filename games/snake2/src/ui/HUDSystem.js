@@ -141,8 +141,8 @@ export class HUDSystem {
     this.pauseMenu?.showGameOver(payload);
   }
 
-  showStageIntro(payload = {}) {
-    this.pauseMenu?.showBriefing(payload);
+  showStageIntro(payload = {}, onComplete = null) {
+    this.pauseMenu?.showBriefing(payload, onComplete);
   }
 
   isOverlayVisible() {

@@ -65,6 +65,7 @@ export class SurvivalMode extends BaseMode {
 
     if (this.handleFoodEatForPlayer(this.ctx.config.scoring.foodPoints + 3)) {
       this.ctx.scoreManager.setCombo(this.ctx.scoreManager.getCombo() + 1);
+      if (this.tryCompleteLengthStage()) return;
     }
   }
 

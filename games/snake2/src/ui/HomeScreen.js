@@ -8,46 +8,36 @@ import { AmbientEffects } from "../effects/AmbientEffects.js";
 import { MenuAnimations } from "./MenuAnimations.js";
 import { ProductionPolishManager } from "../final-polish/ProductionPolishManager.js";
 
-function buildModeGoal(modeId, selection, progressSnapshot) {
-  const level = Math.max(1, selection?.level || progressSnapshot?.stage?.level || 1);
-  const stage = Math.max(1, selection?.stage || progressSnapshot?.stage?.stage || 1);
-  const lengthTarget = 12 + (level * 2) + ((stage - 1) * 2);
-  const scoreTarget = 10 + (level * 4) + (stage * 3);
-  const surviveTarget = 24 + (level * 3) + (stage * 5);
+function buildModeGoal(modeId, progressSnapshot) {
+  const stage = progressSnapshot?.stage;
+  const level = Math.max(1, stage?.level || 1);
+  const section = Math.max(1, stage?.stage || 1);
+  const lengthTarget = stage?.objectives?.find((objective) => objective.type === "length")?.target || 16;
 
   if (modeId === "speed") {
     return {
-      title: `Speed â€¢ Level ${level}`,
-      copy: `Reach length ${lengthTarget + 2} while handling faster bursts and pushing toward score ${scoreTarget + 6}.`
+      title: `Speed • Level ${level} Stage ${section}`,
+      copy: `Reach length ${lengthTarget} to win. The pace climbs fast here, so cleaner turns beat panic.`
     };
   }
 
   if (modeId === "survival") {
     return {
-      title: `Survival â€¢ Level ${level}`,
-      copy: `Grow to length ${lengthTarget + 1} and survive about ${surviveTarget}s while hazards and arena pressure increase.`
+      title: `Survival • Level ${level} Stage ${section}`,
+      copy: `Reach length ${lengthTarget} to win while the arena gets more dangerous around you.`
     };
   }
 
   if (modeId === "duel") {
-    const duelLength = 14 + (level * 2) + ((stage - 1) * 3);
-    const duelScore = 8 + (level * 2) + (stage * 4);
-    const duelSurvive = 22 + (level * 2) + (stage * 6);
-    const duelCombo = Math.min(12, 1 + Math.floor(level / 3) + stage);
-    const objectiveParts = stage === 1
-      ? [`grow to length ${duelLength}`, `survive ${duelSurvive}s`]
-      : stage === 2
-        ? [`grow to length ${duelLength}`, `reach score ${duelScore}`, "defeat the rival AI"]
-        : [`grow to length ${duelLength}`, `survive ${duelSurvive}s`, `reach score ${duelScore}`, `build combo x${duelCombo}`, "defeat the rival AI"];
     return {
-      title: `Duel â€¢ Level ${level} Stage ${stage}`,
-      copy: `Win by ${objectiveParts.join(", ")}.`
+      title: `Duel • Level ${level} Stage ${section}`,
+      copy: `Reach length ${lengthTarget} first to clear the stage. Bite smart, steal growth, and do not get cornered.`
     };
   }
 
   return {
-    title: `Classic â€¢ Level ${level}`,
-    copy: `Grow your snake to length ${lengthTarget} to win. Clean pickups and safe movement matter most here.`
+    title: `Classic • Level ${level} Stage ${section}`,
+    copy: `Reach length ${lengthTarget} to win. Regular energy orbs grow your snake by +1, so every pickup counts.`
   };
 }
 
@@ -62,6 +52,7 @@ export class HomeScreen {
     this.onAudioToggle = options.onAudioToggle || (() => {});
     this.disableLegacyThemePreview = Boolean(options.disableLegacyThemePreview);
     this.currentAudio = true;
+    this.currentMode = "classic";
     this.audioButton = null;
     this.progressSnapshot = null;
 
@@ -80,10 +71,12 @@ export class HomeScreen {
   init(progressSnapshot) {
     if (!this.root) return;
     this.progressSnapshot = progressSnapshot;
+    this.currentMode = progressSnapshot?.mode || this.currentMode;
     this.polish.init();
     this.modeSelection.onChange = (mode) => this.onModeChange(mode);
     this.modeSelection.init();
     this.modeSelection.onChange = (mode) => {
+      this.currentMode = mode;
       this.onModeChange(mode);
       this.#updateGoalPreview();
     };
@@ -180,12 +173,14 @@ export class HomeScreen {
   updateProgress(snapshot) {
     if (!this.root) return;
     this.progressSnapshot = snapshot;
+    this.currentMode = snapshot?.mode || this.currentMode;
     this.levelSelection.render(snapshot);
     this.#updateProgressHint(snapshot);
     this.#updateGoalPreview();
   }
 
   setMode(modeId) {
+    this.currentMode = modeId;
     this.modeSelection.setMode(modeId);
     this.#updateGoalPreview();
   }
@@ -214,7 +209,7 @@ export class HomeScreen {
     const hint = this.root.querySelector("[data-progress-hint]");
     if (!hint || !snapshot?.stage) return;
     const stage = snapshot.stage;
-    hint.textContent = `Continue: Level ${stage.level} Stage ${stage.stage} - ${snapshot.rank} Rank`;
+    hint.textContent = `Continue: ${snapshot.mode.toUpperCase()} • Level ${stage.level} Stage ${stage.stage} • ${snapshot.rank} Rank`;
   }
 
   #updateGoalPreview() {
@@ -222,8 +217,7 @@ export class HomeScreen {
     const copy = this.root?.querySelector("[data-goal-copy]");
     if (!title || !copy) return;
     const mode = this.modeSelection.getMode();
-    const selection = this.levelSelection.getSelection();
-    const goal = buildModeGoal(mode, selection, this.progressSnapshot);
+    const goal = buildModeGoal(mode, this.progressSnapshot);
     title.textContent = goal.title;
     copy.textContent = goal.copy;
   }

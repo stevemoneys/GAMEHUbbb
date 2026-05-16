@@ -145,6 +145,19 @@ export class DuelMode extends BaseMode {
         this.ctx.duelManager.onFoodCollected("both");
       }
     }
+
+    if (stageTarget > 0 && this.ctx.playerSnake.getSegmentCount() >= stageTarget) {
+      this.outcome = this.ctx.duelManager.resolveMatchOutcome(false, true, {
+        playerSnakeLength: this.ctx.playerSnake.getSegmentCount()
+      });
+      this.eventWarning = "LENGTH TARGET";
+      this.ctx.modeState.warningTimer = 1.8;
+      this.ctx.onGameOver({
+        reason: "duel_length_clear",
+        playerWon: true,
+        stageCleared: this.outcome.stageResult?.stageCleared === true
+      });
+    }
   }
 
   getRenderState() {

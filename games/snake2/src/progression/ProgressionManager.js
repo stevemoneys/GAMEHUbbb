@@ -2,7 +2,8 @@ import { StageManager } from "./StageManager.js";
 import { DifficultyManager } from "./DifficultyManager.js";
 import { RewardSystem } from "./RewardSystem.js";
 
-const STORAGE_KEY = "snake2_progression_v1";
+const STORAGE_KEY = "snake2_progression_v2";
+const DEFAULT_MODE = "classic";
 
 function safeParse(json) {
   try {
@@ -12,17 +13,29 @@ function safeParse(json) {
   }
 }
 
+function createModeState() {
+  return {
+    level: 1,
+    stage: 1,
+    unlockedLevel: 1
+  };
+}
+
 export class ProgressionManager {
   constructor() {
     this.stageManager = new StageManager(24, 3);
     this.difficultyManager = new DifficultyManager();
     this.rewardSystem = new RewardSystem();
+    this.currentMode = DEFAULT_MODE;
     this.state = {
-      level: 1,
-      stage: 1,
       completedStages: 0,
-      unlockedLevel: 1
+      modes: {}
     };
+
+    const modeOrder = this.stageManager.getModeOrder();
+    for (let i = 0; i < modeOrder.length; i += 1) {
+      this.state.modes[modeOrder[i]] = createModeState();
+    }
     this.#load();
   }
 
@@ -31,11 +44,20 @@ export class ProgressionManager {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const parsed = safeParse(raw);
-    if (!parsed) return;
-    this.state.level = Math.max(1, parsed.level || 1);
-    this.state.stage = Math.max(1, parsed.stage || 1);
+    if (!parsed || typeof parsed !== "object") return;
+
     this.state.completedStages = Math.max(0, parsed.completedStages || 0);
-    this.state.unlockedLevel = Math.max(this.state.level, parsed.unlockedLevel || this.state.level || 1);
+    const parsedModes = parsed.modes && typeof parsed.modes === "object" ? parsed.modes : {};
+    const modeOrder = this.stageManager.getModeOrder();
+
+    for (let i = 0; i < modeOrder.length; i += 1) {
+      const mode = modeOrder[i];
+      const saved = parsedModes[mode] || parsed[mode] || {};
+      const state = this.state.modes[mode];
+      state.level = Math.max(1, saved.level || 1);
+      state.stage = Math.max(1, saved.stage || 1);
+      state.unlockedLevel = Math.max(state.level, saved.unlockedLevel || state.level || 1);
+    }
   }
 
   #save() {
@@ -43,46 +65,65 @@ export class ProgressionManager {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
   }
 
-  getCurrentStage() {
-    return this.stageManager.getCurrent(this.state);
+  setMode(mode) {
+    const normalized = String(mode || DEFAULT_MODE).toLowerCase();
+    if (!this.state.modes[normalized]) {
+      this.currentMode = DEFAULT_MODE;
+      return;
+    }
+    this.currentMode = normalized;
   }
 
-  getUnlockedLevel() {
-    return Math.max(1, this.state.unlockedLevel || this.state.level);
+  getCurrentMode() {
+    return this.currentMode;
   }
 
-  setStage(level, stage = 1) {
+  #getModeState(mode = this.currentMode) {
+    return this.state.modes[mode] || this.state.modes[DEFAULT_MODE];
+  }
+
+  getCurrentStage(mode = this.currentMode) {
+    return this.stageManager.getCurrent(mode, this.#getModeState(mode));
+  }
+
+  getUnlockedLevel(mode = this.currentMode) {
+    const state = this.#getModeState(mode);
+    return Math.max(1, state.unlockedLevel || state.level || 1);
+  }
+
+  setStage(level, stage = 1, mode = this.currentMode) {
+    const state = this.#getModeState(mode);
     const safeLevel = Math.max(1, Math.floor(level || 1));
     const safeStage = Math.max(1, Math.floor(stage || 1));
     const maxLevel = this.stageManager.getLevelCount();
     const maxStage = this.stageManager.getStagesPerLevel();
 
-    const clampedLevel = Math.min(maxLevel, safeLevel, this.getUnlockedLevel());
+    const clampedLevel = Math.min(maxLevel, safeLevel, this.getUnlockedLevel(mode));
     const clampedStage = Math.min(maxStage, safeStage);
-    const target = this.stageManager.getStage(clampedLevel, clampedStage);
+    const target = this.stageManager.getStage(mode, clampedLevel, clampedStage);
     if (!target) return false;
 
-    this.state.level = target.level;
-    this.state.stage = target.stage;
+    state.level = target.level;
+    state.stage = target.stage;
     this.#save();
     return true;
   }
 
-  getDifficultySettings() {
-    return this.difficultyManager.getSettings(this.getCurrentStage());
+  getDifficultySettings(mode = this.currentMode) {
+    return this.difficultyManager.getSettings(this.getCurrentStage(mode));
   }
 
   getRank() {
     return this.rewardSystem.getRank(this.state.completedStages);
   }
 
-  evaluateStageResult(matchStats) {
-    const stage = this.getCurrentStage();
+  evaluateStageResult(matchStats = {}, mode = this.currentMode) {
+    const stage = this.getCurrentStage(mode);
     const passed = stage.objectives.every((objective) => {
+      if (objective.type === "length") return matchStats.playerSnakeLength >= objective.target;
       if (objective.type === "survive") return matchStats.survivalTime >= objective.target;
       if (objective.type === "score") return matchStats.playerScore >= objective.target;
       if (objective.type === "combo") return matchStats.maxCombo >= objective.target;
-      if (objective.type === "length") return matchStats.playerSnakeLength >= objective.target;
       if (objective.type === "win") return matchStats.playerWon === true;
       return true;
     });
@@ -93,13 +134,16 @@ export class ProgressionManager {
         stage,
         rank: this.getRank(),
         rewards: [],
-        progress: { ...this.state }
+        progress: { ...this.#getModeState(mode) }
       };
     }
 
     this.state.completedStages += 1;
-    this.state = this.stageManager.advance(this.state);
-    this.state.unlockedLevel = Math.max(this.state.unlockedLevel, this.state.level);
+    const modeState = this.#getModeState(mode);
+    const nextState = this.stageManager.advance(mode, modeState);
+    modeState.level = nextState.level;
+    modeState.stage = nextState.stage;
+    modeState.unlockedLevel = Math.max(modeState.unlockedLevel, modeState.level);
     const rewards = this.rewardSystem.unlockForStage(stage.level, stage.stage);
     this.#save();
 
@@ -108,17 +152,24 @@ export class ProgressionManager {
       stage,
       rank: this.getRank(),
       rewards,
-      progress: { ...this.state }
+      progress: { ...modeState }
     };
   }
 
-  getSnapshot() {
+  getSnapshot(mode = this.currentMode) {
+    const modeState = this.#getModeState(mode);
+    const stage = this.getCurrentStage(mode);
     return {
-      stage: this.getCurrentStage(),
-      difficulty: this.getDifficultySettings(),
+      mode,
+      stage,
+      difficulty: this.getDifficultySettings(mode),
       rank: this.getRank(),
       unlocks: this.rewardSystem.snapshot(),
-      progress: { ...this.state },
+      progress: {
+        ...modeState,
+        completedStages: this.state.completedStages
+      },
+      modeProgress: { ...modeState },
       meta: {
         maxLevels: this.stageManager.getLevelCount(),
         stagesPerLevel: this.stageManager.getStagesPerLevel()

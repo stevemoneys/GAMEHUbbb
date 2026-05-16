@@ -8,6 +8,7 @@ export class PauseMenu {
     this.actionsRoot = options.actionsRoot;
     this.state = "hidden";
     this.hideTimer = 0;
+    this.pendingBriefingComplete = null;
   }
 
   hide() {
@@ -21,6 +22,11 @@ export class PauseMenu {
     this.overlay.classList.add("hud-overlay-hidden");
     document.body.classList.remove("hud-overlay-open");
     this.state = "hidden";
+    if (typeof this.pendingBriefingComplete === "function") {
+      const callback = this.pendingBriefingComplete;
+      this.pendingBriefingComplete = null;
+      callback();
+    }
   }
 
   showPause(modeLabel) {
@@ -58,12 +64,13 @@ export class PauseMenu {
     this.state = "gameover";
   }
 
-  showBriefing(payload = {}) {
+  showBriefing(payload = {}, onComplete = null) {
     if (!this.overlay || !this.title || !this.subtitle) return;
     if (this.hideTimer) {
       window.clearTimeout(this.hideTimer);
       this.hideTimer = 0;
     }
+    this.pendingBriefingComplete = typeof onComplete === "function" ? onComplete : null;
     this.overlay.classList.remove("hud-overlay-hidden", "hud-overlay-gameover");
     this.overlay.classList.add("hud-overlay-visible", "hud-overlay-briefing");
     this.title.textContent = payload.title || "Level Brief";

@@ -3,17 +3,26 @@ export class LevelSelection {
     this.root = root;
     this.track = root ? root.querySelector("[data-level-track]") : null;
     this.stageTrack = root ? root.querySelector("[data-stage-track]") : null;
+    this.modeLabel = root ? root.querySelector("[data-level-mode-label]") : null;
     this.selected = null;
     this.selectedStage = 1;
     this.unlockedLevel = 1;
     this.currentLevel = 1;
     this.currentStage = 1;
     this.stagesPerLevel = 3;
+    this.currentMode = "classic";
+    this.selections = {
+      classic: { level: 1, stage: 1 },
+      speed: { level: 1, stage: 1 },
+      survival: { level: 1, stage: 1 },
+      duel: { level: 1, stage: 1 }
+    };
     this.onSelect = () => {};
   }
 
   render(snapshot) {
     if (!this.track || !snapshot) return;
+    this.currentMode = snapshot.mode || this.currentMode;
     const current = snapshot.stage;
     const unlockedLevel = snapshot.progress.unlockedLevel || snapshot.progress.level;
     const maxLevels = snapshot.meta?.maxLevels || 24;
@@ -21,8 +30,20 @@ export class LevelSelection {
     this.unlockedLevel = unlockedLevel;
     this.currentLevel = current.level;
     this.currentStage = current.stage;
-    if (!this.selected) this.selected = current.level;
-    if (!this.selectedStage) this.selectedStage = current.stage;
+    const savedSelection = this.selections[this.currentMode] || { level: current.level, stage: current.stage };
+    this.selected = savedSelection.level || current.level;
+    this.selectedStage = savedSelection.stage || current.stage;
+    if (this.selected > unlockedLevel) {
+      this.selected = current.level;
+      this.selectedStage = current.stage;
+    }
+    this.selections[this.currentMode] = {
+      level: this.selected,
+      stage: this.selectedStage
+    };
+    if (this.modeLabel) {
+      this.modeLabel.textContent = `${this.currentMode.charAt(0).toUpperCase()}${this.currentMode.slice(1)} Levels`;
+    }
     const nodes = [];
     for (let i = 1; i <= maxLevels; i += 1) {
       const unlocked = i <= unlockedLevel;
@@ -39,7 +60,11 @@ export class LevelSelection {
       node.addEventListener("click", () => {
         this.selected = Number(node.dataset.level);
         this.selectedStage = 1;
-        this.onSelect({ level: this.selected, stage: this.selectedStage });
+        this.selections[this.currentMode] = {
+          level: this.selected,
+          stage: this.selectedStage
+        };
+        this.onSelect({ mode: this.currentMode, level: this.selected, stage: this.selectedStage });
         this.#renderStages();
       });
     });
@@ -71,7 +96,11 @@ export class LevelSelection {
     Array.from(this.stageTrack.querySelectorAll(".stage-node.unlocked")).forEach((node) => {
       node.addEventListener("click", () => {
         this.selectedStage = Number(node.dataset.stage);
-        this.onSelect({ level: selectedLevel, stage: this.selectedStage });
+        this.selections[this.currentMode] = {
+          level: selectedLevel,
+          stage: this.selectedStage
+        };
+        this.onSelect({ mode: this.currentMode, level: selectedLevel, stage: this.selectedStage });
         this.#renderStages();
       });
     });

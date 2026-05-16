@@ -44,6 +44,7 @@ export class ClassicMode extends BaseMode {
         this.ctx.scoreManager.setCombo(1);
       }
       this.comboTimer = 0;
+      if (this.tryCompleteLengthStage()) return;
     }
 
     if (this.comboTimer > this.comboWindow * 1.5) {

@@ -13,9 +13,10 @@ function clamp(value, min, max) {
 export class FoodSpawnSystem {
   getTargetProfile(modeName) {
     const mode = String(modeName || "classic").toLowerCase();
-    if (mode === "speed") return { common: 5, special: 2, fragment: 1 };
-    if (mode === "duel") return { common: 4, special: 2, fragment: 1 };
-    return { common: 4, special: 1, fragment: 1 };
+    if (mode === "speed") return { common: 14, special: 4, fragment: 1 };
+    if (mode === "duel") return { common: 10, special: 4, fragment: 1 };
+    if (mode === "survival") return { common: 12, special: 3, fragment: 1 };
+    return { common: 12, special: 3, fragment: 1 };
   }
 
   pickSpecialType(context) {

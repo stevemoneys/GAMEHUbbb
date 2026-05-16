@@ -273,6 +273,14 @@ body:not(.game-active) .app {
   letter-spacing: 0.03em;
 }
 
+.panel-subtitle {
+  margin: -4px 0 12px;
+  color: rgba(183, 213, 242, 0.82);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .ui-hidden {
   opacity: 0;
   transform: translateY(16px) scale(0.98);

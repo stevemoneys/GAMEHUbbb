@@ -5,7 +5,7 @@ const FOOD_LIBRARY = {
     type: "energy_orb",
     rarity: "common",
     score: 10,
-    growth: 0.72,
+    growth: 1,
     radius: 11,
     ttl: 0,
     aiPriority: 1,

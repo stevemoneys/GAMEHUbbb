@@ -2,10 +2,10 @@ export class ArenaGenerator {
   static generate(modeName, viewWidth, viewHeight) {
     const mode = String(modeName || "classic").toLowerCase();
     const multiplierMap = {
-      classic: 3.4,
-      speed: 3.8,
-      survival: 4.2,
-      duel: 3.1
+      classic: 8.8,
+      speed: 9.4,
+      survival: 10.2,
+      duel: 8.2
     };
     const multiplier = multiplierMap[mode] || multiplierMap.classic;
     const width = Math.round(viewWidth * multiplier);

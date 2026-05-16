@@ -1,4 +1,4 @@
-import { gameConfig } from "./config/gameConfig.js";
+﻿import { gameConfig } from "./config/gameConfig.js";
 import { SnakeSystem } from "./systems/SnakeSystem.js";
 import { CanvasRenderer } from "./rendering/CanvasRenderer.js";
 import { InputController } from "./input/InputController.js";
@@ -212,7 +212,7 @@ let homeScreen = null;
 let cosmeticShop = null;
 let currentRenderState = null;
 let selectedMode = runtimeConfig.modes.defaultMode;
-let runStartStageId = progressionManager.getSnapshot().stage.id;
+let runStartStageId = progressionManager.getSnapshot(selectedMode).stage.id;
 let previousScore = 0;
 let previousCombo = 0;
 let runMaxCombo = 0;
@@ -452,7 +452,7 @@ function updateCamera(dt) {
 }
 
 function syncProgressToHome() {
-  const snapshot = progressionManager.getSnapshot();
+  const snapshot = progressionManager.getSnapshot(selectedMode);
   if (homeScreen) homeScreen.updateProgress(snapshot);
   if (cosmeticShop) cosmeticShop.syncProgress(snapshot);
   themeManager.updateProgress(snapshot);
@@ -482,36 +482,39 @@ function syncRendererViewport(useDeferredPass = false) {
 }
 
 function getOpeningBriefing(modeName) {
-  if (modeName === "duel") {
-    const snapshot = progressionManager.getSnapshot();
-    const stage = snapshot.stage;
-    return {
-      title: `Level ${stage.level} • Stage ${stage.stage}`,
-      subtitle: `Win by ${stage.objectives.map(formatObjectiveText).join(", ")}.`,
-      durationMs: 3000
-    };
-  }
+  const snapshot = progressionManager.getSnapshot(modeName);
+  const stage = snapshot.stage;
+  const targetLength = stage.objectives.find((objective) => objective.type === "length")?.target || 16;
+  const modeLabel = formatModeLabel(modeName);
 
   if (modeName === "speed") {
     return {
-      title: "Speed Mode",
-      subtitle: "Win by controlling the faster snake, chaining food, and avoiding crashes.",
-      durationMs: 2300
+      title: `${modeLabel} • Level ${stage.level} Stage ${stage.stage}`,
+      subtitle: `Reach length ${targetLength} to win. The pace climbs fast here, so stay smooth and avoid panic turns.`,
+      durationMs: 2200
     };
   }
 
   if (modeName === "survival") {
     return {
-      title: "Survival Mode",
-      subtitle: "Win by growing steadily, dodging hazards, and lasting through the pressure.",
-      durationMs: 2300
+      title: `${modeLabel} • Level ${stage.level} Stage ${stage.stage}`,
+      subtitle: `Reach length ${targetLength} to win while surviving hazards and tighter pressure.`,
+      durationMs: 2200
+    };
+  }
+
+  if (modeName === "duel") {
+    return {
+      title: `${modeLabel} • Level ${stage.level} Stage ${stage.stage}`,
+      subtitle: `Reach length ${targetLength} first to clear the stage. Bite the rival when the opening is safe.`,
+      durationMs: 2400
     };
   }
 
   return {
-    title: "Classic Mode",
-    subtitle: "Win by growing your snake, chaining clean pickups, and staying alive.",
-    durationMs: 2200
+    title: `${modeLabel} • Level ${stage.level} Stage ${stage.stage}`,
+    subtitle: `Reach length ${targetLength} to win. Regular energy orbs give +1 length each.`,
+    durationMs: 2100
   };
 }
 
@@ -580,8 +583,8 @@ hudSystem = new HUDSystem({
     openHome();
   },
   onNextStage: () => {
-    selectedMode = "duel";
-    startGame("duel");
+    progressionManager.setMode(selectedMode);
+    startGame(selectedMode);
   },
   onSettings: () => {
     openHome();
@@ -622,11 +625,11 @@ function onGameOver(payload) {
   }
 
   const before = runStartStageId;
-  const progressSnapshot = progressionManager.getSnapshot();
+  const progressSnapshot = progressionManager.getSnapshot(selectedMode);
   const afterStage = progressSnapshot.stage.id;
   const stageCleared = Boolean(
     (typeof payload === "object" && payload?.stageCleared === true)
-    || (selectedMode === "duel" && before !== afterStage)
+    || (before !== afterStage)
   );
   const score = scoreManager.getScore();
   const best = scoreManager.getHighScore();
@@ -647,7 +650,7 @@ function onGameOver(payload) {
   hudSystem.showGameOver({
     title: stageCleared ? "Stage Cleared" : "Game Over",
     subtitle: stageCleared
-      ? "Strong win. Push into the next duel stage."
+      ? `Target reached. ${formatModeLabel(selectedMode)} Level ${progressSnapshot.stage.level} Stage ${progressSnapshot.stage.stage} is unlocked.`
       : almost
         ? "Almost beat your best. One more run."
         : `Reason: ${lossReasonText}`,
@@ -695,6 +698,7 @@ const modeContext = {
 };
 
 const modeManager = new ModeManager(modeContext);
+progressionManager.setMode(selectedMode);
 modeManager.setMode(selectedMode);
 
 function formatModeLabel(modeName) {
@@ -702,22 +706,15 @@ function formatModeLabel(modeName) {
 }
 
 function computeHUDProgress() {
-  if (selectedMode === "duel") {
-    const snapshot = progressionManager.getSnapshot();
-    const lengthObjective = snapshot.stage.objectives.find((objective) => objective.type === "length");
-    const targetLength = lengthObjective?.target || snapshot.stage.level + 14;
-    const ratio = Math.max(0, Math.min(1, playerSnake.getSegmentCount() / Math.max(1, targetLength)));
-    return {
-      ratio,
-      label: `Length ${playerSnake.getSegmentCount()}/${targetLength}`
-    };
-  }
-
+  const snapshot = progressionManager.getSnapshot(selectedMode);
+  const lengthObjective = snapshot.stage.objectives.find((objective) => objective.type === "length");
+  const targetLength = lengthObjective?.target || (snapshot.stage.level + 14);
   const speedRatio = playerSnake.getCurrentSpeedPxPerSecond()
     / Math.max(1, runtimeConfig.snake.maxSpeedCellsPerSecond * runtimeConfig.world.cellSize);
+  const lengthRatio = playerSnake.getSegmentCount() / Math.max(1, targetLength);
   return {
-    ratio: Math.max(0, Math.min(1, speedRatio)),
-    label: `Intensity ${Math.round(Math.max(0, Math.min(1, speedRatio)) * 100)}%`
+    ratio: Math.max(0, Math.min(1, Math.max(lengthRatio, speedRatio * 0.15))),
+    label: `Length ${playerSnake.getSegmentCount()}/${targetLength}`
   };
 }
 
@@ -870,12 +867,13 @@ function setPaused(nextPaused, showPauseMenu = false) {
 }
 
 function restartCurrentRun() {
-  isPaused = false;
+  progressionManager.setMode(selectedMode);
+  isPaused = true;
   pauseBtn.textContent = "Pause";
-  engine.setPause(false);
+  engine.setPause(true);
   modeManager.restartCurrent();
 
-  runStartStageId = progressionManager.getSnapshot().stage.id;
+  runStartStageId = progressionManager.getSnapshot(selectedMode).stage.id;
   previousScore = 0;
   previousCombo = 0;
   runMaxCombo = 0;
@@ -885,13 +883,16 @@ function restartCurrentRun() {
     modeName: formatModeLabel(selectedMode)
   });
   hudSystem.show();
-  hudSystem.showStageIntro(getOpeningBriefing(selectedMode));
+  hudSystem.showStageIntro(getOpeningBriefing(selectedMode), () => {
+    setPaused(false, false);
+  });
 }
 
 function startGame(modeName = selectedMode) {
   selectedMode = modeName;
+  progressionManager.setMode(selectedMode);
   modeManager.setMode(selectedMode);
-  runStartStageId = progressionManager.getSnapshot().stage.id;
+  runStartStageId = progressionManager.getSnapshot(selectedMode).stage.id;
 
   previousScore = scoreManager.getScore();
   previousCombo = scoreManager.getCombo();
@@ -908,8 +909,10 @@ function startGame(modeName = selectedMode) {
   renderer.setFitMode("cover");
   syncRendererViewport(true);
   if (homeScreen) homeScreen.hide();
-  setPaused(false, false);
-  hudSystem.showStageIntro(getOpeningBriefing(selectedMode));
+  setPaused(true, false);
+  hudSystem.showStageIntro(getOpeningBriefing(selectedMode), () => {
+    setPaused(false, false);
+  });
   requestGameplayLandscape();
 }
 
@@ -919,6 +922,7 @@ function openHome() {
   syncRendererViewport(true);
   releaseGameplayLandscape();
   if (homeScreen) {
+    progressionManager.setMode(selectedMode);
     homeScreen.setMode(selectedMode);
     homeScreen.show();
     syncProgressToHome();
@@ -950,9 +954,12 @@ homeScreen = homeRoot
     },
     onModeChange: (modeName) => {
       selectedMode = modeName;
+      progressionManager.setMode(modeName);
+      const snapshot = progressionManager.getSnapshot(modeName);
+      homeScreen?.updateProgress(snapshot);
       if (isGameActive()) {
         modeManager.setMode(modeName);
-        runStartStageId = progressionManager.getSnapshot().stage.id;
+        runStartStageId = progressionManager.getSnapshot(modeName).stage.id;
         hudSystem.setModeLabel(formatModeLabel(modeName));
       }
     },
@@ -966,9 +973,10 @@ homeScreen = homeRoot
       saveUISettings(uiSettings);
     },
     onLevelSelect: (payload) => {
-      progressionManager.setStage(payload.level, payload.stage);
-      selectedMode = "duel";
-      if (homeScreen) homeScreen.setMode("duel");
+      selectedMode = payload.mode || selectedMode;
+      progressionManager.setMode(selectedMode);
+      progressionManager.setStage(payload.level, payload.stage, selectedMode);
+      if (homeScreen) homeScreen.setMode(selectedMode);
       syncProgressToHome();
     },
     onThemeChange: (_themeId) => {
@@ -983,7 +991,7 @@ homeScreen = homeRoot
   : null;
 
 if (homeScreen) {
-  homeScreen.init(progressionManager.getSnapshot());
+  homeScreen.init(progressionManager.getSnapshot(selectedMode));
   homeScreen.setMode(selectedMode);
   homeScreen.setAudioEnabled(uiSettings.audio);
   homeScreen.settingsPanel?.setState({
@@ -1007,7 +1015,7 @@ if (shopRoot) {
     }
   });
   cosmeticShop.init();
-  cosmeticShop.syncProgress(progressionManager.getSnapshot());
+  cosmeticShop.syncProgress(progressionManager.getSnapshot(selectedMode));
   cosmeticShop.setTheme(themeManager.getActiveThemeId());
 }
 
@@ -1105,3 +1113,15 @@ if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
 
 engine.start();
 openHome();
+
+
+
+
+
+
+
+
+
+
+
+

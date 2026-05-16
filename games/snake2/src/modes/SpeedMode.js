@@ -68,6 +68,7 @@ export class SpeedMode extends BaseMode {
 
     if (this.handleFoodEatForPlayer(this.ctx.config.scoring.foodPoints + 2)) {
       this.ctx.scoreManager.setCombo(this.ctx.scoreManager.getCombo() + 1);
+      if (this.tryCompleteLengthStage()) return;
     }
   }
 }

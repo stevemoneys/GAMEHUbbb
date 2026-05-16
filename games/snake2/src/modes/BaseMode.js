@@ -66,4 +66,31 @@ export class BaseMode {
       scoreBonus: Math.max(0, basePoints - this.ctx.config.scoring.foodPoints)
     }));
   }
+
+  getLengthObjectiveTarget() {
+    const snapshot = this.ctx.progressionManager.getSnapshot(this.name);
+    return snapshot.stage.objectives.find((objective) => objective.type === "length")?.target || 16;
+  }
+
+  tryCompleteLengthStage() {
+    const targetLength = this.getLengthObjectiveTarget();
+    if (this.ctx.playerSnake.getSegmentCount() < targetLength) return false;
+
+    const result = this.ctx.progressionManager.evaluateStageResult({
+      playerWon: true,
+      playerScore: this.ctx.scoreManager.getScore(),
+      maxCombo: this.ctx.scoreManager.getCombo(),
+      survivalTime: this.ctx.gameState.time,
+      playerSnakeLength: this.ctx.playerSnake.getSegmentCount()
+    }, this.name);
+
+    this.eventWarning = "TARGET CLEAR";
+    this.ctx.modeState.warningTimer = 1.4;
+    this.ctx.onGameOver({
+      reason: `${this.name}_length_clear`,
+      playerWon: true,
+      stageCleared: result.stageCleared === true
+    });
+    return true;
+  }
 }
