@@ -48,6 +48,8 @@ export const gameConfig = {
     quality: "auto",
     worldWidth: 960,
     worldHeight: 540,
+    worldTexturePath: "assets/images/gameplay-bg.png",
+    worldTextureTileWidth: 420,
     letterboxColor: "#02040b",
     worldBackgroundTop: "rgba(10, 35, 64, 0.95)",
     worldBackgroundBottom: "rgba(2, 9, 19, 0.96)",

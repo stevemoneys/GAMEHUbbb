@@ -43,6 +43,13 @@ export class CanvasRenderer {
       key: "",
       canvas: null
     };
+    this.worldTexture = {
+      image: null,
+      loaded: false,
+      failed: false,
+      path: ""
+    };
+    this.#loadWorldTexture(config.render.worldTexturePath);
   }
 
   setWorldSize(width, height) {
@@ -52,6 +59,29 @@ export class CanvasRenderer {
     this.camera.x = this.worldWidth * 0.5;
     this.camera.y = this.worldHeight * 0.5;
     this.#recomputeFit();
+  }
+
+  #loadWorldTexture(path) {
+    const texturePath = typeof path === "string" ? path.trim() : "";
+    this.worldTexture.path = texturePath;
+    this.worldTexture.loaded = false;
+    this.worldTexture.failed = false;
+    this.worldTexture.image = null;
+    if (!texturePath) return;
+
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => {
+      this.worldTexture.image = image;
+      this.worldTexture.loaded = true;
+      this.worldTexture.failed = false;
+    };
+    image.onerror = () => {
+      this.worldTexture.image = null;
+      this.worldTexture.loaded = false;
+      this.worldTexture.failed = true;
+    };
+    image.src = texturePath;
   }
 
   setCameraViewport(width, height) {
@@ -187,10 +217,26 @@ export class CanvasRenderer {
       bg.addColorStop(1, this.config.render.worldBackgroundBottom);
       worldCtx.fillStyle = bg;
       worldCtx.fillRect(0, 0, this.worldWidth, this.worldHeight);
+
+      if (this.worldTexture.loaded && this.worldTexture.image) {
+        const tileWidth = Math.max(64, this.config.render.worldTextureTileWidth || 420);
+        const image = this.worldTexture.image;
+        const aspect = image.naturalWidth > 0 ? image.naturalHeight / image.naturalWidth : 1;
+        const tileHeight = Math.max(64, tileWidth * aspect);
+        for (let y = 0; y < this.worldHeight; y += tileHeight) {
+          for (let x = 0; x < this.worldWidth; x += tileWidth) {
+            worldCtx.drawImage(image, x, y, tileWidth, tileHeight);
+          }
+        }
+
+        worldCtx.fillStyle = "rgba(4, 10, 20, 0.34)";
+        worldCtx.fillRect(0, 0, this.worldWidth, this.worldHeight);
+      }
     });
   }
 
   drawGrid(cellSize) {
+    if (this.worldTexture.loaded) return;
     const gridCanvas = this.#getGridCanvas(cellSize);
     if (!gridCanvas) return;
     this.#withWorldTransform((ctx) => {
