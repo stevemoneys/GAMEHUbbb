@@ -258,17 +258,16 @@ body.game-active .touch-controls {
 
 @media (orientation: portrait) {
   body.game-active .app {
-    width: 100dvh;
-    height: 100vw;
-    min-height: 0;
-    transform: rotate(90deg);
-    transform-origin: center center;
     top: 50%;
     left: 50%;
     right: auto;
     bottom: auto;
-    margin-left: -50dvh;
-    margin-top: -50vw;
+    width: 100dvh;
+    height: 100vw;
+    min-height: 0;
+    margin: 0;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
   }
 
   body.game-active .game-shell,
@@ -277,4 +276,52 @@ body.game-active .touch-controls {
     height: 100vw;
     min-height: 0;
   }
+}
+
+body.game-active {
+  overflow: hidden;
+}
+
+body.game-active .app,
+body.game-active .game-shell,
+body.game-active .canvas-wrap,
+body.game-active #gameCanvas {
+  max-width: none !important;
+  max-height: none !important;
+}
+
+body.game-active .app {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+}
+
+body.game-active .game-shell {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100dvh !important;
+}
+
+body.game-active .canvas-wrap {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100dvh !important;
+  border: none !important;
+  border-radius: 0 !important;
+  aspect-ratio: auto !important;
+  overflow: hidden !important;
+}
+
+body.game-active #gameCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
 }

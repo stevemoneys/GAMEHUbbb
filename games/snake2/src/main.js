@@ -468,6 +468,19 @@ function formatObjectiveText(objective) {
   return "complete the objective";
 }
 
+function syncRendererViewport(useDeferredPass = false) {
+  renderer.resizeToParent();
+  const viewport = renderer.getViewportMetrics();
+  cameraSystem.setViewportPixels(viewport.viewportWidth, viewport.viewportHeight);
+
+  if (!useDeferredPass) return;
+  requestAnimationFrame(() => {
+    renderer.resizeToParent();
+    const nextViewport = renderer.getViewportMetrics();
+    cameraSystem.setViewportPixels(nextViewport.viewportWidth, nextViewport.viewportHeight);
+  });
+}
+
 function getOpeningBriefing(modeName) {
   if (modeName === "duel") {
     const snapshot = progressionManager.getSnapshot();
@@ -892,6 +905,8 @@ function startGame(modeName = selectedMode) {
   hudSystem.show();
 
   document.body.classList.add("game-active");
+  renderer.setFitMode("cover");
+  syncRendererViewport(true);
   if (homeScreen) homeScreen.hide();
   setPaused(false, false);
   hudSystem.showStageIntro(getOpeningBriefing(selectedMode));
@@ -900,6 +915,8 @@ function startGame(modeName = selectedMode) {
 
 function openHome() {
   document.body.classList.remove("game-active");
+  renderer.setFitMode("contain");
+  syncRendererViewport(true);
   releaseGameplayLandscape();
   if (homeScreen) {
     homeScreen.setMode(selectedMode);
@@ -1057,9 +1074,7 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("resize", () => {
-  renderer.resizeToParent();
-  const viewport = renderer.getViewportMetrics();
-  cameraSystem.setViewportPixels(viewport.viewportWidth, viewport.viewportHeight);
+  syncRendererViewport(false);
 });
 
 document.addEventListener("visibilitychange", () => {

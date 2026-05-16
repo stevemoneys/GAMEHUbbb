@@ -11,14 +11,17 @@
 
 body.game-active .app {
   width: 100vw;
+  height: 100dvh;
 }
 
 body.game-active .game-shell {
-  justify-items: center;
+  justify-items: stretch;
+  align-items: stretch;
 }
 
 body.game-active .canvas-wrap {
   width: 100vw;
+  height: 100dvh;
 }
 
 @media (orientation: landscape) and (max-height: 760px) {
@@ -27,60 +30,39 @@ body.game-active .canvas-wrap {
   }
 
   body.game-active .app {
-    width: var(--landscape-shell-width);
+    width: 100vw;
+    height: 100dvh;
     min-height: 100dvh;
-    padding-top: max(10px, env(safe-area-inset-top));
-    padding-right: max(12px, env(safe-area-inset-right));
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
-    padding-left: max(12px, env(safe-area-inset-left));
-    justify-content: center;
-    gap: 8px;
+    padding: 0;
+    justify-content: stretch;
+    gap: 0;
   }
 
   body.game-active .game-shell {
-    align-items: center;
+    align-items: stretch;
   }
 
   body.game-active .canvas-wrap {
-    width: var(--landscape-canvas-width);
-    min-height: 0;
-    max-height: min(74dvh, calc(94vw * 0.5625));
-    border-radius: 24px;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: none;
+    border-radius: 0;
   }
 
   body.game-active .touch-controls {
-    width: var(--landscape-controls-width);
-    gap: 6px;
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
-    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.28));
-  }
-
-  body.game-active .touch-row {
-    gap: 6px;
-  }
-
-  body.game-active .touch-btn {
-    width: 56px;
-    height: 44px;
-    border-radius: 14px;
-    font-size: 1.05rem;
+    display: none;
   }
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
   body.game-active .canvas-wrap {
-    width: min(95vw, 54rem);
-    max-height: min(70dvh, calc(95vw * 0.5625));
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
   }
 
   body.game-active .touch-controls {
-    width: min(90vw, 20rem);
-  }
-
-  body.game-active .touch-btn {
-    width: 52px;
-    height: 40px;
-    border-radius: 12px;
-    font-size: 1rem;
+    display: none;
   }
 }

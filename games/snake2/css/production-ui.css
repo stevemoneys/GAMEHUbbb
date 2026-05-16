@@ -271,3 +271,25 @@ body.game-active .canvas-wrap {
     max-height: 66dvh;
   }
 }
+
+body.game-active .app {
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+body.game-active .game-shell {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+body.game-active .canvas-wrap {
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}

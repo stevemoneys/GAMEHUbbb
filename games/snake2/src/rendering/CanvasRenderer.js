@@ -27,6 +27,7 @@ export class CanvasRenderer {
     this.cameraViewHeight = config.render.worldHeight;
     this.timeSec = 0;
     this.fit = { scale: 1, offsetX: 0, offsetY: 0 };
+    this.fitMode = "contain";
     this.performanceProfile = {
       glowScale: 1,
       shadowScale: 1,
@@ -88,6 +89,13 @@ export class CanvasRenderer {
     if (!Number.isFinite(width) || !Number.isFinite(height)) return;
     this.cameraViewWidth = Math.max(1, width);
     this.cameraViewHeight = Math.max(1, height);
+    this.#recomputeFit();
+  }
+
+  setFitMode(mode = "contain") {
+    const normalized = mode === "cover" ? "cover" : "contain";
+    if (this.fitMode === normalized) return;
+    this.fitMode = normalized;
     this.#recomputeFit();
   }
 
@@ -162,7 +170,10 @@ export class CanvasRenderer {
   #recomputeFit() {
     const scaleX = this.viewportWidth / this.cameraViewWidth;
     const scaleY = this.viewportHeight / this.cameraViewHeight;
-    const scale = Math.max(0.001, Math.min(scaleX, scaleY));
+    const targetScale = this.fitMode === "cover"
+      ? Math.max(scaleX, scaleY)
+      : Math.min(scaleX, scaleY);
+    const scale = Math.max(0.001, targetScale);
     const drawWidth = this.cameraViewWidth * scale;
     const drawHeight = this.cameraViewHeight * scale;
 

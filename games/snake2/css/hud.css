@@ -20,7 +20,7 @@ body.game-active .app {
 }
 
 body.game-active .canvas-wrap {
-  max-height: 82dvh;
+  max-height: none;
 }
 
 body.hud-overlay-open .touch-controls {
