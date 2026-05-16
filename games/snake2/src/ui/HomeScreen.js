@@ -8,6 +8,49 @@ import { AmbientEffects } from "../effects/AmbientEffects.js";
 import { MenuAnimations } from "./MenuAnimations.js";
 import { ProductionPolishManager } from "../final-polish/ProductionPolishManager.js";
 
+function buildModeGoal(modeId, selection, progressSnapshot) {
+  const level = Math.max(1, selection?.level || progressSnapshot?.stage?.level || 1);
+  const stage = Math.max(1, selection?.stage || progressSnapshot?.stage?.stage || 1);
+  const lengthTarget = 12 + (level * 2) + ((stage - 1) * 2);
+  const scoreTarget = 10 + (level * 4) + (stage * 3);
+  const surviveTarget = 24 + (level * 3) + (stage * 5);
+
+  if (modeId === "speed") {
+    return {
+      title: `Speed • Level ${level}`,
+      copy: `Reach length ${lengthTarget + 2} while handling faster bursts and pushing toward score ${scoreTarget + 6}.`
+    };
+  }
+
+  if (modeId === "survival") {
+    return {
+      title: `Survival • Level ${level}`,
+      copy: `Grow to length ${lengthTarget + 1} and survive about ${surviveTarget}s while hazards and arena pressure increase.`
+    };
+  }
+
+  if (modeId === "duel") {
+    const duelLength = 14 + (level * 2) + ((stage - 1) * 3);
+    const duelScore = 8 + (level * 2) + (stage * 4);
+    const duelSurvive = 22 + (level * 2) + (stage * 6);
+    const duelCombo = Math.min(12, 1 + Math.floor(level / 3) + stage);
+    const objectiveParts = stage === 1
+      ? [`grow to length ${duelLength}`, `survive ${duelSurvive}s`]
+      : stage === 2
+        ? [`grow to length ${duelLength}`, `reach score ${duelScore}`, "defeat the rival AI"]
+        : [`grow to length ${duelLength}`, `survive ${duelSurvive}s`, `reach score ${duelScore}`, `build combo x${duelCombo}`, "defeat the rival AI"];
+    return {
+      title: `Duel • Level ${level} Stage ${stage}`,
+      copy: `Win by ${objectiveParts.join(", ")}.`
+    };
+  }
+
+  return {
+    title: `Classic • Level ${level}`,
+    copy: `Grow your snake to length ${lengthTarget} to win. Clean pickups and safe movement matter most here.`
+  };
+}
+
 export class HomeScreen {
   constructor(options) {
     this.root = options.root;
@@ -20,6 +63,7 @@ export class HomeScreen {
     this.disableLegacyThemePreview = Boolean(options.disableLegacyThemePreview);
     this.currentAudio = true;
     this.audioButton = null;
+    this.progressSnapshot = null;
 
     this.nav = new NavigationSystem();
     this.modeSelection = new ModeSelection(this.root?.querySelector("[data-mode-selection]") || null);
@@ -35,11 +79,20 @@ export class HomeScreen {
 
   init(progressSnapshot) {
     if (!this.root) return;
+    this.progressSnapshot = progressSnapshot;
     this.polish.init();
     this.modeSelection.onChange = (mode) => this.onModeChange(mode);
     this.modeSelection.init();
+    this.modeSelection.onChange = (mode) => {
+      this.onModeChange(mode);
+      this.#updateGoalPreview();
+    };
 
     this.levelSelection.onSelect = (payload) => this.onLevelSelect(payload);
+    this.levelSelection.onSelect = (payload) => {
+      this.onLevelSelect(payload);
+      this.#updateGoalPreview();
+    };
     this.levelSelection.render(progressSnapshot);
     this.#updateProgressHint(progressSnapshot);
 
@@ -74,6 +127,17 @@ export class HomeScreen {
       });
     });
 
+    this.root.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (!this.nav.current) return;
+      if (target.closest("[data-panel]")) return;
+      if (target.closest("[data-nav]")) return;
+      if (target.closest("[data-play-btn]")) return;
+      this.nav.hideAll();
+      this.polish.closePanels(this.#getPanels(), navButtons);
+    });
+
     this.nav.register("settings", this.root.querySelector("[data-panel='settings']"));
     this.nav.register("themes", this.root.querySelector("[data-panel='themes']"));
     this.nav.register("levels", this.root.querySelector("[data-panel='levels']"));
@@ -92,6 +156,7 @@ export class HomeScreen {
 
     this.bgParticles.start();
     this.ambient.start();
+    this.#updateGoalPreview();
   }
 
   show() {
@@ -114,12 +179,15 @@ export class HomeScreen {
 
   updateProgress(snapshot) {
     if (!this.root) return;
+    this.progressSnapshot = snapshot;
     this.levelSelection.render(snapshot);
     this.#updateProgressHint(snapshot);
+    this.#updateGoalPreview();
   }
 
   setMode(modeId) {
     this.modeSelection.setMode(modeId);
+    this.#updateGoalPreview();
   }
 
   openPanel(panelId) {
@@ -147,5 +215,16 @@ export class HomeScreen {
     if (!hint || !snapshot?.stage) return;
     const stage = snapshot.stage;
     hint.textContent = `Continue: Level ${stage.level} Stage ${stage.stage} - ${snapshot.rank} Rank`;
+  }
+
+  #updateGoalPreview() {
+    const title = this.root?.querySelector("[data-goal-title]");
+    const copy = this.root?.querySelector("[data-goal-copy]");
+    if (!title || !copy) return;
+    const mode = this.modeSelection.getMode();
+    const selection = this.levelSelection.getSelection();
+    const goal = buildModeGoal(mode, selection, this.progressSnapshot);
+    title.textContent = goal.title;
+    copy.textContent = goal.copy;
   }
 }

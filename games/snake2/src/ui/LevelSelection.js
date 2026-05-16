@@ -46,6 +46,13 @@ export class LevelSelection {
     this.#renderStages();
   }
 
+  getSelection() {
+    return {
+      level: this.selected || this.currentLevel || 1,
+      stage: this.selectedStage || this.currentStage || 1
+    };
+  }
+
   #renderStages() {
     if (!this.stageTrack) return;
     const stageButtons = [];

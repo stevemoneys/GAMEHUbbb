@@ -502,6 +502,54 @@ function getOpeningBriefing(modeName) {
   };
 }
 
+async function requestGameplayLandscape() {
+  try {
+    const root = document.documentElement;
+    if (root.requestFullscreen && !document.fullscreenElement) {
+      await root.requestFullscreen();
+    }
+  } catch (_error) {
+    // Fullscreen is best-effort on mobile browsers.
+  }
+
+  try {
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch (_error) {
+    // Orientation lock is not supported on every browser/device combo.
+  }
+}
+
+async function releaseGameplayLandscape() {
+  try {
+    if (screen.orientation?.unlock) {
+      screen.orientation.unlock();
+    }
+  } catch (_error) {
+    // Ignore unsupported unlock attempts.
+  }
+}
+
+function formatLossReason(reason, modeName = selectedMode) {
+  const map = {
+    player_wall: modeName === "survival"
+      ? "You hit the arena boundary."
+      : "You crashed into the wall.",
+    player_self: "You ran into your own body.",
+    player_obstacle: "You hit a hazard.",
+    player_enemy: "You crashed into the rival snake.",
+    ai_wall: "The AI hit the wall. You survived longer.",
+    ai_self: "The AI tangled into itself. You survived longer.",
+    ai_obstacle: "The AI hit a hazard. You survived longer.",
+    ai_enemy: "The AI crashed into you.",
+    head_to_head: "Both heads collided at the same time.",
+    duel_length_clear: "You reached the target length.",
+    collision: "A collision ended the run."
+  };
+  return map[reason] || "A collision ended the run.";
+}
+
 hudSystem = new HUDSystem({
   host: gameShell,
   onPause: () => {
@@ -563,10 +611,14 @@ function onGameOver(payload) {
   const before = runStartStageId;
   const progressSnapshot = progressionManager.getSnapshot();
   const afterStage = progressSnapshot.stage.id;
-  const stageCleared = selectedMode === "duel" && before !== afterStage;
+  const stageCleared = Boolean(
+    (typeof payload === "object" && payload?.stageCleared === true)
+    || (selectedMode === "duel" && before !== afterStage)
+  );
   const score = scoreManager.getScore();
   const best = scoreManager.getHighScore();
   const almost = best > 0 && score > 0 && score >= Math.floor(best * 0.85) && score < best;
+  const lossReasonText = formatLossReason(reason, selectedMode);
 
   if (cosmeticShop) {
     cosmeticShop.recordMatchAndUnlock({
@@ -585,7 +637,7 @@ function onGameOver(payload) {
       ? "Strong win. Push into the next duel stage."
       : almost
         ? "Almost beat your best. One more run."
-        : "Reset fast and keep the streak alive.",
+        : `Reason: ${lossReasonText}`,
     showNextStage: stageCleared
   });
 
@@ -843,10 +895,12 @@ function startGame(modeName = selectedMode) {
   if (homeScreen) homeScreen.hide();
   setPaused(false, false);
   hudSystem.showStageIntro(getOpeningBriefing(selectedMode));
+  requestGameplayLandscape();
 }
 
 function openHome() {
   document.body.classList.remove("game-active");
+  releaseGameplayLandscape();
   if (homeScreen) {
     homeScreen.setMode(selectedMode);
     homeScreen.show();

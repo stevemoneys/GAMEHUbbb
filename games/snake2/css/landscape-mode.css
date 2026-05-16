@@ -10,7 +10,7 @@
 }
 
 body.game-active .app {
-  width: min(100%, 72rem);
+  width: 100vw;
 }
 
 body.game-active .game-shell {
@@ -18,7 +18,7 @@ body.game-active .game-shell {
 }
 
 body.game-active .canvas-wrap {
-  width: min(100%, 50rem);
+  width: 100vw;
 }
 
 @media (orientation: landscape) and (max-height: 760px) {

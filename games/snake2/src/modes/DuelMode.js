@@ -106,7 +106,11 @@ export class DuelMode extends BaseMode {
       });
       this.eventWarning = this.outcome.playerWon ? "STAGE CLEAR" : "AI WINS";
       this.ctx.modeState.warningTimer = 1.8;
-      this.ctx.onGameOver("duel_crash");
+      this.ctx.onGameOver({
+        reason: collisions.reason,
+        playerWon: this.outcome.playerWon,
+        stageCleared: this.outcome.stageResult?.stageCleared === true
+      });
       return;
     }
 
@@ -116,7 +120,11 @@ export class DuelMode extends BaseMode {
       });
       this.eventWarning = "LENGTH TARGET";
       this.ctx.modeState.warningTimer = 1.8;
-      this.ctx.onGameOver("duel_length_clear");
+      this.ctx.onGameOver({
+        reason: "duel_length_clear",
+        playerWon: true,
+        stageCleared: this.outcome.stageResult?.stageCleared === true
+      });
       return;
     }
 

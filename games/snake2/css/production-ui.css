@@ -14,6 +14,12 @@ body {
     linear-gradient(180deg, #040713, #060c1b 42%, #050816 100%);
 }
 
+body.game-active {
+  background:
+    var(--gameplay-bg-image) left top / var(--gameplay-bg-size) repeat,
+    linear-gradient(180deg, #030711, #040816 42%, #03050d 100%);
+}
+
 .home-content {
   width: 100%;
   max-width: var(--home-shell-max-width);
@@ -193,6 +199,11 @@ body {
   margin: 0 auto;
   border-radius: 1.5rem;
   aspect-ratio: 16 / 9;
+}
+
+body.game-active .canvas-wrap {
+  width: 100vw;
+  border-radius: 0;
 }
 
 .touch-controls {

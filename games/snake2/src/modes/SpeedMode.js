@@ -53,7 +53,9 @@ export class SpeedMode extends BaseMode {
     const hit = this.runPlayerCollisionChecks(bounds);
     if (hit.hitWall || hit.hitSelf) {
       if (this.ctx.absorbCollisionIfShielded("player", bounds)) return;
-      this.ctx.onGameOver("speed_crash");
+      this.ctx.onGameOver({
+        reason: hit.hitWall ? "player_wall" : "player_self"
+      });
       return;
     }
 

@@ -46,7 +46,9 @@ export class SurvivalMode extends BaseMode {
     const hit = this.#checkPlayerInArena(arena);
     if (hit.hitWall || hit.hitSelf || hit.hitObstacle) {
       if (this.ctx.absorbCollisionIfShielded("player", arena)) return;
-      this.ctx.onGameOver("survival_crash");
+      this.ctx.onGameOver({
+        reason: hit.hitObstacle ? "player_obstacle" : hit.hitWall ? "player_wall" : "player_self"
+      });
       return;
     }
 
