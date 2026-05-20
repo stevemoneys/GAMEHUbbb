@@ -1,4 +1,4 @@
-import { FoodSpawnSystem } from "./FoodSpawnSystem.js";
+import { FoodSpawnManager } from "./FoodSpawnManager.js";
 import { FoodAnimationSystem } from "./FoodAnimationSystem.js";
 import { Collision } from "../systems/Collision.js";
 
@@ -11,7 +11,7 @@ function distanceSq(a, b) {
 export class FoodManager {
   constructor(config) {
     this.config = config;
-    this.spawnSystem = new FoodSpawnSystem();
+    this.spawnSystem = new FoodSpawnManager();
     this.animationSystem = new FoodAnimationSystem();
     this.items = [];
     this.modeName = "classic";

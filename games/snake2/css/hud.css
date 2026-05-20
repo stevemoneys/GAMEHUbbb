@@ -277,6 +277,15 @@ body.hud-overlay-open .touch-controls {
   box-shadow: 0 0 18px rgba(0, 229, 255, 0.24);
 }
 
+.hud-action-secondary[data-ui-action="next-stage"] {
+  border-color: rgba(255, 184, 77, 0.78);
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 184, 77, 0.22), transparent 42%),
+    linear-gradient(160deg, rgba(74, 40, 10, 0.92), rgba(34, 20, 7, 0.8));
+  color: #fff0cf;
+  box-shadow: 0 0 24px rgba(255, 184, 77, 0.28);
+}
+
 .hud-overlay-gameover .hud-action-primary {
   border-color: rgba(255, 184, 77, 0.62);
   box-shadow: 0 0 20px rgba(255, 184, 77, 0.3);

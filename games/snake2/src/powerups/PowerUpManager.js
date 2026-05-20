@@ -2,6 +2,15 @@ import { StatusEffectSystem } from "./StatusEffectSystem.js";
 import { BuffManager } from "./BuffManager.js";
 import { FoodPhysics } from "../food/FoodPhysics.js";
 
+function mergeSnakeModifiers(base = {}, extra = {}) {
+  return {
+    speedMultiplier: (base.speedMultiplier ?? 1) * (extra.speedMultiplier ?? 1),
+    accelerationMultiplier: (base.accelerationMultiplier ?? 1) * (extra.accelerationMultiplier ?? 1),
+    turnRateMultiplier: (base.turnRateMultiplier ?? 1) * (extra.turnRateMultiplier ?? 1),
+    growthMultiplier: (base.growthMultiplier ?? 1) * (extra.growthMultiplier ?? 1)
+  };
+}
+
 export class PowerUpManager {
   constructor(config) {
     this.config = config;
@@ -56,9 +65,15 @@ export class PowerUpManager {
       massRatio: context.aiSnake?.getSegmentCount?.() ? Math.max(0, (context.aiSnake.getSegmentCount() - context.config.snake.initialLength) / 28) : 0
     });
 
+    const envPlayer = context.environmentModifiers?.player?.snake || {};
+    const envAI = context.environmentModifiers?.ai?.snake || {};
+    this.runtime.player.snake = mergeSnakeModifiers(this.runtime.player.snake, envPlayer);
+    this.runtime.ai.snake = mergeSnakeModifiers(this.runtime.ai.snake, envAI);
+
     context.playerSnake?.setRuntimeModifiers(this.runtime.player.snake);
     context.aiSnake?.setRuntimeModifiers(this.runtime.ai.snake);
-    context.scoreManager?.setMultiplier(this.runtime.player.scoreMultiplier);
+    const scoreMultiplier = this.runtime.player.scoreMultiplier * (context.environmentModifiers?.player?.scoreMultiplier || 1);
+    context.scoreManager?.setMultiplier(scoreMultiplier);
 
     if (this.runtime.player.magnetRadius > 0 && context.foodSystem && context.playerSnake) {
       FoodPhysics.applyMagnetPull(

@@ -151,8 +151,17 @@ function applyThemeVisuals(visuals, config) {
   config.render.hudTextColor = visuals.hudText;
   config.render.gridMinorAlpha = visuals.gridMinor;
   config.render.gridMajorAlpha = visuals.gridMajor;
-
-  currentThemeVisuals = visuals;
+  currentThemeVisuals = {
+    ...visuals,
+    fogColors: [
+      "0, 229, 255",
+      "139, 92, 246",
+      "255, 77, 202"
+    ],
+    riverColorA: "rgba(0, 229, 255, 0.12)",
+    riverColorB: "rgba(139, 92, 246, 0.08)",
+    terrainTraceColor: "rgba(0, 229, 255, 0.12)"
+  };
 
   document.documentElement.setAttribute("data-theme", visuals.id || "neon_velocity");
   document.documentElement.style.setProperty("--active-theme-accent", visuals.uiAccent || "#00e5ff");
@@ -220,6 +229,8 @@ let isPaused = false;
 let lowPowerMode = false;
 let visibilityLowPower = false;
 let hudSystem = null;
+let currentWorldHeat = 0;
+let lastWorldEventType = "";
 
 function applyRuntimeQualityMode(mode, source = "manual") {
   const normalized = applyQualityProfile(runtimeConfig, mode);
@@ -309,21 +320,59 @@ function spawnFoodSafe(extraBodies = []) {
     occupiedPoints: collectForbiddenPoints(extraBodies),
     playerHead: playerSnake.getHead(),
     aiHead: selectedMode === "duel" ? aiSnake.getHead() : null,
-    score: scoreManager.getScore()
+    score: scoreManager.getScore(),
+    worldEvent: worldRenderer.getWorldEvent()
   });
+}
+
+function computeWorldHeat() {
+  const scoreHeat = Math.min(1, scoreManager.getScore() / 80);
+  const comboHeat = Math.min(1, scoreManager.getCombo() / 8);
+  const speedHeat = Math.min(1, playerSnake.getCurrentSpeedPxPerSecond() / 380);
+  const duelHeat = selectedMode === "duel" ? 0.12 : 0;
+  return Math.max(0, Math.min(1, (scoreHeat * 0.34) + (comboHeat * 0.36) + (speedHeat * 0.2) + duelHeat));
+}
+
+function buildEnvironmentModifiers(activeEvent) {
+  if (!activeEvent?.gameplay) return null;
+
+  const playerSnakeModifiers = activeEvent.gameplay.player || {};
+  const aiSnakeModifiers = activeEvent.gameplay.ai || {};
+
+  return {
+    player: {
+      snake: {
+        speedMultiplier: playerSnakeModifiers.speedMultiplier ?? 1,
+        accelerationMultiplier: playerSnakeModifiers.accelerationMultiplier ?? 1,
+        turnRateMultiplier: playerSnakeModifiers.turnRateMultiplier ?? 1,
+        growthMultiplier: playerSnakeModifiers.growthMultiplier ?? 1
+      },
+      scoreMultiplier: activeEvent.gameplay.playerScoreMultiplier ?? 1
+    },
+    ai: {
+      snake: {
+        speedMultiplier: aiSnakeModifiers.speedMultiplier ?? 1,
+        accelerationMultiplier: aiSnakeModifiers.accelerationMultiplier ?? 1,
+        turnRateMultiplier: aiSnakeModifiers.turnRateMultiplier ?? 1,
+        growthMultiplier: aiSnakeModifiers.growthMultiplier ?? 1
+      }
+    }
+  };
 }
 
 function updateVisualFeedback(dt) {
   particleSystem.update(dt);
   screenShake.update(dt);
   modifierSystem.update(dt);
+  const activeWorldEvent = worldRenderer.getWorldEvent();
   powerUpManager.update(dt, {
     config: runtimeConfig,
     time: gameState.time,
     foodSystem,
     playerSnake,
     aiSnake,
-    scoreManager
+    scoreManager,
+    environmentModifiers: buildEnvironmentModifiers(activeWorldEvent)
   });
   foodSystem.update(dt, {
     modeName: selectedMode,
@@ -331,10 +380,22 @@ function updateVisualFeedback(dt) {
     occupiedPoints: collectForbiddenPoints(selectedMode === "duel" ? [aiSnake.getSegments()] : []),
     playerHead: playerSnake.getHead(),
     aiHead: selectedMode === "duel" ? aiSnake.getHead() : null,
-    score: scoreManager.getScore()
+    score: scoreManager.getScore(),
+    worldEvent: worldRenderer.getWorldEvent()
   });
   foodImpactFlash = Math.max(0, foodImpactFlash - (runtimeConfig.render.flashDecayPerSecond * dt));
   modeState.warningTimer = Math.max(0, modeState.warningTimer - dt);
+  currentWorldHeat = computeWorldHeat();
+
+  const worldEventType = activeWorldEvent?.type || "";
+  if (worldEventType !== lastWorldEventType) {
+    if (worldEventType) {
+      hudSystem?.notify(activeWorldEvent.title || "World Event", "info", 1500);
+      modeState.warningTimer = Math.max(modeState.warningTimer, 1);
+      screenShake.addImpulse(0.45);
+    }
+    lastWorldEventType = worldEventType;
+  }
 }
 
 function emitFoodFeedback(x, y, byAI) {
@@ -366,6 +427,7 @@ function resetSharedState() {
   particleSystem.clear();
   foodImpactFlash = 0;
   modeState.warningTimer = 0;
+  lastWorldEventType = "";
   renderer.setCameraShake(0, 0);
   if (input) input.clearBuffer();
 }
@@ -447,7 +509,9 @@ function updateCamera(dt) {
     direction: playerSnake.getCurrentDirectionVector(),
     speedPxPerSec: playerSnake.getCurrentSpeedPxPerSecond(),
     snakeLength: playerSnake.getSegmentCount(),
-    shake: screenShake.getOffset()
+    shake: screenShake.getOffset(),
+    timeSec: gameState.time,
+    heat: currentWorldHeat
   });
 }
 
@@ -801,7 +865,14 @@ const engine = new GameEngine({
     const visibleFoods = worldRenderer.getVisibleFoods(foodSystem.getItems(), cameraState);
 
     renderer.clear(gameState.time);
-    worldRenderer.drawAtmosphere(cameraState, gameState.time, lowPowerMode);
+    worldRenderer.drawAtmosphere(cameraState, gameState.time, lowPowerMode, {
+      dt: engine.fixedStep,
+      modeName: selectedMode,
+      heat: currentWorldHeat,
+      playerHead: playerSnake.getHead(),
+      aiHead: selectedMode === "duel" ? aiSnake.getHead() : null,
+      theme: currentThemeVisuals
+    });
     renderer.drawModeTheme(currentRenderState.visualProfile);
     renderer.drawGrid(runtimeConfig.world.cellSize);
     if (Number.isFinite(currentRenderState.arenaPadding)) {

@@ -45,13 +45,23 @@ export class LevelSelection {
       this.modeLabel.textContent = `${this.currentMode.charAt(0).toUpperCase()}${this.currentMode.slice(1)} Levels`;
     }
     const nodes = [];
+    const nextUnlockedLevel = Math.min(maxLevels, this.currentLevel + 1);
     for (let i = 1; i <= maxLevels; i += 1) {
       const unlocked = i <= unlockedLevel;
       const active = i === this.selected;
+      const completed = i < current.level;
+      const nextUp = i === current.level && this.selectedStage === this.currentStage;
+      const statusLabel = active
+        ? "Selected"
+        : completed
+          ? "Cleared"
+          : unlocked
+            ? nextUp ? "Current" : "Open"
+            : i === nextUnlockedLevel ? "Next" : "Locked";
       nodes.push(`
-        <button class="level-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""}" data-level="${i}" type="button" ${unlocked ? "" : "disabled"}>
+        <button class="level-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""} ${completed ? "completed" : ""}" data-level="${i}" type="button" ${unlocked ? "" : "disabled"}>
           <span class="level-node-label">L${i}</span>
-          <span class="level-node-stars">${active ? "*" : unlocked ? "." : "x"}</span>
+          <span class="level-node-stars">${statusLabel}</span>
         </button>
       `);
     }
@@ -86,9 +96,19 @@ export class LevelSelection {
     for (let stage = 1; stage <= this.stagesPerLevel; stage += 1) {
       const unlocked = stage <= unlockedStageInCurrentLevel;
       const active = stage === this.selectedStage;
+      const completed = selectedLevel < this.currentLevel || (selectedLevel === this.currentLevel && stage < this.currentStage);
+      const nextUp = selectedLevel === this.currentLevel && stage === this.currentStage;
+      const statusLabel = active
+        ? "Selected"
+        : completed
+          ? "Cleared"
+          : unlocked
+            ? nextUp ? "Current" : "Open"
+            : stage === unlockedStageInCurrentLevel + 1 ? "Next" : "Locked";
       stageButtons.push(`
-        <button class="stage-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""}" data-stage="${stage}" type="button" ${unlocked ? "" : "disabled"}>
-          Stage ${stage}
+        <button class="stage-node ${unlocked ? "unlocked" : "locked"} ${active ? "active" : ""} ${completed ? "completed" : ""} ${!unlocked && statusLabel === "Next" ? "up-next" : ""}" data-stage="${stage}" type="button" ${unlocked ? "" : "disabled"}>
+          <span class="stage-node-label">Stage ${stage}</span>
+          <span class="stage-node-status">${statusLabel}</span>
         </button>
       `);
     }

@@ -1,5 +1,6 @@
 import { CameraSmoothing } from "./CameraSmoothing.js";
 import { CameraEffects } from "./CameraEffects.js";
+import { CinematicCameraEffects } from "./CinematicCameraEffects.js";
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -10,6 +11,7 @@ export class CameraSystem {
     this.config = config;
     this.worldManager = worldManager;
     this.effects = new CameraEffects(config);
+    this.cinematic = new CinematicCameraEffects();
     this.baseViewWidth = config.render.worldWidth;
     this.baseViewHeight = config.render.worldHeight;
     this.viewportWidth = this.baseViewWidth;
@@ -53,16 +55,20 @@ export class CameraSystem {
     const direction = snapshot.direction || { x: 1, y: 0 };
     const speedPxPerSec = Number.isFinite(snapshot.speedPxPerSec) ? snapshot.speedPxPerSec : 0;
     const snakeLength = Number.isFinite(snapshot.snakeLength) ? snapshot.snakeLength : 12;
+    const timeSec = Number.isFinite(snapshot.timeSec) ? snapshot.timeSec : 0;
+    const heat = Number.isFinite(snapshot.heat) ? snapshot.heat : 0;
     const lookAhead = this.effects.getLookAhead(direction, speedPxPerSec);
     const desiredZoom = this.effects.getTargetZoom(speedPxPerSec, snakeLength);
     const externalShake = snapshot.shake || { x: 0, y: 0 };
+    const breathing = this.cinematic.getBreathingOffset(timeSec, speedPxPerSec, heat);
+    const driftZoom = this.cinematic.getDriftZoom(timeSec, heat);
 
-    const nextZoom = CameraSmoothing.damp(this.current.zoom, desiredZoom, 4.8, dt);
+    const nextZoom = CameraSmoothing.damp(this.current.zoom, desiredZoom * driftZoom, 4.8, dt);
     const halfViewWidth = (this.baseViewWidth / nextZoom) * 0.5;
     const halfViewHeight = (this.baseViewHeight / nextZoom) * 0.5;
     const clamped = this.worldManager.bounds.clampCamera(
-      targetX + lookAhead.x,
-      targetY + lookAhead.y,
+      targetX + lookAhead.x + breathing.x,
+      targetY + lookAhead.y + breathing.y,
       halfViewWidth,
       halfViewHeight
     );

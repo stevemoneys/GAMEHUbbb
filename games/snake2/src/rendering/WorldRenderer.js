@@ -1,16 +1,40 @@
 import { BackgroundRenderer } from "./BackgroundRenderer.js";
 import { LayerRenderer } from "./LayerRenderer.js";
+import { AmbientWorldManager } from "../world/AmbientWorldManager.js";
+import { AtmosphericRenderer } from "../world/AtmosphericRenderer.js";
 
 export class WorldRenderer {
   constructor(renderer, worldManager) {
     this.renderer = renderer;
     this.worldManager = worldManager;
     this.background = new BackgroundRenderer(worldManager);
+    this.ambient = new AmbientWorldManager();
+    this.atmosphere = new AtmosphericRenderer(this.ambient);
   }
 
-  drawAtmosphere(cameraState, timeSec, lowPowerMode = false) {
+  drawAtmosphere(cameraState, timeSec, lowPowerMode = false, options = {}) {
+    const bounds = this.worldManager.getBounds();
+    const dt = Number.isFinite(options.dt) ? options.dt : (1 / 60);
+    this.ambient.update(dt, bounds, {
+      modeName: options.modeName || "classic",
+      timeSec,
+      heat: options.heat || 0,
+      playerHead: options.playerHead || null,
+      aiHead: options.aiHead || null,
+      theme: options.theme || null
+    });
+
     this.background.draw(this.renderer, cameraState, timeSec, lowPowerMode);
+    this.atmosphere.draw(this.renderer, bounds, cameraState, timeSec, {
+      lowPowerMode,
+      heat: options.heat || 0,
+      theme: options.theme || null
+    });
     this.drawSoftBounds();
+  }
+
+  getWorldEvent() {
+    return this.ambient.getActiveEvent();
   }
 
   drawSoftBounds() {
