@@ -1,0 +1,67 @@
+.app {
+  width: min(100%, 460px);
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: calc(10px + env(safe-area-inset-top)) 12px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 6px 0;
+}
+
+/* Action icons row */
+.action-icons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 2px 8px;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 14px 8px 10px;
+}
+
+/* Game modes */
+.game-modes {
+  padding: 2px 2px 0;
+  margin-top: auto;
+}
+
+.section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #bfdbfe;
+  margin-bottom: 12px;
+  padding-left: 6px;
+}
+
+@media (min-width: 720px) {
+  .app {
+    padding: 16px 18px 34px;
+    gap: 18px;
+  }
+
+  .topbar {
+    padding: 2px 4px 0;
+  }
+
+  .hero {
+    padding: 20px 14px 16px;
+  }
+
+  .action-icons {
+    gap: 12px;
+    padding: 8px 4px 12px;
+  }
+}

@@ -1,0 +1,68 @@
+:root {
+  --landscape-shell-width: min(96vw, 72rem);
+  --landscape-canvas-width: min(94vw, 60rem);
+  --landscape-controls-width: min(92vw, 24rem);
+}
+
+.canvas-wrap,
+#gameCanvas {
+  touch-action: none;
+}
+
+body.game-active .app {
+  width: 100vw;
+  height: 100dvh;
+}
+
+body.game-active .game-shell {
+  justify-items: stretch;
+  align-items: stretch;
+}
+
+body.game-active .canvas-wrap {
+  width: 100vw;
+  height: 100dvh;
+}
+
+@media (orientation: landscape) and (max-height: 760px) {
+  body.game-active {
+    overflow: hidden;
+  }
+
+  body.game-active .app {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    justify-content: stretch;
+    gap: 0;
+  }
+
+  body.game-active .game-shell {
+    align-items: stretch;
+  }
+
+  body.game-active .canvas-wrap {
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  body.game-active .touch-controls {
+    display: none;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  body.game-active .canvas-wrap {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+  }
+
+  body.game-active .touch-controls {
+    display: none;
+  }
+}

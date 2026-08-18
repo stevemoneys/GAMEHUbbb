@@ -1,0 +1,1 @@
+export { ThemeManager } from "../../src/themes/ThemeManager.js";

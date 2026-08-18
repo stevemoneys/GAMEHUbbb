@@ -1,0 +1,12 @@
+:root {
+  --powerup-speed: #ffd55b;
+  --powerup-shield: #7bd6ff;
+  --powerup-magnet: #b786ff;
+  --powerup-frenzy: #ff8d53;
+  --powerup-freeze: #a7f1ff;
+}
+
+.hud-notification-power {
+  border-color: rgba(178, 144, 255, 0.5);
+  box-shadow: 0 0 24px rgba(178, 144, 255, 0.18);
+}

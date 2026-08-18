@@ -1,0 +1,1 @@
+export { PerformanceManager } from "../../src/performance/PerformanceManager.js";

@@ -1,0 +1,630 @@
+import { getPuzzleTypeForLevel, getPuzzleTypeMeta, getPuzzleZone } from "./puzzleTypes.js";
+
+const ROWS = 8;
+const COLS = 5;
+const BLOCKER = -1;
+
+function row(values = []) {
+  const next = values.slice(0, COLS);
+  while (next.length < COLS) {
+    next.push(0);
+  }
+  return next;
+}
+
+function boardFromRows(rows) {
+  const output = rows.slice(0, ROWS).map((entry) => row(entry));
+  while (output.length < ROWS) {
+    output.push(row());
+  }
+  return output;
+}
+
+function lockedTile(rowIndex, colIndex, turns = 3) {
+  return { row: rowIndex, col: colIndex, turns };
+}
+
+function normalizePositivePower(value, fallback = 2) {
+  const numeric = Math.max(0, Math.round(Number(value) || 0));
+  return numeric >= 2 ? numeric : fallback;
+}
+
+function getZoneAnchor(level, drift = 0) {
+  const zone = getPuzzleZone(level);
+  const zoneOffset = Math.max(0, level - zone.range[0] + drift);
+  const step = Math.min(2, Math.floor(zoneOffset / 6));
+  const base =
+    zone.id === "foundation" ? 16 :
+    zone.id === "strategy" ? 32 :
+    zone.id === "advanced" ? 64 :
+    zone.id === "expert" ? 128 :
+    256;
+
+  return base * 2 ** step;
+}
+
+function getZoneMoveLimit(zoneId, type, zoneOffset) {
+  const base =
+    zoneId === "foundation" ? 5 :
+    zoneId === "strategy" ? 4 :
+    zoneId === "advanced" ? 4 :
+    zoneId === "expert" ? 3 :
+    3;
+
+  const typeAdjust =
+    type === "escape" ? 1 :
+    type === "limited" || type === "trick" ? -1 :
+    0;
+
+  const tighten = Math.floor(Math.max(0, zoneOffset) / 5);
+  return Math.max(3, base + typeAdjust - tighten);
+}
+
+const EXAMPLE_LEVELS = Object.freeze([
+  {
+    level: 1,
+    name: "Warm Welcome",
+    type: "merge",
+    moveLimit: 6,
+    optimalMoves: 5,
+    board: boardFromRows([
+      [16, 0, 16, 0, 0],
+      [32, 0, 0, 32, 0],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
+    ]),
+    ammoQueue: [16, 32, 16, 32, 64, 32, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 256, text: "Build carefully and reach 256" },
+    aiDifficulty: "balanced",
+    feedbackBias: "positive",
+    hintThreshold: 4
+  },
+  {
+    level: 2,
+    name: "Soft Pair",
+    type: "merge",
+    moveLimit: 6,
+    optimalMoves: 5,
+    board: boardFromRows([
+      [0, 16, 0, 16, 0],
+      [0, 32, 0, 32, 0],
+      [0, 0, 64, 0, 0],
+      [0, 16, 0, 16, 0]
+    ]),
+    ammoQueue: [16, 32, 32, 16, 64, 32, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 256, text: "Create a 256 through clean sequencing" },
+    aiDifficulty: "balanced",
+    feedbackBias: "positive",
+    hintThreshold: 4
+  },
+  {
+    level: 3,
+    name: "Center Lane",
+    type: "positioning",
+    moveLimit: 5,
+    optimalMoves: 5,
+    board: boardFromRows([
+      [16, 0, 32, 0, 16],
+      [16, 0, 32, 0, 16],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
+    ]),
+    ammoQueue: [32, 16, 32, 64, 32, 16, 64],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Open the middle and reach 512" },
+    aiDifficulty: "balanced",
+    feedbackBias: "coach",
+    hintThreshold: 4
+  },
+  {
+    level: 4,
+    name: "Careful Steps",
+    type: "limited",
+    moveLimit: 5,
+    optimalMoves: 4,
+    board: boardFromRows([
+      [16, 32, 0, 32, 16],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0],
+      [0, 16, 0, 16, 0]
+    ]),
+    ammoQueue: [32, 64, 32, 64, 16, 32],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Solve it in only 5 moves" },
+    aiDifficulty: "balanced",
+    feedbackBias: "coach",
+    hintThreshold: 3
+  },
+  {
+    level: 5,
+    name: "Little Cascade",
+    type: "chain",
+    moveLimit: 5,
+    optimalMoves: 4,
+    board: boardFromRows([
+      [16, 16, 32, 0, 0],
+      [32, 32, 64, 0, 0],
+      [0, 0, 64, 0, 0],
+      [0, 32, 0, 32, 0]
+    ]),
+    ammoQueue: [16, 32, 64, 32, 64, 16, 128],
+    fallbackAmmo: 16,
+    goal: { kind: "score", target: 768, text: "Trigger a deep chain and score 768" },
+    aiDifficulty: "balanced",
+    feedbackBias: "celebrate",
+    hintThreshold: 4
+  },
+  {
+    level: 6,
+    name: "Clean Stack",
+    type: "merge",
+    moveLimit: 5,
+    optimalMoves: 5,
+    board: boardFromRows([
+      [0, 16, 0, 16, 0],
+      [0, 32, 0, 32, 0],
+      [0, 64, 0, 64, 0],
+      [0, 0, 128, 0, 0]
+    ]),
+    ammoQueue: [16, 32, 64, 64, 32, 16, 128],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 512, text: "Stack deeply and reach 512" },
+    aiDifficulty: "balanced",
+    feedbackBias: "positive",
+    hintThreshold: 4
+  },
+  {
+    level: 7,
+    name: "Combo Door",
+    type: "combo",
+    moveLimit: 5,
+    optimalMoves: 4,
+    board: boardFromRows([
+      [16, 16, 32, 32, 0],
+      [64, 0, 64, 0, 0],
+      [0, 0, 128, 0, 0]
+    ]),
+    ammoQueue: [32, 64, 32, 64, 128, 32, 64],
+    fallbackAmmo: 32,
+    goal: { kind: "score", target: 1024, text: "Chain your moves into a premium combo finish" },
+    aiDifficulty: "balanced",
+    feedbackBias: "celebrate",
+    hintThreshold: 4
+  },
+  {
+    level: 8,
+    name: "Quiet Crossroads",
+    type: "positioning",
+    moveLimit: 5,
+    optimalMoves: 5,
+    board: boardFromRows([
+      [16, 0, 16, 0, 16],
+      [32, 0, 32, 0, 32],
+      [64, 0, 0, 0, 64],
+      [0, 64, 0, 64, 0]
+    ]),
+    ammoQueue: [32, 64, 64, 32, 128, 64, 32],
+    fallbackAmmo: 32,
+    goal: { kind: "tile", target: 1024, text: "Choose the right lane and build 1024" },
+    aiDifficulty: "sharp",
+    feedbackBias: "coach",
+    hintThreshold: 4
+  },
+  {
+    level: 9,
+    name: "Short Fuse",
+    type: "limited",
+    moveLimit: 4,
+    optimalMoves: 4,
+    board: boardFromRows([
+      [32, 16, 32, 16, 32],
+      [0, 64, 0, 64, 0],
+      [0, 0, 128, 0, 0],
+      [0, 32, 0, 32, 0]
+    ]),
+    ammoQueue: [32, 64, 128, 32, 64, 16],
+    fallbackAmmo: 16,
+    goal: { kind: "tile", target: 1024, text: "Perfect lines only. You have 4 moves." },
+    aiDifficulty: "sharp",
+    feedbackBias: "coach",
+    hintThreshold: 3
+  },
+  {
+    level: 10,
+    name: "Combo Showcase",
+    type: "combo",
+    moveLimit: 5,
+    optimalMoves: 4,
+    board: boardFromRows([
+      [16, 16, 32, 32, 64],
+      [32, 32, 64, 64, 0],
+      [0, 0, 128, 0, 0],
+      [0, 64, 0, 64, 0]
+    ]),
+    ammoQueue: [32, 64, 128, 64, 32, 128, 64],
+    fallbackAmmo: 32,
+    goal: { kind: "score", target: 1536, text: "Special Level: unleash a big combo" },
+    aiDifficulty: "sharp",
+    feedbackBias: "celebrate",
+    hintThreshold: 4,
+    specialTag: "Special Level"
+  }
+]);
+
+function createBaseConfig(level) {
+  const zone = getPuzzleZone(level);
+  const type = getPuzzleTypeForLevel(level);
+  const typeMeta = getPuzzleTypeMeta(type);
+  const zoneOffset = level - zone.range[0];
+  const anchor = getZoneAnchor(level);
+  const moveLimit = getZoneMoveLimit(zone.id, type, zoneOffset);
+  const optimalMoves = Math.max(2, moveLimit - 1);
+  const tileTarget = Math.min(65536, Math.max(512, anchor * 16));
+  const scoreTarget = Math.max(1024, tileTarget * 2 + level * 32);
+  const side = Math.max(2, anchor / 2);
+
+  return {
+    level,
+    zoneId: zone.id,
+    zoneName: zone.name,
+    zoneMood: zone.mood,
+    type,
+    typeLabel: typeMeta.label,
+    name: `${zone.name} ${typeMeta.label} ${zoneOffset + 1}`,
+    board: boardFromRows([]),
+    ammoQueue: [side, anchor, side, anchor, anchor * 2, side],
+    fallbackAmmo: anchor,
+    moveLimit,
+    optimalMoves,
+    aiDifficulty: level <= 20 ? "balanced" : level <= 60 ? "sharp" : "sharp",
+    feedbackBias: type === "combo" || type === "chain" ? "celebrate" : "coach",
+    hintThreshold: level <= 20 ? 4 : level <= 60 ? 5 : 6,
+    goal: {
+      kind: type === "combo" ? "score" : "tile",
+      target: type === "combo" ? scoreTarget : tileTarget,
+      text: type === "combo" ? `Score ${scoreTarget}` : `Reach tile ${tileTarget}`
+    },
+    specialRule: null,
+    restrictedColumns: [],
+    lockedTiles: [],
+    specialTag: ""
+  };
+}
+
+function createMergeBoard(level, intensity) {
+  const base = getZoneAnchor(level);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [side, 0, side, 0, 0],
+      [base, 0, base, 0, 0],
+      [0, 0, base * 2, 0, 0],
+      intensity >= 1 ? [0, side, 0, side, 0] : []
+    ]),
+    ammoQueue: [side, base, side, base, base * 2, side]
+  };
+}
+
+function createChainBoard(level, intensity) {
+  const base = getZoneAnchor(level);
+  return {
+    board: boardFromRows([
+      [base, base, base * 2, 0, 0],
+      [base * 2, base * 2, base * 4, 0, 0],
+      [0, 0, base * 4, 0, 0],
+      intensity >= 1 ? [0, base, 0, base, 0] : []
+    ]),
+    ammoQueue: [base, base * 2, base * 4, base, base * 2, base * 4, base * 8]
+  };
+}
+
+function createPositioningBoard(level, intensity) {
+  const base = getZoneAnchor(level, 1);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [side, 0, base, 0, side],
+      [side, 0, base, 0, side],
+      [base, 0, base * 2, 0, base],
+      intensity >= 1 ? [0, base, 0, base, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
+    ]),
+    ammoQueue: [base, side, base, base * 2, side, base],
+    restrictedColumns: intensity >= 1 ? [level % COLS] : []
+  };
+}
+
+function createEscapeBoard(level, intensity) {
+  const base = getZoneAnchor(level, 1);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [side, base, side, base, side],
+      [base, side, base * 2, side, base],
+      [side, base * 2, 0, base, side],
+      [base, side, base, base * 2, side],
+      [side, base, intensity >= 1 ? BLOCKER : 0, side, base],
+      intensity >= 2 ? [0, side, 0, side, 0] : []
+    ]),
+    ammoQueue: [side, base, side, base * 2, base, side],
+    goal: { kind: "survive", target: 1, text: "Stay alive and open the board" }
+  };
+}
+
+function createTrickBoard(level, intensity) {
+  const base = getZoneAnchor(level, 1);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [base, side, base, side, base],
+      [side, side * 2, base * 2, side * 2, side],
+      [0, 0, base * 2, 0, 0],
+      intensity >= 1 ? [0, BLOCKER, 0, BLOCKER, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
+    ]),
+    ammoQueue: [side * 2, base, side, base * 2, side * 2, base],
+    restrictedColumns: intensity >= 1 ? [0, 4] : []
+  };
+}
+
+function createLimitedBoard(level, intensity) {
+  const base = getZoneAnchor(level, 1);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [side * 2, side, side * 2, side, side * 2],
+      [0, base, 0, base, 0],
+      [0, 0, base * 2, 0, 0],
+      intensity >= 1 ? [0, side, 0, side, 0] : [],
+      intensity >= 2 ? [0, 0, side, 0, 0] : []
+    ]),
+    ammoQueue: [side * 2, base, base * 2, side * 2, base]
+  };
+}
+
+function createComboBoard(level, intensity) {
+  const base = getZoneAnchor(level, 1);
+  const side = Math.max(2, base / 2);
+  return {
+    board: boardFromRows([
+      [side, side, base, base, base],
+      [base, base, base * 2, base * 2, 0],
+      [0, 0, base * 4, 0, 0],
+      intensity >= 1 ? [0, side, 0, side, 0] : [],
+      intensity >= 2 ? [0, 0, base, 0, 0] : []
+    ]),
+    ammoQueue: [side, base, base * 2, base, side, base * 4]
+  };
+}
+
+function applySpecialLevelAdjustments(config) {
+  const specialIndex = config.level / 10;
+  if (!Number.isInteger(specialIndex)) {
+    return config;
+  }
+
+  const labels = {
+    1: "Special Level: Combo Trial",
+    2: "Special Level: Survival Room",
+    3: "Special Level: Perfect Move",
+    4: "Special Level: Chain Lab",
+    5: "Special Level: Locked Vault",
+    6: "Special Level: Escape Pulse",
+    7: "Special Level: Lane Logic",
+    8: "Special Level: Expert Cascade",
+    9: "Special Level: Gravity Shift",
+    10: "Special Level: Elite Finale"
+  };
+
+  config.specialTag = "Special Level";
+  config.name = labels[specialIndex] || config.name;
+
+  if (specialIndex === 2 || specialIndex === 6) {
+    config.type = "escape";
+    config.typeLabel = "Escape Puzzle";
+    config.goal = { kind: "survive", target: 1, text: "Open space before the board locks" };
+  }
+
+  if (specialIndex === 3 || specialIndex === 7) {
+    config.moveLimit = Math.max(3, config.moveLimit - 1);
+    config.optimalMoves = config.moveLimit;
+    config.goal.text = `Perfect room: solve in ${config.moveLimit} moves`;
+  }
+
+  if (specialIndex === 5) {
+    config.lockedTiles = [lockedTile(0, 2), lockedTile(1, 2), lockedTile(2, 2)];
+    config.goal.text = "Unlock the center flow and finish the board";
+  }
+
+  if (specialIndex === 9 || specialIndex === 10) {
+    config.specialRule = "gravity-shift";
+    config.type = "gravity";
+    config.typeLabel = "Gravity Shift";
+    config.goal.text = "Solve it while gravity keeps shifting";
+  }
+
+  return config;
+}
+
+function buildGeneratedLevel(level) {
+  const config = createBaseConfig(level);
+  const intensity = Math.max(0, Math.floor((level - 1) / 8));
+  let template;
+
+  switch (config.type) {
+    case "chain":
+      template = createChainBoard(level, intensity);
+      break;
+    case "positioning":
+      template = createPositioningBoard(level, intensity);
+      break;
+    case "escape":
+      template = createEscapeBoard(level, intensity);
+      break;
+    case "trick":
+      template = createTrickBoard(level, intensity);
+      break;
+    case "limited":
+      template = createLimitedBoard(level, intensity);
+      break;
+    case "combo":
+      template = createComboBoard(level, intensity);
+      break;
+    default:
+      template = createMergeBoard(level, intensity);
+      break;
+  }
+
+  config.board = template.board;
+  config.ammoQueue = template.ammoQueue;
+  config.restrictedColumns = template.restrictedColumns || [];
+  if (template.goal) {
+    config.goal = template.goal;
+  }
+
+  if (config.level >= 18 && config.type !== "escape") {
+    const lane = (config.level + 1) % COLS;
+    if (config.board[3][lane] === 0) {
+      config.board[3][lane] = Math.max(2, getZoneAnchor(level) / 2);
+    }
+  }
+
+  if (config.level >= 8 && config.type !== "escape" && config.board[4][2] === 0) {
+    config.board[4][2] = Math.max(2, getZoneAnchor(level));
+  }
+
+  if (config.level >= 12 && config.type !== "escape" && config.board[4][2] === 0) {
+    config.board[4][2] = Math.max(2, getZoneAnchor(level) / 2);
+  }
+
+  if (config.level >= 12 && config.type !== "escape" && config.board[2][1] === 0) {
+    config.board[2][1] = BLOCKER;
+  }
+
+  if (config.level >= 20 && (config.type === "limited" || config.type === "trick")) {
+    config.moveLimit = Math.max(3, config.moveLimit - 1);
+    config.optimalMoves = Math.max(2, config.moveLimit - 1);
+  }
+
+  if (config.level >= 24 && config.type !== "escape") {
+    config.lockedTiles = config.lockedTiles.concat([lockedTile(1, (config.level + 3) % COLS, 4)]);
+  }
+
+  if (config.level >= 44) {
+    const anchorColumn = config.level % COLS;
+    config.lockedTiles = config.lockedTiles.concat([lockedTile(0, anchorColumn)]);
+  }
+
+  if (config.level >= 32 && (config.type === "positioning" || config.type === "escape")) {
+    config.restrictedColumns = Array.from(new Set(config.restrictedColumns.concat([(config.level + 2) % COLS])));
+  }
+
+  if (config.level >= 64 && config.type !== "escape" && config.board[4][2] === 0) {
+    config.board[4][2] = BLOCKER;
+  }
+
+  if (config.level >= 72 && config.type !== "escape" && config.board[5][1] === 0) {
+    config.board[5][1] = BLOCKER;
+  }
+
+  if (config.level >= 81 && config.type !== "escape") {
+    config.board[1][0] = BLOCKER;
+    config.board[2][4] = BLOCKER;
+  }
+
+  return applySpecialLevelAdjustments(config);
+}
+
+function normalizeGoal(config, fallbackTarget) {
+  const kind = config.goal?.kind || (config.type === "combo" ? "score" : "tile");
+  const target =
+    kind === "survive"
+      ? 1
+      : Math.max(1, Math.round(Number(config.goal?.target || fallbackTarget || 1)));
+  const text =
+    config.goal?.text ||
+    (kind === "score"
+      ? `Score ${target}`
+      : kind === "survive"
+        ? "Open space before the board locks"
+        : kind === "clear"
+          ? "Clear the marked blockers"
+          : `Reach tile ${target}`);
+
+  return {
+    kind,
+    target,
+    text
+  };
+}
+
+function normalizePuzzleConfig(config) {
+  const safeLevel = Math.max(1, Math.min(100, Number(config?.level) || 1));
+  const zone = getPuzzleZone(safeLevel);
+  const type = config?.type || getPuzzleTypeForLevel(safeLevel);
+  const typeMeta = getPuzzleTypeMeta(type);
+  const fallbackTarget =
+    type === "combo"
+      ? Math.max(512, getZoneAnchor(safeLevel) * 8)
+      : Math.max(256, getZoneAnchor(safeLevel) * 8);
+  const ammoQueue = Array.isArray(config?.ammoQueue)
+    ? config.ammoQueue
+        .map((value) => normalizePositivePower(value, 2))
+        .filter((value) => value >= 2)
+    : [];
+  const fallbackAmmo = normalizePositivePower(config?.fallbackAmmo || ammoQueue.at(-1) || 2, 2);
+  const moveLimit = Math.max(3, Math.round(Number(config?.moveLimit || 5)));
+  const optimalMoves = Math.max(2, Math.min(moveLimit, Math.round(Number(config?.optimalMoves || moveLimit - 1))));
+
+  return {
+    ...config,
+    level: safeLevel,
+    zoneId: zone.id,
+    zoneName: zone.name,
+    zoneMood: zone.mood,
+    type,
+    typeLabel: typeMeta.label,
+    name: config?.name || `${zone.name} ${typeMeta.label} ${safeLevel - zone.range[0] + 1}`,
+    board: boardFromRows(config?.board || []),
+    ammoQueue: ammoQueue.length > 0 ? ammoQueue : [fallbackAmmo, fallbackAmmo],
+    fallbackAmmo,
+    moveLimit,
+    optimalMoves,
+    aiDifficulty: config?.aiDifficulty || (safeLevel <= 20 ? "balanced" : "sharp"),
+    feedbackBias: config?.feedbackBias || (type === "combo" || type === "chain" ? "celebrate" : "coach"),
+    hintThreshold: Math.max(2, Math.round(Number(config?.hintThreshold || 4))),
+    goal: normalizeGoal(config || {}, fallbackTarget),
+    restrictedColumns: Array.isArray(config?.restrictedColumns)
+      ? Array.from(new Set(config.restrictedColumns.map((value) => Math.max(0, Math.min(COLS - 1, Math.round(Number(value) || 0))))))
+      : [],
+    lockedTiles: Array.isArray(config?.lockedTiles)
+      ? config.lockedTiles
+          .map((tile) => ({
+            row: Math.max(0, Math.min(ROWS - 1, Math.round(Number(tile?.row) || 0))),
+            col: Math.max(0, Math.min(COLS - 1, Math.round(Number(tile?.col) || 0))),
+            turns: Math.max(1, Math.round(Number(tile?.turns) || 3))
+          }))
+      : [],
+    specialRule: config?.specialRule || null,
+    specialTag: config?.specialTag || ""
+  };
+}
+
+const generatedLevels = [];
+for (let level = 1; level <= 100; level += 1) {
+  const example = EXAMPLE_LEVELS.find((entry) => entry.level === level);
+  generatedLevels.push(normalizePuzzleConfig(example ? example : buildGeneratedLevel(level)));
+}
+
+export const PUZZLE_LEVELS = Object.freeze(generatedLevels);
+
+export function getPuzzleLevel(level) {
+  const safeLevel = Math.max(1, Math.min(100, Number(level) || 1));
+  return PUZZLE_LEVELS[safeLevel - 1];
+}
+
+export function getPuzzleExamples() {
+  return PUZZLE_LEVELS.slice(0, 10);
+}

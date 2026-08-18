@@ -1,0 +1,17 @@
+.hud-notification {
+  backdrop-filter: blur(14px);
+}
+
+.hud-overlay-dim {
+  background:
+    radial-gradient(circle at 50% 22%, rgba(0, 229, 255, 0.08), transparent 36%),
+    rgba(3, 8, 20, 0.56);
+}
+
+.goal-preview,
+.ui-panel,
+.hud-overlay-panel {
+  box-shadow:
+    inset 0 1px 18px rgba(255, 255, 255, 0.04),
+    0 22px 40px rgba(0, 0, 0, 0.34);
+}

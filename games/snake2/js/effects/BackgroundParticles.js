@@ -1,0 +1,1 @@
+export { BackgroundParticles } from "../../src/effects/BackgroundParticles.js";

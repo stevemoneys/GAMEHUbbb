@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>2048+ Premium</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app" aria-label="2048 premium app">
+      <section class="home" data-home-screen>
+        <header class="home-header" aria-label="Home header">
+          <div class="logo-pill" aria-label="Game name">2048+</div>
+          <div class="best-pill" aria-label="Coins"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-best-score-home>0</span></div>
+          <button class="icon-btn" type="button" aria-label="Settings" data-settings-btn>&#9881;</button>
+        </header>
+
+        <div class="settings-sheet hidden" data-settings-panel aria-label="Audio settings" aria-live="polite">
+          <div class="settings-card">
+            <div class="settings-head">
+              <strong>Audio Settings</strong>
+              <button class="icon-btn settings-close-btn" type="button" data-settings-close-btn aria-label="Close settings">x</button>
+            </div>
+            <div class="settings-actions">
+              <button class="secondary-btn settings-toggle-btn" type="button" data-toggle-sfx-btn>SFX: ON</button>
+              <button class="secondary-btn settings-toggle-btn" type="button" data-toggle-music-btn>MUSIC: ON</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="hero home-hero-product" aria-label="Live board preview">
+          <div class="home-hero-left">
+            <div class="home-cta-row">
+              <button class="play-btn home-play-btn" type="button" data-play-btn>&#9654; Play</button>
+              <button class="secondary-btn home-resume-btn" type="button" data-resume-btn>&#8635; Resume</button>
+            </div>
+          </div>
+
+          <div class="home-hero-right">
+            <div class="hero-board-wrap">
+              <div class="hero-board" data-hero-board></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-labs" aria-label="Game setup actions">
+          <button class="secondary-btn home-lab-btn" type="button" data-theme-btn>&#10024; Themes</button>
+          <button class="secondary-btn home-lab-btn" type="button" data-mode-btn>&#9866; Modes</button>
+          <button class="secondary-btn home-lab-btn home-power-btn" type="button" data-power-btn>&#9889; Power-Ups</button>
+        </section>
+
+        <section class="home-footnote" aria-label="Game identity">
+          <p class="home-footnote-text">100 levels, adaptive AI, and premium theme progression.</p>
+        </section>
+      </section>
+
+      <section class="themes hidden" data-theme-screen aria-label="Theme selection">
+        <header class="theme-header">
+          <button class="icon-btn" type="button" data-theme-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Themes</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-best-score-theme>0</span></div>
+        </header>
+
+        <section class="theme-grid" data-theme-grid aria-label="Theme cards"></section>
+      </section>
+
+      <section class="powers hidden" data-power-screen aria-label="Power-up shop">
+        <header class="theme-header">
+          <button class="icon-btn" type="button" data-power-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Power-Ups</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-power-balance>0</span></div>
+        </header>
+
+        <section class="power-grid" data-power-grid aria-label="Power-up cards"></section>
+      </section>
+
+      <section class="levels hidden" data-level-screen aria-label="Level selection">
+        <header class="level-header">
+          <button class="icon-btn" type="button" data-level-back-btn aria-label="Back to home">&lt;</button>
+          <div class="level-title-wrap">
+            <div class="level-title">Levels</div>
+            <div class="level-subtitle">Pick and play</div>
+          </div>
+          <div class="best-pill"><span class="best-icon" aria-hidden="true">&#127942;</span><span data-best-score-level>0</span></div>
+        </header>
+
+        <section class="level-progress-card" aria-label="Level progress">
+          <div>Unlocked: <span data-unlocked-level>1</span>/100</div>
+          <div>Selected: <span data-selected-level>1</span></div>
+        </section>
+
+        <section class="level-grid" data-level-grid aria-label="Level buttons"></section>
+
+        <button class="play-btn level-start-btn" type="button" data-start-level-btn>START SELECTED LEVEL</button>
+      </section>
+
+      <section class="game hidden" data-game-screen>
+        <header class="game-header" aria-label="Gameplay header">
+          <div class="game-header-side">
+            <button class="icon-btn game-icon-btn" type="button" data-home-btn aria-label="Back to home">&lt;</button>
+            <div class="best-pill game-wallet-pill" aria-label="Coins"><span class="best-icon" aria-hidden="true">&#128142;</span><span data-game-balance>0</span></div>
+          </div>
+          <div class="score-stack game-score-stack" aria-label="Current score and match target">
+            <span class="score-label">Score</span>
+            <strong class="score-value" data-game-score>0</strong>
+            <div class="game-pills" aria-label="Gameplay indicators">
+              <div class="target-pill hidden" aria-label="Level target">Target <span data-target-value>256</span></div>
+              <div class="mode-pill" aria-label="Current mode"><span data-game-mode>Classic</span></div>
+              <div class="mode-pill hidden" data-mode-detail-wrap aria-label="Mode detail"><span data-mode-detail>60s</span></div>
+            </div>
+          </div>
+          <div class="game-controls" aria-label="Gameplay controls">
+            <button class="dock-btn game-mini-btn" type="button" data-power-drawer-btn aria-label="Power-ups">&#9889;</button>
+            <button class="dock-btn game-mini-btn" type="button" data-restart aria-label="Restart level">R</button>
+            <button class="dock-btn game-mini-btn" type="button" data-sound-toggle aria-label="Sound on">||</button>
+          </div>
+        </header>
+
+        <section class="puzzle-brief hidden" data-puzzle-brief aria-label="Puzzle goal and controls">
+          <div class="puzzle-brief-top">
+            <span class="puzzle-chip" data-puzzle-zone>Foundation</span>
+            <span class="puzzle-chip" data-puzzle-type>Merge Puzzle</span>
+            <span class="puzzle-chip" data-puzzle-stars>☆☆☆</span>
+          </div>
+          <strong class="puzzle-goal" data-puzzle-goal>Reach tile 16</strong>
+          <div class="puzzle-brief-bottom">
+            <span class="puzzle-moves" data-puzzle-moves>6/6 moves</span>
+            <button class="secondary-btn puzzle-action-btn" type="button" data-puzzle-hint-btn>Hint</button>
+            <button class="secondary-btn puzzle-action-btn" type="button" data-puzzle-retry-btn>Retry</button>
+          </div>
+        </section>
+
+        <div class="goal-callout hidden" data-goal-callout aria-live="polite">
+          <span class="goal-callout-label">Goal</span>
+          <div class="goal-callout-tile" data-goal-callout-value>64</div>
+          <p class="goal-callout-copy" data-goal-callout-copy>Reach this tile to win.</p>
+        </div>
+
+        <div class="power-tip-popup hidden" data-power-tip-popup aria-live="polite">
+          <strong class="power-tip-title" data-power-tip-title>Power-Up Ready</strong>
+          <p class="power-tip-copy" data-power-tip-copy>Tap a power-up to see what it does and how to use it.</p>
+        </div>
+
+        <section class="arena-wrap arena-wrap-single" aria-label="Shared board area">
+          <article class="board-shell board-shell-shared" aria-label="Shared game board">
+            <div class="board board-shared" data-board role="grid" aria-label="Shared board"></div>
+            <div class="combo-banner" data-combo-banner aria-live="polite"></div>
+          </article>
+
+          <div class="game-over-panel hidden" data-game-over-panel aria-live="polite">
+            <span class="game-over-kicker" data-game-over-kicker>Match Complete</span>
+            <strong class="game-over-title" data-game-over-title>You Win</strong>
+            <p class="game-over-copy" data-game-over-copy>Great run. Select your next level or replay this one.</p>
+            <div class="game-over-actions">
+              <button class="secondary-btn" type="button" data-overlay-home>Home</button>
+              <button class="play-btn game-over-btn" type="button" data-overlay-restart>Play Again</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="power-drawer hidden" data-power-drawer aria-label="Owned power-ups" aria-live="polite">
+          <div class="power-drawer-head">
+            <strong>Power-Ups</strong>
+            <button class="icon-btn settings-close-btn" type="button" data-power-drawer-close-btn aria-label="Close power-ups">x</button>
+          </div>
+          <div class="power-drawer-grid" data-power-drawer-grid></div>
+        </div>
+
+        <div class="power-active-card hidden" data-power-active-card aria-live="polite">
+          <div class="power-active-top">
+            <span class="power-active-count" data-power-active-count>x0</span>
+            <span class="power-active-icon-wrap"><span class="power-active-icon" data-power-active-icon>&#9889;</span></span>
+          </div>
+          <strong class="power-active-name" data-power-active-name>Power-Up</strong>
+          <p class="power-active-hint" data-power-active-hint>Tap a power-up icon to see how it works.</p>
+        </div>
+
+        <section class="bottom-dock bottom-dock-compact" aria-label="Current shots">
+          <div class="speed-timer hidden" data-speed-timer-wrap aria-live="polite">
+            <span class="speed-timer-label">Timer</span>
+            <strong class="speed-timer-value" data-speed-timer-value>3:00</strong>
+          </div>
+
+          <div class="launcher-wrap launcher-wrap-compact" aria-label="Current shots">
+            <div class="launcher-card">
+              <div class="launcher-label">You</div>
+              <div class="launcher-frame">
+                <div class="shot-tile tile tile-empty" data-current-ammo aria-label="Your current shot tile"></div>
+              </div>
+              <div class="next-stack">
+                <span class="next-label">Next</span>
+                <div class="shot-next tile tile-empty" data-next-ammo aria-label="Your next shot tile"></div>
+              </div>
+            </div>
+
+            <div class="launcher-card launcher-card-ai" data-ai-launcher>
+              <div class="launcher-label">AI</div>
+              <div class="launcher-frame">
+                <div class="shot-tile tile tile-empty" data-ai-current-ammo aria-label="AI current shot tile"></div>
+              </div>
+              <div class="next-stack">
+                <span class="next-label">Next</span>
+                <div class="shot-next tile tile-empty" data-ai-next-ammo aria-label="AI next shot tile"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <p class="sr-status" data-status aria-live="polite"></p>
+      </section>
+    </main>
+
+    <audio data-merge-sfx preload="auto" src="./assets/audio/merge.wav" hidden></audio>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

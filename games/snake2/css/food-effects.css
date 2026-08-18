@@ -1,0 +1,10 @@
+:root {
+  --food-common-glow: rgba(98, 240, 255, 0.72);
+  --food-rare-glow: rgba(255, 145, 226, 0.78);
+  --food-risk-glow: rgba(208, 103, 255, 0.82);
+}
+
+.hud-notification-food {
+  border-color: rgba(129, 206, 255, 0.44);
+  box-shadow: 0 0 22px rgba(98, 240, 255, 0.16);
+}

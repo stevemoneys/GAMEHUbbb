@@ -1,0 +1,1 @@
+export { RenderOptimizer } from "../../src/performance/RenderOptimizer.js";

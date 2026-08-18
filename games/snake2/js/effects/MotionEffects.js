@@ -1,0 +1,1 @@
+export { MotionEffects } from "../../src/effects/MotionEffects.js";

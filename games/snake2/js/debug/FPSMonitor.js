@@ -1,0 +1,1 @@
+export { FPSMonitor } from "../../src/debug/FPSMonitor.js";

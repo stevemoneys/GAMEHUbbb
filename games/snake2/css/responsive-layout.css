@@ -1,0 +1,42 @@
+:root {
+  --app-scale: 1;
+  --panel-max-width: 32rem;
+  --home-shell-max-width: 35rem;
+  --primary-action-width: 24rem;
+  --chrome-gap: 1rem;
+  --edge-safe: 1rem;
+}
+
+html[data-orientation="portrait"] .home-content,
+html[data-orientation="portrait"] .app {
+  width: min(calc(100vw - (var(--edge-safe) * 2)), var(--home-shell-max-width));
+}
+
+html[data-orientation="landscape"] .home-content,
+html[data-orientation="landscape"] .app {
+  width: min(calc(100vw - (var(--edge-safe) * 2)), var(--home-shell-max-width));
+}
+
+html[data-size-tier="compact"] {
+  --chrome-gap: 0.75rem;
+}
+
+html[data-size-tier="tablet"] {
+  --home-shell-max-width: 42rem;
+  --panel-max-width: 34rem;
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .home-content {
+    grid-template-rows: auto 1fr auto;
+    align-content: center;
+  }
+
+  .home-top {
+    margin-top: 1.5vh;
+  }
+
+  .home-center {
+    gap: 0.85rem;
+  }
+}

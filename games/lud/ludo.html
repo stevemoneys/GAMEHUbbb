@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Premium Ludo</title>
+  <link rel="stylesheet" href="ludo.css">
+  <style>
+    #boot-overlay {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 20% 15%, #355f85 0%, #10263b 45%, #081522 100%);
+      z-index: 99999;
+      color: #f1f8ff;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+
+    #boot-overlay .boot-shell {
+      width: min(92vw, 420px);
+      border-radius: 16px;
+      border: 1px solid rgba(190, 220, 255, 0.34);
+      background: rgba(4, 20, 36, 0.72);
+      padding: 20px 18px;
+      box-shadow: 0 16px 46px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+    }
+
+    #boot-overlay .boot-label {
+      margin: 0;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(193, 225, 255, 0.88);
+    }
+
+    #boot-overlay .boot-title {
+      margin: 10px 0 12px;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    #boot-overlay .boot-anim {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.24);
+      border-top-color: #84d8ff;
+      animation: boot-spin 0.9s linear infinite;
+      margin-bottom: 14px;
+    }
+
+    #boot-overlay .boot-progress {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      overflow: hidden;
+      border: 1px solid rgba(194, 223, 255, 0.38);
+    }
+
+    #boot-overlay .boot-progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #34d5ff 0%, #59f1b6 100%);
+      transition: width 0.2s ease;
+    }
+
+    #boot-overlay .boot-meta {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      color: rgba(219, 238, 255, 0.88);
+    }
+
+    #boot-overlay .boot-detail {
+      margin-top: 10px;
+      min-height: 18px;
+      font-size: 13px;
+      color: rgba(207, 229, 252, 0.9);
+    }
+
+    #boot-overlay.boot-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+
+    @keyframes boot-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="boot-overlay" id="boot-overlay" role="status" aria-live="polite">
+    <div class="boot-shell">
+      <p class="boot-label">Initializing</p>
+      <h2 class="boot-title">Loading Match Assets</h2>
+      <div class="boot-anim" aria-hidden="true"></div>
+      <div class="boot-progress" aria-hidden="true">
+        <div class="boot-progress-bar" id="boot-progress-bar"></div>
+      </div>
+      <div class="boot-meta">
+        <span id="boot-progress-text">Loading...</span>
+        <span id="boot-progress-value">0%</span>
+      </div>
+      <div class="boot-detail" id="boot-progress-detail">Preparing game files...</div>
+    </div>
+  </div>
+  <div class="bg-slideshow" aria-hidden="true">
+    <div class="bg-layer bg-a"></div>
+    <div class="bg-layer bg-b"></div>
+  </div>
+  <div class="coin-hud" id="coin-hud">
+    <span class="coin-icon" aria-hidden="true"></span>
+    <span class="coin-total" id="coin-total">0</span>
+  </div>
+  <div class="coin-fx-layer" id="coin-fx-layer" aria-hidden="true"></div>
+  <div class="toast-layer" id="toast-layer" aria-live="polite" aria-atomic="true"></div>
+  <div class="game-wrapper">
+    <div class="ludo-stage">
+      <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels">Back</button>
+      <button class="restart-btn" id="restart-btn" type="button">Restart</button>
+      <button class="pause-btn" id="pause-btn" type="button">Pause</button>
+      <div class="ludo-board">
+        <div class="center-triangle center-red"></div>
+        <div class="center-triangle center-green"></div>
+        <div class="center-triangle center-yellow"></div>
+        <div class="center-triangle center-blue"></div>
+        <div class="goal-slot goal-red" id="goal-red"></div>
+        <div class="goal-slot goal-green" id="goal-green"></div>
+        <div class="goal-slot goal-yellow" id="goal-yellow"></div>
+        <div class="goal-slot goal-blue" id="goal-blue"></div>
+
+        <div class="home red"><div class="home-inner">
+          <div class="token-slot"></div><div class="token-slot"></div>
+          <div class="token-slot"></div><div class="token-slot"></div>
+        </div></div>
+
+        <div class="home green"><div class="home-inner">
+          <div class="token-slot"></div><div class="token-slot"></div>
+          <div class="token-slot"></div><div class="token-slot"></div></div></div>
+
+        <div class="home yellow"><div class="home-inner">
+          <div class="token-slot"></div><div class="token-slot"></div>
+          <div class="token-slot"></div><div class="token-slot"></div>
+        </div></div>
+
+        <div class="home blue"><div class="home-inner">
+          <div class="token-slot"></div><div class="token-slot"></div>
+          <div class="token-slot"></div><div class="token-slot"></div>
+        </div></div>
+      </div>
+      <svg class="chaos-overlay" id="chaos-overlay" aria-hidden="true"></svg>
+      <div class="spark-layer" id="spark-layer" aria-hidden="true"></div>
+
+      <div class="dice-panel top-left" data-color="red">
+        <div class="dice" id="dice-red">
+          <div class="face one"><img></div>
+          <div class="face two"><img></div>
+          <div class="face three"><img></div>
+          <div class="face four"><img></div>
+          <div class="face five"><img></div>
+          <div class="face six"><img></div>
+        </div>
+      </div>
+
+      <div class="dice-panel top-right" data-color="green">
+        <div class="dice" id="dice-green">
+          <div class="face one"><img></div>
+          <div class="face two"><img></div>
+          <div class="face three"><img></div>
+          <div class="face four"><img></div>
+          <div class="face five"><img></div>
+          <div class="face six"><img></div>
+        </div>
+      </div>
+      <div class="dice-panel bottom-right" data-color="yellow">
+        <div class="dice" id="dice-yellow">
+          <div class="face one"><img></div>
+          <div class="face two"><img></div>
+          <div class="face three"><img></div>
+          <div class="face four"><img></div>
+          <div class="face five"><img></div>
+          <div class="face six"><img></div>
+        </div>
+      </div>
+      <div class="dice-panel bottom-left" data-color="blue">
+        <div class="dice" id="dice-blue">
+          <div class="face one"><img></div>
+          <div class="face two"><img></div>
+          <div class="face three"><img></div>
+          <div class="face four"><img></div>
+          <div class="face five"><img></div>
+          <div class="face six"><img></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-modal" id="result-modal" aria-hidden="true">
+    <div class="result-card">
+      <h2 id="result-title">YOU WIN</h2>
+      <p id="result-subtitle"></p>
+      <div class="result-actions" id="result-actions">
+        <button type="button" id="btn-play-again">Play again</button>
+        <button type="button" id="btn-cancel">Cancel</button>
+        <button type="button" id="btn-next-level">Next Level</button>
+      </div>
+    </div>
+  </div>
+  <div class="pause-modal" id="pause-modal" aria-hidden="true">
+    <div class="pause-card">
+      <h2>Game Paused</h2>
+      <p>Do you want to resume the match?</p>
+      <div class="pause-actions">
+        <button type="button" id="pause-resume-btn">Resume</button>
+        <button type="button" id="pause-exit-btn">Exit</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="boot.js"></script>
+</body>
+
+</html>

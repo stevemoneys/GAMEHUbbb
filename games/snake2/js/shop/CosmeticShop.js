@@ -1,0 +1,1 @@
+export { CosmeticShop } from "../../src/shop/CosmeticShop.js";
