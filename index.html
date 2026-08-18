@@ -188,26 +188,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyDLdUpH8vBdDWPIu_rzIcCwmblRGNpX1qw",
-    authDomain: "gamehub--arena.firebaseapp.com",
-    projectId: "gamehub--arena",
-    storageBucket: "gamehub--arena.firebasestorage.app",
-    messagingSenderId: "32538981830",
-    appId: "1:32538981830:web:eb9ce18005f974966eeec7",
-    databaseURL: "https://gamehub--arena-default-rtdb.firebaseio.com"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  // TEST: this proves the connection works
-  db.ref("test").set({
-    message: "GameHub is connected!",
-    time: new Date().toISOString()
-  });
-
-  console.log("✅ Firebase connected!");
+  const firebaseConfig = { apiKey: "AIzaSyDLdUpH8vBdDWPIu_rzIcCwmblRGNpX1qw", authDomain: "gamehub--arena.firebaseapp.com", projectId: "gamehub--arena", storageBucket: "gamehub--arena.firebasestorage.app", messagingSenderId: "32538981830", appId: "1:32538981830:web:eb9ce18005f974966eeec7", databaseURL: "https://gamehub--arena-default-rtdb.firebaseio.com" }; firebase.initializeApp(firebaseConfig); const db = firebase.database(); function getVisitorId() { let id = localStorage.getItem('gamehub_visitor_id'); if (!id) { id = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 10000); localStorage.setItem('gamehub_visitor_id', id); } return id; } 
+  const visitorId = getVisitorId(); db.ref('visits').push({ visitorId: visitorId, time: new Date().toISOString() }); document.querySelectorAll('.play-btn').forEach(function (button) { button.addEventListener('click', function () { const card = button.closest('.game-card'); const gameName = card.getAttribute('data-game-name');
+   const gamePath = card.getAttribute('data-game-path'); db.ref('gameClicks').push({ visitorId: visitorId, game: gameName, path: gamePath, time: new Date().toISOString() }); console.log('📊 Tracked click:', gameName); }); }); console.log('✅ Firebase connected + tracking active!');
 </script>
 </body>
 </html>
