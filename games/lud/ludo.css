@@ -2426,21 +2426,21 @@ body.orient-blue .token img {
 }
 
 @keyframes dice-result-settle {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% { scale: 1; }
+  45% { scale: 1.1; }
+  100% { scale: 1; }
 }
 
 @keyframes dice-six-celebrate {
-  0%, 100% { transform: scale(1); }
-  34% { transform: scale(1.13) rotate(-2deg); }
-  68% { transform: scale(1.05) rotate(2deg); }
+  0%, 100% { scale: 1; rotate: 0deg; }
+  34% { scale: 1.13; rotate: -2deg; }
+  68% { scale: 1.05; rotate: 2deg; }
 }
 
 @keyframes turn-panel-pulse {
-  0% { transform: scale(1); filter: brightness(1); }
-  42% { transform: scale(1.06); filter: brightness(1.18); }
-  100% { transform: scale(1); filter: brightness(1); }
+  0% { scale: 1; filter: brightness(1); }
+  42% { scale: 1.06; filter: brightness(1.18); }
+  100% { scale: 1; filter: brightness(1); }
 }
 
 .token.selectable-gold,
@@ -2456,6 +2456,7 @@ body.orient-blue .token img {
 .token.token-home-lane { animation: token-home-lane-glow 360ms ease-out; }
 .token.token-capture-impact { animation: token-capture-impact 300ms cubic-bezier(.2,.86,.28,1); }
 .token.token-captured { animation: token-captured-recoil 260ms ease-in; }
+.token.token-returned-home { animation: token-return-home-settle 240ms ease-out; }
 .token.token-finished { animation: token-finished-pop 460ms cubic-bezier(.18,.88,.26,1); }
 .token.token-winner { animation: token-winner-celebrate 720ms cubic-bezier(.18,.88,.26,1); }
 
@@ -2505,6 +2506,12 @@ body.orient-blue .token img {
   100% { transform: scale(.7); opacity: .6; }
 }
 
+@keyframes token-return-home-settle {
+  0% { transform: scale(.78); filter: brightness(1.2); }
+  55% { transform: scale(1.12); filter: brightness(1.12); }
+  100% { transform: scale(1); filter: none; }
+}
+
 @keyframes token-finished-pop {
   0% { transform: scale(.84); filter: brightness(1.2); }
   56% { transform: scale(1.18); filter: drop-shadow(0 0 10px rgba(255, 226, 109, .9)); }
@@ -2519,6 +2526,114 @@ body.orient-blue .token img {
 
 body.match-won .ludo-board {
   animation: board-win-glow 700ms ease-out;
+}
+
+/* Strong but brief six-result celebration. The elements are created only for a six and remove themselves. */
+.dice-six-burst {
+  position: absolute;
+  inset: -22px;
+  z-index: 8;
+  pointer-events: none;
+  animation: dice-six-burst-fade 650ms ease-out forwards;
+}
+
+.dice-six-sparkle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: #fff7b8;
+  box-shadow: 0 0 7px 2px rgba(255, 204, 65, .92);
+  animation: dice-six-sparkle 430ms cubic-bezier(.18,.8,.24,1) var(--spark-delay, 0ms) forwards;
+}
+
+.dice-six-label {
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  transform: translateX(-50%);
+  color: #fff7c6;
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -.04em;
+  text-shadow: 0 1px 0 #995c00, 0 0 10px rgba(255, 205, 57, .95);
+  animation: dice-six-label-pop 560ms cubic-bezier(.18,.86,.2,1) forwards;
+}
+
+@keyframes dice-six-burst-fade {
+  0%, 66% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes dice-six-sparkle {
+  0% { transform: rotate(var(--spark-angle)) translateY(0) scale(.45); opacity: 0; }
+  28% { opacity: 1; }
+  100% { transform: rotate(var(--spark-angle)) translateY(-28px) scale(.1); opacity: 0; }
+}
+
+@keyframes dice-six-label-pop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(6px) scale(.7); }
+  28% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.15); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(1); }
+}
+
+.token.capture-returning { visibility: hidden !important; }
+.capture-return-ghost { filter: drop-shadow(0 0 8px rgba(255, 222, 105, .76)); }
+
+/* Portrait play puts the human colour at the reachable bottom-right corner without changing board coordinates. */
+@media (max-width: 900px) and (orientation: portrait) {
+  body.orient-red .ludo-board { transform: rotate(180deg) !important; }
+  body.orient-green .ludo-board { transform: rotate(90deg) !important; }
+  body.orient-yellow .ludo-board { transform: rotate(0deg) !important; }
+  body.orient-blue .ludo-board { transform: rotate(-90deg) !important; }
+
+  body.orient-red .token img { --token-rotation: -180deg; }
+  body.orient-green .token img { --token-rotation: -90deg; }
+  body.orient-yellow .token img { --token-rotation: 0deg; }
+  body.orient-blue .token img { --token-rotation: 90deg; }
+
+  .home.human-home {
+    outline: 3px solid rgba(255, 250, 202, .96);
+    outline-offset: -5px;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .36), 0 0 13px rgba(255, 235, 126, .68);
+  }
+
+  body.vs-computer-match .dice-panel:not(.human-die) { display: none !important; }
+
+  body.vs-computer-match .dice-panel.human-die {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: -94px !important;
+    width: 92px !important;
+    height: 84px !important;
+    padding: 8px !important;
+    transform: translateX(-50%) !important;
+    border-radius: 18px;
+  }
+
+  body.vs-computer-match .dice-panel.human-die .dice {
+    --dice-size: clamp(50px, 15vw, 58px) !important;
+  }
+
+  body.vs-computer-match .dice-panel.human-die.dice-active::after {
+    content: "YOUR TURN";
+    position: absolute;
+    left: 50%;
+    top: -23px;
+    transform: translateX(-50%);
+    color: #fff8d3;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .76);
+    pointer-events: none;
+  }
 }
 
 @keyframes board-win-glow {
@@ -2541,6 +2656,7 @@ body.match-won .ludo-board {
   .token.token-home-lane,
   .token.token-capture-impact,
   .token.token-captured,
+  .token.token-returned-home,
   .token.token-finished,
   .token.token-winner,
   body.match-won .ludo-board {

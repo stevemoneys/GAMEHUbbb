@@ -603,6 +603,7 @@ function maybeRestoreSavedGame() {
 
 document.body.classList.add(`orient-${humanColor}`);
 document.body.classList.add(`mode-${gameMode}`);
+document.body.classList.add(matchMode === "vs-computer" ? "vs-computer-match" : "pass-play-match");
 localStorage.setItem("ludo_game_mode", gameMode);
 
 const DICE_SLOTS = ["top-left", "top-right", "bottom-right", "bottom-left"];
@@ -613,6 +614,10 @@ ALL_COLORS_CLOCKWISE.forEach((_, offset) => {
   panel.classList.remove("top-left", "top-right", "bottom-right", "bottom-left");
   panel.classList.add(DICE_SLOTS[offset]);
 });
+
+const humanHomeEl = document.querySelector(`.home.${humanColor}`);
+humanHomeEl?.classList.add("human-home");
+dicePanelsByColor[humanColor]?.classList.add("human-die");
 
 ALL_COLORS_CLOCKWISE.forEach(color => {
   if (activeColors.includes(color)) return;
@@ -795,6 +800,70 @@ function triggerFeedback(el, className, duration = 320) {
   setTimeout(() => {
     if (el.dataset[key] === String(id)) el.classList.remove(className);
   }, duration);
+}
+
+function showSixFeedback(panel) {
+  if (!panel) return;
+  panel.querySelector(".dice-six-burst")?.remove();
+
+  const burst = document.createElement("span");
+  burst.className = "dice-six-burst";
+  burst.setAttribute("aria-hidden", "true");
+
+  for (let i = 0; i < 6; i++) {
+    const sparkle = document.createElement("span");
+    sparkle.className = "dice-six-sparkle";
+    sparkle.style.setProperty("--spark-angle", `${i * 60}deg`);
+    sparkle.style.setProperty("--spark-delay", `${i * 18}ms`);
+    burst.appendChild(sparkle);
+  }
+
+  const label = document.createElement("span");
+  label.className = "dice-six-label";
+  label.textContent = "6!";
+  burst.appendChild(label);
+  burst.addEventListener("animationend", event => {
+    if (event.target === burst) burst.remove();
+  });
+  panel.appendChild(burst);
+}
+
+function animateCapturedTokenHome(tokenEl, homeEl) {
+  if (!tokenEl || !homeEl) return;
+  const fromPoint = getElementCenter(tokenEl);
+  const toPoint = getElementCenter(homeEl);
+  if (!fromPoint || !toPoint) {
+    homeEl.appendChild(tokenEl);
+    triggerFeedback(tokenEl, "token-returned-home", 240);
+    return;
+  }
+
+  const ghost = createTokenGhost(tokenEl, fromPoint);
+  if (!ghost) {
+    homeEl.appendChild(tokenEl);
+    triggerFeedback(tokenEl, "token-returned-home", 240);
+    return;
+  }
+
+  ghost.classList.remove("capturing", "token-captured", "capture-returning");
+  tokenEl.classList.add("capture-returning");
+  ghost.classList.add("capture-return-ghost");
+  const dx = toPoint.x - fromPoint.x;
+  const dy = toPoint.y - fromPoint.y;
+  void animateWithFallback(ghost, [
+    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
+    { transform: `translate3d(${dx * 0.48}px, ${dy * 0.4 - 18}px, 0) scale(0.86) rotate(-8deg)`, opacity: 0.92, offset: 0.48 },
+    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.72) rotate(0deg)`, opacity: 0.9, offset: 1 }
+  ], {
+    duration: 440,
+    easing: "cubic-bezier(.2,.8,.22,1)",
+    fill: "forwards"
+  }).then(() => {
+    ghost.remove();
+    homeEl.appendChild(tokenEl);
+    tokenEl.classList.remove("capture-returning", "capturing");
+    triggerFeedback(tokenEl, "token-returned-home", 240);
+  });
 }
 
 function announceTurn(player) {
@@ -1098,13 +1167,10 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
     }
   }
 
+  const homeEl = getFreeHomeSlotEl(color);
   tokenEl.classList.add("capturing");
   triggerFeedback(tokenEl, "token-captured", 260);
-  setTimeout(() => {
-    const homeEl = getFreeHomeSlotEl(color);
-    homeEl.appendChild(tokenEl);
-    tokenEl.classList.remove("capturing");
-  }, 120);
+  animateCapturedTokenHome(tokenEl, homeEl);
 
   const player = state.players[owner.playerIndex];
   player.tokens[owner.tokenIndex] = -1;
@@ -2615,8 +2681,12 @@ function animateDiceRoll(color, onDone) {
     state.diceValue = value;
     triggerFeedback(panel, "dice-landed", 300);
     if (value === 6) {
-      triggerFeedback(panel, "dice-six", 520);
       if (color === humanColor) playSfx("entry", 0.28);
+      setTimeout(() => {
+        if (gameOver) return;
+        triggerFeedback(panel, "dice-six", 520);
+        showSixFeedback(panel);
+      }, 300);
     }
 
     const player = state.players[state.currentPlayer];
