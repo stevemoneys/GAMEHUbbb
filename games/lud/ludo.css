@@ -2400,3 +2400,151 @@ body.orient-yellow .token img {
 body.orient-blue .token img {
   --token-rotation: -90deg;
 }
+
+/* Classic gameplay feedback: short, transform-only effects that do not alter layout. */
+.dice-panel.dice-rolling {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.62), 0 0 20px rgba(109, 214, 255, 0.7) !important;
+  filter: brightness(1.08);
+}
+
+.dice-panel.dice-landed {
+  animation: dice-result-settle 300ms cubic-bezier(.2,.85,.32,1);
+}
+
+.dice-panel.dice-six {
+  animation: dice-six-celebrate 520ms cubic-bezier(.2,.8,.25,1);
+  box-shadow: 0 0 0 2px rgba(255, 245, 183, 0.94), 0 0 26px rgba(255, 206, 73, 0.96) !important;
+}
+
+.dice-panel.human-turn-start,
+.dice-panel.ai-turn-start {
+  animation: turn-panel-pulse 520ms ease-out;
+}
+
+.dice-panel.ai-turn-start {
+  box-shadow: 0 0 0 2px rgba(209, 255, 243, 0.82), 0 0 18px rgba(91, 219, 191, 0.78) !important;
+}
+
+@keyframes dice-result-settle {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+@keyframes dice-six-celebrate {
+  0%, 100% { transform: scale(1); }
+  34% { transform: scale(1.13) rotate(-2deg); }
+  68% { transform: scale(1.05) rotate(2deg); }
+}
+
+@keyframes turn-panel-pulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  42% { transform: scale(1.06); filter: brightness(1.18); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.token.selectable-gold,
+.token.selectable-black {
+  animation: selectable-token-pulse 900ms ease-in-out infinite;
+  will-change: transform;
+}
+
+.token.token-selected { animation: token-selected-pop 240ms cubic-bezier(.18,.9,.28,1); }
+.token.token-step { animation: token-step-bounce 150ms ease-out; }
+.token.token-landed { animation: token-landing 260ms cubic-bezier(.2,.88,.28,1); }
+.token.token-entered { animation: token-entry-pop 360ms cubic-bezier(.16,.9,.25,1); }
+.token.token-home-lane { animation: token-home-lane-glow 360ms ease-out; }
+.token.token-capture-impact { animation: token-capture-impact 300ms cubic-bezier(.2,.86,.28,1); }
+.token.token-captured { animation: token-captured-recoil 260ms ease-in; }
+.token.token-finished { animation: token-finished-pop 460ms cubic-bezier(.18,.88,.26,1); }
+.token.token-winner { animation: token-winner-celebrate 720ms cubic-bezier(.18,.88,.26,1); }
+
+@keyframes selectable-token-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 218, 92, 0)); }
+  50% { transform: scale(1.075); filter: drop-shadow(0 0 7px rgba(255, 224, 104, 0.82)); }
+}
+
+@keyframes token-selected-pop {
+  0% { transform: scale(1); }
+  55% { transform: scale(1.16); filter: brightness(1.2); }
+  100% { transform: scale(1); }
+}
+
+@keyframes token-step-bounce {
+  0% { transform: translateY(-4px) scale(1.04); filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.22)); }
+  100% { transform: translateY(0) scale(1); filter: none; }
+}
+
+@keyframes token-landing {
+  0% { transform: scale(1); }
+  48% { transform: translateY(-3px) scale(1.12); filter: brightness(1.16); }
+  100% { transform: scale(1); filter: none; }
+}
+
+@keyframes token-entry-pop {
+  0% { transform: scale(.72); opacity: .45; filter: brightness(1.45); }
+  58% { transform: scale(1.16); opacity: 1; filter: brightness(1.28); }
+  100% { transform: scale(1); opacity: 1; filter: none; }
+}
+
+@keyframes token-home-lane-glow {
+  0% { transform: scale(1); filter: none; }
+  48% { transform: scale(1.13); filter: drop-shadow(0 0 9px rgba(255, 235, 128, 0.95)); }
+  100% { transform: scale(1); filter: none; }
+}
+
+@keyframes token-capture-impact {
+  0% { transform: scale(1); }
+  42% { transform: scale(1.18) rotate(-5deg); filter: brightness(1.28); }
+  100% { transform: scale(1); filter: none; }
+}
+
+@keyframes token-captured-recoil {
+  0% { transform: scale(1); opacity: 1; }
+  45% { transform: translateX(-5px) scale(.78); opacity: .7; }
+  100% { transform: scale(.7); opacity: .6; }
+}
+
+@keyframes token-finished-pop {
+  0% { transform: scale(.84); filter: brightness(1.2); }
+  56% { transform: scale(1.18); filter: drop-shadow(0 0 10px rgba(255, 226, 109, .9)); }
+  100% { transform: scale(1); filter: none; }
+}
+
+@keyframes token-winner-celebrate {
+  0%, 100% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-7px) scale(1.14) rotate(-4deg); filter: brightness(1.24); }
+  68% { transform: translateY(-3px) scale(1.08) rotate(4deg); }
+}
+
+body.match-won .ludo-board {
+  animation: board-win-glow 700ms ease-out;
+}
+
+@keyframes board-win-glow {
+  0% { filter: brightness(1); }
+  46% { filter: brightness(1.14) saturate(1.14) drop-shadow(0 0 16px rgba(255, 223, 100, .64)); }
+  100% { filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-panel.dice-landed,
+  .dice-panel.dice-six,
+  .dice-panel.human-turn-start,
+  .dice-panel.ai-turn-start,
+  .token.selectable-gold,
+  .token.selectable-black,
+  .token.token-selected,
+  .token.token-step,
+  .token.token-landed,
+  .token.token-entered,
+  .token.token-home-lane,
+  .token.token-capture-impact,
+  .token.token-captured,
+  .token.token-finished,
+  .token.token-winner,
+  body.match-won .ludo-board {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

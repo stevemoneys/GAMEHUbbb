@@ -663,6 +663,8 @@ state.players.forEach(player => {
       if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return;
       if (state.diceValue !== 6 && !token.classList.contains("selectable-black")) return;
 
+      clearHighlights();
+      triggerFeedback(token, "token-selected", 240);
       executeMove({ playerIndex: state.currentPlayer, tokenIndex: i }).catch(() => {
         isMoving = false;
         nextTurn(false);
@@ -778,6 +780,28 @@ function clearHighlights() {
     t.classList.remove("selectable-gold");
     t.classList.remove("selectable-black");
   });
+}
+
+// Gameplay feedback is deliberately presentation-only: every effect is a
+// short-lived CSS class and does not participate in turn or movement state.
+function triggerFeedback(el, className, duration = 320) {
+  if (!el) return;
+  const key = `feedback${className.replace(/[^a-z0-9]/gi, "")}`;
+  const id = Number(el.dataset[key] || 0) + 1;
+  el.dataset[key] = String(id);
+  el.classList.remove(className);
+  void el.offsetWidth;
+  el.classList.add(className);
+  setTimeout(() => {
+    if (el.dataset[key] === String(id)) el.classList.remove(className);
+  }, duration);
+}
+
+function announceTurn(player) {
+  if (!player || gameOver) return;
+  const panel = dicePanelsByColor[player.color];
+  triggerFeedback(panel, player.isAI ? "ai-turn-start" : "human-turn-start", 520);
+  showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
 }
 
 function isHumanVsComputerTurn(color) {
@@ -1075,6 +1099,7 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
   }
 
   tokenEl.classList.add("capturing");
+  triggerFeedback(tokenEl, "token-captured", 260);
   setTimeout(() => {
     const homeEl = getFreeHomeSlotEl(color);
     homeEl.appendChild(tokenEl);
@@ -1114,6 +1139,7 @@ function handleCaptureAt(index, movingToken) {
       sendTokenHome(t, color, movingColor);
     }
   });
+  if (captures > 0) triggerFeedback(movingToken, "token-capture-impact", 300);
   return captures;
 }
 
@@ -2494,6 +2520,10 @@ function checkAndShowWinner(playerIndex) {
   if (!player.finished.every(Boolean)) return false;
 
   gameOver = true;
+  document.body.classList.add("match-won");
+  player.tokens.forEach((_, tokenIndex) => {
+    triggerFeedback(tokenEls[player.color]?.[tokenIndex], "token-winner", 720);
+  });
   if (isPaused) setPaused(false);
   clearResumeSnapshot();
   isMoving = false;
@@ -2568,6 +2598,8 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
 
 function animateDiceRoll(color, onDone) {
   const diceEl = diceEls[color];
+  const panel = dicePanelsByColor[color];
+  triggerFeedback(panel, "dice-rolling", 620);
   diceEl.style.pointerEvents = "none";
   const spinX = 720 + Math.floor(Math.random() * 720);
   const spinY = 720 + Math.floor(Math.random() * 720);
@@ -2581,6 +2613,11 @@ function animateDiceRoll(color, onDone) {
     }
     const value = computeRollValue(color);
     state.diceValue = value;
+    triggerFeedback(panel, "dice-landed", 300);
+    if (value === 6) {
+      triggerFeedback(panel, "dice-six", 520);
+      if (color === humanColor) playSfx("entry", 0.28);
+    }
 
     const player = state.players[state.currentPlayer];
     if (player && color === humanColor && value === 6) {
@@ -2666,7 +2703,9 @@ function nextTurn(extraTurn = false) {
   }
   resetDiceInteractivity();
 
-  if (state.players[state.currentPlayer].isAI) {
+  const currentPlayer = state.players[state.currentPlayer];
+  announceTurn(currentPlayer);
+  if (currentPlayer.isAI) {
     setTimeout(runAITurn, 700);
   }
 }
@@ -2776,6 +2815,7 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
   token.dataset.path = "goal";
   player.tokens[tokenIndex] = -2;
   player.finished[tokenIndex] = true;
+  triggerFeedback(token, "token-finished", 460);
   if (Array.isArray(player.riskVulnerable)) {
     player.riskVulnerable[tokenIndex] = 0;
   }
@@ -2872,6 +2912,7 @@ async function executeMove(move) {
       playSfx("entry", 0.75);
       player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
       player.finished[tokenIndex] = false;
+      triggerFeedback(token, "token-entered", 360);
       await handleTileEvent(playerIndex, tokenIndex);
       applyPostLandingEffects(playerIndex, tokenIndex);
       refreshNearWinEffects();
@@ -2885,6 +2926,7 @@ async function executeMove(move) {
       if (moveSteps === remainingToGoal) {
         for (let i = 1; i < moveSteps; i++) {
           path[pos + i].el.appendChild(token);
+          triggerFeedback(token, "token-step", 150);
           playSfx("step", 0.35);
           await wait(180);
         }
@@ -2894,12 +2936,14 @@ async function executeMove(move) {
 
       for (let i = 1; i <= moveSteps; i++) {
         path[pos + i].el.appendChild(token);
+        triggerFeedback(token, "token-step", 150);
         playSfx("step", 0.35);
         await wait(180);
       }
       player.tokens[tokenIndex] += moveSteps;
       await handleTileEvent(playerIndex, tokenIndex);
       applyPostLandingEffects(playerIndex, tokenIndex);
+      triggerFeedback(token, "token-landed", 260);
       refreshNearWinEffects();
       isMoving = false;
       nextTurn(consumeBonusTurn(dice === 6));
@@ -2926,6 +2970,7 @@ async function executeMove(move) {
         if (homePath[homePos]) {
           homePath[homePos].el.appendChild(token);
         }
+        triggerFeedback(token, "token-home-lane", 360);
         playSfx("step", 0.35);
         await wait(180);
         continue;
@@ -2934,6 +2979,7 @@ async function executeMove(move) {
       if (!enteredHome) {
         commonPos = (commonPos + 1) % commonLen;
         PATHS.common[commonPos].el.appendChild(token);
+        triggerFeedback(token, "token-step", 150);
         playSfx("step", 0.35);
         await wait(180);
         continue;
@@ -2952,6 +2998,7 @@ async function executeMove(move) {
       }
 
       homePath[homePos].el.appendChild(token);
+      triggerFeedback(token, "token-step", 150);
       playSfx("step", 0.35);
       await wait(180);
     }
@@ -2959,10 +3006,12 @@ async function executeMove(move) {
     if (enteredHome) {
       token.dataset.path = homePathKey;
       player.tokens[tokenIndex] = homePos;
+      triggerFeedback(token, "token-landed", 260);
     } else {
       player.tokens[tokenIndex] = commonPos;
       await handleTileEvent(playerIndex, tokenIndex);
       applyPostLandingEffects(playerIndex, tokenIndex);
+      triggerFeedback(token, "token-landed", 260);
     }
 
     refreshNearWinEffects();
@@ -2989,3 +3038,11 @@ refreshNearWinEffects();
 resetDiceInteractivity();
 scheduleChaosOverlayRender();
 refreshRiskTokenVisuals();
+announceTurn(state.players[state.currentPlayer]);
+
+// A saved match may resume while an AI player owns the turn.  Restoring clears
+// transient locks by design, so explicitly restart that AI turn instead of
+// leaving the match waiting for a human-only dice click.
+if (state.players[state.currentPlayer]?.isAI) {
+  setTimeout(runAITurn, 140);
+}
