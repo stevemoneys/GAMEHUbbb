@@ -2602,8 +2602,6 @@ body.match-won .ludo-board {
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .36), 0 0 13px rgba(255, 235, 126, .68);
   }
 
-  body.vs-computer-match .dice-panel:not(.human-die) { display: none !important; }
-
   body.vs-computer-match .dice-panel.human-die {
     left: 50% !important;
     right: auto !important;
@@ -2634,6 +2632,20 @@ body.match-won .ludo-board {
     text-shadow: 0 1px 3px rgba(0, 0, 0, .76);
     pointer-events: none;
   }
+}
+
+/* Home tokens are anchored to the centre of their own generated circle.
+   `translate` keeps that anchor intact while feedback animations use transform. */
+.token-slot.generated > .token {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  translate: -50% -50%;
+  width: 72% !important;
+  height: 72% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
 }
 
 @keyframes board-win-glow {
