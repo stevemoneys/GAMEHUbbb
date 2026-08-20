@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-08-20-v3";
+const CACHE_VERSION = "2026-08-20-v4";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 

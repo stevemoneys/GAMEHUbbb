@@ -2603,14 +2603,14 @@ body.match-won .ludo-board {
   }
 
   body.vs-computer-match .dice-panel.human-die {
-    left: 50% !important;
+    left: 0 !important;
     right: auto !important;
-    top: auto !important;
-    bottom: -94px !important;
+    top: 0 !important;
+    bottom: auto !important;
     width: 92px !important;
     height: 84px !important;
     padding: 8px !important;
-    transform: translateX(-50%) !important;
+    transform: translateY(-100%) !important;
     border-radius: 18px;
   }
 
