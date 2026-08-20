@@ -317,6 +317,15 @@ const rotations = {
   6: "rotateX(180deg) rotateY(0deg)"
 };
 
+const rotationAngles = {
+  1: { x: 0, y: 0 },
+  2: { x: -90, y: 0 },
+  3: { x: 0, y: 90 },
+  4: { x: 0, y: -90 },
+  5: { x: 90, y: 0 },
+  6: { x: 180, y: 0 }
+};
+
 const diceSkins = {
   classic: ["dice/1_result.webp", "dice/4_result.webp", "dice/6_result.webp", "dice/3_result.webp", "dice/2_result.webp", "dice/5_result.webp"]
 };
@@ -828,6 +837,33 @@ function showSixFeedback(panel) {
   panel.appendChild(burst);
 }
 
+function createCaptureBurst(point, color = "yellow") {
+  if (!point) return;
+  const burst = document.createElement("span");
+  const colorMap = {
+    red: "#ff766d",
+    green: "#6ff0a0",
+    yellow: "#ffe47a",
+    blue: "#78b8ff"
+  };
+  burst.className = "capture-burst";
+  burst.style.left = `${point.x}px`;
+  burst.style.top = `${point.y}px`;
+  burst.style.setProperty("--capture-color", colorMap[color] || colorMap.yellow);
+  burst.setAttribute("aria-hidden", "true");
+
+  for (let i = 0; i < 6; i++) {
+    const spark = document.createElement("span");
+    spark.className = "capture-burst-spark";
+    spark.style.setProperty("--spark-angle", `${i * 60}deg`);
+    burst.appendChild(spark);
+  }
+
+  document.body.appendChild(burst);
+  burst.addEventListener("animationend", () => burst.remove(), { once: true });
+  setTimeout(() => burst.remove(), 700);
+}
+
 function animateCapturedTokenHome(tokenEl, homeEl) {
   if (!tokenEl || !homeEl) return;
   const fromPoint = getElementCenter(tokenEl);
@@ -1205,7 +1241,11 @@ function handleCaptureAt(index, movingToken) {
       sendTokenHome(t, color, movingColor);
     }
   });
-  if (captures > 0) triggerFeedback(movingToken, "token-capture-impact", 300);
+  if (captures > 0) {
+    triggerFeedback(movingToken, "token-capture-impact", 300);
+    createCaptureBurst(getElementCenter(cell), movingColor);
+    playSfx("entry", 0.38);
+  }
   return captures;
 }
 
@@ -2667,18 +2707,41 @@ function animateDiceRoll(color, onDone) {
   const panel = dicePanelsByColor[color];
   triggerFeedback(panel, "dice-rolling", 620);
   diceEl.style.pointerEvents = "none";
-  const spinX = 720 + Math.floor(Math.random() * 720);
-  const spinY = 720 + Math.floor(Math.random() * 720);
-  diceEl.style.transition = "transform 560ms cubic-bezier(.18,.78,.2,1)";
-  diceEl.style.transform = `rotateX(${spinX}deg) rotateY(${spinY}deg)`;
+  const value = computeRollValue(color);
+  const target = rotationAngles[value] || rotationAngles[1];
+  const spinX = target.x + 720 + Math.floor(Math.random() * 540);
+  const spinY = target.y + 720 + Math.floor(Math.random() * 540);
+  const spinZ = (Math.random() < 0.5 ? -1 : 1) * (3 + Math.floor(Math.random() * 8));
 
-  setTimeout(function finishDiceRoll() {
-    if (isPaused) {
-      setTimeout(finishDiceRoll, 90);
-      return;
-    }
-    const value = computeRollValue(color);
-    state.diceValue = value;
+  diceEl.style.transition = "none";
+  diceEl.style.transform = "translateY(0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg)";
+  void diceEl.offsetWidth;
+  diceEl.style.transition = "transform 110ms cubic-bezier(.2,.85,.25,1)";
+  diceEl.style.transform = "translateY(-3px) scale(1.045) rotateX(12deg) rotateY(-10deg) rotateZ(0deg)";
+
+  const waitForResume = (callback, delay) => {
+    setTimeout(() => {
+      if (isPaused) {
+        waitForResume(callback, 90);
+        return;
+      }
+      callback();
+    }, delay);
+  };
+
+  waitForResume(() => {
+    diceEl.style.transition = "transform 500ms cubic-bezier(.16,.78,.2,1)";
+    diceEl.style.transform = `translateY(0) scale(1) rotateX(${spinX}deg) rotateY(${spinY}deg) rotateZ(${spinZ}deg)`;
+  }, 110);
+
+  waitForResume(() => {
+    diceEl.style.transition = "transform 210ms cubic-bezier(.2,.72,.28,1)";
+    diceEl.style.transform = `translateY(0) scale(1.025) rotateX(${target.x + (target.x === 0 ? 4 : 0)}deg) rotateY(${target.y + (target.y === 0 ? -4 : 0)}deg) rotateZ(0deg)`;
+  }, 610);
+
+  waitForResume(() => {
+    diceEl.style.transition = "transform 120ms cubic-bezier(.2,.8,.25,1)";
+    diceEl.style.transform = `translateY(0) scale(1) rotateX(${target.x}deg) rotateY(${target.y}deg) rotateZ(0deg)`;
     triggerFeedback(panel, "dice-landed", 300);
     if (value === 6) {
       if (color === humanColor) playSfx("entry", 0.28);
@@ -2686,8 +2749,10 @@ function animateDiceRoll(color, onDone) {
         if (gameOver) return;
         triggerFeedback(panel, "dice-six", 520);
         showSixFeedback(panel);
-      }, 300);
+      }, 80);
     }
+
+    state.diceValue = value;
 
     const player = state.players[state.currentPlayer];
     if (player && color === humanColor && value === 6) {
@@ -2704,18 +2769,14 @@ function animateDiceRoll(color, onDone) {
       if (player.sixStreak >= 3) {
         player.sixStreak = 0;
         state.diceValue = null;
-        diceEl.style.transition = "transform 260ms cubic-bezier(.2,.7,.2,1)";
-        diceEl.style.transform = rotations[value];
         showToast("TRIPLE 6 - TURN LOST");
         onDone(value);
         return;
       }
     }
 
-    diceEl.style.transition = "transform 260ms cubic-bezier(.2,.7,.2,1)";
-    diceEl.style.transform = rotations[value];
     onDone(value);
-  }, 560);
+  }, 820);
 }
 
 function nextTurn(extraTurn = false) {

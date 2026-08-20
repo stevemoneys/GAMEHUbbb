@@ -2500,6 +2500,62 @@ body.orient-blue .token img {
   100% { transform: scale(1); filter: none; }
 }
 
+/* One compact impact burst per capture; all particles are temporary DOM. */
+.capture-burst {
+  position: fixed;
+  width: 14px;
+  height: 14px;
+  z-index: 260;
+  pointer-events: none;
+  border: 2px solid var(--capture-color, #ffe47a);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(.35);
+  box-shadow: 0 0 0 0 var(--capture-color, #ffe47a);
+  animation: capture-burst-ring 360ms cubic-bezier(.16,.82,.24,1) forwards;
+}
+
+.capture-burst::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--capture-color, #ffe47a);
+  filter: blur(1px);
+  opacity: .92;
+  animation: capture-burst-core 240ms ease-out forwards;
+}
+
+.capture-burst-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--capture-color, #ffe47a);
+  box-shadow: 0 0 7px var(--capture-color, #ffe47a);
+  transform-origin: 50% 0;
+  transform: translate(-50%, 0) rotate(var(--spark-angle)) translateY(-4px) scale(.2);
+  animation: capture-burst-spark 360ms cubic-bezier(.18,.84,.24,1) forwards;
+}
+
+@keyframes capture-burst-ring {
+  0% { opacity: .98; transform: translate(-50%, -50%) scale(.35); }
+  55% { opacity: .8; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); box-shadow: 0 0 0 8px transparent; }
+}
+
+@keyframes capture-burst-core {
+  0% { opacity: .95; transform: scale(.7); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+@keyframes capture-burst-spark {
+  0% { opacity: 0; transform: translate(-50%, 0) rotate(var(--spark-angle)) translateY(-4px) scale(.2); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, 0) rotate(var(--spark-angle)) translateY(-22px) scale(.72); }
+}
+
 @keyframes token-captured-recoil {
   0% { transform: scale(1); opacity: 1; }
   45% { transform: translateX(-5px) scale(.78); opacity: .7; }
@@ -2631,6 +2687,15 @@ body.match-won .ludo-board {
     white-space: nowrap;
     text-shadow: 0 1px 3px rgba(0, 0, 0, .76);
     pointer-events: none;
+  }
+
+  /* Keep the bottom-right corner clear: relocate only that opponent die. */
+  body.vs-computer-match .dice-panel.bottom-right:not(.human-die) {
+    left: 0 !important;
+    right: auto !important;
+    top: 0 !important;
+    bottom: auto !important;
+    transform: translateY(-100%) !important;
   }
 }
 
