@@ -17,6 +17,7 @@ const matchMode = (params.get("mode") || "vs-computer").toLowerCase();
 const requestedPlayers = Number(params.get("players")) || 4;
 const requestedHumanColor = (params.get("human") || "red").toLowerCase();
 const currentLevel = Math.max(1, Number(params.get("level")) || 1);
+const TOTAL_LEVELS = 60;
 const playerCount = Math.min(4, Math.max(2, requestedPlayers));
 const humanColor = ALL_COLORS_CLOCKWISE.includes(requestedHumanColor) ? requestedHumanColor : "red";
 const aiDifficulty = Math.min(3, Math.floor((currentLevel - 1) / 5) + 1);
@@ -203,6 +204,16 @@ const nearWinAnnounced = new Set();
 const DAILY_LOGIN_COINS = 25;
 const DAILY_LOGIN_KEY = "ludo_last_login_date";
 let totalCoins = Math.max(0, Number(localStorage.getItem("ludo_coins") || "0"));
+let matchRewardGranted = false;
+let coinCounterAnimationId = 0;
+const matchRewardLedger = {
+  victory: 0,
+  sixes: 0,
+  captures: 0,
+  blockades: 0,
+  homes: 0,
+  special: 0
+};
 
 if (levelBadgeEl) {
   levelBadgeEl.textContent = String(currentLevel);
@@ -217,9 +228,9 @@ function applyDailyLoginReward() {
   const last = localStorage.getItem(DAILY_LOGIN_KEY);
   if (last === todayKey) return;
   localStorage.setItem(DAILY_LOGIN_KEY, todayKey);
-  totalCoins += DAILY_LOGIN_COINS;
-  localStorage.setItem("ludo_coins", String(totalCoins));
-  if (coinTotalEl) coinTotalEl.textContent = String(totalCoins);
+  addCoins(DAILY_LOGIN_COINS);
+  animateCoinGain(DAILY_LOGIN_COINS, coinHudEl);
+  setTimeout(() => showToast(`DAILY REWARD +${DAILY_LOGIN_COINS} COINS`), 0);
 }
 
 applyDailyLoginReward();
@@ -227,15 +238,40 @@ applyDailyLoginReward();
 function addCoins(amount) {
   const safeAmount = Math.floor(Number(amount) || 0);
   if (safeAmount <= 0) return;
+  const previousTotal = totalCoins;
   totalCoins += safeAmount;
   localStorage.setItem("ludo_coins", String(totalCoins));
-  if (coinTotalEl) coinTotalEl.textContent = String(totalCoins);
+  if (!coinTotalEl) return;
+
+  if (coinCounterAnimationId) cancelAnimationFrame(coinCounterAnimationId);
+  const targetTotal = totalCoins;
+  const duration = safeAmount >= 100 ? 560 : 360;
+  const startedAt = performance.now();
+  const updateCounter = now => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    coinTotalEl.textContent = String(Math.round(previousTotal + (targetTotal - previousTotal) * eased));
+    if (progress < 1) {
+      coinCounterAnimationId = requestAnimationFrame(updateCounter);
+    } else {
+      coinCounterAnimationId = 0;
+      coinTotalEl.textContent = String(targetTotal);
+    }
+  };
+  coinCounterAnimationId = requestAnimationFrame(updateCounter);
 }
 
 function pickReactionLine(type) {
   const list = REACTION_LINES[type];
   if (!Array.isArray(list) || list.length === 0) return "";
   return list[Math.floor(Math.random() * list.length)];
+}
+
+function recordMatchReward(type, amount) {
+  const safeAmount = Math.floor(Number(amount) || 0);
+  if (safeAmount <= 0) return;
+  const key = Object.prototype.hasOwnProperty.call(matchRewardLedger, type) ? type : "special";
+  matchRewardLedger[key] += safeAmount;
 }
 
 function getElementCenter(el) {
@@ -301,6 +337,7 @@ function rewardHumanEvent(type, sourceEl = null, sourcePoint = null, multiplier 
   const amount = Math.floor((EVENT_COIN_REWARDS[type] || 0) * Math.max(1, Number(multiplier) || 1));
   if (amount <= 0) return;
   addCoins(amount);
+  recordMatchReward(type === "rollSix" ? "sixes" : type === "capture" ? "captures" : type === "blockade" ? "blockades" : type === "home" ? "homes" : "special", amount);
   animateCoinGain(amount, sourceEl, sourcePoint);
   const line = pickReactionLine(type);
   if (line) {
@@ -905,7 +942,9 @@ function animateCapturedTokenHome(tokenEl, homeEl) {
 function announceTurn(player) {
   if (!player || gameOver) return;
   const panel = dicePanelsByColor[player.color];
+  const home = document.querySelector(`.home.${player.color}`);
   triggerFeedback(panel, player.isAI ? "ai-turn-start" : "human-turn-start", 520);
+  triggerFeedback(home, player.isAI ? "ai-home-turn" : "human-home-turn", 520);
   showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
 }
 
@@ -2102,6 +2141,7 @@ function handleBattleCaptureBonus(playerIndex, captures, sourceEl = null) {
 
   if (player.color === humanColor) {
     addCoins(coinBonus);
+    recordMatchReward("special", coinBonus);
     animateCoinGain(coinBonus, sourceEl);
   }
 }
@@ -2254,15 +2294,21 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
     handleBattleCaptureBonus(playerIndex, captures, PATHS.common[finalPos].el);
   } else if (gameMode === "arena" && captures > 0) {
     if (color === humanColor) {
-      addCoins(4 * captures);
-      animateCoinGain(4 * captures, PATHS.common[finalPos].el);
+      const arenaCaptureBonus = 4 * captures;
+      addCoins(arenaCaptureBonus);
+      recordMatchReward("special", arenaCaptureBonus);
+      animateCoinGain(arenaCaptureBonus, PATHS.common[finalPos].el);
     }
     showToast("Battle Bonus");
   }
 
   if (isHumanVsComputerTurn(color) && captures > 0) {
     if (activeSkinEffects.bonusCaptureCoins) {
-      addCoins(activeSkinEffects.bonusCaptureCoins * captures);
+      const bonusCoins = activeSkinEffects.bonusCaptureCoins * captures;
+      addCoins(bonusCoins);
+      recordMatchReward("special", bonusCoins);
+      animateCoinGain(bonusCoins, PATHS.common[finalPos].el);
+      showToast(`SKIN BONUS +${bonusCoins} COINS`);
     }
     if (activeSkinEffects.nextRollBoostAfterCapture) {
       matchEffectState.nextRollBoost = 1;
@@ -2361,6 +2407,7 @@ async function handleTileEvent(playerIndex, tokenIndex) {
   if (gameMode === "chaos" && player.color === humanColor && chaosRewardTile !== null && currentTile === chaosRewardTile) {
     const rewardCell = PATHS.common[currentPos]?.el || null;
     addCoins(CHAOS_REWARD_COINS);
+    recordMatchReward("special", CHAOS_REWARD_COINS);
     animateCoinGain(CHAOS_REWARD_COINS, rewardCell);
     showToast(`Chaos Reward +${CHAOS_REWARD_COINS}`);
     playSfx("entry", 0.54);
@@ -2371,6 +2418,7 @@ async function handleTileEvent(playerIndex, tokenIndex) {
     if (player.color === humanColor && activeArenaTiles.reward.includes(currentTile)) {
       const rewardCell = PATHS.common[currentPos]?.el || null;
       addCoins(ARENA_REWARD_COINS);
+      recordMatchReward("special", ARENA_REWARD_COINS);
       animateCoinGain(ARENA_REWARD_COINS, rewardCell);
       showToast(`Arena Reward +${ARENA_REWARD_COINS}`);
       playSfx("entry", 0.62);
@@ -2622,10 +2670,12 @@ function openResultModal({ title, subtitle, showNextLevel }) {
 }
 
 function checkAndShowWinner(playerIndex) {
+  if (gameOver || matchRewardGranted) return false;
   const player = state.players[playerIndex];
   if (!player.finished.every(Boolean)) return false;
 
   gameOver = true;
+  matchRewardGranted = true;
   document.body.classList.add("match-won");
   player.tokens.forEach((_, tokenIndex) => {
     triggerFeedback(tokenEls[player.color]?.[tokenIndex], "token-winner", 720);
@@ -2641,25 +2691,59 @@ function checkAndShowWinner(playerIndex) {
     if (panel) panel.classList.remove("dice-active");
   });
 
+  const rewardSummary = [];
+  let matchCoinsAwarded = 0;
+
   if (matchMode === "vs-computer" && player.color === humanColor) {
     let winCoins = 100 * (gameMode === "arena" ? ARENA_WIN_MULTIPLIER : 1);
     winCoins += activeSkinEffects.bonusWinCoins || 0;
     if (activeSkinEffects.winBonusPercent) {
       winCoins += Math.floor(winCoins * activeSkinEffects.winBonusPercent);
     }
-    addCoins(winCoins);
+    matchCoinsAwarded += winCoins;
+    recordMatchReward("victory", winCoins);
   }
 
+  let unlockedBefore = 1;
+  let unlockedAfter = 1;
   if (matchMode === "vs-computer" && activeSkinEffects.bonusMatchCoins) {
-    addCoins(activeSkinEffects.bonusMatchCoins);
+    matchCoinsAwarded += activeSkinEffects.bonusMatchCoins;
+    recordMatchReward("special", activeSkinEffects.bonusMatchCoins);
+  }
+
+  if (matchCoinsAwarded > 0) {
+    addCoins(matchCoinsAwarded);
+    animateCoinGain(matchCoinsAwarded, coinHudEl);
   }
 
   if (matchMode === "vs-computer" && player.color === humanColor) {
     const storageKey = "ludo_unlocked_level";
-    const unlocked = Math.max(1, Number(localStorage.getItem(storageKey) || "1"));
-    const nextUnlocked = Math.max(unlocked, currentLevel + 1);
-    localStorage.setItem(storageKey, String(nextUnlocked));
+    unlockedBefore = Math.min(
+      TOTAL_LEVELS,
+      Math.max(1, Number(localStorage.getItem(storageKey) || "1"))
+    );
+    unlockedAfter = Math.min(TOTAL_LEVELS, Math.max(unlockedBefore, currentLevel + 1));
+    localStorage.setItem(storageKey, String(unlockedAfter));
+    if (unlockedAfter > unlockedBefore) {
+      rewardSummary.push(`LEVEL ${unlockedAfter} UNLOCKED`);
+      levelBadgeEl?.classList.remove("level-up-reward");
+      void levelBadgeEl?.offsetWidth;
+      levelBadgeEl?.classList.add("level-up-reward");
+    }
   }
+
+  const rewardLines = [
+    ["Victory Reward", matchRewardLedger.victory],
+    ["Tokens Home", matchRewardLedger.homes],
+    ["Captures", matchRewardLedger.captures],
+    ["Sixes", matchRewardLedger.sixes],
+    ["Blockades", matchRewardLedger.blockades],
+    ["Special Rewards", matchRewardLedger.special]
+  ]
+    .filter(([, amount]) => amount > 0)
+    .map(([label, amount]) => `${label}: +${amount} COINS`);
+  const totalMatchReward = Object.values(matchRewardLedger).reduce((sum, amount) => sum + amount, 0);
+  const summaryLines = [...rewardLines, `TOTAL: +${totalMatchReward} COINS`];
 
   if (matchMode === "pass-play") {
     playSfx("win", 0.8);
@@ -2671,15 +2755,21 @@ function checkAndShowWinner(playerIndex) {
   } else {
     if (player.color === humanColor) {
       playSfx("win", 0.8);
+      if (resultSubtitleEl) {
+        resultSubtitleEl.textContent = ["MATCH COMPLETE", "VICTORY", ...rewardSummary, ...summaryLines].join("\n");
+      }
       openResultModal({
         title: "YOU WON",
-        subtitle: "",
+        subtitle: resultSubtitleEl?.textContent || ["MATCH COMPLETE", "VICTORY", ...summaryLines].join("\n"),
         showNextLevel: true
       });
     } else {
+      if (resultSubtitleEl) {
+        resultSubtitleEl.textContent = ["MATCH COMPLETE", ...rewardSummary, ...summaryLines].join("\n");
+      }
       openResultModal({
         title: "You lose",
-        subtitle: `${player.color.toUpperCase()} AI won`,
+        subtitle: ["MATCH COMPLETE", `${player.color.toUpperCase()} AI won`, ...rewardSummary, ...summaryLines].join("\n"),
         showNextLevel: false
       });
     }
@@ -3102,7 +3192,7 @@ async function executeMove(move) {
           homePath[homePos].el.appendChild(token);
         }
         triggerFeedback(token, "token-home-lane", 360);
-        playSfx("step", 0.35);
+        playSfx("entry", 0.42);
         await wait(180);
         continue;
       }

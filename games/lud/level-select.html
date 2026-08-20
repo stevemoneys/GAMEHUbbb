@@ -14,7 +14,22 @@
         <a class="close-btn" href="vs-computer.html" aria-label="Back">X</a>
       </header>
 
-      <p class="sub">Finish a level to unlock the next one.</p>
+      <p class="sub">Finish levels to unlock the next challenge and earn coins for new cosmetics.</p>
+
+      <section class="progress-summary" aria-label="Level progress">
+        <div class="progress-stat">
+          <span class="progress-label">CURRENT LEVEL</span>
+          <strong id="current-level-value">1</strong>
+        </div>
+        <div class="progress-stat">
+          <span class="progress-label">NEXT GOAL</span>
+          <strong id="next-level-value">LEVEL 2</strong>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <span id="level-progress-fill"></span>
+        </div>
+        <p class="progress-caption" id="level-progress-caption">1 / 60 LEVELS UNLOCKED</p>
+      </section>
 
       <div class="level-grid" id="level-grid"></div>
     </section>
@@ -42,6 +57,17 @@
     unlocked = Math.min(TOTAL_LEVELS, unlocked);
     localStorage.setItem(storageKey, String(unlocked));
 
+    const currentLevelEl = document.getElementById("current-level-value");
+    const nextLevelEl = document.getElementById("next-level-value");
+    const progressFillEl = document.getElementById("level-progress-fill");
+    const progressCaptionEl = document.getElementById("level-progress-caption");
+    if (currentLevelEl) currentLevelEl.textContent = String(unlocked);
+    if (nextLevelEl) {
+      nextLevelEl.textContent = unlocked < TOTAL_LEVELS ? `LEVEL ${unlocked + 1}` : "ALL COMPLETE";
+    }
+    if (progressFillEl) progressFillEl.style.width = `${(unlocked / TOTAL_LEVELS) * 100}%`;
+    if (progressCaptionEl) progressCaptionEl.textContent = `${unlocked} / ${TOTAL_LEVELS} LEVELS UNLOCKED`;
+
     const grid = document.getElementById("level-grid");
 
     for (let level = 1; level <= TOTAL_LEVELS; level++) {
@@ -51,9 +77,13 @@
       btn.textContent = `Level ${level}`;
 
       const isUnlocked = level <= unlocked;
+      if (level === unlocked) btn.classList.add("current");
       if (!isUnlocked) {
         btn.disabled = true;
         btn.classList.add("locked");
+        btn.setAttribute("aria-label", `Level ${level}, locked. Complete level ${level - 1} first.`);
+      } else if (level === unlocked) {
+        btn.setAttribute("aria-label", `Current highest unlocked level, level ${level}`);
       }
 
       btn.addEventListener("click", () => {

@@ -1667,6 +1667,19 @@ body::before {
   margin: 0 0 16px;
   font-size: 16px;
   font-weight: 700;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.level-badge.level-up-reward {
+  animation: level-up-reward 620ms cubic-bezier(.18,.88,.24,1);
+}
+
+@keyframes level-up-reward {
+  0% { transform: scale(1); box-shadow: 0 6px 14px rgba(0, 0, 0, .18); }
+  42% { transform: scale(1.2) rotate(-3deg); box-shadow: 0 0 0 5px rgba(255, 220, 92, .42), 0 0 24px rgba(255, 201, 47, .9); }
+  72% { transform: scale(1.08) rotate(3deg); }
+  100% { transform: scale(1); box-shadow: 0 6px 14px rgba(0, 0, 0, .18); }
 }
 
 .result-actions {
@@ -2425,6 +2438,19 @@ body.orient-blue .token img {
   box-shadow: 0 0 0 2px rgba(209, 255, 243, 0.82), 0 0 18px rgba(91, 219, 191, 0.78) !important;
 }
 
+.home.human-home-turn,
+.home.ai-home-turn {
+  animation: active-home-turn 520ms ease-out;
+}
+
+.home.human-home-turn {
+  box-shadow: inset 0 0 0 3px rgba(255, 249, 185, .9), 0 0 22px rgba(255, 218, 87, .78) !important;
+}
+
+.home.ai-home-turn {
+  box-shadow: inset 0 0 0 3px rgba(196, 255, 235, .72), 0 0 18px rgba(69, 215, 175, .62) !important;
+}
+
 @keyframes dice-result-settle {
   0% { scale: 1; }
   45% { scale: 1.1; }
@@ -2441,6 +2467,12 @@ body.orient-blue .token img {
   0% { scale: 1; filter: brightness(1); }
   42% { scale: 1.06; filter: brightness(1.18); }
   100% { scale: 1; filter: brightness(1); }
+}
+
+@keyframes active-home-turn {
+  0% { filter: brightness(1); transform: scale(1); }
+  42% { filter: brightness(1.12); transform: scale(1.025); }
+  100% { filter: brightness(1); transform: scale(1); }
 }
 
 .token.selectable-gold,
@@ -2739,6 +2771,8 @@ body.mode-classic .cell.safe-star::before {
   .dice-panel.dice-six,
   .dice-panel.human-turn-start,
   .dice-panel.ai-turn-start,
+  .home.human-home-turn,
+  .home.ai-home-turn,
   .token.selectable-gold,
   .token.selectable-black,
   .token.token-selected,
