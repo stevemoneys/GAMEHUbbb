@@ -227,3 +227,367 @@ body {
     animation-duration: 1ms !important;
   }
 }
+
+/* Step 2 premium progression journey layer. Progression state remains authoritative in level-select.html. */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  place-items: start center;
+  overflow: hidden;
+  font-family: var(--gh-font-ui);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(61, 200, 233, .2), transparent 32%),
+    radial-gradient(circle at 88% 12%, rgba(255, 212, 90, .12), transparent 28%),
+    linear-gradient(160deg, var(--gh-color-bg-deep), #123c5a 52%, #0e6b6e);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .5;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.level-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(94vw, 920px);
+  height: min(94svh, 900px);
+  margin-top: 3vh;
+}
+
+.level-card {
+  gap: var(--gh-space-md);
+  padding: clamp(14px, 2.5vw, 26px);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: var(--gh-radius-lg);
+  background: linear-gradient(145deg, rgba(8, 30, 49, .96), rgba(14, 69, 86, .93));
+  box-shadow: var(--gh-shadow-modal);
+}
+
+.level-head {
+  min-height: 104px;
+  gap: var(--gh-space-md);
+  padding: clamp(18px, 3vw, 30px);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--gh-radius-md);
+  background: linear-gradient(135deg, rgba(26, 121, 186, .86), rgba(21, 63, 131, .92));
+  box-shadow: var(--gh-shadow-card);
+}
+
+.journey-eyebrow {
+  margin: 0 0 5px;
+  color: #baf4ff;
+  font-size: var(--gh-type-label);
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.level-head h1 {
+  font-size: clamp(30px, 5vw, 52px);
+  letter-spacing: -.03em;
+}
+
+.sub {
+  max-width: 48ch;
+  margin: 8px 0 0;
+  color: rgba(237, 250, 255, .78);
+  font-size: var(--gh-type-body);
+  font-weight: 500;
+}
+
+.close-btn {
+  display: grid;
+  place-items: center;
+  flex: 0 0 var(--gh-touch-target-min);
+  width: var(--gh-touch-target-min);
+  height: var(--gh-touch-target-min);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: var(--gh-radius-sm);
+  background: rgba(4, 25, 45, .3);
+  transition: transform var(--gh-duration-fast) var(--gh-ease-standard), background var(--gh-duration-fast) ease;
+}
+
+.close-btn:hover,
+.close-btn:focus-visible {
+  background: rgba(255,255,255,.16);
+  transform: translateY(-1px);
+  outline: none;
+  box-shadow: var(--gh-shadow-focus);
+}
+
+.progress-summary {
+  gap: var(--gh-space-sm) var(--gh-space-md);
+  margin: 0;
+  padding: var(--gh-space-md);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--gh-radius-md);
+  background: rgba(4, 24, 42, .52);
+  box-shadow: var(--gh-shadow-card);
+}
+
+.progress-label {
+  color: rgba(205, 237, 246, .62);
+  font-size: var(--gh-type-label);
+}
+
+.progress-stat strong {
+  color: var(--gh-color-reward);
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.progress-track {
+  height: 12px;
+  background: rgba(255,255,255,.14);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.24);
+}
+
+.progress-track span {
+  background: linear-gradient(90deg, var(--gh-color-accent), var(--gh-color-success), var(--gh-color-reward));
+  box-shadow: 0 0 16px rgba(61, 200, 233, .42);
+  transition: width var(--gh-duration-emphasis) var(--gh-ease-enter);
+}
+
+.progress-caption,
+.progress-milestone,
+.progress-next {
+  color: rgba(222, 245, 251, .72);
+  font-size: var(--gh-type-status);
+}
+
+.progress-milestone {
+  color: #c8f5ff;
+}
+
+.progress-next {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: var(--gh-color-reward);
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.continue-level-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--gh-touch-target-comfortable);
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: var(--gh-radius-md);
+  color: #10354c;
+  background: linear-gradient(135deg, #6ce5ef, #ffd45a);
+  box-shadow: var(--gh-shadow-button);
+  font-size: var(--gh-type-button);
+  font-weight: 950;
+  letter-spacing: .05em;
+  text-decoration: none;
+  transition: transform var(--gh-duration-fast) var(--gh-ease-standard), filter var(--gh-duration-fast) ease, box-shadow var(--gh-duration-fast) ease;
+}
+
+.continue-level-btn:hover,
+.continue-level-btn:focus-visible {
+  filter: brightness(1.06);
+  transform: translateY(-2px);
+  outline: none;
+  box-shadow: var(--gh-shadow-focus), var(--gh-shadow-button);
+}
+
+.continue-level-btn:active {
+  transform: translateY(1px) scale(.99);
+}
+
+.level-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--gh-space-sm);
+  padding: 2px 4px 6px 0;
+}
+
+.level-btn {
+  position: relative;
+  display: grid;
+  min-height: 76px;
+  place-content: center;
+  gap: 2px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--gh-radius-md);
+  color: rgba(236, 249, 255, .82);
+  background: rgba(255,255,255,.075);
+  box-shadow: var(--gh-shadow-button);
+  font-family: inherit;
+  transition: transform var(--gh-duration-fast) var(--gh-ease-standard), border-color var(--gh-duration-fast) ease, background var(--gh-duration-fast) ease, box-shadow var(--gh-duration-fast) ease;
+}
+
+.level-number {
+  color: #fff;
+  font-size: clamp(23px, 3vw, 34px);
+  line-height: 1;
+}
+
+.level-label {
+  color: rgba(210, 239, 247, .58);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.level-btn:hover:enabled,
+.level-btn:focus-visible {
+  border-color: rgba(108, 229, 239, .72);
+  background: rgba(61, 200, 233, .18);
+  transform: translateY(-2px);
+  outline: none;
+  box-shadow: var(--gh-shadow-focus), var(--gh-shadow-button);
+}
+
+.level-btn:active:enabled {
+  transform: translateY(1px) scale(.98);
+}
+
+.level-btn.completed {
+  border-color: rgba(113, 224, 156, .3);
+  background: rgba(56, 151, 111, .16);
+}
+
+.level-btn.completed::after {
+  content: "✓ COMPLETE";
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  color: #9af2b7;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.level-btn.current {
+  border: 2px solid var(--gh-color-reward);
+  background: linear-gradient(145deg, rgba(61, 200, 233, .3), rgba(255, 212, 90, .2));
+  box-shadow: 0 0 0 3px rgba(255,212,90,.12), 0 12px 24px rgba(0,0,0,.24);
+}
+
+.level-btn.current::after {
+  content: "PLAY NEXT";
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  margin: 0;
+  color: var(--gh-color-reward);
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: .06em;
+}
+
+.level-btn.milestone:not(.current) {
+  border-color: rgba(255,212,90,.42);
+}
+
+.level-btn.milestone:not(.current)::before {
+  content: "MILESTONE";
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  color: rgba(255,212,90,.82);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .05em;
+}
+
+.level-btn.locked {
+  border-color: rgba(255,255,255,.08);
+  color: rgba(206, 221, 229, .4);
+  background: rgba(0, 0, 0, .16);
+  box-shadow: none;
+}
+
+.level-btn.locked::before {
+  content: "LOCKED";
+  position: absolute;
+  left: 8px;
+  bottom: 7px;
+  color: rgba(206, 221, 229, .45);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 720px) {
+  .level-wrap {
+    width: min(96vw, 620px);
+    height: 96svh;
+    margin-top: 2vh;
+  }
+
+  .level-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .level-wrap {
+    width: 96vw;
+    height: 97svh;
+    margin-top: 1.5vh;
+  }
+
+  .level-card {
+    gap: var(--gh-space-sm);
+    padding: 12px;
+    border-radius: var(--gh-radius-md);
+  }
+
+  .level-head {
+    min-height: 92px;
+    padding: 16px;
+  }
+
+  .sub {
+    font-size: var(--gh-type-status);
+  }
+
+  .progress-summary {
+    padding: 12px;
+  }
+
+  .level-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .level-btn {
+    min-height: 68px;
+  }
+}
+
+@media (max-width: 360px) {
+  .level-head h1 {
+    font-size: 28px;
+  }
+
+  .journey-eyebrow {
+    font-size: 9px;
+  }
+
+  .level-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-track span,
+  .continue-level-btn,
+  .level-btn,
+  .close-btn {
+    transition-duration: 1ms !important;
+  }
+
+  .level-btn.newly-unlocked {
+    animation: none !important;
+  }
+}

@@ -11,19 +11,21 @@
   <main class="level-wrap">
     <section class="level-card">
       <header class="level-head">
-        <h1>Select Level</h1>
-        <a class="close-btn" href="vs-computer.html" aria-label="Back">X</a>
+        <div>
+          <p class="journey-eyebrow">PLAYER PROGRESSION</p>
+          <h1>Level Journey</h1>
+          <p class="sub">Build your run, unlock the next challenge, and keep moving forward.</p>
+        </div>
+        <a class="close-btn" href="vs-computer.html" aria-label="Back to game modes">×</a>
       </header>
-
-      <p class="sub">Finish levels to unlock the next challenge and earn coins for new cosmetics.</p>
 
       <section class="progress-summary" aria-label="Level progress">
         <div class="progress-stat">
-          <span class="progress-label">HIGHEST UNLOCKED</span>
+          <span class="progress-label">PLAY NEXT</span>
           <strong id="current-level-value">1</strong>
         </div>
         <div class="progress-stat">
-          <span class="progress-label">NEXT GOAL</span>
+          <span class="progress-label">NEXT MILESTONE</span>
           <strong id="next-level-value">LEVEL 2</strong>
         </div>
         <div class="progress-track" aria-hidden="true">
@@ -31,9 +33,12 @@
         </div>
         <p class="progress-caption" id="level-progress-caption">1 / 60 LEVELS UNLOCKED</p>
         <p class="progress-milestone" id="progress-milestone">STARTER JOURNEY</p>
+        <p class="progress-next" id="progress-next">Keep going to reach the next milestone.</p>
       </section>
 
-      <div class="level-grid" id="level-grid"></div>
+      <a class="continue-level-btn" id="continue-level-btn" href="#level-grid">CONTINUE LEVEL 1</a>
+
+      <div class="level-grid" id="level-grid" aria-label="Available levels"></div>
     </section>
   </main>
 
@@ -78,10 +83,20 @@
     }
     if (progressFillEl) progressFillEl.style.width = `${(unlocked / TOTAL_LEVELS) * 100}%`;
     if (progressCaptionEl) progressCaptionEl.textContent = `${unlocked} / ${TOTAL_LEVELS} LEVELS UNLOCKED`;
-    if (milestoneEl) {
-      const milestone = milestoneNames.find(([level]) => unlocked <= level) || milestoneNames[milestoneNames.length - 1];
-      milestoneEl.textContent = `${milestone[1]} JOURNEY · ${milestone[0] - unlocked} TO NEXT MILESTONE`;
+    const nextMilestoneEl = document.getElementById("progress-next");
+    const milestone = milestoneNames.find(([level]) => unlocked < level) || milestoneNames[milestoneNames.length - 1];
+    if (nextLevelEl) {
+      nextLevelEl.textContent = unlocked < TOTAL_LEVELS ? `LEVEL ${milestone[0]}` : "ALL COMPLETE";
     }
+    if (milestoneEl) {
+      const currentStage = milestoneNames.slice().reverse().find(([level]) => unlocked >= level) || [0, "STARTER"];
+      milestoneEl.textContent = `${currentStage[1]} STAGE · ${Math.max(0, milestone[0] - unlocked)} TO ${milestone[1]}`;
+    }
+    if (nextMilestoneEl) {
+      nextMilestoneEl.textContent = unlocked < TOTAL_LEVELS ? `NEXT LANDMARK · LEVEL ${milestone[0]}` : "ALL 60 LEVELS COMPLETE";
+    }
+    const continueBtn = document.getElementById("continue-level-btn");
+    if (continueBtn) continueBtn.textContent = unlocked < TOTAL_LEVELS ? `CONTINUE LEVEL ${String(unlocked).padStart(2, "0")}` : "REPLAY LEVEL 60";
 
     const grid = document.getElementById("level-grid");
 
@@ -89,11 +104,15 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "level-btn";
-      btn.textContent = `Level ${level}`;
+      btn.innerHTML = `<span class="level-number">${String(level).padStart(2, "0")}</span><span class="level-label">LEVEL</span>`;
       btn.dataset.level = String(level);
 
       const isUnlocked = level <= unlocked;
+      const isCompleted = level < unlocked;
+      const isMilestone = milestoneNames.some(([milestoneLevel]) => milestoneLevel === level);
+      if (isCompleted) btn.classList.add("completed");
       if (level === unlocked) btn.classList.add("current");
+      if (isMilestone) btn.classList.add("milestone");
       if (level === unlocked && unlocked > 1) btn.classList.add("newly-unlocked");
       if (!isUnlocked) {
         btn.disabled = true;
@@ -101,6 +120,9 @@
         btn.setAttribute("aria-label", `Level ${level}, locked. Complete level ${level - 1} first.`);
       } else if (level === unlocked) {
         btn.setAttribute("aria-label", `Current highest unlocked level, level ${level}`);
+        btn.setAttribute("aria-current", "step");
+      } else {
+        btn.setAttribute("aria-label", `Completed level ${level}`);
       }
 
       btn.addEventListener("click", () => {
@@ -116,6 +138,16 @@
       });
 
       grid.appendChild(btn);
+    }
+
+    if (continueBtn) {
+      continueBtn.href = `ludo.html?${new URLSearchParams({
+        mode: "vs-computer",
+        players,
+        human,
+        gm,
+        level: String(unlocked)
+      }).toString()}`;
     }
   </script>
   <script>

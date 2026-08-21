@@ -18,16 +18,21 @@
   </div>
   <main class="shop-wrap">
     <header class="shop-head">
-      <a class="back-btn" href="index.html" aria-label="Back">X</a>
-      <h1>Dice Skins</h1>
+      <a class="back-btn" href="index.html" aria-label="Back to lobby">×</a>
+      <div class="shop-title"><p class="shop-eyebrow">YOUR COLLECTION</p><h1>Dice Collection</h1><p class="collection-count" id="collection-count">0 / 20 COLLECTED</p></div>
       <div class="coin-badge">
         <span class="coin-dot"></span>
         <span id="coin-total">0</span>
       </div>
-    </header>    <section class="default-row">
-      <button class="btn use use-default-btn" id="use-default" type="button">Use default skin</button>
+    </header>
+    <section class="loadout" aria-label="Current dice loadout">
+      <div class="loadout-preview"><img id="loadout-preview" src="dice/5_result.webp" alt="Current dice skin" /></div>
+      <div class="loadout-copy"><p class="section-kicker">CURRENTLY EQUIPPED</p><h2 id="loadout-name">Classic Dice</h2><p id="loadout-state">DEFAULT LOADOUT</p></div>
+      <button class="btn use use-default-btn" id="use-default" type="button">Equip Default</button>
     </section>
     <p class="shop-feedback" id="shop-feedback" aria-live="polite"></p>
+
+    <div class="collection-heading"><div><p class="section-kicker">EXPLORE</p><h2>Dice Vault</h2></div><p id="collection-page-label">Page 1</p></div>
 
     <section class="shop-stage">
       <button class="nav-btn" id="prev-btn" type="button">&lt;</button>
@@ -36,6 +41,31 @@
     </section>
   </main>
 
+  <div class="preview-modal" id="preview-modal" hidden>
+    <div class="preview-backdrop" data-preview-close></div>
+    <section class="preview-sheet" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+      <button class="preview-close" type="button" data-preview-close aria-label="Close preview">×</button>
+      <div class="preview-art"><img id="preview-image" src="dice/5_result.webp" alt="" /></div>
+      <p class="section-kicker" id="preview-series">DICE SERIES</p>
+      <h2 id="preview-title">Skin</h2>
+      <p class="preview-effect" id="preview-effect"></p>
+      <p class="preview-price" id="preview-price"></p>
+      <button class="preview-action" id="preview-action" type="button">UNLOCK</button>
+      <button class="preview-secondary" type="button" data-preview-close>CONTINUE BROWSING</button>
+    </section>
+  </div>
+
+  <div class="unlock-modal" id="unlock-modal" hidden>
+    <div class="preview-backdrop"></div>
+    <section class="unlock-sheet" role="dialog" aria-modal="true" aria-labelledby="unlock-title">
+      <p class="section-kicker">NEW COSMETIC UNLOCKED</p>
+      <div class="unlock-art"><img id="unlock-image" src="dice/5_result.webp" alt="" /></div>
+      <h2 id="unlock-title">Skin</h2>
+      <p id="unlock-effect"></p>
+      <div class="unlock-actions"><button id="unlock-equip" type="button">EQUIP NOW</button><button id="unlock-continue" type="button">CONTINUE</button></div>
+    </section>
+  </div>
+
   <script>
     (function () {
       const overlay = document.getElementById("rotate-overlay");
@@ -43,7 +73,7 @@
       function showOverlay() {
         const mobile = window.matchMedia("(max-width: 900px)").matches;
         const landscape = window.matchMedia("(orientation: landscape)").matches;
-        const show = mobile && !landscape;
+        const show = false;
         overlay.classList.toggle("show", show);
         overlay.setAttribute("aria-hidden", show ? "false" : "true");
         document.body.classList.toggle("needs-landscape", show);
@@ -106,6 +136,25 @@
     const nextBtn = document.getElementById("next-btn");
     const useDefaultBtn = document.getElementById("use-default");
     const feedbackEl = document.getElementById("shop-feedback");
+    const collectionCountEl = document.getElementById("collection-count");
+    const loadoutPreviewEl = document.getElementById("loadout-preview");
+    const loadoutNameEl = document.getElementById("loadout-name");
+    const loadoutStateEl = document.getElementById("loadout-state");
+    const collectionPageLabelEl = document.getElementById("collection-page-label");
+    const previewModal = document.getElementById("preview-modal");
+    const previewImage = document.getElementById("preview-image");
+    const previewTitle = document.getElementById("preview-title");
+    const previewEffect = document.getElementById("preview-effect");
+    const previewPrice = document.getElementById("preview-price");
+    const previewAction = document.getElementById("preview-action");
+    const unlockModal = document.getElementById("unlock-modal");
+    const unlockImage = document.getElementById("unlock-image");
+    const unlockTitle = document.getElementById("unlock-title");
+    const unlockEffect = document.getElementById("unlock-effect");
+    const unlockEquip = document.getElementById("unlock-equip");
+    const unlockContinue = document.getElementById("unlock-continue");
+    let previewId = null;
+    let unlockedId = null;
 
     let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
     let owned = [];
@@ -149,6 +198,56 @@
       coinTotalEl.textContent = String(coins);
     }
 
+    function renderCollectionSummary() {
+      if (collectionCountEl) collectionCountEl.textContent = `${owned.length} / ${TOTAL_SKINS} COLLECTED`;
+      if (collectionPageLabelEl) collectionPageLabelEl.textContent = `PAGE ${currentPage + 1} / ${PAGE_COUNT}`;
+      if (loadoutPreviewEl) {
+        loadoutPreviewEl.src = activeSkin === "classic" ? "dice/5_result.webp" : `dice/skins/${activeSkin}/6_result.webp`;
+        loadoutPreviewEl.onerror = () => { loadoutPreviewEl.src = "dice/5_result.webp"; };
+      }
+      if (loadoutNameEl) loadoutNameEl.textContent = activeSkin === "classic" ? "Classic Dice" : `Skin ${activeSkin.replace("skin", "")}`;
+      if (loadoutStateEl) loadoutStateEl.textContent = activeSkin === "classic" ? "DEFAULT LOADOUT" : "EQUIPPED ✓";
+    }
+
+    function pulseRewards() {
+      [coinTotalEl.closest(".coin-badge"), collectionCountEl].forEach((el) => {
+        if (!el) return;
+        el.classList.remove("coin-pulse", "collection-pulse");
+        void el.offsetWidth;
+        el.classList.add(el === collectionCountEl ? "collection-pulse" : "coin-pulse");
+        setTimeout(() => el.classList.remove("coin-pulse", "collection-pulse"), 620);
+      });
+    }
+
+    function diceAsset(id, target) {
+      target.src = id === "classic" ? "dice/5_result.webp" : `dice/skins/${id}/6_result.webp`;
+      target.onerror = () => { target.src = "dice/5_result.webp"; };
+    }
+
+    function closePreview() { if (previewModal) previewModal.hidden = true; previewId = null; }
+
+    function openPreview(id) {
+      previewId = id;
+      const key = skinKey(id);
+      diceAsset(key, previewImage);
+      previewImage.alt = `Dice skin ${id} preview`;
+      previewTitle.textContent = `Skin ${id}`;
+      previewEffect.innerHTML = `<span>BONUS EFFECT</span>${SKIN_META[id]?.effect || "No effects"}`;
+      previewPrice.textContent = owns(id) ? "OWNED" : `${skinPrice(id)} COINS`;
+      previewAction.textContent = owns(id) ? (activeSkin === key ? "EQUIPPED ✓" : "EQUIP") : "UNLOCK";
+      previewAction.disabled = activeSkin === key;
+      previewModal.hidden = false;
+    }
+
+    function showUnlock(id) {
+      unlockedId = id;
+      diceAsset(skinKey(id), unlockImage);
+      unlockImage.alt = `Unlocked dice skin ${id}`;
+      unlockTitle.textContent = `Skin ${id}`;
+      unlockEffect.textContent = SKIN_META[id]?.effect || "No effects";
+      unlockModal.hidden = false;
+    }
+
     function renderNav() {
       prevBtn.disabled = currentPage === 0;
       nextBtn.disabled = !canGoNext(currentPage);
@@ -161,6 +260,7 @@
       void feedbackEl.offsetWidth;
       feedbackEl.classList.add("show");
       setTimeout(() => feedbackEl.classList.remove("show"), 2200);
+      showUnlock(id);
     }
 
     function buildCard(id) {
@@ -171,8 +271,11 @@
 
       const card = document.createElement("article");
       card.className = "skin-card";
+      if (!ownedNow && coins >= price) card.classList.add("affordable");
       card.dataset.skinKey = key;
 
+      const previewWrap = document.createElement("div");
+      previewWrap.className = "skin-art";
       const preview = document.createElement("img");
       preview.className = "skin-preview";
       preview.src = `dice/skins/${key}/6_result.webp`;
@@ -185,17 +288,17 @@
       title.textContent = `Skin ${id}`;
       const effect = document.createElement("p");
       effect.className = "effect";
-      effect.textContent = SKIN_META[id]?.effect || "";
+      effect.innerHTML = `<span>BONUS EFFECT</span>${SKIN_META[id]?.effect || "No effects"}`;
 
       const buyBtn = document.createElement("button");
       buyBtn.type = "button";
       buyBtn.className = "btn buy";
-      buyBtn.textContent = ownedNow ? "Owned" : "Buy";
+      buyBtn.textContent = ownedNow ? "OWNED ✓" : "UNLOCK";
 
       const useBtn = document.createElement("button");
       useBtn.type = "button";
       useBtn.className = "btn use";
-      useBtn.textContent = inUse ? "In Use" : "Use";
+      useBtn.textContent = inUse ? "EQUIPPED ✓" : "EQUIP";
 
       const priceLabel = document.createElement("p");
       priceLabel.className = "price";
@@ -223,6 +326,7 @@
         owned.push(key);
         saveState();
         render();
+        pulseRewards();
         rowEl.querySelector(`[data-skin-key="${key}"]`)?.classList.add("newly-unlocked");
         announceUnlock(id);
       });
@@ -234,9 +338,17 @@
         render();
       });
 
-      card.appendChild(preview);
-      card.appendChild(title);
-      card.appendChild(effect);
+      card.addEventListener("click", () => openPreview(id));
+      buyBtn.addEventListener("click", (event) => event.stopPropagation());
+      useBtn.addEventListener("click", (event) => event.stopPropagation());
+
+      previewWrap.appendChild(preview);
+      card.appendChild(previewWrap);
+      const cardCopy = document.createElement("div");
+      cardCopy.className = "skin-copy";
+      cardCopy.appendChild(title);
+      cardCopy.appendChild(effect);
+      card.appendChild(cardCopy);
       card.appendChild(buyBtn);
       card.appendChild(useBtn);
       card.appendChild(priceLabel);
@@ -245,6 +357,7 @@
 
     function render() {
       renderCoins();
+      renderCollectionSummary();
       rowEl.innerHTML = "";
       const start = currentPage * SKINS_PER_PAGE + 1;
       const end = start + SKINS_PER_PAGE - 1;
@@ -270,6 +383,23 @@
       activeSkin = "classic";
       saveState();
       render();
+    });
+
+    document.querySelectorAll("[data-preview-close]").forEach((el) => el.addEventListener("click", closePreview));
+    previewAction.addEventListener("click", () => {
+      if (previewId == null) return;
+      const card = rowEl.querySelector(`[data-skin-key="${skinKey(previewId)}"]`);
+      const action = card?.querySelector(activeSkin === skinKey(previewId) ? ".use" : owns(previewId) ? ".use" : ".buy");
+      closePreview();
+      action?.click();
+    });
+    unlockContinue.addEventListener("click", () => { unlockModal.hidden = true; unlockedId = null; });
+    unlockEquip.addEventListener("click", () => {
+      if (unlockedId == null) return;
+      const card = rowEl.querySelector(`[data-skin-key="${skinKey(unlockedId)}"]`);
+      card?.querySelector(".use")?.click();
+      unlockModal.hidden = true;
+      unlockedId = null;
     });
 
     render();
