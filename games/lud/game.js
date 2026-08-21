@@ -153,6 +153,12 @@ const restartBtnEl = document.getElementById("restart-btn");
 const pauseBtnEl = document.getElementById("pause-btn");
 const coinTotalEl = document.getElementById("coin-total");
 const toastLayerEl = document.getElementById("toast-layer");
+const turnAnnouncementEl = document.getElementById("turn-announcement");
+const turnAnnouncementColorEl = document.getElementById("turn-announcement-color");
+const turnAnnouncementTitleEl = document.getElementById("turn-announcement-title");
+const turnAnnouncementDetailEl = document.getElementById("turn-announcement-detail");
+const eventAnnouncementEl = document.getElementById("event-announcement");
+const eventAnnouncementTextEl = document.getElementById("event-announcement-text");
 const coinHudEl = document.getElementById("coin-hud");
 const coinFxLayerEl = document.getElementById("coin-fx-layer");
 const sparkLayerEl = document.getElementById("spark-layer");
@@ -830,6 +836,7 @@ function clearHighlights() {
   Object.values(tokenEls).flat().forEach(t => {
     t.classList.remove("selectable-gold");
     t.classList.remove("selectable-black");
+    t.classList.remove("selectable-single");
   });
 }
 
@@ -944,8 +951,52 @@ function announceTurn(player) {
   const panel = dicePanelsByColor[player.color];
   const home = document.querySelector(`.home.${player.color}`);
   triggerFeedback(panel, player.isAI ? "ai-turn-start" : "human-turn-start", 520);
-  triggerFeedback(home, player.isAI ? "ai-home-turn" : "human-home-turn", 520);
-  showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
+  if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "battle" || gameMode === "power") {
+    triggerFeedback(home, player.isAI ? "ai-home-turn" : "human-home-turn", 520);
+  }
+  if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "battle" || gameMode === "power") {
+    showTurnAnnouncement(player);
+  } else {
+    showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
+  }
+}
+
+function showTurnAnnouncement(player) {
+  if ((gameMode !== "classic" && gameMode !== "arena" && gameMode !== "chaos" && gameMode !== "battle" && gameMode !== "power") || !turnAnnouncementEl || !player) return;
+  const color = String(player.color || "").toUpperCase();
+  const isAI = !!player.isAI;
+  const stamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
+  turnAnnouncementEl.dataset.stamp = stamp;
+  turnAnnouncementEl.classList.remove("show", "human", "ai");
+  void turnAnnouncementEl.offsetWidth;
+  turnAnnouncementEl.classList.add("show", isAI ? "ai" : "human");
+  turnAnnouncementEl.classList.toggle("arena", gameMode === "arena");
+  turnAnnouncementEl.classList.toggle("chaos", gameMode === "chaos");
+  turnAnnouncementEl.classList.toggle("battle", gameMode === "battle");
+  turnAnnouncementEl.classList.toggle("power", gameMode === "power");
+  if (turnAnnouncementColorEl) turnAnnouncementColorEl.textContent = color;
+  if (turnAnnouncementTitleEl) turnAnnouncementTitleEl.textContent = isAI ? "AI'S TURN" : "YOUR TURN";
+  if (turnAnnouncementDetailEl) turnAnnouncementDetailEl.textContent = isAI ? "Thinking..." : "Roll the dice";
+  setTimeout(() => {
+    if (turnAnnouncementEl.dataset.stamp === stamp) turnAnnouncementEl.classList.remove("show");
+  }, isAI ? 1450 : 1900);
+}
+
+function showEventAnnouncement(message, tone = "event") {
+  if ((gameMode !== "classic" && gameMode !== "arena" && gameMode !== "chaos" && gameMode !== "battle" && gameMode !== "power") || !eventAnnouncementEl || !eventAnnouncementTextEl || !message) return;
+  const stamp = String(Number(eventAnnouncementEl.dataset.stamp || 0) + 1);
+  eventAnnouncementEl.dataset.stamp = stamp;
+  eventAnnouncementEl.classList.remove("show", "capture", "home", "victory", "event", "arena", "chaos", "battle", "power");
+  void eventAnnouncementEl.offsetWidth;
+  eventAnnouncementTextEl.textContent = message;
+  eventAnnouncementEl.classList.add("show", tone);
+  if (gameMode === "arena") eventAnnouncementEl.classList.add("arena");
+  if (gameMode === "chaos") eventAnnouncementEl.classList.add("chaos");
+  if (gameMode === "battle") eventAnnouncementEl.classList.add("battle");
+  if (gameMode === "power") eventAnnouncementEl.classList.add("power");
+  setTimeout(() => {
+    if (eventAnnouncementEl.dataset.stamp === stamp) eventAnnouncementEl.classList.remove("show");
+  }, tone === "victory" ? 2400 : 1250);
 }
 
 function isHumanVsComputerTurn(color) {
@@ -1271,12 +1322,14 @@ function handleCaptureAt(index, movingToken) {
 
   const movingColor = movingToken.dataset.color;
   let captures = 0;
+  const capturedColors = [];
   tokens.forEach(t => {
     if (t === movingToken) return;
     const color = t.dataset.color;
     if (SAFE_INDICES.has(index) && !isTokenRiskVulnerable(t)) return;
     if (color && color !== movingColor) {
       captures += 1;
+      capturedColors.push(color);
       sendTokenHome(t, color, movingColor);
     }
   });
@@ -1284,6 +1337,8 @@ function handleCaptureAt(index, movingToken) {
     triggerFeedback(movingToken, "token-capture-impact", 300);
     createCaptureBurst(getElementCenter(cell), movingColor);
     playSfx("entry", 0.38);
+    const capturedLabel = [...new Set(capturedColors)].map(color => color.toUpperCase()).join(" + ");
+    showEventAnnouncement(`${movingColor.toUpperCase()} CAPTURED ${capturedLabel}`, "capture");
   }
   return captures;
 }
@@ -2130,9 +2185,12 @@ function handleBattleCaptureBonus(playerIndex, captures, sourceEl = null) {
   player.battleCapturedThisTurn = true;
   player.battleStreak = Math.max(1, Number(player.battleStreak || 0) + captures);
 
-  let coinBonus = BATTLE_CAPTURE_COINS * captures;
+  const captureReward = BATTLE_CAPTURE_COINS * captures;
+  const streakBonus = player.battleStreak >= 2
+    ? (player.battleStreak - 1) * BATTLE_STREAK_STEP_COINS
+    : 0;
+  let coinBonus = captureReward + streakBonus;
   if (player.battleStreak >= 2) {
-    coinBonus += (player.battleStreak - 1) * BATTLE_STREAK_STEP_COINS;
     showToast(`Kill Streak x${player.battleStreak}`);
   } else {
     showToast("Capture Bonus");
@@ -2144,6 +2202,26 @@ function handleBattleCaptureBonus(playerIndex, captures, sourceEl = null) {
     recordMatchReward("special", coinBonus);
     animateCoinGain(coinBonus, sourceEl);
   }
+
+  const eventStamp = eventAnnouncementEl?.dataset.stamp;
+  setTimeout(() => {
+    if (gameOver || gameMode !== "battle" || eventAnnouncementEl?.dataset.stamp !== eventStamp) return;
+    if (player.color === humanColor) {
+      showEventAnnouncement(`BATTLE CAPTURE +${captureReward} COINS`, "capture");
+    }
+    if (player.battleStreak >= 2) {
+      setTimeout(() => {
+        if (gameOver || gameMode !== "battle") return;
+        showEventAnnouncement(`CAPTURE STREAK x${player.battleStreak}`, "event");
+        if (player.color === humanColor && streakBonus > 0) {
+          setTimeout(() => {
+            if (gameOver || gameMode !== "battle") return;
+            showEventAnnouncement(`STREAK BONUS +${streakBonus} COINS`, "event");
+          }, 620);
+        }
+      }, player.color === humanColor ? 620 : 0);
+    }
+  }, 520);
 }
 
 function clearArenaTileMarkers() {
@@ -2286,8 +2364,12 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
   if (color === humanColor && captures > 0) {
     rewardHumanEvent("capture", PATHS.common[finalPos].el, null, captures);
   }
-  if (color === humanColor && countColorTokensOnCommonAt(finalPos, color) === 2) {
+  const createdBlockade = countColorTokensOnCommonAt(finalPos, color) === 2;
+  if (color === humanColor && createdBlockade) {
     rewardHumanEvent("blockade", PATHS.common[finalPos].el);
+  }
+  if (createdBlockade) {
+    showEventAnnouncement(`${color.toUpperCase()} BLOCKADE`, "event");
   }
 
   if (gameMode === "battle" && captures > 0) {
@@ -2298,8 +2380,9 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
       addCoins(arenaCaptureBonus);
       recordMatchReward("special", arenaCaptureBonus);
       animateCoinGain(arenaCaptureBonus, PATHS.common[finalPos].el);
+      showEventAnnouncement(`ARENA CAPTURE BONUS +${arenaCaptureBonus} COINS`, "event");
     }
-    showToast("Battle Bonus");
+    showToast("ARENA CAPTURE BONUS");
   }
 
   if (isHumanVsComputerTurn(color) && captures > 0) {
@@ -2351,6 +2434,9 @@ async function handleTileEvent(playerIndex, tokenIndex) {
       const target = toCommonIndex(ladderPair.end);
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Ladder Boost");
       if (moved) {
+        if (gameMode === "chaos") {
+          showEventAnnouncement(`CHAOS LADDER +${ladderPair.end - ladderPair.start}`, "event");
+        }
         await animateLadderTransfer(playerIndex, tokenIndex, fromPos, target, ladderPair.side);
         playSfx("entry", 0.46);
       }
@@ -2359,22 +2445,33 @@ async function handleTileEvent(playerIndex, tokenIndex) {
       const target = toCommonIndex(snakePair.tail);
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Snake Drop");
       if (moved) {
+        if (gameMode === "chaos") {
+          showEventAnnouncement(`CHAOS SNAKE -${snakePair.mouth - snakePair.tail}`, "event");
+        }
         await animateSnakeTransfer(playerIndex, tokenIndex, fromPos, target, snakePair.side);
         playSfx("goal", 0.24);
       }
     } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.speed.includes(currentTile)) {
       const target = (currentPos + 3) % PATHS.common.length;
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Speed +3");
-      if (moved) playSfx("step", 0.4);
+      if (moved) {
+        if (gameMode === "power") showEventAnnouncement("POWER BOOST +3", "event");
+        playSfx("step", 0.4);
+      }
     } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.teleport.includes(currentTile)) {
       const toTile = pickRandomTeleportDestination(currentTile);
       if (toTile !== null) {
         moved = moveTokenToCommonIndex(playerIndex, tokenIndex, toCommonIndex(toTile), "Teleport");
-        if (moved) playSfx("entry", 0.6);
+        if (moved) {
+          if (gameMode === "power") showEventAnnouncement(`POWER TELEPORT → TILE ${toTile}`, "event");
+          playSfx("entry", 0.6);
+        }
       }
     } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.shield.includes(currentTile)) {
       player.shields[tokenIndex] = 1;
+      if (gameMode === "power") showEventAnnouncement("POWER SHIELD READY", "event");
       showToast("Shield Ready");
+      playSfx("entry", 0.42);
       break;
     } else if (modeConfig.aggressive && activeBattleTiles.risk.includes(currentTile)) {
       player.riskVulnerable[tokenIndex] = 2;
@@ -2409,7 +2506,8 @@ async function handleTileEvent(playerIndex, tokenIndex) {
     addCoins(CHAOS_REWARD_COINS);
     recordMatchReward("special", CHAOS_REWARD_COINS);
     animateCoinGain(CHAOS_REWARD_COINS, rewardCell);
-    showToast(`Chaos Reward +${CHAOS_REWARD_COINS}`);
+    showEventAnnouncement(`CHAOS BONUS +${CHAOS_REWARD_COINS} COINS`, "event");
+    showToast(`CHAOS BONUS +${CHAOS_REWARD_COINS} COINS`);
     playSfx("entry", 0.54);
   }
 
@@ -2420,7 +2518,8 @@ async function handleTileEvent(playerIndex, tokenIndex) {
       addCoins(ARENA_REWARD_COINS);
       recordMatchReward("special", ARENA_REWARD_COINS);
       animateCoinGain(ARENA_REWARD_COINS, rewardCell);
-      showToast(`Arena Reward +${ARENA_REWARD_COINS}`);
+      showToast(`ARENA BONUS +${ARENA_REWARD_COINS} COINS`);
+      showEventAnnouncement(`ARENA BONUS +${ARENA_REWARD_COINS} COINS`, "event");
       playSfx("entry", 0.62);
     }
   }
@@ -2732,13 +2831,26 @@ function checkAndShowWinner(playerIndex) {
     }
   }
 
+  showEventAnnouncement(
+    gameMode === "arena" && player.color === humanColor
+      ? "ARENA COMPLETE"
+      : gameMode === "chaos" && player.color === humanColor
+        ? "CHAOS COMPLETE"
+        : gameMode === "battle" && player.color === humanColor
+          ? "BATTLE COMPLETE"
+          : gameMode === "power" && player.color === humanColor
+            ? "POWER COMPLETE"
+      : (player.color === humanColor ? "VICTORY" : `${player.color.toUpperCase()} WINS`),
+    "victory"
+  );
+
   const rewardLines = [
     ["Victory Reward", matchRewardLedger.victory],
     ["Tokens Home", matchRewardLedger.homes],
     ["Captures", matchRewardLedger.captures],
     ["Sixes", matchRewardLedger.sixes],
     ["Blockades", matchRewardLedger.blockades],
-    ["Special Rewards", matchRewardLedger.special]
+    [gameMode === "arena" ? "Arena Bonuses" : gameMode === "chaos" ? "Chaos Bonuses" : gameMode === "battle" ? "Battle Bonuses" : "Special Rewards", matchRewardLedger.special]
   ]
     .filter(([, amount]) => amount > 0)
     .map(([label, amount]) => `${label}: +${amount} COINS`);
@@ -2756,10 +2868,15 @@ function checkAndShowWinner(playerIndex) {
     if (player.color === humanColor) {
       playSfx("win", 0.8);
       if (resultSubtitleEl) {
-        resultSubtitleEl.textContent = ["MATCH COMPLETE", "VICTORY", ...rewardSummary, ...summaryLines].join("\n");
+        resultSubtitleEl.textContent = [
+          gameMode === "arena" ? "ARENA VICTORY" : gameMode === "chaos" ? "CHAOS VICTORY" : gameMode === "battle" ? "BATTLE VICTORY" : gameMode === "power" ? "POWER VICTORY" : "MATCH COMPLETE",
+          gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "VICTORY",
+          ...rewardSummary,
+          ...summaryLines
+        ].join("\n");
       }
       openResultModal({
-        title: "YOU WON",
+        title: gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "YOU WON",
         subtitle: resultSubtitleEl?.textContent || ["MATCH COMPLETE", "VICTORY", ...summaryLines].join("\n"),
         showNextLevel: true
       });
@@ -2789,6 +2906,9 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
     if (dice === 6) token.classList.add("selectable-gold");
     else token.classList.add("selectable-black");
   });
+  if (moves.length === 1) {
+    tokenEls[player.color][moves[0].tokenIndex].classList.add("selectable-single");
+  }
   return moves.length;
 }
 
@@ -2926,6 +3046,9 @@ function nextTurn(extraTurn = false) {
 
   const currentPlayer = state.players[state.currentPlayer];
   announceTurn(currentPlayer);
+  if (extraTurn && currentPlayer) {
+    showEventAnnouncement(`${currentPlayer.color.toUpperCase()} EXTRA TURN`, "event");
+  }
   if (currentPlayer.isAI) {
     setTimeout(runAITurn, 700);
   }
@@ -2947,11 +3070,15 @@ function handleTurn() {
   waitingForTokenMove = movesCount > 0;
   resetDiceInteractivity();
   if (movesCount === 0) {
-    const line = pickReactionLine("unlucky");
-    if (line) showToast(line);
+    if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
+      turnAnnouncementDetailEl.textContent = "No legal moves";
+    }
+    showToast("NO LEGAL MOVES — TURN ENDS");
     waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
     setTimeout(() => nextTurn(false), 400);
+  } else if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
+    turnAnnouncementDetailEl.textContent = "Choose a highlighted token";
   }
 }
 
@@ -3045,6 +3172,7 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
   if (color === humanColor) {
     rewardHumanEvent("home", goalEls[color]);
   }
+  showEventAnnouncement(`${color.toUpperCase()} TOKEN HOME`, "home");
 
   if (isHumanVsComputerTurn(color) && activeSkinEffects.extraTurnEveryTwoHomes) {
     matchEffectState.homesCount += 1;
@@ -3134,6 +3262,7 @@ async function executeMove(move) {
       player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
       player.finished[tokenIndex] = false;
       triggerFeedback(token, "token-entered", 360);
+      showEventAnnouncement(`${color.toUpperCase()} ENTERED BOARD`, "event");
       await handleTileEvent(playerIndex, tokenIndex);
       applyPostLandingEffects(playerIndex, tokenIndex);
       refreshNearWinEffects();
@@ -3192,7 +3321,12 @@ async function executeMove(move) {
           homePath[homePos].el.appendChild(token);
         }
         triggerFeedback(token, "token-home-lane", 360);
-        playSfx("entry", 0.42);
+        if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "power") {
+          playSfx("entry", 0.42);
+          showEventAnnouncement(`${color.toUpperCase()} ENTERING HOME`, "home");
+        } else {
+          playSfx("step", 0.35);
+        }
         await wait(180);
         continue;
       }
