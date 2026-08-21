@@ -148,6 +148,8 @@ const btnPlayAgainEl = document.getElementById("btn-play-again");
 const btnCancelEl = document.getElementById("btn-cancel");
 const btnNextLevelEl = document.getElementById("btn-next-level");
 const levelBadgeEl = document.getElementById("level-badge");
+const levelUnlockCalloutEl = document.getElementById("level-unlock-callout");
+const levelUnlockValueEl = document.getElementById("level-unlock-value");
 const backLevelsBtnEl = document.getElementById("back-levels-btn");
 const restartBtnEl = document.getElementById("restart-btn");
 const pauseBtnEl = document.getElementById("pause-btn");
@@ -222,7 +224,13 @@ const matchRewardLedger = {
 };
 
 if (levelBadgeEl) {
-  levelBadgeEl.textContent = String(currentLevel);
+  if (matchMode === "vs-computer") {
+    levelBadgeEl.hidden = false;
+    const levelNumberEl = levelBadgeEl.querySelector("strong");
+    if (levelNumberEl) levelNumberEl.textContent = String(currentLevel).padStart(2, "0");
+  } else {
+    levelBadgeEl.hidden = true;
+  }
 }
 if (coinTotalEl) {
   coinTotalEl.textContent = String(totalCoins);
@@ -347,7 +355,7 @@ function rewardHumanEvent(type, sourceEl = null, sourcePoint = null, multiplier 
   animateCoinGain(amount, sourceEl, sourcePoint);
   const line = pickReactionLine(type);
   if (line) {
-    showToast(`${line} +${amount}`);
+    showToast(`${line} +${amount} COINS`);
   }
 }
 
@@ -819,6 +827,7 @@ if (btnCancelEl) {
 
 if (btnNextLevelEl) {
   btnNextLevelEl.addEventListener("click", () => {
+    if (currentLevel >= TOTAL_LEVELS) return;
     setPaused(false);
     clearResumeSnapshot();
     const query = new URLSearchParams({
@@ -826,7 +835,7 @@ if (btnNextLevelEl) {
       players: String(playerCount),
       human: humanColor,
       gm: gameMode,
-      level: String(currentLevel + 1)
+      level: String(Math.min(TOTAL_LEVELS, currentLevel + 1))
     });
     window.location.href = `ludo.html?${query.toString()}`;
   });
@@ -2762,6 +2771,7 @@ function openResultModal({ title, subtitle, showNextLevel }) {
   if (resultSubtitleEl) resultSubtitleEl.textContent = subtitle || "";
   if (btnNextLevelEl) {
     btnNextLevelEl.style.display = showNextLevel ? "inline-block" : "none";
+    if (showNextLevel) btnNextLevelEl.textContent = `PLAY LEVEL ${String(currentLevel + 1).padStart(2, "0")}`;
   }
 
   resultModalEl.classList.add("show");
@@ -2805,6 +2815,7 @@ function checkAndShowWinner(playerIndex) {
 
   let unlockedBefore = 1;
   let unlockedAfter = 1;
+  let newlyUnlockedLevel = null;
   if (matchMode === "vs-computer" && activeSkinEffects.bonusMatchCoins) {
     matchCoinsAwarded += activeSkinEffects.bonusMatchCoins;
     recordMatchReward("special", activeSkinEffects.bonusMatchCoins);
@@ -2824,6 +2835,7 @@ function checkAndShowWinner(playerIndex) {
     unlockedAfter = Math.min(TOTAL_LEVELS, Math.max(unlockedBefore, currentLevel + 1));
     localStorage.setItem(storageKey, String(unlockedAfter));
     if (unlockedAfter > unlockedBefore) {
+      newlyUnlockedLevel = unlockedAfter;
       rewardSummary.push(`LEVEL ${unlockedAfter} UNLOCKED`);
       levelBadgeEl?.classList.remove("level-up-reward");
       void levelBadgeEl?.offsetWidth;
@@ -2867,6 +2879,18 @@ function checkAndShowWinner(playerIndex) {
   } else {
     if (player.color === humanColor) {
       playSfx("win", 0.8);
+      const canPlayNextLevel = currentLevel < TOTAL_LEVELS;
+      if (levelUnlockCalloutEl) {
+        if (newlyUnlockedLevel && newlyUnlockedLevel > currentLevel) {
+          levelUnlockCalloutEl.hidden = false;
+          levelUnlockCalloutEl.classList.remove("show");
+          if (levelUnlockValueEl) levelUnlockValueEl.textContent = `LEVEL ${String(newlyUnlockedLevel).padStart(2, "0")}`;
+          void levelUnlockCalloutEl.offsetWidth;
+          levelUnlockCalloutEl.classList.add("show");
+        } else {
+          levelUnlockCalloutEl.hidden = true;
+        }
+      }
       if (resultSubtitleEl) {
         resultSubtitleEl.textContent = [
           gameMode === "arena" ? "ARENA VICTORY" : gameMode === "chaos" ? "CHAOS VICTORY" : gameMode === "battle" ? "BATTLE VICTORY" : gameMode === "power" ? "POWER VICTORY" : "MATCH COMPLETE",
@@ -2878,7 +2902,7 @@ function checkAndShowWinner(playerIndex) {
       openResultModal({
         title: gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "YOU WON",
         subtitle: resultSubtitleEl?.textContent || ["MATCH COMPLETE", "VICTORY", ...summaryLines].join("\n"),
-        showNextLevel: true
+        showNextLevel: canPlayNextLevel
       });
     } else {
       if (resultSubtitleEl) {

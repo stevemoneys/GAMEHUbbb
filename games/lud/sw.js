@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-08-21-v17";
+const CACHE_VERSION = "2026-08-21-v20";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 
@@ -24,6 +24,7 @@ function buildAssetManifest() {
     "./vs-computer.html",
     "./level-select.html",
     "./ludo.html",
+    "./design-tokens.css",
     "./dice-shop.html",
     "./token-shop.html",
     "./home.css",

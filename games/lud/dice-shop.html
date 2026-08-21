@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dice Shop</title>
+  <link rel="stylesheet" href="design-tokens.css" />
   <link rel="stylesheet" href="dice-shop.css" />
 </head>
 <body>
@@ -26,6 +27,7 @@
     </header>    <section class="default-row">
       <button class="btn use use-default-btn" id="use-default" type="button">Use default skin</button>
     </section>
+    <p class="shop-feedback" id="shop-feedback" aria-live="polite"></p>
 
     <section class="shop-stage">
       <button class="nav-btn" id="prev-btn" type="button">&lt;</button>
@@ -103,6 +105,7 @@
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
     const useDefaultBtn = document.getElementById("use-default");
+    const feedbackEl = document.getElementById("shop-feedback");
 
     let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
     let owned = [];
@@ -151,6 +154,15 @@
       nextBtn.disabled = !canGoNext(currentPage);
     }
 
+    function announceUnlock(id) {
+      if (!feedbackEl) return;
+      feedbackEl.textContent = `NEW DICE SKIN UNLOCKED — SKIN ${id}`;
+      feedbackEl.classList.remove("show");
+      void feedbackEl.offsetWidth;
+      feedbackEl.classList.add("show");
+      setTimeout(() => feedbackEl.classList.remove("show"), 2200);
+    }
+
     function buildCard(id) {
       const key = skinKey(id);
       const ownedNow = owns(id);
@@ -159,6 +171,7 @@
 
       const card = document.createElement("article");
       card.className = "skin-card";
+      card.dataset.skinKey = key;
 
       const preview = document.createElement("img");
       preview.className = "skin-preview";
@@ -210,6 +223,8 @@
         owned.push(key);
         saveState();
         render();
+        rowEl.querySelector(`[data-skin-key="${key}"]`)?.classList.add("newly-unlocked");
+        announceUnlock(id);
       });
 
       useBtn.addEventListener("click", () => {
@@ -261,4 +276,3 @@
   </script>
 </body>
 </html>
-

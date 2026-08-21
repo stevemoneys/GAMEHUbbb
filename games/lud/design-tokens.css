@@ -1,0 +1,113 @@
+/* GameHub Ludo shared visual language.
+   These tokens are intentionally additive: existing screen styles remain authoritative
+   until a future screen-specific redesign adopts a token. */
+:root {
+  /* Global backgrounds: deep is for app chrome, mid supports gradients, light is for cards. */
+  --gh-color-bg-deep: #10233a;
+  --gh-color-bg-mid: #176b8d;
+  --gh-color-bg-light: #eaf7fb;
+  --gh-color-bg-overlay: rgba(7, 20, 35, .46);
+
+  /* Surfaces: use surface for normal panels and elevated for focused/modal content. */
+  --gh-color-surface: rgba(246, 250, 255, .94);
+  --gh-color-surface-elevated: rgba(255, 255, 255, .98);
+  --gh-color-surface-muted: rgba(225, 237, 246, .84);
+
+  /* Text: strong is primary reading text; soft and muted support hierarchy. */
+  --gh-color-text: #10233a;
+  --gh-color-text-soft: #52677d;
+  --gh-color-text-muted: #718399;
+  --gh-color-text-on-dark: #f7fcff;
+  --gh-color-border: rgba(255, 255, 255, .66);
+  --gh-color-border-strong: rgba(16, 35, 58, .22);
+  --gh-color-divider: rgba(16, 35, 58, .12);
+
+  /* Semantic feedback: communicate meaning without relying on color alone. */
+  --gh-color-success: #16a37d;
+  --gh-color-warning: #e3a928;
+  --gh-color-danger: #d84b54;
+  --gh-color-reward: #ffd45a;
+  --gh-color-accent: #3dc8e9;
+
+  /* Player identity colors: reserved for tokens, turn context, and relevant events. */
+  --gh-player-red: #c62a33;
+  --gh-player-green: #66a943;
+  --gh-player-yellow: #e2b52b;
+  --gh-player-blue: #218fc7;
+
+  /* Spacing: XS through XXL keeps screen rhythm predictable across future pages. */
+  --gh-space-xs: 4px;
+  --gh-space-sm: 8px;
+  --gh-space-md: 12px;
+  --gh-space-lg: 16px;
+  --gh-space-xl: 24px;
+  --gh-space-xxl: 32px;
+  /* Legacy numeric aliases make gradual adoption safe. */
+  --gh-space-1: var(--gh-space-xs);
+  --gh-space-2: var(--gh-space-sm);
+  --gh-space-3: var(--gh-space-md);
+  --gh-space-4: var(--gh-space-lg);
+  --gh-space-5: var(--gh-space-xl);
+  --gh-space-6: var(--gh-space-xxl);
+
+  /* Shape: small controls, medium cards, large shells, pill badges. */
+  --gh-radius-sm: 10px;
+  --gh-radius-md: 14px;
+  --gh-radius-lg: 22px;
+  --gh-radius-pill: 999px;
+  /* Depth: shadows are semantic so future screens share one elevation language. */
+  --gh-shadow-card: 0 12px 28px rgba(9, 24, 53, .18);
+  --gh-shadow-button: 0 6px 14px rgba(9, 24, 53, .16);
+  --gh-shadow-modal: 0 24px 56px rgba(9, 24, 53, .34);
+  --gh-shadow-token: 0 4px 10px rgba(8, 28, 48, .24);
+  --gh-shadow-dice: 0 8px 18px rgba(8, 28, 48, .28);
+  --gh-shadow-elevated: var(--gh-shadow-modal);
+  --gh-shadow-focus: 0 0 0 3px rgba(61, 200, 233, .24);
+
+  /* Typography: labels are compact, headings are expressive, rewards are unmistakable. */
+  --gh-font-ui: "Sora", "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
+  --gh-text-xs: 11px;
+  --gh-text-sm: 13px;
+  --gh-text-md: 16px;
+  --gh-text-lg: 22px;
+  --gh-text-xl: 32px;
+  --gh-text-xxl: 42px;
+  --gh-type-label: var(--gh-text-xs);
+  --gh-type-body: var(--gh-text-md);
+  --gh-type-heading: var(--gh-text-lg);
+  --gh-type-display: var(--gh-text-xl);
+  --gh-type-reward: var(--gh-text-xxl);
+  --gh-type-button: var(--gh-text-sm);
+  --gh-type-status: var(--gh-text-sm);
+  --gh-type-event: var(--gh-text-md);
+  --gh-type-coin: var(--gh-text-lg);
+
+  /* Motion: normal actions stay quick; celebrations earn more time. */
+  --gh-duration-fast: 140ms;
+  --gh-duration-standard: 220ms;
+  --gh-duration-emphasis: 360ms;
+  --gh-duration-celebration: 620ms;
+  --gh-duration-reward: 560ms;
+  --gh-ease-standard: cubic-bezier(.2, .8, .24, 1);
+  --gh-ease-enter: cubic-bezier(.18, .88, .24, 1);
+  --gh-ease-exit: cubic-bezier(.4, 0, 1, 1);
+
+  /* Layered information hierarchy: board < controls < announcements < modal. */
+  --gh-z-board: 10;
+  --gh-z-controls: 120;
+  --gh-z-reward: 150;
+  --gh-z-announcement: 175;
+  --gh-z-modal: 9999;
+
+  /* Mobile interaction: minimum comfortable hit areas, never smaller than 44px. */
+  --gh-touch-target-min: 44px;
+  --gh-touch-target-comfortable: 48px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --gh-duration-fast: 1ms;
+    --gh-duration-standard: 1ms;
+    --gh-duration-reward: 1ms;
+  }
+}

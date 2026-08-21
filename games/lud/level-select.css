@@ -126,6 +126,16 @@ body {
   text-align: right;
 }
 
+.progress-milestone {
+  grid-column: 1 / -1;
+  margin: -7px 0 0;
+  color: #176b75;
+  font-size: clamp(11px, 1.7vw, 14px);
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-align: left;
+}
+
 .level-grid {
   margin-top: 4px;
   flex: 1;
@@ -169,6 +179,16 @@ body {
   letter-spacing: .08em;
 }
 
+.level-btn.newly-unlocked {
+  animation: level-newly-unlocked 700ms cubic-bezier(.18,.88,.24,1);
+}
+
+@keyframes level-newly-unlocked {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(26, 191, 149, 0); }
+  45% { transform: scale(1.06); box-shadow: 0 0 0 4px rgba(255, 215, 92, .24), 0 10px 22px rgba(18, 66, 166, .18); }
+  100% { transform: scale(1); }
+}
+
 .level-btn.locked {
   cursor: not-allowed;
   background: linear-gradient(135deg, #eceff5, #dde2ee);
@@ -199,5 +219,11 @@ body {
 
   .level-btn {
     min-height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .level-btn.newly-unlocked {
+    animation-duration: 1ms !important;
   }
 }

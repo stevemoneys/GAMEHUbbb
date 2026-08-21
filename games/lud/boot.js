@@ -1,5 +1,5 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-21-v17";
+const PRELOAD_VERSION = "2026-08-21-v20";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
@@ -37,6 +37,7 @@ function buildAssetManifest() {
     "./home.css",
     "./vs-computer.css",
     "./level-select.css",
+    "./design-tokens.css",
     "./ludo.css",
     "./dice-shop.css",
     "./token-shop.css",

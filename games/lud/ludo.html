@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Premium Ludo</title>
+  <link rel="stylesheet" href="design-tokens.css">
   <link rel="stylesheet" href="ludo.css">
   <style>
     #boot-overlay {
@@ -123,6 +124,10 @@
     <span class="coin-icon" aria-hidden="true"></span>
     <span class="coin-total" id="coin-total">0</span>
   </div>
+  <div class="level-badge" id="level-badge" aria-label="Current level">
+    <span>LEVEL</span>
+    <strong>01</strong>
+  </div>
   <div class="coin-fx-layer" id="coin-fx-layer" aria-hidden="true"></div>
   <div class="toast-layer" id="toast-layer" aria-live="polite" aria-atomic="true"></div>
   <div class="turn-announcement" id="turn-announcement" role="status" aria-live="polite" aria-atomic="true">
@@ -218,6 +223,11 @@
     <div class="result-card">
       <h2 id="result-title">YOU WIN</h2>
       <p id="result-subtitle"></p>
+      <div class="level-unlock-callout" id="level-unlock-callout" aria-live="polite" hidden>
+        <span class="unlock-label">NEW LEVEL UNLOCKED</span>
+        <strong class="unlock-level" id="level-unlock-value">LEVEL 02</strong>
+        <span class="unlock-detail">NEW CHALLENGE AVAILABLE</span>
+      </div>
       <div class="result-actions" id="result-actions">
         <button type="button" id="btn-play-again">Play again</button>
         <button type="button" id="btn-cancel">Cancel</button>

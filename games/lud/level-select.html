@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Select Level</title>
+  <link rel="stylesheet" href="design-tokens.css" />
   <link rel="stylesheet" href="level-select.css" />
 </head>
 <body>
@@ -18,7 +19,7 @@
 
       <section class="progress-summary" aria-label="Level progress">
         <div class="progress-stat">
-          <span class="progress-label">CURRENT LEVEL</span>
+          <span class="progress-label">HIGHEST UNLOCKED</span>
           <strong id="current-level-value">1</strong>
         </div>
         <div class="progress-stat">
@@ -29,6 +30,7 @@
           <span id="level-progress-fill"></span>
         </div>
         <p class="progress-caption" id="level-progress-caption">1 / 60 LEVELS UNLOCKED</p>
+        <p class="progress-milestone" id="progress-milestone">STARTER JOURNEY</p>
       </section>
 
       <div class="level-grid" id="level-grid"></div>
@@ -61,12 +63,25 @@
     const nextLevelEl = document.getElementById("next-level-value");
     const progressFillEl = document.getElementById("level-progress-fill");
     const progressCaptionEl = document.getElementById("level-progress-caption");
+    const milestoneEl = document.getElementById("progress-milestone");
+    const milestoneNames = [
+      [10, "STARTER"],
+      [20, "RISING"],
+      [30, "CHALLENGER"],
+      [40, "ADVANCED"],
+      [50, "EXPERT"],
+      [60, "MASTER"]
+    ];
     if (currentLevelEl) currentLevelEl.textContent = String(unlocked);
     if (nextLevelEl) {
       nextLevelEl.textContent = unlocked < TOTAL_LEVELS ? `LEVEL ${unlocked + 1}` : "ALL COMPLETE";
     }
     if (progressFillEl) progressFillEl.style.width = `${(unlocked / TOTAL_LEVELS) * 100}%`;
     if (progressCaptionEl) progressCaptionEl.textContent = `${unlocked} / ${TOTAL_LEVELS} LEVELS UNLOCKED`;
+    if (milestoneEl) {
+      const milestone = milestoneNames.find(([level]) => unlocked <= level) || milestoneNames[milestoneNames.length - 1];
+      milestoneEl.textContent = `${milestone[1]} JOURNEY · ${milestone[0] - unlocked} TO NEXT MILESTONE`;
+    }
 
     const grid = document.getElementById("level-grid");
 
@@ -75,9 +90,11 @@
       btn.type = "button";
       btn.className = "level-btn";
       btn.textContent = `Level ${level}`;
+      btn.dataset.level = String(level);
 
       const isUnlocked = level <= unlocked;
       if (level === unlocked) btn.classList.add("current");
+      if (level === unlocked && unlocked > 1) btn.classList.add("newly-unlocked");
       if (!isUnlocked) {
         btn.disabled = true;
         btn.classList.add("locked");
