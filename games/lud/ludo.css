@@ -3316,11 +3316,13 @@ body.orient-blue .token img {
   --token-rotation: 0deg !important;
 }
 
-/* Counter-rotate artwork only so board orientation never turns the generated token upside down. */
-body.orient-red .token img { --token-rotation: -180deg !important; }
-body.orient-green .token img { --token-rotation: -90deg !important; }
-body.orient-yellow .token img { --token-rotation: 0deg !important; }
-body.orient-blue .token img { --token-rotation: 90deg !important; }
+/* Keep the generated token artwork identical for every player color. */
+body.orient-red .token img,
+body.orient-green .token img,
+body.orient-yellow .token img,
+body.orient-blue .token img {
+  --token-rotation: 0deg !important;
+}
 
 /* Step 2 token and dice presentation refinement. */
 .token img {
