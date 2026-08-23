@@ -144,6 +144,8 @@ const dicePanelsByColor = {
 const resultModalEl = document.getElementById("result-modal");
 const resultTitleEl = document.getElementById("result-title");
 const resultSubtitleEl = document.getElementById("result-subtitle");
+const resultRewardEl = document.getElementById("result-reward");
+const resultRewardValueEl = document.getElementById("result-reward-value");
 const btnPlayAgainEl = document.getElementById("btn-play-again");
 const btnCancelEl = document.getElementById("btn-cancel");
 const btnNextLevelEl = document.getElementById("btn-next-level");
@@ -302,9 +304,12 @@ function pulseCoinHud() {
   const el = coinTotalEl || coinHudEl;
   if (!el) return;
   el.classList.remove("coin-hud-pop");
+  coinHudEl?.classList.remove("coin-hud-pop");
   // Force restart so repeated rewards can retrigger animation.
   void el.offsetWidth;
   el.classList.add("coin-hud-pop");
+  coinHudEl?.classList.add("coin-hud-pop");
+  setTimeout(() => coinHudEl?.classList.remove("coin-hud-pop"), 520);
 }
 
 function animateCoinGain(amount, sourceEl = null, sourcePoint = null) {
@@ -316,7 +321,7 @@ function animateCoinGain(amount, sourceEl = null, sourcePoint = null) {
   if (!target) return;
 
   const fromPoint = sourcePoint || getElementCenter(sourceEl) || getElementCenter(boardEl) || target;
-  const coinCount = Math.max(4, Math.min(16, Math.ceil(safeAmount / 2)));
+  const coinCount = Math.max(3, Math.min(7, Math.ceil(safeAmount / 40)));
   let finished = 0;
 
   for (let i = 0; i < coinCount; i++) {
@@ -993,8 +998,13 @@ function showTurnAnnouncement(player) {
 
 function showEventAnnouncement(message, tone = "event") {
   if ((gameMode !== "classic" && gameMode !== "arena" && gameMode !== "chaos" && gameMode !== "battle" && gameMode !== "power") || !eventAnnouncementEl || !eventAnnouncementTextEl || !message) return;
+  const priorityByTone = { event: 1, home: 2, capture: 3, victory: 4 };
+  const priority = priorityByTone[tone] || 1;
+  const currentPriority = Number(eventAnnouncementEl.dataset.priority || 0);
+  if (eventAnnouncementEl.classList.contains("show") && priority < currentPriority) return;
   const stamp = String(Number(eventAnnouncementEl.dataset.stamp || 0) + 1);
   eventAnnouncementEl.dataset.stamp = stamp;
+  eventAnnouncementEl.dataset.priority = String(priority);
   eventAnnouncementEl.classList.remove("show", "capture", "home", "victory", "event", "arena", "chaos", "battle", "power");
   void eventAnnouncementEl.offsetWidth;
   eventAnnouncementTextEl.textContent = message;
@@ -1004,7 +1014,10 @@ function showEventAnnouncement(message, tone = "event") {
   if (gameMode === "battle") eventAnnouncementEl.classList.add("battle");
   if (gameMode === "power") eventAnnouncementEl.classList.add("power");
   setTimeout(() => {
-    if (eventAnnouncementEl.dataset.stamp === stamp) eventAnnouncementEl.classList.remove("show");
+    if (eventAnnouncementEl.dataset.stamp === stamp) {
+      eventAnnouncementEl.classList.remove("show");
+      eventAnnouncementEl.dataset.priority = "0";
+    }
   }, tone === "victory" ? 2400 : 1250);
 }
 
@@ -2326,6 +2339,8 @@ function setPaused(nextPaused) {
   });
 
   if (isPaused) {
+    turnAnnouncementEl?.classList.remove("show");
+    eventAnnouncementEl?.classList.remove("show");
     bgmWasPlayingBeforePause = !bgMusic.paused;
     bgMusic.pause();
   } else if (bgmWasPlayingBeforePause && isBgmEnabled && !gameOver) {
@@ -2335,6 +2350,7 @@ function setPaused(nextPaused) {
   resetDiceInteractivity();
   if (!isPaused && !gameOver) {
     const current = state.players[state.currentPlayer];
+    if (current) announceTurn(current);
     if (current && current.isAI && !isMoving) {
       setTimeout(runAITurn, 140);
     }
@@ -2778,6 +2794,19 @@ function openResultModal({ title, subtitle, showNextLevel }) {
   resultModalEl.setAttribute("aria-hidden", "false");
 }
 
+function presentResultReward(amount) {
+  const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!resultRewardEl || !resultRewardValueEl || safeAmount <= 0) {
+    resultRewardEl?.setAttribute("hidden", "");
+    return;
+  }
+  resultRewardValueEl.textContent = `+${safeAmount}`;
+  resultRewardEl.removeAttribute("hidden");
+  resultRewardEl.classList.remove("reward-reveal");
+  void resultRewardEl.offsetWidth;
+  resultRewardEl.classList.add("reward-reveal");
+}
+
 function checkAndShowWinner(playerIndex) {
   if (gameOver || matchRewardGranted) return false;
   const player = state.players[playerIndex];
@@ -2785,6 +2814,13 @@ function checkAndShowWinner(playerIndex) {
 
   gameOver = true;
   matchRewardGranted = true;
+  turnAnnouncementEl?.classList.remove("show");
+  eventAnnouncementEl?.classList.remove("show");
+  if (turnAnnouncementEl) turnAnnouncementEl.dataset.stamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
+  if (eventAnnouncementEl) {
+    eventAnnouncementEl.dataset.stamp = String(Number(eventAnnouncementEl.dataset.stamp || 0) + 1);
+    eventAnnouncementEl.dataset.priority = "0";
+  }
   document.body.classList.add("match-won");
   player.tokens.forEach((_, tokenIndex) => {
     triggerFeedback(tokenEls[player.color]?.[tokenIndex], "token-winner", 720);
@@ -2841,7 +2877,13 @@ function checkAndShowWinner(playerIndex) {
       void levelBadgeEl?.offsetWidth;
       levelBadgeEl?.classList.add("level-up-reward");
     }
+    const milestones = new Map([[10, "STARTER"], [20, "RISING"], [30, "CHALLENGER"], [40, "ADVANCED"], [50, "EXPERT"], [60, "MASTER"]]);
+    if (milestones.has(currentLevel)) {
+      rewardSummary.push(`MILESTONE REACHED: ${milestones.get(currentLevel)}`);
+    }
   }
+
+  presentResultReward(matchCoinsAwarded);
 
   showEventAnnouncement(
     gameMode === "arena" && player.color === humanColor
@@ -2900,7 +2942,7 @@ function checkAndShowWinner(playerIndex) {
         ].join("\n");
       }
       openResultModal({
-        title: gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "YOU WON",
+        title: currentLevel === TOTAL_LEVELS ? "MASTER LEVEL COMPLETE" : gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "YOU WON",
         subtitle: resultSubtitleEl?.textContent || ["MATCH COMPLETE", "VICTORY", ...summaryLines].join("\n"),
         showNextLevel: canPlayNextLevel
       });
@@ -3098,11 +3140,17 @@ function handleTurn() {
       turnAnnouncementDetailEl.textContent = "No legal moves";
     }
     showToast("NO LEGAL MOVES — TURN ENDS");
+    showEventAnnouncement("NO LEGAL MOVE — TURN ENDS", "event");
     waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
     setTimeout(() => nextTurn(false), 400);
   } else if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
     turnAnnouncementDetailEl.textContent = "Choose a highlighted token";
+    const guidanceStamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
+    turnAnnouncementEl.dataset.stamp = guidanceStamp;
+    setTimeout(() => {
+      if (turnAnnouncementEl.dataset.stamp === guidanceStamp) turnAnnouncementEl.classList.remove("show");
+    }, 1800);
   }
 }
 
