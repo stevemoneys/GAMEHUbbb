@@ -3316,6 +3316,12 @@ body.orient-blue .token img {
   --token-rotation: 0deg !important;
 }
 
+/* Counter-rotate artwork only so board orientation never turns the generated token upside down. */
+body.orient-red .token img { --token-rotation: -180deg !important; }
+body.orient-green .token img { --token-rotation: -90deg !important; }
+body.orient-yellow .token img { --token-rotation: 0deg !important; }
+body.orient-blue .token img { --token-rotation: 90deg !important; }
+
 /* Step 2 token and dice presentation refinement. */
 .token img {
   width: 100% !important;
