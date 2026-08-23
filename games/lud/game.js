@@ -169,6 +169,7 @@ const sparkLayerEl = document.getElementById("spark-layer");
 const chaosOverlayEl = document.getElementById("chaos-overlay");
 const pauseModalEl = document.getElementById("pause-modal");
 const pauseResumeBtnEl = document.getElementById("pause-resume-btn");
+const pauseRestartBtnEl = document.getElementById("pause-restart-btn");
 const pauseExitBtnEl = document.getElementById("pause-exit-btn");
 
 const BACKGROUND_IMAGES = Array.from({ length: 20 }, (_, i) => {
@@ -776,6 +777,11 @@ if (pauseBtnEl) {
 }
 pauseResumeBtnEl?.addEventListener("click", () => {
   setPaused(false);
+});
+pauseRestartBtnEl?.addEventListener("click", () => {
+  setPaused(false);
+  clearResumeSnapshot();
+  window.location.reload();
 });
 pauseExitBtnEl?.addEventListener("click", () => {
   exitPausedMatch();
@@ -1684,6 +1690,10 @@ function renderChaosOverlay() {
   if (chaosRewardTile === null) pickChaosRewardTile();
   applyChaosRewardTileMarker();
 
+  // The board stays clean between events. A single route is rendered only
+  // while its matching Chaos transfer is actually happening.
+  if (chaosOverlayEl.classList.contains("event-active")) return;
+
   const stageRect = stageEl.getBoundingClientRect();
   if (stageRect.width <= 0 || stageRect.height <= 0) return;
 
@@ -1691,20 +1701,29 @@ function renderChaosOverlay() {
   chaosOverlayEl.setAttribute("height", stageRect.height.toFixed(2));
   chaosOverlayEl.setAttribute("viewBox", `0 0 ${stageRect.width.toFixed(2)} ${stageRect.height.toFixed(2)}`);
   chaosOverlayEl.replaceChildren();
+}
 
-  CHAOS_LADDER_PAIRS.forEach(pair => {
-    const startPoint = getCommonPointForTile(pair.start, stageRect);
-    const endPoint = getCommonPointForTile(pair.end, stageRect);
-    if (!startPoint || !endPoint) return;
-    drawChaosLadder(chaosOverlayEl, startPoint, endPoint, pair.side);
-  });
+function showChaosEventOverlay(type, fromIndex, toIndex, side = "left") {
+  if (gameMode !== "chaos" || !chaosOverlayEl || !stageEl) return () => {};
+  const stageRect = stageEl.getBoundingClientRect();
+  if (stageRect.width <= 0 || stageRect.height <= 0) return () => {};
 
-  CHAOS_SNAKE_PAIRS.forEach(pair => {
-    const mouthPoint = getCommonPointForTile(pair.mouth, stageRect);
-    const tailPoint = getCommonPointForTile(pair.tail, stageRect);
-    if (!mouthPoint || !tailPoint) return;
-    drawChaosSnake(chaosOverlayEl, mouthPoint, tailPoint, pair.side);
-  });
+  const fromPoint = getCommonPointForTile(fromIndex + 1, stageRect);
+  const toPoint = getCommonPointForTile(toIndex + 1, stageRect);
+  if (!fromPoint || !toPoint) return () => {};
+
+  chaosOverlayEl.setAttribute("width", stageRect.width.toFixed(2));
+  chaosOverlayEl.setAttribute("height", stageRect.height.toFixed(2));
+  chaosOverlayEl.setAttribute("viewBox", `0 0 ${stageRect.width.toFixed(2)} ${stageRect.height.toFixed(2)}`);
+  chaosOverlayEl.replaceChildren();
+  chaosOverlayEl.classList.add("active", "event-active", type === "snake" ? "snake-event" : "ladder-event");
+  if (type === "snake") drawChaosSnake(chaosOverlayEl, fromPoint, toPoint, side);
+  else drawChaosLadder(chaosOverlayEl, fromPoint, toPoint, side);
+
+  return () => {
+    chaosOverlayEl.classList.remove("event-active", "snake-event", "ladder-event");
+    chaosOverlayEl.replaceChildren();
+  };
 }
 
 function scheduleChaosOverlayRender() {
@@ -1854,10 +1873,13 @@ async function animateLadderTransfer(playerIndex, tokenIndex, fromIndex, toIndex
   const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
   if (!fromPoint || !toPoint) return;
 
+  const clearEventOverlay = showChaosEventOverlay("ladder", fromIndex, toIndex, side);
+
   token.classList.add("event-hidden");
   const ghost = createTokenGhost(token, fromPoint);
   if (!ghost) {
     token.classList.remove("event-hidden");
+    clearEventOverlay();
     return;
   }
 
@@ -1880,6 +1902,7 @@ async function animateLadderTransfer(playerIndex, tokenIndex, fromIndex, toIndex
 
   ghost.remove();
   token.classList.remove("event-hidden");
+  clearEventOverlay();
   createImpactPulse(toPoint, "ladder");
 }
 
@@ -1893,11 +1916,14 @@ async function animateSnakeTransfer(playerIndex, tokenIndex, fromIndex, toIndex,
   const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
   if (!fromPoint || !toPoint) return;
 
+  const clearEventOverlay = showChaosEventOverlay("snake", fromIndex, toIndex, side);
+
   triggerSnakeHeadChomp(side);
   token.classList.add("event-hidden");
   const ghost = createTokenGhost(token, fromPoint);
   if (!ghost) {
     token.classList.remove("event-hidden");
+    clearEventOverlay();
     return;
   }
 
@@ -1923,6 +1949,7 @@ async function animateSnakeTransfer(playerIndex, tokenIndex, fromIndex, toIndex,
 
   ghost.remove();
   token.classList.remove("event-hidden");
+  clearEventOverlay();
   createImpactPulse(toPoint, "snake");
 }
 
@@ -2331,7 +2358,8 @@ function setPaused(nextPaused) {
     pauseModalEl.setAttribute("aria-hidden", isPaused ? "false" : "true");
   }
   if (pauseBtnEl) {
-    pauseBtnEl.textContent = isPaused ? "Paused" : "Pause";
+    pauseBtnEl.innerHTML = `<span aria-hidden="true">${isPaused ? "×" : "☰"}</span><span class="control-label">${isPaused ? "Close" : "Menu"}</span>`;
+    pauseBtnEl.setAttribute("aria-label", isPaused ? "Close game menu" : "Open game menu");
     pauseBtnEl.setAttribute("aria-pressed", isPaused ? "true" : "false");
   }
   Object.values(dicePanelsByColor).forEach(panel => {
@@ -2985,8 +3013,9 @@ function animateDiceRoll(color, onDone) {
   diceEl.style.pointerEvents = "none";
   const value = computeRollValue(color);
   const target = rotationAngles[value] || rotationAngles[1];
-  const spinX = target.x + 720 + Math.floor(Math.random() * 540);
-  const spinY = target.y + 720 + Math.floor(Math.random() * 540);
+  // Preserve the face/result mapping while keeping the visual spin short and composited on mobile.
+  const spinX = target.x + 360 + Math.floor(Math.random() * 180);
+  const spinY = target.y + 360 + Math.floor(Math.random() * 180);
   const spinZ = (Math.random() < 0.5 ? -1 : 1) * (3 + Math.floor(Math.random() * 8));
 
   diceEl.style.transition = "none";
@@ -3006,17 +3035,17 @@ function animateDiceRoll(color, onDone) {
   };
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 500ms cubic-bezier(.16,.78,.2,1)";
+    diceEl.style.transition = "transform 360ms cubic-bezier(.16,.78,.2,1)";
     diceEl.style.transform = `translateY(0) scale(1) rotateX(${spinX}deg) rotateY(${spinY}deg) rotateZ(${spinZ}deg)`;
-  }, 110);
+  }, 80);
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 210ms cubic-bezier(.2,.72,.28,1)";
+    diceEl.style.transition = "transform 140ms cubic-bezier(.2,.72,.28,1)";
     diceEl.style.transform = `translateY(0) scale(1.025) rotateX(${target.x + (target.x === 0 ? 4 : 0)}deg) rotateY(${target.y + (target.y === 0 ? -4 : 0)}deg) rotateZ(0deg)`;
-  }, 610);
+  }, 440);
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 120ms cubic-bezier(.2,.8,.25,1)";
+    diceEl.style.transition = "transform 90ms cubic-bezier(.2,.8,.25,1)";
     diceEl.style.transform = `translateY(0) scale(1) rotateX(${target.x}deg) rotateY(${target.y}deg) rotateZ(0deg)`;
     triggerFeedback(panel, "dice-landed", 300);
     if (value === 6) {
@@ -3052,7 +3081,7 @@ function animateDiceRoll(color, onDone) {
     }
 
     onDone(value);
-  }, 820);
+  }, 590);
 }
 
 function nextTurn(extraTurn = false) {

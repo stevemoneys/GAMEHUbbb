@@ -140,9 +140,9 @@
   </div>
   <div class="game-wrapper">
     <div class="ludo-stage">
-      <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels">Back</button>
+      <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels"><span aria-hidden="true">‹</span><span class="control-label">Back</span></button>
       <button class="restart-btn" id="restart-btn" type="button">Restart</button>
-      <button class="pause-btn" id="pause-btn" type="button">Pause</button>
+      <button class="pause-btn" id="pause-btn" type="button" aria-label="Open game menu" aria-pressed="false"><span aria-hidden="true">☰</span><span class="control-label">Menu</span></button>
       <div class="ludo-board">
         <div class="center-triangle center-red"></div>
         <div class="center-triangle center-green"></div>
@@ -242,10 +242,12 @@
   </div>
   <div class="pause-modal" id="pause-modal" aria-hidden="true">
     <div class="pause-card">
+      <span class="pause-kicker">MATCH CONTROL</span>
       <h2>Game Paused</h2>
       <p>Do you want to resume the match?</p>
       <div class="pause-actions">
         <button type="button" id="pause-resume-btn">Resume</button>
+        <button type="button" id="pause-restart-btn">Restart</button>
         <button type="button" id="pause-exit-btn">Exit</button>
       </div>
     </div>
