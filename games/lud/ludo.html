@@ -12,78 +12,11 @@
       inset: 0;
       display: grid;
       place-items: center;
-      background: radial-gradient(circle at 20% 15%, #355f85 0%, #10263b 45%, #081522 100%);
       z-index: 99999;
       color: #f1f8ff;
-      font-family: "Segoe UI", Tahoma, sans-serif;
-    }
-
-    #boot-overlay .boot-shell {
-      width: min(92vw, 420px);
-      border-radius: 16px;
-      border: 1px solid rgba(190, 220, 255, 0.34);
-      background: rgba(4, 20, 36, 0.72);
-      padding: 20px 18px;
-      box-shadow: 0 16px 46px rgba(0, 0, 0, 0.45);
+      font-family: var(--gh-font-ui, "Segoe UI", Tahoma, sans-serif);
+      background: radial-gradient(circle at 50% 45%, rgba(24, 102, 132, .28), rgba(3, 14, 27, .98) 64%);
       backdrop-filter: blur(4px);
-    }
-
-    #boot-overlay .boot-label {
-      margin: 0;
-      font-size: 13px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: rgba(193, 225, 255, 0.88);
-    }
-
-    #boot-overlay .boot-title {
-      margin: 10px 0 12px;
-      font-size: 28px;
-      font-weight: 800;
-      line-height: 1.15;
-    }
-
-    #boot-overlay .boot-anim {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.24);
-      border-top-color: #84d8ff;
-      animation: boot-spin 0.9s linear infinite;
-      margin-bottom: 14px;
-    }
-
-    #boot-overlay .boot-progress {
-      width: 100%;
-      height: 12px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.14);
-      overflow: hidden;
-      border: 1px solid rgba(194, 223, 255, 0.38);
-    }
-
-    #boot-overlay .boot-progress-bar {
-      width: 0%;
-      height: 100%;
-      border-radius: 999px;
-      background: linear-gradient(90deg, #34d5ff 0%, #59f1b6 100%);
-      transition: width 0.2s ease;
-    }
-
-    #boot-overlay .boot-meta {
-      margin-top: 10px;
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 12px;
-      color: rgba(219, 238, 255, 0.88);
-    }
-
-    #boot-overlay .boot-detail {
-      margin-top: 10px;
-      min-height: 18px;
-      font-size: 13px;
-      color: rgba(207, 229, 252, 0.9);
     }
 
     #boot-overlay.boot-hidden {
@@ -92,10 +25,64 @@
       transition: opacity 0.35s ease;
     }
 
-    @keyframes boot-spin {
-      to {
-        transform: rotate(360deg);
-      }
+    #boot-overlay .boot-shell {
+      width: auto;
+      padding: 20px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+
+    #boot-overlay .boot-dots {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    #boot-overlay .boot-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ffe27f;
+      box-shadow: 0 0 12px rgba(255, 226, 127, .72);
+      animation: boot-dot-pulse 900ms ease-in-out infinite;
+    }
+
+    #boot-overlay .boot-dots span:nth-child(2) { animation-delay: 150ms; }
+    #boot-overlay .boot-dots span:nth-child(3) { animation-delay: 300ms; }
+
+    #boot-overlay .boot-failure {
+      width: min(86vw, 330px);
+      display: grid;
+      gap: 9px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, .2);
+      border-radius: 16px;
+      background: rgba(7, 28, 48, .94);
+      color: #f4fbff;
+      text-align: center;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, .32);
+    }
+
+    #boot-overlay .boot-failure span { color: rgba(222, 245, 251, .76); font-size: 13px; }
+    #boot-overlay .boot-failure button {
+      min-height: 46px;
+      border: 1px solid rgba(255, 232, 126, .8);
+      border-radius: 10px;
+      color: #16344a;
+      background: linear-gradient(135deg, #ffe58b, #f49d57);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    @keyframes boot-dot-pulse {
+      0%, 100% { opacity: .3; transform: scale(.7); }
+      45% { opacity: 1; transform: scale(1.15); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #boot-overlay .boot-dots span { animation: none; opacity: .76; transform: none; }
     }
   </style>
 </head>
@@ -103,17 +90,9 @@
 <body>
   <div class="boot-overlay" id="boot-overlay" role="status" aria-live="polite">
     <div class="boot-shell">
-      <p class="boot-label">Initializing</p>
-      <h2 class="boot-title">Loading Match Assets</h2>
-      <div class="boot-anim" aria-hidden="true"></div>
-      <div class="boot-progress" aria-hidden="true">
-        <div class="boot-progress-bar" id="boot-progress-bar"></div>
+      <div class="boot-dots" aria-label="Preparing match">
+        <span></span><span></span><span></span>
       </div>
-      <div class="boot-meta">
-        <span id="boot-progress-text">Loading...</span>
-        <span id="boot-progress-value">0%</span>
-      </div>
-      <div class="boot-detail" id="boot-progress-detail">Preparing game files...</div>
     </div>
   </div>
   <div class="bg-slideshow" aria-hidden="true">

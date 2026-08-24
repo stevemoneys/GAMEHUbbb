@@ -1,6 +1,14 @@
-const CACHE_VERSION = "2026-08-24-v35";
+const CACHE_VERSION = "2026-08-24-v36";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
+// These paths are intentionally runtime-only. They must never delay entering
+// a match; stale-while-revalidate makes them available after first use.
+const OPTIONAL_ASSET_PREFIXES = [
+  "/backgrounds/",
+  "/dice/skins/",
+  "/tokens/skins/",
+  "/sounds/"
+];
 
 function getColors() {
   return ["red", "green", "yellow", "blue"];
@@ -10,16 +18,11 @@ function getDiceFaces() {
   return ["1_result.webp", "2_result.webp", "3_result.webp", "4_result.webp", "5_result.webp", "6_result.webp"];
 }
 
-function getDiceSkinIds() {
-  return Array.from({ length: 20 }, (_, i) => i + 1);
-}
-
-function getTokenSkinIds() {
-  return Array.from({ length: 10 }, (_, i) => i + 1);
-}
-
 function buildAssetManifest() {
-  const assets = new Set([
+  // Precache the shell and the default gameplay assets only. Active cosmetic
+  // skins, extra backgrounds, and sounds are fetched on demand by boot/game
+  // and kept in the runtime cache so install time stays short and reliable.
+  return [
     "./index.html",
     "./vs-computer.html",
     "./level-select.html",
@@ -38,42 +41,18 @@ function buildAssetManifest() {
     "./movement.js",
     "./boot.js",
     "./game.js",
-    "./sounds/step.wav",
-    "./sounds/entry.mp3",
-    "./sounds/goal.mp3",
-    "./sounds/win.mp3",
-    "./sounds/bgm.mp3",
-    "./bgm.mp3"
-  ]);
-
-  for (let i = 1; i <= 20; i++) {
-    assets.add(`./backgrounds/bg${i}_result.webp`);
-  }
-
-  getDiceFaces().forEach(face => {
-    assets.add(`./dice/${face}`);
-  });
-
-  getColors().forEach(color => {
-    assets.add(`./tokens/${color}_result.webp`);
-  });
-
-  getDiceSkinIds().forEach(skinId => {
-    getDiceFaces().forEach(face => {
-      assets.add(`./dice/skins/skin${skinId}/${face}`);
-    });
-  });
-
-  getTokenSkinIds().forEach(skinId => {
-    getColors().forEach(color => {
-      assets.add(`./tokens/skins/skin${skinId}/${color}_result.webp`);
-    });
-  });
-
-  return Array.from(assets);
+    "./backgrounds/bg1_result.webp",
+    ...getDiceFaces().map(face => `./dice/${face}`),
+    ...getColors().map(color => `./tokens/${color}_result.webp`)
+  ];
 }
 
 const PRECACHE_ASSETS = buildAssetManifest();
+
+function isOptionalAsset(request) {
+  const pathname = new URL(request.url).pathname;
+  return OPTIONAL_ASSET_PREFIXES.some(prefix => pathname.includes(prefix));
+}
 
 function isSameOriginStaticAsset(request) {
   if (request.method !== "GET") return false;
@@ -159,6 +138,13 @@ self.addEventListener("fetch", event => {
 
   if (request.mode === "navigate") {
     event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Critical shell assets are already in STATIC_CACHE. Optional skins,
+  // backgrounds, and sounds deliberately use the runtime path below.
+  if (isOptionalAsset(request)) {
+    event.respondWith(staleWhileRevalidate(request, event));
     return;
   }
 

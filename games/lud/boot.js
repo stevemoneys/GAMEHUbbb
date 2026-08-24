@@ -1,5 +1,5 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-24-v35";
+const PRELOAD_VERSION = "2026-08-24-v36";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
@@ -13,15 +13,7 @@ try {
   shouldPlayArrivalTransition = false;
 }
 
-if (shouldPlayArrivalTransition) {
-  document.body.classList.add("arrival-transition");
-}
-
 const overlayEl = document.getElementById("boot-overlay");
-const progressBarEl = document.getElementById("boot-progress-bar");
-const progressTextEl = document.getElementById("boot-progress-text");
-const progressValueEl = document.getElementById("boot-progress-value");
-const progressDetailEl = document.getElementById("boot-progress-detail");
 
 function getColors() {
   return ["red", "green", "yellow", "blue"];
@@ -31,80 +23,75 @@ function getDiceFaces() {
   return ["1_result.webp", "2_result.webp", "3_result.webp", "4_result.webp", "5_result.webp", "6_result.webp"];
 }
 
-function getDiceSkinIds() {
-  return Array.from({ length: 20 }, (_, i) => i + 1);
+function getOwnedSkin(key, prefix, max) {
+  const active = (localStorage.getItem(key) || "classic").trim();
+  if (active === "classic") return "classic";
+  const match = active.match(new RegExp(`^${prefix}(\\d+)$`));
+  if (!match) return "classic";
+  const index = Number(match[1]);
+  if (!Number.isInteger(index) || index < 1 || index > max) return "classic";
+  try {
+    const owned = JSON.parse(localStorage.getItem(key === "ludo_active_dice_skin" ? "ludo_owned_dice_skins" : "ludo_owned_token_skins") || "[]");
+    return Array.isArray(owned) && owned.includes(active) ? active : "classic";
+  } catch {
+    return "classic";
+  }
 }
 
-function getTokenSkinIds() {
-  return Array.from({ length: 10 }, (_, i) => i + 1);
+function getGameplayConfig() {
+  const params = new URLSearchParams(window.location.search);
+  const colors = getColors();
+  const requestedHuman = (params.get("human") || "red").toLowerCase();
+  const human = colors.includes(requestedHuman) ? requestedHuman : "red";
+  const playerCount = Math.min(4, Math.max(2, Number(params.get("players")) || 4));
+  const humanIndex = colors.indexOf(human);
+  const activeColors = playerCount === 2
+    ? [human, colors[(humanIndex + 2) % colors.length]]
+    : Array.from({ length: playerCount }, (_, index) => colors[(humanIndex + index) % colors.length]);
+  return {
+    activeColors,
+    activeDiceSkin: getOwnedSkin("ludo_active_dice_skin", "skin", 20),
+    activeTokenSkin: getOwnedSkin("ludo_active_token_skin", "skin", 10),
+    background: "./backgrounds/bg1_result.webp"
+  };
 }
 
-function buildAssetManifest() {
-  const assets = new Set([
-    "./index.html",
-    "./vs-computer.html",
-    "./level-select.html",
+function getSkinDiceFaces(skin) {
+  if (skin === "classic") return getDiceFaces().map(face => `./dice/${face}`);
+  return ["1_result.webp", "4_result.webp", "6_result.webp", "3_result.webp", "2_result.webp", "5_result.webp"]
+    .map(face => `./dice/skins/${skin}/${face}`);
+}
+
+function getSkinTokenAssets(skin, colors) {
+  return colors.map(color => skin === "classic"
+    ? `./tokens/${color}_result.webp`
+    : `./tokens/skins/${skin}/${color}_result.webp`);
+}
+
+function buildAssetManifest(config = getGameplayConfig()) {
+  const critical = new Set([
     "./ludo.html",
-    "./dice-shop.html",
-    "./token-shop.html",
-    "./home.css",
-    "./vs-computer.css",
-    "./level-select.css",
-    "./design-tokens.css",
     "./ludo.css",
-    "./dice-shop.css",
-    "./token-shop.css",
-    "./ai.js",
+    "./design-tokens.css",
+    "./game.js",
     "./board.js",
     "./movement.js",
-    "./game.js",
-    "./sw.js",
-    "./sounds/step.wav",
-    "./sounds/entry.mp3",
-    "./sounds/goal.mp3",
-    "./sounds/win.mp3",
-    "./sounds/bgm.mp3",
-    "./bgm.mp3"
+    "./ai.js",
+    config.background,
+    ...getDiceFaces().map(face => `./dice/${face}`),
+    ...getSkinDiceFaces(config.activeDiceSkin),
+    ...getSkinTokenAssets(config.activeTokenSkin, config.activeColors),
+    ...getSkinTokenAssets("classic", config.activeColors)
   ]);
 
-  for (let i = 1; i <= 20; i++) {
-    assets.add(`./backgrounds/bg${i}_result.webp`);
-  }
-
-  getDiceFaces().forEach(face => {
-    assets.add(`./dice/${face}`);
-  });
-
-  getColors().forEach(color => {
-    assets.add(`./tokens/${color}_result.webp`);
-  });
-
-  getDiceSkinIds().forEach(skinId => {
-    getDiceFaces().forEach(face => {
-      assets.add(`./dice/skins/skin${skinId}/${face}`);
-    });
-  });
-
-  getTokenSkinIds().forEach(skinId => {
-    getColors().forEach(color => {
-      assets.add(`./tokens/skins/skin${skinId}/${color}_result.webp`);
-    });
-  });
-
-  return Array.from(assets);
+  return {
+    critical: Array.from(critical),
+    optional: ["./sounds/step.wav", "./sounds/entry.mp3", "./sounds/goal.mp3", "./sounds/win.mp3", "./sounds/bgm.mp3"]
+  };
 }
 
 function shortAssetLabel(path) {
   return path.replace(/^\.\//, "");
-}
-
-function updateProgress(done, total, text, detail) {
-  const safeTotal = Math.max(1, total);
-  const percent = Math.min(100, Math.round((done / safeTotal) * 100));
-  if (progressBarEl) progressBarEl.style.width = `${percent}%`;
-  if (progressTextEl && text) progressTextEl.textContent = text;
-  if (progressValueEl) progressValueEl.textContent = `${percent}%`;
-  if (progressDetailEl && detail) progressDetailEl.textContent = detail;
 }
 
 async function registerServiceWorker() {
@@ -173,10 +160,9 @@ async function warmSingleAsset(assetPath, cache) {
 async function preloadManifest(manifest, cache) {
   let done = 0;
   let failed = 0;
+  const failures = [];
   const total = manifest.length;
   const queue = manifest.slice();
-
-  updateProgress(0, total, "Loading...", "Preparing assets...");
 
   const workerCount = Math.min(MAX_CONCURRENCY, total);
   const workers = Array.from({ length: workerCount }, async () => {
@@ -187,16 +173,30 @@ async function preloadManifest(manifest, cache) {
         await warmSingleAsset(nextAsset, cache);
       } catch (error) {
         failed += 1;
+        failures.push(nextAsset);
         console.warn("Asset preload failed:", nextAsset, error);
       } finally {
         done += 1;
-        updateProgress(done, total, "Loading...", `Caching ${shortAssetLabel(nextAsset)} (${done}/${total})`);
       }
     }
   });
 
   await Promise.all(workers);
-  return { done, failed, total };
+  return { done, failed, total, failures };
+}
+
+function showCriticalFailure(failures = []) {
+  if (!overlayEl) return;
+  overlayEl.classList.remove("boot-hidden");
+  overlayEl.innerHTML = `
+    <div class="boot-failure" role="alert">
+      <strong>Match assets unavailable</strong>
+      <span>Try again to enter the board.</span>
+      <button type="button" id="boot-retry-btn">Retry</button>
+    </div>
+  `;
+  overlayEl.querySelector("#boot-retry-btn")?.addEventListener("click", () => window.location.reload(), { once: true });
+  console.warn("Critical gameplay assets failed:", failures.map(failure => shortAssetLabel(String(failure))));
 }
 
 function hideOverlay() {
@@ -209,6 +209,7 @@ function hideOverlay() {
 
 async function bootGame() {
   if (!overlayEl) {
+    if (shouldPlayArrivalTransition) document.body.classList.add("arrival-transition");
     await import("./game.js");
     if (shouldPlayArrivalTransition) {
       window.setTimeout(() => document.body.classList.remove("arrival-transition"), 1700);
@@ -216,25 +217,24 @@ async function bootGame() {
     return;
   }
 
-  const isCachedVersion = localStorage.getItem(PRELOAD_VERSION_KEY) === PRELOAD_VERSION;
-  updateProgress(0, 1, "Loading...", isCachedVersion ? "Syncing cached assets..." : "First launch cache setup...");
-
   void registerServiceWorker();
   await resetPreloadCacheIfVersionChanged();
   const preloadCache = await openPreloadCache();
-  const manifest = buildAssetManifest();
-  const result = await preloadManifest(manifest, preloadCache);
+  const manifest = buildAssetManifest(getGameplayConfig());
+  const result = await preloadManifest(manifest.critical, preloadCache);
 
   localStorage.setItem(PRELOAD_VERSION_KEY, PRELOAD_VERSION);
   localStorage.setItem(PRELOAD_UPDATED_AT_KEY, String(Date.now()));
 
   if (result.failed > 0) {
-    updateProgress(result.total - result.failed, result.total, "Loading...", `Loaded with ${result.failed} recoverable asset misses.`);
-  } else {
-    updateProgress(result.total, result.total, "Loading...", "All game assets are ready.");
+    showCriticalFailure(result.failures || []);
+    return;
   }
 
-  updateProgress(result.total, result.total, "Starting...", "Launching match...");
+  // The level-select portal has finished before navigation. Start the
+  // gameplay arrival only after this session's critical assets are ready so
+  // the board/HUD animation cannot be consumed behind the boot overlay.
+  if (shouldPlayArrivalTransition) document.body.classList.add("arrival-transition");
   await import("./game.js");
   hideOverlay();
   if (shouldPlayArrivalTransition) {
@@ -244,9 +244,5 @@ async function bootGame() {
 
 bootGame().catch(error => {
   console.error("Boot failed:", error);
-  updateProgress(1, 1, "Load failed", "Tap to retry.");
-  if (!overlayEl) return;
-  overlayEl.addEventListener("click", () => {
-    window.location.reload();
-  }, { once: true });
+  showCriticalFailure([error]);
 });
