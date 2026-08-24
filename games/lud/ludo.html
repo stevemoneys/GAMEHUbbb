@@ -99,14 +99,19 @@
     <div class="bg-layer bg-a"></div>
     <div class="bg-layer bg-b"></div>
   </div>
-  <div class="coin-hud" id="coin-hud">
-    <span class="coin-icon" aria-hidden="true"></span>
-    <span class="coin-total" id="coin-total">0</span>
-  </div>
-  <div class="level-badge" id="level-badge" aria-label="Current level">
-    <span>LEVEL</span>
-    <strong>01</strong>
-  </div>
+  <header class="match-hud" aria-label="Match status">
+    <div class="match-hud-left">
+      <div class="level-badge" id="level-badge" aria-label="Current level">
+        <span>LEVEL</span>
+        <strong>01</strong>
+      </div>
+      <div class="coin-hud" id="coin-hud">
+        <span class="coin-icon" aria-hidden="true"></span>
+        <span class="coin-total" id="coin-total">0</span>
+      </div>
+    </div>
+    <button class="pause-btn" id="pause-btn" type="button" aria-label="Open game menu" aria-pressed="false"><span aria-hidden="true">☰</span><span class="control-label">Menu</span></button>
+  </header>
   <div class="coin-fx-layer" id="coin-fx-layer" aria-hidden="true"></div>
   <div class="toast-layer" id="toast-layer" aria-live="polite" aria-atomic="true"></div>
   <div class="turn-announcement" id="turn-announcement" role="status" aria-live="polite" aria-atomic="true">
@@ -119,9 +124,6 @@
   </div>
   <div class="game-wrapper">
     <div class="ludo-stage">
-      <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels"><span aria-hidden="true">‹</span><span class="control-label">Back</span></button>
-      <button class="restart-btn" id="restart-btn" type="button">Restart</button>
-      <button class="pause-btn" id="pause-btn" type="button" aria-label="Open game menu" aria-pressed="false"><span aria-hidden="true">☰</span><span class="control-label">Menu</span></button>
       <div class="ludo-board">
         <div class="center-triangle center-red"></div>
         <div class="center-triangle center-green"></div>
@@ -154,7 +156,7 @@
       <svg class="chaos-overlay" id="chaos-overlay" aria-hidden="true"></svg>
       <div class="spark-layer" id="spark-layer" aria-hidden="true"></div>
 
-      <div class="dice-panel top-left" data-color="red">
+      <button class="dice-panel top-left" data-color="red" type="button" aria-label="Red dice">
         <div class="dice" id="dice-red">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -163,9 +165,9 @@
           <div class="face five"><img></div>
           <div class="face six"><img></div>
         </div>
-      </div>
+      </button>
 
-      <div class="dice-panel top-right" data-color="green">
+      <button class="dice-panel top-right" data-color="green" type="button" aria-label="Green dice">
         <div class="dice" id="dice-green">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -174,8 +176,8 @@
           <div class="face five"><img></div>
           <div class="face six"><img></div>
         </div>
-      </div>
-      <div class="dice-panel bottom-right" data-color="yellow">
+      </button>
+      <button class="dice-panel bottom-right" data-color="yellow" type="button" aria-label="Yellow dice">
         <div class="dice" id="dice-yellow">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -184,8 +186,8 @@
           <div class="face five"><img></div>
           <div class="face six"><img></div>
         </div>
-      </div>
-      <div class="dice-panel bottom-left" data-color="blue">
+      </button>
+      <button class="dice-panel bottom-left" data-color="blue" type="button" aria-label="Blue dice">
         <div class="dice" id="dice-blue">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -194,7 +196,7 @@
           <div class="face five"><img></div>
           <div class="face six"><img></div>
         </div>
-      </div>
+      </button>
     </div>
   </div>
 
@@ -225,6 +227,7 @@
       <h2>Game Paused</h2>
       <p>Do you want to resume the match?</p>
       <div class="pause-actions">
+        <button class="back-levels-btn" id="back-levels-btn" type="button" aria-label="Back to Levels"><span aria-hidden="true">‹</span><span class="control-label">Back</span></button>
         <button type="button" id="pause-resume-btn">Resume</button>
         <button type="button" id="pause-restart-btn">Restart</button>
         <button type="button" id="pause-exit-btn">Exit</button>

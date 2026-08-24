@@ -708,6 +708,10 @@ state.players.forEach(player => {
     const token = document.createElement("div");
     token.className = `token ${player.color}`;
     token.dataset.color = player.color;
+    token.dataset.tokenIndex = String(i);
+    token.setAttribute("role", "button");
+    token.setAttribute("aria-label", `${player.color.toUpperCase()} token ${i + 1}`);
+    token.tabIndex = -1;
 
     const img = document.createElement("img");
     img.src = getTokenImageSrc(player.color);
@@ -740,6 +744,11 @@ state.players.forEach(player => {
         isMoving = false;
         nextTurn(false);
       });
+    });
+    token.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      token.click();
     });
   }
 });
@@ -857,6 +866,7 @@ function clearHighlights() {
     t.classList.remove("selectable-gold");
     t.classList.remove("selectable-black");
     t.classList.remove("selectable-single");
+    t.tabIndex = -1;
   });
 }
 
@@ -873,6 +883,41 @@ function triggerFeedback(el, className, duration = 320) {
   setTimeout(() => {
     if (el.dataset[key] === String(id)) el.classList.remove(className);
   }, duration);
+}
+
+// Reparenting a token to the next authoritative cell is still the source of
+// truth. FLIP keeps the artwork intact while the DOM location changes, so a
+// normal move reads as CELL A → CELL B instead of an entrance animation.
+// Entry from home opts out of FLIP and simply appears at its legal entry cell.
+async function moveTokenStep(token, destinationEl, feedbackClass = "token-step", options = {}) {
+  if (!token || !destinationEl) return;
+  const shouldAnimate = options.animate !== false;
+  const from = token.getBoundingClientRect();
+  destinationEl.appendChild(token);
+  token.style.transform = "";
+  const to = token.getBoundingClientRect();
+  const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+  const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+  const distance = Math.abs(dx) + Math.abs(dy);
+
+  if (shouldAnimate && distance > 0.5 && typeof token.animate === "function") {
+    try {
+      const animation = token.animate(
+        [
+          { transform: `translate3d(${dx}px, ${dy}px, 0)` },
+          { transform: "translate3d(0, 0, 0)" }
+        ],
+        { duration: 165, easing: "cubic-bezier(.2,.82,.24,1)", fill: "none" }
+      );
+      await animation.finished;
+    } catch {
+      // Older WebViews can reject finished promises; the token is already in
+      // the correct cell, so continuing is safe.
+    }
+  } else if (shouldAnimate) {
+    await wait(165);
+  }
+  triggerFeedback(token, feedbackClass, 120);
 }
 
 function showSixFeedback(panel) {
@@ -2999,6 +3044,7 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
     const token = tokenEls[player.color][tokenIndex];
     if (dice === 6) token.classList.add("selectable-gold");
     else token.classList.add("selectable-black");
+    token.tabIndex = 0;
   });
   if (moves.length === 1) {
     tokenEls[player.color][moves[0].tokenIndex].classList.add("selectable-single");
@@ -3259,12 +3305,11 @@ function runAITurn() {
 }
 
 async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
-  goalEls[color].appendChild(token);
+  await moveTokenStep(token, goalEls[color], "token-finished");
   playSfx("goal", 0.65);
   token.dataset.path = "goal";
   player.tokens[tokenIndex] = -2;
   player.finished[tokenIndex] = true;
-  triggerFeedback(token, "token-finished", 460);
   if (Array.isArray(player.riskVulnerable)) {
     player.riskVulnerable[tokenIndex] = 0;
   }
@@ -3355,14 +3400,11 @@ async function executeMove(move) {
       }
 
       const entryCell = ENTRY_CELLS[color];
-      entryCell.appendChild(token);
-      token.style.position = "";
-      token.style.transform = "";
+      await moveTokenStep(token, entryCell, "token-entered", { animate: false });
       token.dataset.path = "common";
       playSfx("entry", 0.75);
       player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
       player.finished[tokenIndex] = false;
-      triggerFeedback(token, "token-entered", 360);
       showEventAnnouncement(`${color.toUpperCase()} ENTERED BOARD`, "event");
       await handleTileEvent(playerIndex, tokenIndex);
       applyPostLandingEffects(playerIndex, tokenIndex);
@@ -3376,20 +3418,16 @@ async function executeMove(move) {
       const remainingToGoal = path.length - pos;
       if (moveSteps === remainingToGoal) {
         for (let i = 1; i < moveSteps; i++) {
-          path[pos + i].el.appendChild(token);
-          triggerFeedback(token, "token-step", 150);
+          await moveTokenStep(token, path[pos + i].el);
           playSfx("step", 0.35);
-          await wait(180);
         }
         await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
         return;
       }
 
       for (let i = 1; i <= moveSteps; i++) {
-        path[pos + i].el.appendChild(token);
-        triggerFeedback(token, "token-step", 150);
+        await moveTokenStep(token, path[pos + i].el);
         playSfx("step", 0.35);
-        await wait(180);
       }
       player.tokens[tokenIndex] += moveSteps;
       await handleTileEvent(playerIndex, tokenIndex);
@@ -3419,25 +3457,22 @@ async function executeMove(move) {
         enteredHome = true;
         homePos = 0;
         if (homePath[homePos]) {
-          homePath[homePos].el.appendChild(token);
+          await moveTokenStep(token, homePath[homePos].el);
         }
-        triggerFeedback(token, "token-home-lane", 360);
+        triggerFeedback(token, "token-home-lane", 120);
         if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "power") {
           playSfx("entry", 0.42);
           showEventAnnouncement(`${color.toUpperCase()} ENTERING HOME`, "home");
         } else {
           playSfx("step", 0.35);
         }
-        await wait(180);
         continue;
       }
 
       if (!enteredHome) {
         commonPos = (commonPos + 1) % commonLen;
-        PATHS.common[commonPos].el.appendChild(token);
-        triggerFeedback(token, "token-step", 150);
+        await moveTokenStep(token, PATHS.common[commonPos].el);
         playSfx("step", 0.35);
-        await wait(180);
         continue;
       }
 
@@ -3453,10 +3488,8 @@ async function executeMove(move) {
         return;
       }
 
-      homePath[homePos].el.appendChild(token);
-      triggerFeedback(token, "token-step", 150);
+      await moveTokenStep(token, homePath[homePos].el);
       playSfx("step", 0.35);
-      await wait(180);
     }
 
     if (enteredHome) {
