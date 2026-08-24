@@ -1,8 +1,21 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-24-v34";
+const PRELOAD_VERSION = "2026-08-24-v35";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
+const ARRIVAL_TRANSITION_KEY = "ludo_teleport_arrival_v1";
+
+let shouldPlayArrivalTransition = false;
+try {
+  shouldPlayArrivalTransition = sessionStorage.getItem(ARRIVAL_TRANSITION_KEY) === "1";
+  if (shouldPlayArrivalTransition) sessionStorage.removeItem(ARRIVAL_TRANSITION_KEY);
+} catch {
+  shouldPlayArrivalTransition = false;
+}
+
+if (shouldPlayArrivalTransition) {
+  document.body.classList.add("arrival-transition");
+}
 
 const overlayEl = document.getElementById("boot-overlay");
 const progressBarEl = document.getElementById("boot-progress-bar");
@@ -197,6 +210,9 @@ function hideOverlay() {
 async function bootGame() {
   if (!overlayEl) {
     await import("./game.js");
+    if (shouldPlayArrivalTransition) {
+      window.setTimeout(() => document.body.classList.remove("arrival-transition"), 1700);
+    }
     return;
   }
 
@@ -221,6 +237,9 @@ async function bootGame() {
   updateProgress(result.total, result.total, "Starting...", "Launching match...");
   await import("./game.js");
   hideOverlay();
+  if (shouldPlayArrivalTransition) {
+    window.setTimeout(() => document.body.classList.remove("arrival-transition"), 1700);
+  }
 }
 
 bootGame().catch(error => {

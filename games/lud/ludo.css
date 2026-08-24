@@ -3736,3 +3736,53 @@ body.orient-blue .token img { --token-rotation: 90deg !important; }
 @media (prefers-reduced-motion: reduce) {
   .token.selectable-gold::after,.token.selectable-black::after,.token.selectable-single::after,.chaos-overlay,.dice,.turn-announcement,.event-announcement { animation:none !important; transition-duration:1ms !important; }
 }
+
+/* Arrival state supplied by the level-selection teleport. Independent `scale`
+   keeps the player's board orientation transform intact. */
+body.arrival-transition .ludo-board {
+  opacity: 0;
+  scale: .9;
+  animation: gameplay-arrival-board 620ms var(--gh-ease-enter) 80ms forwards;
+}
+
+body.arrival-transition .level-badge,
+body.arrival-transition .coin-hud,
+body.arrival-transition .back-levels-btn,
+body.arrival-transition .pause-btn {
+  opacity: 0;
+  animation: gameplay-arrival-hud 360ms var(--gh-ease-enter) 420ms forwards;
+}
+
+body.arrival-transition .dice-panel {
+  opacity: 0;
+  animation: gameplay-arrival-dice 360ms var(--gh-ease-enter) 680ms forwards;
+}
+
+@keyframes gameplay-arrival-board {
+  from { opacity: 0; scale: .9; }
+  65% { opacity: 1; scale: 1.025; }
+  to { opacity: 1; scale: 1; }
+}
+
+@keyframes gameplay-arrival-hud {
+  from { opacity: 0; translate: 0 -8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes gameplay-arrival-dice {
+  from { opacity: 0; scale: .82; }
+  70% { opacity: 1; scale: 1.06; }
+  to { opacity: 1; scale: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.arrival-transition .ludo-board,
+  body.arrival-transition .level-badge,
+  body.arrival-transition .coin-hud,
+  body.arrival-transition .back-levels-btn,
+  body.arrival-transition .pause-btn,
+  body.arrival-transition .dice-panel {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+}

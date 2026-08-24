@@ -100,6 +100,70 @@
 
     const grid = document.getElementById("level-grid");
 
+    let teleportStarted = false;
+
+    function startTeleport(url, sourceEl, level) {
+      if (teleportStarted || !url) return;
+      teleportStarted = true;
+
+      try {
+        sessionStorage.setItem("ludo_teleport_arrival_v1", "1");
+      } catch {
+        // The transition remains safe if storage is unavailable.
+      }
+
+      const sourceRect = sourceEl?.getBoundingClientRect?.();
+      const originX = sourceRect ? sourceRect.left + sourceRect.width / 2 : window.innerWidth / 2;
+      const originY = sourceRect ? sourceRect.top + sourceRect.height / 2 : window.innerHeight / 2;
+      const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const duration = reducedMotion ? 320 : 1540;
+
+      sourceEl?.classList.add("teleport-source", "teleport-selected");
+      document.body.classList.add("teleporting");
+      document.documentElement.setAttribute("aria-busy", "true");
+      document.querySelectorAll(".level-btn, .continue-level-btn").forEach(control => {
+        control.setAttribute("aria-disabled", "true");
+        if (control instanceof HTMLButtonElement) control.disabled = true;
+      });
+
+      const overlay = document.createElement("div");
+      overlay.className = `teleport-overlay${reducedMotion ? " reduced-motion" : ""}`;
+      overlay.setAttribute("aria-hidden", "true");
+      overlay.style.setProperty("--portal-origin-x", `${originX}px`);
+      overlay.style.setProperty("--portal-origin-y", `${originY}px`);
+      overlay.innerHTML = `
+        <div class="teleport-backdrop"></div>
+        <div class="teleport-portal" aria-hidden="true">
+          <span class="portal-field"></span>
+          <span class="portal-ring portal-ring-a"></span>
+          <span class="portal-ring portal-ring-b"></span>
+          <span class="portal-ring portal-ring-c"></span>
+          <span class="portal-cross portal-cross-a"></span>
+          <span class="portal-cross portal-cross-b"></span>
+          <span class="portal-core"></span>
+          <span class="portal-particle particle-a"></span>
+          <span class="portal-particle particle-b"></span>
+          <span class="portal-particle particle-c"></span>
+          <span class="portal-particle particle-d"></span>
+        </div>
+        <div class="teleport-caption">ENTERING LEVEL ${String(level).padStart(2, "0")}</div>
+      `;
+      document.body.appendChild(overlay);
+
+      requestAnimationFrame(() => overlay.classList.add("teleport-build"));
+      window.setTimeout(() => overlay.classList.add("teleport-center"), reducedMotion ? 40 : 620);
+      window.setTimeout(() => overlay.classList.add("teleport-arrival"), reducedMotion ? 140 : 1080);
+      window.setTimeout(() => {
+        overlay.classList.add("teleport-exit");
+        overlay.style.pointerEvents = "none";
+      }, reducedMotion ? 200 : 1350);
+      window.setTimeout(() => {
+        overlay.remove();
+        document.documentElement.removeAttribute("aria-busy");
+        window.location.href = url;
+      }, duration);
+    }
+
     for (let level = 1; level <= TOTAL_LEVELS; level++) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -134,7 +198,7 @@
           gm,
           level: String(level)
         });
-        window.location.href = `ludo.html?${query.toString()}`;
+        startTeleport(`ludo.html?${query.toString()}`, btn, level);
       });
 
       grid.appendChild(btn);
@@ -148,6 +212,10 @@
         gm,
         level: String(unlocked)
       }).toString()}`;
+      continueBtn.addEventListener("click", event => {
+        event.preventDefault();
+        startTeleport(continueBtn.href, continueBtn, unlocked);
+      });
     }
   </script>
   <script>
