@@ -421,3 +421,77 @@ body::after {
   .opt-btn,.color-btn,.play-btn,.close-btn { transition-duration: 1ms !important; }
   body::after { transform: none; }
 }
+
+/* ========================================================================
+   SETUP CORRECTION PASS — deliberate vertical hierarchy
+   Player count, colour choice, and the primary action are separate controls.
+   Keep the existing IDs/classes and click handlers; this is layout only.
+   ======================================================================== */
+.vs-wrap {
+  overflow-x: hidden;
+  overflow-y: auto;
+  align-items: center;
+}
+
+.vs-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  min-height: min(680px, calc(100dvh - 28px - var(--setup-safe-top) - var(--setup-safe-bottom))) !important;
+  padding: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.vs-card .section {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-auto-rows: minmax(50px, auto);
+  gap: 8px !important;
+  margin: 16px 0 0 !important;
+}
+
+.vs-card .section .opt-btn {
+  width: 100% !important;
+  min-height: 50px !important;
+}
+
+.vs-card > h2 {
+  margin: 22px 0 10px !important;
+}
+
+.vs-card .color-grid {
+  flex: 0 0 auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.vs-card .color-btn {
+  min-width: 0 !important;
+  min-height: 68px !important;
+}
+
+.vs-card .play-btn {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: 56px !important;
+  min-height: var(--gh-touch-target-comfortable) !important;
+  margin-top: auto !important;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 380px) {
+  .vs-card { padding: 13px !important; }
+  .vs-head { min-height: 52px; }
+  .vs-card .section { margin-top: 12px !important; gap: 6px !important; }
+  .vs-card .section .opt-btn { min-height: 46px !important; }
+  .vs-card > h2 { margin-top: 16px !important; margin-bottom: 8px !important; }
+  .vs-card .color-btn { min-height: 62px !important; }
+  .vs-card .play-btn { height: 52px !important; }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .vs-wrap { place-items: start center; }
+  .vs-card { min-height: auto !important; margin: 8px 0; }
+  .vs-card .play-btn { margin-top: 18px !important; }
+}

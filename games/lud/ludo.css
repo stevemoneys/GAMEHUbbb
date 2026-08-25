@@ -2014,7 +2014,9 @@ body::before {
   width: var(--dice-size) !important;
   height: var(--dice-size) !important;
   transform-style: preserve-3d !important;
-  transition: transform 0.28s cubic-bezier(.17, .67, .5, 1.15) !important;
+  /* JavaScript owns the short roll/settle timing for the authoritative die
+     result; do not let a stylesheet priority block its inline transition. */
+  transition: transform 0.28s cubic-bezier(.17, .67, .5, 1.15);
   will-change: transform;
 }
 
@@ -3798,7 +3800,7 @@ body.arrival-transition .dice-panel {
   --play-safe-bottom: env(safe-area-inset-bottom, 0px);
   --play-hud-height: 56px;
   --play-dice-dock: 72px;
-  --play-dice-gutter: clamp(42px, 12vw, 56px);
+  --play-dice-gutter: clamp(38px, 10vw, 52px);
   --play-board-size: min(
     calc(100vw - var(--play-dice-gutter) - var(--play-dice-gutter)),
     calc(100dvh - var(--play-hud-height) - var(--play-dice-dock) - 34px - var(--play-safe-top) - var(--play-safe-bottom))
@@ -3953,8 +3955,8 @@ body.orient-blue .ludo-board { transform: rotate(-90deg) !important; }
   z-index: var(--gh-z-controls) !important;
   width: var(--play-dice-gutter) !important;
   height: var(--play-dice-gutter) !important;
-  min-width: 42px !important;
-  min-height: 42px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
   padding: 3px !important;
   display: flex !important;
   align-items: center;
@@ -3970,37 +3972,40 @@ body.orient-blue .ludo-board { transform: rotate(-90deg) !important; }
   overflow: visible !important;
   perspective: 900px !important;
 }
-.dice-panel[data-color="red"] { --die-accent: #ff766d; --die-glow: rgba(255,118,109,.62); left: calc(0px - var(--play-dice-gutter)); top: 14%; }
-.dice-panel[data-color="green"] { --die-accent: #70e5a1; --die-glow: rgba(112,229,161,.62); right: calc(0px - var(--play-dice-gutter)); top: 14%; }
-.dice-panel[data-color="yellow"] { --die-accent: #ffe178; --die-glow: rgba(255,225,120,.62); right: calc(0px - var(--play-dice-gutter)); bottom: 14%; }
-.dice-panel[data-color="blue"] { --die-accent: #78c9ff; --die-glow: rgba(120,201,255,.62); left: calc(0px - var(--play-dice-gutter)); bottom: 14%; }
+.dice-panel[data-color="red"] { --die-accent: #ff766d; --die-glow: rgba(255,118,109,.62); left: calc(0px - var(--play-dice-gutter)) !important; top: 14% !important; right: auto !important; bottom: auto !important; }
+.dice-panel[data-color="green"] { --die-accent: #70e5a1; --die-glow: rgba(112,229,161,.62); right: calc(0px - var(--play-dice-gutter)) !important; top: 14% !important; left: auto !important; bottom: auto !important; }
+.dice-panel[data-color="yellow"] { --die-accent: #ffe178; --die-glow: rgba(255,225,120,.62); right: calc(0px - var(--play-dice-gutter)) !important; bottom: 14% !important; left: auto !important; top: auto !important; }
+.dice-panel[data-color="blue"] { --die-accent: #78c9ff; --die-glow: rgba(120,201,255,.62); left: calc(0px - var(--play-dice-gutter)) !important; bottom: 14% !important; right: auto !important; top: auto !important; }
 
 /* Actual visual zones after the human-facing board rotation. */
-body.orient-red .dice-panel[data-color="red"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: auto; bottom: 14%; }
-body.orient-red .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: auto; bottom: 14%; }
-body.orient-red .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: 14%; bottom: auto; }
-body.orient-red .dice-panel[data-color="blue"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: 14%; bottom: auto; }
-body.orient-green .dice-panel[data-color="red"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: 14%; bottom: auto; }
-body.orient-green .dice-panel[data-color="green"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: auto; bottom: 14%; }
-body.orient-green .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: auto; bottom: 14%; }
-body.orient-green .dice-panel[data-color="blue"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: 14%; bottom: auto; }
-body.orient-blue .dice-panel[data-color="red"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: auto; bottom: 14%; }
-body.orient-blue .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-gutter)); right: auto; top: 14%; bottom: auto; }
-body.orient-blue .dice-panel[data-color="yellow"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: 14%; bottom: auto; }
-body.orient-blue .dice-panel[data-color="blue"] { left: auto; right: calc(0px - var(--play-dice-gutter)); top: auto; bottom: 14%; }
+body.orient-red .dice-panel[data-color="red"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
+body.orient-red .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: auto !important; bottom: 14% !important; }
+body.orient-red .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: 14% !important; bottom: auto !important; }
+body.orient-red .dice-panel[data-color="blue"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: 14% !important; bottom: auto !important; }
+body.orient-green .dice-panel[data-color="red"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: 14% !important; bottom: auto !important; }
+body.orient-green .dice-panel[data-color="green"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
+body.orient-green .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: auto !important; bottom: 14% !important; }
+body.orient-green .dice-panel[data-color="blue"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: 14% !important; bottom: auto !important; }
+body.orient-blue .dice-panel[data-color="red"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: auto !important; bottom: 14% !important; }
+body.orient-blue .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-gutter)) !important; right: auto !important; top: 14% !important; bottom: auto !important; }
+body.orient-blue .dice-panel[data-color="yellow"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: 14% !important; bottom: auto !important; }
+body.orient-blue .dice-panel[data-color="blue"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
 
+/* The human die stays in the human player's visual board zone. It remains
+   outside the board in the side gutter; it is never relocated to bottom
+   centre, so the board remains the visual hero. */
 .dice-panel.human-die,
 body.vs-computer-match .dice-panel.human-die {
-  left: 50% !important;
-  right: auto !important;
-  top: auto !important;
-  bottom: calc(0px - var(--play-dice-dock)) !important;
-  width: clamp(68px, 20vw, 84px) !important;
-  height: clamp(58px, 17vw, 70px) !important;
-  transform: translateX(-50%) !important;
-  border-color: rgba(255,223,103,.72) !important;
+  width: clamp(46px, 14vw, 58px) !important;
+  height: clamp(46px, 14vw, 58px) !important;
+  border-color: rgba(255,223,103,.86) !important;
   border-radius: var(--gh-radius-lg) !important;
+  transform: none !important;
 }
+body.orient-red .dice-panel.human-die[data-color="red"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
+body.orient-green .dice-panel.human-die[data-color="green"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
+body.orient-yellow .dice-panel.human-die[data-color="yellow"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
+body.orient-blue .dice-panel.human-die[data-color="blue"] { left: auto !important; right: calc(0px - var(--play-dice-gutter)) !important; top: auto !important; bottom: 14% !important; }
 .dice-panel.inactive { display: none !important; }
 .dice-panel.clickable { cursor: pointer !important; }
 .dice-panel.dice-active { box-shadow: 0 0 0 2px rgba(255,255,255,.78), 0 0 18px var(--die-glow, rgba(255,225,120,.62)) !important; }
@@ -4083,7 +4088,7 @@ body.orient-blue .token img {
 .pause-actions .back-levels-btn { position: static !important; inset: auto !important; display: inline-flex !important; align-items: center; justify-content: center; gap: 4px; transform: none !important; }
 
 @media (max-width: 380px) {
-  :root { --play-hud-height: 52px; --play-dice-dock: 66px; --play-dice-gutter: 42px; }
+  :root { --play-hud-height: 52px; --play-dice-dock: 66px; --play-dice-gutter: 38px; }
   .match-hud { left: 6px; right: 6px; }
   .match-hud .level-badge { width: 54px !important; }
   .match-hud .coin-hud { min-width: 72px !important; }
