@@ -4281,3 +4281,369 @@ body.orient-blue .goal-slot .token img { transform: rotate(90deg) !important; }
   .token.selectable-black::before,
   .token.selectable-single::before { animation: none !important; transition-duration: 1ms !important; }
 }
+
+/* ========================================================================
+   GAMEPLAY PRODUCTION COMPOSITION
+   One final visual coordinate system for every human colour. Board rotation
+   remains the seating authority; token and dice presentation counter it.
+   ======================================================================== */
+:root {
+  --play-stage-side: clamp(34px, 10vw, 54px);
+  /* Reserve the upper stack plus the two top player cards before placing the
+     board. This prevents corner dice from competing with turn guidance. */
+  --play-prompt-reserve: clamp(248px, 34vh, 288px);
+  /* Reserve the two lower player cards and the permanent Roll Dice control. */
+  --play-action-reserve: clamp(162px, 21vh, 184px);
+  --play-dice-card-w: clamp(62px, 18vw, 90px);
+  --play-dice-card-h: clamp(78px, 23vw, 108px);
+  --play-dice-card-overhang: clamp(3px, 1.7vw, 10px);
+  --play-board-size: min(
+    720px,
+    calc(100vw - var(--play-stage-side) - var(--play-stage-side)),
+    calc(100dvh - var(--play-prompt-reserve) - var(--play-action-reserve) - var(--play-safe-top) - var(--play-safe-bottom))
+  );
+  --play-board-size-fallback: min(
+    720px,
+    calc(100vw - var(--play-stage-side) - var(--play-stage-side)),
+    calc(100vh - var(--play-prompt-reserve) - var(--play-action-reserve) - var(--play-safe-top) - var(--play-safe-bottom))
+  );
+}
+
+/* The board sits as the hero between the prompt stack and the primary roll
+   action. Cards may extend beyond the stage but never become board children. */
+.game-wrapper {
+  padding: calc(var(--play-prompt-reserve) + var(--play-safe-top)) var(--play-stage-side) calc(var(--play-action-reserve) + var(--play-safe-bottom)) !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+}
+.ludo-stage,
+.ludo-board,
+.cell,
+.path,
+.home,
+.home-inner,
+.token-slot { overflow: visible !important; }
+
+/* Screenshot-style top information: a large turn capsule and a separate
+   compact roll instruction. Gameplay events stay below this pair. */
+.turn-announcement {
+  position: fixed !important;
+  top: calc(43px + var(--play-safe-top)) !important;
+  left: 50% !important;
+  z-index: calc(var(--gh-z-announcement) + 3) !important;
+  width: min(62vw, 286px) !important;
+  min-width: 162px !important;
+  max-width: calc(100vw - 142px) !important;
+  min-height: 56px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 7px 20px !important;
+  border: 2px solid rgba(255, 214, 83, .92) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, rgba(21, 105, 178, .98), rgba(7, 51, 105, .98)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 5px 0 rgba(71, 44, 7, .74), 0 10px 24px rgba(0, 0, 0, .42), 0 0 15px rgba(43, 172, 255, .3) !important;
+  text-align: center;
+}
+.turn-announcement .announcement-color { display: none !important; }
+.turn-announcement .announcement-title {
+  margin: 0 !important;
+  color: #fff !important;
+  font-size: clamp(20px, 6vw, 30px) !important;
+  line-height: 1 !important;
+  letter-spacing: -.025em !important;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .58) !important;
+}
+.turn-announcement .announcement-detail { display: none !important; }
+.turn-announcement.ai { border-color: rgba(163, 237, 255, .84) !important; }
+
+.roll-guidance {
+  position: fixed;
+  top: calc(108px + var(--play-safe-top));
+  left: 50%;
+  z-index: calc(var(--gh-z-announcement) + 3);
+  width: min(54vw, 226px);
+  min-width: 152px;
+  min-height: 39px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 6px 13px;
+  box-sizing: border-box;
+  border: 1px solid rgba(236, 179, 53, .65);
+  border-radius: 999px;
+  color: #f8fbff;
+  background: rgba(5, 20, 42, .94);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 5px 16px rgba(0,0,0,.3);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-5px) scale(.97);
+  transition: opacity var(--gh-duration-fast) var(--gh-ease-enter), transform var(--gh-duration-fast) var(--gh-ease-enter), border-color var(--gh-duration-fast) ease;
+}
+.roll-guidance.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+.roll-guidance strong { font-size: clamp(12px, 3.5vw, 16px); letter-spacing: .015em; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+.roll-guidance-gem { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #b9f7ff, #159ef1 55%, #055390); box-shadow: 0 0 7px rgba(51, 192, 255, .86); }
+.roll-guidance.extra { border-color: rgba(255, 218, 101, .94); box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 0 13px rgba(255, 209, 72, .34), 0 5px 16px rgba(0,0,0,.3); }
+.roll-guidance.extra .roll-guidance-gem { background: radial-gradient(circle at 35% 30%, #fff8bd, #ffd655 55%, #b77800); box-shadow: 0 0 7px rgba(255, 211, 72, .86); }
+.roll-guidance.select { border-color: rgba(129, 232, 255, .9); }
+.roll-guidance.rolling { border-color: rgba(188, 237, 255, .9); }
+.roll-guidance.blocked { border-color: rgba(255, 147, 120, .92); }
+.roll-guidance.ai { border-color: rgba(123, 230, 170, .86); }
+.event-announcement { top: calc(158px + var(--play-safe-top)) !important; z-index: calc(var(--gh-z-announcement) + 2) !important; }
+
+/* Corner player dice cards: exactly one card per visual home zone. The last
+   selector block is deliberately explicit so legacy slot classes cannot move
+   a panel to bottom-centre or apply a leftover transform. */
+body .ludo-stage .dice-panel,
+body.vs-computer-match .ludo-stage .dice-panel {
+  width: var(--play-dice-card-w) !important;
+  height: var(--play-dice-card-h) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 17px 1fr !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: 1px !important;
+  padding: 5px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  transform: none !important;
+  border: 2px solid var(--die-accent, rgba(255,255,255,.7)) !important;
+  border-radius: 17px !important;
+  background: linear-gradient(155deg, rgba(17, 34, 56, .97), rgba(3, 14, 30, .96)) !important;
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.11), inset 0 0 18px var(--die-glow, rgba(70, 161, 255, .2)), 0 7px 0 rgba(0,0,0,.36), 0 12px 22px rgba(0,0,0,.34) !important;
+  appearance: none !important;
+  opacity: 1 !important;
+}
+body .ludo-stage .dice-panel:disabled { opacity: 1 !important; color: inherit !important; }
+body .ludo-stage .dice-panel::before,
+body .ludo-stage .dice-panel::after,
+body.vs-computer-match .ludo-stage .dice-panel.human-die.dice-active::after { content: none !important; display: none !important; }
+.dice-player-label {
+  grid-row: 1;
+  min-width: 0;
+  display: block;
+  color: #fff !important;
+  font-family: var(--gh-font-ui) !important;
+  font-size: clamp(8px, 2.45vw, 12px) !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: -.015em;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0,0,0,.76), 0 0 5px rgba(0,0,0,.7);
+}
+body .ludo-stage .dice-panel .dice {
+  grid-row: 2;
+  --dice-size: clamp(37px, 11vw, 54px) !important;
+  width: var(--dice-size) !important;
+  height: var(--dice-size) !important;
+  position: relative !important;
+  margin: 0 auto !important;
+  transform-style: preserve-3d !important;
+  transform-origin: center center !important;
+  filter: drop-shadow(0 5px 4px rgba(0,0,0,.38));
+}
+body .ludo-stage .dice-panel .dice .face {
+  border: 1px solid rgba(24, 29, 36, .7) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(145deg, #fff, #cfd5dc) !important;
+  box-shadow: inset 0 2px 3px rgba(255,255,255,.8), inset 0 -4px 6px rgba(0,0,0,.16), 0 2px 3px rgba(0,0,0,.24) !important;
+  backface-visibility: hidden !important;
+}
+body .ludo-stage .dice-panel .dice .face img { border-radius: 8px !important; object-fit: cover !important; }
+body .ludo-stage .dice-panel.dice-active { box-shadow: inset 0 0 0 2px rgba(255,255,255,.2), inset 0 0 20px var(--die-glow, rgba(70, 161, 255, .3)), 0 0 0 2px rgba(255, 237, 166, .78), 0 0 18px var(--die-glow, rgba(255,220,92,.56)), 0 7px 0 rgba(0,0,0,.36), 0 12px 22px rgba(0,0,0,.34) !important; }
+
+/* default / yellow orientation */
+body .ludo-stage .dice-panel[data-color="red"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body .ludo-stage .dice-panel[data-color="green"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body .ludo-stage .dice-panel[data-color="yellow"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body .ludo-stage .dice-panel[data-color="blue"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+/* red human orientation */
+body.orient-red .ludo-stage .dice-panel[data-color="red"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body.orient-red .ludo-stage .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body.orient-red .ludo-stage .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body.orient-red .ludo-stage .dice-panel[data-color="blue"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+/* green human orientation */
+body.orient-green .ludo-stage .dice-panel[data-color="red"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body.orient-green .ludo-stage .dice-panel[data-color="green"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body.orient-green .ludo-stage .dice-panel[data-color="yellow"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body.orient-green .ludo-stage .dice-panel[data-color="blue"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+/* blue human orientation — matches the supplied reference exactly. */
+body.orient-blue .ludo-stage .dice-panel[data-color="red"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+body.orient-blue .ludo-stage .dice-panel[data-color="green"] { left: calc(0px - var(--play-dice-card-overhang)) !important; right: auto !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body.orient-blue .ludo-stage .dice-panel[data-color="yellow"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: calc(0px - var(--play-dice-card-h) - 10px) !important; bottom: auto !important; }
+body.orient-blue .ludo-stage .dice-panel[data-color="blue"] { left: auto !important; right: calc(0px - var(--play-dice-card-overhang)) !important; top: auto !important; bottom: calc(0px - var(--play-dice-card-h) - 10px) !important; }
+
+/* The bottom action is the sole roll affordance. It delegates to the existing
+   guarded rollDice() handler, so it cannot cause a duplicate or AI roll. */
+.roll-dice-action {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + var(--play-safe-bottom));
+  z-index: var(--gh-z-controls);
+  min-width: min(66vw, 248px);
+  min-height: 53px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 9px 20px;
+  border: 2px solid rgba(255, 216, 90, .94);
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(180deg, #1776ba, #08427f);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.33), inset 0 -4px 0 rgba(3, 31, 74, .82), 0 6px 0 rgba(73, 45, 4, .72), 0 12px 22px rgba(0,0,0,.38);
+  font-family: var(--gh-font-ui);
+  font-size: clamp(17px, 5vw, 24px);
+  font-weight: 900;
+  letter-spacing: .035em;
+  text-shadow: 0 2px 0 rgba(0,0,0,.58);
+  transform: translateX(-50%);
+  transition: transform var(--gh-duration-fast) var(--gh-ease-standard), filter var(--gh-duration-fast) ease, opacity var(--gh-duration-fast) ease;
+}
+.roll-dice-ornament { color: #ffd955; font-size: .65em; text-shadow: 0 0 8px rgba(255,216,90,.66); }
+.roll-dice-action.ready { cursor: pointer; animation: roll-action-ready 1.8s ease-in-out infinite; }
+.roll-dice-action.ready:hover,
+.roll-dice-action.ready:focus-visible { filter: brightness(1.1); transform: translateX(-50%) translateY(-2px); outline: none; }
+.roll-dice-action.ready:active { transform: translateX(-50%) translateY(2px) scale(.98); }
+.roll-dice-action:disabled { cursor: default; opacity: .45; filter: saturate(.55); }
+@keyframes roll-action-ready { 0%,100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.33), inset 0 -4px 0 rgba(3,31,74,.82), 0 6px 0 rgba(73,45,4,.72), 0 12px 22px rgba(0,0,0,.38); } 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.44), inset 0 -4px 0 rgba(3,31,74,.82), 0 6px 0 rgba(73,45,4,.72), 0 0 20px rgba(80, 193, 255, .45), 0 12px 22px rgba(0,0,0,.38); } }
+
+/* Tokens use their centre as the universal local anchor. This is what removes
+   the yellow-only alignment: a board-local downward translate was rotating
+   sideways for green/blue and upside-down for red. */
+.cell > .token,
+.token-slot > .token {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: clamp(32px, 128%, 60px) !important;
+  height: clamp(32px, 128%, 60px) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  translate: -50% -50% !important;
+  overflow: visible !important;
+  z-index: 100 !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+.cell > .token:nth-child(1):nth-last-child(2) { translate: calc(-50% - 16%) calc(-50% - 8%) !important; }
+.cell > .token:nth-child(2):nth-last-child(1) { translate: calc(-50% + 16%) calc(-50% + 8%) !important; }
+.cell > .token:nth-child(1):nth-last-child(3) { translate: calc(-50% - 16%) calc(-50% - 10%) !important; }
+.cell > .token:nth-child(2):nth-last-child(2) { translate: calc(-50% + 16%) calc(-50% - 10%) !important; }
+.cell > .token:nth-child(3):nth-last-child(1) { translate: -50% calc(-50% + 16%) !important; }
+.cell > .token:nth-child(1):nth-last-child(4),
+.cell > .token:nth-child(3):nth-last-child(2) { translate: calc(-50% - 16%) calc(-50% + 13%) !important; }
+.cell > .token:nth-child(2):nth-last-child(3),
+.cell > .token:nth-child(4):nth-last-child(1) { translate: calc(-50% + 16%) calc(-50% + 13%) !important; }
+.cell > .token img,
+.token-slot > .token img {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  bottom: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  transform-origin: center center !important;
+  filter: drop-shadow(0 4px 4px rgba(0,0,0,.36)) !important;
+}
+.cell > .token img,
+.token-slot > .token img { transform: translate(-50%, -50%) rotate(0deg) !important; }
+body.orient-red .cell > .token img,
+body.orient-red .token-slot > .token img { transform: translate(-50%, -50%) rotate(-180deg) !important; }
+body.orient-green .cell > .token img,
+body.orient-green .token-slot > .token img { transform: translate(-50%, -50%) rotate(-90deg) !important; }
+body.orient-yellow .cell > .token img,
+body.orient-yellow .token-slot > .token img { transform: translate(-50%, -50%) rotate(0deg) !important; }
+body.orient-blue .cell > .token img,
+body.orient-blue .token-slot > .token img { transform: translate(-50%, -50%) rotate(90deg) !important; }
+.goal-slot > .token { translate: none !important; }
+.goal-slot > .token img { position: static !important; transform: rotate(0deg) !important; }
+body.orient-red .goal-slot > .token img { transform: rotate(-180deg) !important; }
+body.orient-green .goal-slot > .token img { transform: rotate(-90deg) !important; }
+body.orient-blue .goal-slot > .token img { transform: rotate(90deg) !important; }
+
+/* There is one highlight only: a small halo on the actual cell/home circle.
+   All former artwork rings are explicitly removed. */
+.token.selectable-gold,
+.token.selectable-black,
+.token.selectable-single { outline: none !important; filter: drop-shadow(0 4px 4px rgba(0,0,0,.36)) !important; }
+.token.selectable-gold::before,
+.token.selectable-black::before,
+.token.selectable-single::before,
+.token.selectable-gold::after,
+.token.selectable-black::after,
+.token.selectable-single::after { content: none !important; display: none !important; }
+.cell.move-target::after,
+.token-slot.move-target::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 25% !important;
+  right: 25% !important;
+  bottom: 14% !important;
+  height: 12% !important;
+  z-index: 50 !important;
+  pointer-events: none !important;
+  border: 1px solid rgba(255, 236, 153, .96) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 220, 86, .18) !important;
+  box-shadow: 0 0 7px rgba(255, 219, 85, .46) !important;
+}
+.token-slot.move-target::after { left: 31% !important; right: 31% !important; bottom: 17% !important; height: 8% !important; }
+
+@media (max-width: 380px) {
+  :root { --play-stage-side: 30px; --play-prompt-reserve: 248px; --play-action-reserve: 156px; --play-dice-card-w: 58px; --play-dice-card-h: 74px; }
+  .turn-announcement { top: calc(40px + var(--play-safe-top)) !important; min-height: 51px !important; }
+  .roll-guidance { top: calc(98px + var(--play-safe-top)); min-height: 35px; }
+  .event-announcement { top: calc(147px + var(--play-safe-top)) !important; }
+  .roll-dice-action { min-height: 48px; min-width: min(70vw, 228px); }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  :root { --play-stage-side: clamp(54px, 12vw, 88px); --play-prompt-reserve: 48px; --play-action-reserve: 70px; --play-dice-card-w: 66px; --play-dice-card-h: 76px; }
+  .turn-announcement { top: calc(6px + var(--play-safe-top)) !important; min-height: 38px !important; }
+  .roll-guidance { top: calc(48px + var(--play-safe-top)); min-height: 31px; }
+  .event-announcement { top: calc(84px + var(--play-safe-top)) !important; }
+  .roll-dice-action { bottom: calc(7px + var(--play-safe-bottom)); min-height: 42px; }
+}
+
+/* Short portrait screens retain all controls without allowing the top dice
+   cards to cover the two prompt capsules or the lower cards to cover Roll. */
+@media (orientation: portrait) and (max-height: 700px) {
+  :root {
+    --play-prompt-reserve: 248px;
+    --play-action-reserve: 162px;
+    --play-dice-card-h: 72px;
+  }
+  .turn-announcement { top: calc(28px + var(--play-safe-top)) !important; min-height: 48px !important; }
+  .roll-guidance { top: calc(83px + var(--play-safe-top)); min-height: 35px; }
+  .event-announcement { top: calc(127px + var(--play-safe-top)) !important; }
+  .roll-dice-action { bottom: calc(8px + var(--play-safe-bottom)); }
+}
+
+@media (orientation: portrait) and (max-height: 620px) {
+  :root {
+    --play-prompt-reserve: 195px;
+    --play-action-reserve: 130px;
+    --play-dice-card-w: 56px;
+    --play-dice-card-h: 62px;
+  }
+  .turn-announcement { top: calc(6px + var(--play-safe-top)) !important; min-height: 36px !important; padding-block: 5px !important; }
+  .turn-announcement .announcement-title { font-size: clamp(17px, 5.2vw, 22px) !important; }
+  .roll-guidance { top: calc(48px + var(--play-safe-top)); min-height: 29px; padding-block: 4px; }
+  .roll-guidance strong { font-size: clamp(10px, 3vw, 13px); }
+  .event-announcement { top: calc(84px + var(--play-safe-top)) !important; }
+  .roll-dice-action { min-height: 42px; min-width: min(62vw, 216px); font-size: clamp(15px, 4.5vw, 20px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-dice-action.ready { animation: none; }
+  .roll-guidance { transition-duration: 1ms; }
+}

@@ -161,6 +161,9 @@ const turnAnnouncementEl = document.getElementById("turn-announcement");
 const turnAnnouncementColorEl = document.getElementById("turn-announcement-color");
 const turnAnnouncementTitleEl = document.getElementById("turn-announcement-title");
 const turnAnnouncementDetailEl = document.getElementById("turn-announcement-detail");
+const rollGuidanceEl = document.getElementById("roll-guidance");
+const rollGuidanceTextEl = document.getElementById("roll-guidance-text");
+const rollDiceBtnEl = document.getElementById("roll-dice-btn");
 const eventAnnouncementEl = document.getElementById("event-announcement");
 const eventAnnouncementTextEl = document.getElementById("event-announcement-text");
 const coinHudEl = document.getElementById("coin-hud");
@@ -171,6 +174,13 @@ const pauseModalEl = document.getElementById("pause-modal");
 const pauseResumeBtnEl = document.getElementById("pause-resume-btn");
 const pauseRestartBtnEl = document.getElementById("pause-restart-btn");
 const pauseExitBtnEl = document.getElementById("pause-exit-btn");
+
+const diceLabelEls = {
+  red: document.getElementById("dice-label-red"),
+  green: document.getElementById("dice-label-green"),
+  yellow: document.getElementById("dice-label-yellow"),
+  blue: document.getElementById("dice-label-blue")
+};
 
 const BACKGROUND_IMAGES = Array.from({ length: 20 }, (_, i) => {
   return `backgrounds/bg${i + 1}_result.webp`;
@@ -501,6 +511,36 @@ const state = {
     battleCapturedThisTurn: false
   }))
 };
+
+function getPlayerLabel(player) {
+  const index = Math.max(0, state.players.indexOf(player));
+  if (!player?.isAI) {
+    return matchMode === "pass-play" ? `PLAYER ${index + 1}` : "YOU";
+  }
+  return `COMPUTER ${index + 1}`;
+}
+
+function syncDicePanelLabels() {
+  state.players.forEach(player => {
+    const color = player.color;
+    const label = getPlayerLabel(player);
+    const panel = dicePanelsByColor[color];
+    const labelEl = diceLabelEls[color];
+    if (labelEl) labelEl.textContent = label;
+    if (panel) {
+      panel.dataset.playerLabel = label;
+      panel.setAttribute("aria-label", `${label}: ${color} dice`);
+    }
+  });
+}
+
+function setRollGuidance(message, tone = "ready") {
+  if (!rollGuidanceEl || !rollGuidanceTextEl) return;
+  rollGuidanceTextEl.textContent = message;
+  rollGuidanceEl.classList.remove("ready", "extra", "rolling", "select", "blocked", "ai");
+  rollGuidanceEl.classList.add("show", tone);
+}
+
 let pendingBonusTurn = false;
 let activeRollMultiplier = 1;
 let arenaTurns = 0;
@@ -1012,7 +1052,7 @@ function animateCapturedTokenHome(tokenEl, homeEl) {
   });
 }
 
-function announceTurn(player) {
+function announceTurn(player, extraTurn = false) {
   if (!player || gameOver) return;
   const panel = dicePanelsByColor[player.color];
   const home = document.querySelector(`.home.${player.color}`);
@@ -1021,16 +1061,16 @@ function announceTurn(player) {
     triggerFeedback(home, player.isAI ? "ai-home-turn" : "human-home-turn", 520);
   }
   if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "battle" || gameMode === "power") {
-    showTurnAnnouncement(player);
+    showTurnAnnouncement(player, extraTurn);
   } else {
     showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
   }
 }
 
-function showTurnAnnouncement(player) {
+function showTurnAnnouncement(player, extraTurn = false) {
   if ((gameMode !== "classic" && gameMode !== "arena" && gameMode !== "chaos" && gameMode !== "battle" && gameMode !== "power") || !turnAnnouncementEl || !player) return;
-  const color = String(player.color || "").toUpperCase();
   const isAI = !!player.isAI;
+  const playerLabel = getPlayerLabel(player);
   const stamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
   turnAnnouncementEl.dataset.stamp = stamp;
   turnAnnouncementEl.classList.remove("show", "human", "ai");
@@ -1040,12 +1080,13 @@ function showTurnAnnouncement(player) {
   turnAnnouncementEl.classList.toggle("chaos", gameMode === "chaos");
   turnAnnouncementEl.classList.toggle("battle", gameMode === "battle");
   turnAnnouncementEl.classList.toggle("power", gameMode === "power");
-  if (turnAnnouncementColorEl) turnAnnouncementColorEl.textContent = color;
-  if (turnAnnouncementTitleEl) turnAnnouncementTitleEl.textContent = isAI ? "AI'S TURN" : "YOUR TURN";
-  if (turnAnnouncementDetailEl) turnAnnouncementDetailEl.textContent = isAI ? "Thinking..." : "Roll the dice";
-  setTimeout(() => {
-    if (turnAnnouncementEl.dataset.stamp === stamp) turnAnnouncementEl.classList.remove("show");
-  }, isAI ? 1450 : 1900);
+  if (turnAnnouncementColorEl) turnAnnouncementColorEl.textContent = playerLabel;
+  if (turnAnnouncementTitleEl) turnAnnouncementTitleEl.textContent = isAI ? `${playerLabel}'S TURN` : "YOUR TURN";
+  if (turnAnnouncementDetailEl) turnAnnouncementDetailEl.textContent = isAI ? "Rolling..." : extraTurn ? "Extra roll" : "Ready to roll";
+  setRollGuidance(
+    isAI ? `${playerLabel} IS ROLLING` : extraTurn ? "EXTRA ROLL — ROLL THE DICE" : "ROLL THE DICE",
+    isAI ? "ai" : extraTurn ? "extra" : "ready"
+  );
 }
 
 function showEventAnnouncement(message, tone = "event") {
@@ -1424,6 +1465,7 @@ function setActiveDieGlow(color) {
     const isActiveColor = c === color;
     const canGlow =
       isActiveColor &&
+      !gameOver &&
       !isPaused &&
       !isMoving &&
       state.diceValue === null &&
@@ -1448,23 +1490,33 @@ function resetDiceInteractivity() {
   const activePlayer = state.players[state.currentPlayer];
   if (!activePlayer) return;
   const activeColor = activePlayer.color;
+  const canUseRollAction =
+    !gameOver &&
+    !activePlayer.isAI &&
+    !isPaused &&
+    !isMoving &&
+    state.diceValue === null &&
+    !hasRolledThisTurn &&
+    !waitingForTokenMove;
   Object.keys(diceEls).forEach(color => {
     const die = diceEls[color];
     const panel = dicePanelsByColor[color];
     if (!die) return;
-    const canRoll =
-      color === activeColor &&
-      !isPaused &&
-      !isMoving &&
-      state.diceValue === null &&
-      !hasRolledThisTurn &&
-      !waitingForTokenMove;
-    die.style.pointerEvents = canRoll ? "auto" : "none";
+    // Dice panels are presentation cards. The dedicated bottom control is the
+    // sole human roll action, while `rollDice()` remains the rule authority.
+    die.style.pointerEvents = "none";
     if (panel) {
-      panel.style.pointerEvents = canRoll ? "auto" : "none";
-      panel.classList.toggle("clickable", canRoll);
+      panel.style.pointerEvents = "none";
+      panel.disabled = true;
+      panel.tabIndex = -1;
+      panel.classList.remove("clickable");
     }
   });
+  if (rollDiceBtnEl) {
+    rollDiceBtnEl.disabled = !canUseRollAction;
+    rollDiceBtnEl.classList.toggle("ready", canUseRollAction);
+    rollDiceBtnEl.setAttribute("aria-disabled", canUseRollAction ? "false" : "true");
+  }
   setActiveDieGlow(activeColor);
 }
 
@@ -2414,6 +2466,7 @@ function setPaused(nextPaused) {
 
   if (isPaused) {
     turnAnnouncementEl?.classList.remove("show");
+    rollGuidanceEl?.classList.remove("show");
     eventAnnouncementEl?.classList.remove("show");
     bgmWasPlayingBeforePause = !bgMusic.paused;
     bgMusic.pause();
@@ -2889,6 +2942,7 @@ function checkAndShowWinner(playerIndex) {
   gameOver = true;
   matchRewardGranted = true;
   turnAnnouncementEl?.classList.remove("show");
+  rollGuidanceEl?.classList.remove("show");
   eventAnnouncementEl?.classList.remove("show");
   if (turnAnnouncementEl) turnAnnouncementEl.dataset.stamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
   if (eventAnnouncementEl) {
@@ -2909,6 +2963,7 @@ function checkAndShowWinner(playerIndex) {
     const panel = diceEls[c].closest(".dice-panel");
     if (panel) panel.classList.remove("dice-active");
   });
+  resetDiceInteractivity();
 
   const rewardSummary = [];
   let matchCoinsAwarded = 0;
@@ -3057,19 +3112,22 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
 function animateDiceRoll(color, onDone) {
   const diceEl = diceEls[color];
   const panel = dicePanelsByColor[color];
-  triggerFeedback(panel, "dice-rolling", 620);
+  triggerFeedback(panel, "dice-rolling", 900);
   diceEl.style.pointerEvents = "none";
   const value = computeRollValue(color);
   const target = rotationAngles[value] || rotationAngles[1];
-  // Preserve the face/result mapping while keeping the visual spin short and composited on mobile.
-  const spinX = target.x + 360 + Math.floor(Math.random() * 180);
-  const spinY = target.y + 360 + Math.floor(Math.random() * 180);
-  const spinZ = (Math.random() < 0.5 ? -1 : 1) * (3 + Math.floor(Math.random() * 8));
+  // Preserve the existing authoritative face mapping. Intermediate rotations
+  // use quarter turns, then the cube lands on the exact mapped face instead
+  // of finishing on an arbitrary fractional angle.
+  const quarterTurn = () => 90 * Math.floor(Math.random() * 4);
+  const spinX = target.x + 720 + quarterTurn();
+  const spinY = target.y + 720 + quarterTurn();
+  const spinZ = (Math.random() < 0.5 ? -1 : 1) * (360 + quarterTurn());
 
   diceEl.style.transition = "none";
   diceEl.style.transform = "translateY(0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg)";
   void diceEl.offsetWidth;
-  diceEl.style.transition = "transform 110ms cubic-bezier(.2,.85,.25,1)";
+  diceEl.style.transition = "transform 100ms cubic-bezier(.2,.85,.25,1)";
   diceEl.style.transform = "translateY(-3px) scale(1.045) rotateX(12deg) rotateY(-10deg) rotateZ(0deg)";
 
   const waitForResume = (callback, delay) => {
@@ -3083,18 +3141,21 @@ function animateDiceRoll(color, onDone) {
   };
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 360ms cubic-bezier(.16,.78,.2,1)";
-    diceEl.style.transform = `translateY(0) scale(1) rotateX(${spinX}deg) rotateY(${spinY}deg) rotateZ(${spinZ}deg)`;
-  }, 80);
+    diceEl.style.transition = "transform 510ms cubic-bezier(.16,.78,.2,1)";
+    diceEl.style.transform = `translateY(-1px) scale(1) rotateX(${spinX}deg) rotateY(${spinY}deg) rotateZ(${spinZ}deg)`;
+  }, 100);
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 140ms cubic-bezier(.2,.72,.28,1)";
+    diceEl.style.transition = "transform 125ms cubic-bezier(.2,.72,.28,1)";
     diceEl.style.transform = `translateY(0) scale(1.025) rotateX(${target.x + (target.x === 0 ? 4 : 0)}deg) rotateY(${target.y + (target.y === 0 ? -4 : 0)}deg) rotateZ(0deg)`;
-  }, 440);
+  }, 610);
 
   waitForResume(() => {
-    diceEl.style.transition = "transform 90ms cubic-bezier(.2,.8,.25,1)";
+    diceEl.style.transition = "transform 105ms cubic-bezier(.2,.8,.25,1)";
     diceEl.style.transform = `translateY(0) scale(1) rotateX(${target.x}deg) rotateY(${target.y}deg) rotateZ(0deg)`;
+  }, 735);
+
+  waitForResume(() => {
     triggerFeedback(panel, "dice-landed", 300);
     if (value === 6) {
       if (color === humanColor) playSfx("entry", 0.28);
@@ -3129,7 +3190,7 @@ function animateDiceRoll(color, onDone) {
     }
 
     onDone(value);
-  }, 590);
+  }, 840);
 }
 
 function nextTurn(extraTurn = false) {
@@ -3188,7 +3249,7 @@ function nextTurn(extraTurn = false) {
   resetDiceInteractivity();
 
   const currentPlayer = state.players[state.currentPlayer];
-  announceTurn(currentPlayer);
+  announceTurn(currentPlayer, extraTurn);
   if (extraTurn && currentPlayer) {
     showEventAnnouncement(`${currentPlayer.color.toUpperCase()} EXTRA TURN`, "event");
   }
@@ -3216,6 +3277,7 @@ function handleTurn() {
     if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
       turnAnnouncementDetailEl.textContent = "No legal moves";
     }
+    setRollGuidance("NO LEGAL MOVE", "blocked");
     showToast("NO LEGAL MOVES — TURN ENDS");
     showEventAnnouncement("NO LEGAL MOVE — TURN ENDS", "event");
     waitingForTokenMove = false;
@@ -3223,11 +3285,7 @@ function handleTurn() {
     setTimeout(() => nextTurn(false), 400);
   } else if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
     turnAnnouncementDetailEl.textContent = "Choose a highlighted token";
-    const guidanceStamp = String(Number(turnAnnouncementEl.dataset.stamp || 0) + 1);
-    turnAnnouncementEl.dataset.stamp = guidanceStamp;
-    setTimeout(() => {
-      if (turnAnnouncementEl.dataset.stamp === guidanceStamp) turnAnnouncementEl.classList.remove("show");
-    }, 1800);
+    setRollGuidance("CHOOSE A HIGHLIGHTED TOKEN", "select");
   }
 }
 
@@ -3242,6 +3300,8 @@ function rollDice() {
 
   hasRolledThisTurn = true;
   isMoving = true;
+  setRollGuidance("ROLLING THE DICE", "rolling");
+  resetDiceInteractivity();
   const color = state.players[state.currentPlayer].color;
   animateDiceRoll(color, () => {
     isMoving = false;
@@ -3516,15 +3576,15 @@ async function executeMove(move) {
 
 maybeRestoreSavedGame();
 
-activeColors.forEach(color => {
-  const die = diceEls[color];
-  const panel = dicePanelsByColor[color];
-  if (panel) {
-    panel.addEventListener("click", rollDice);
-  } else if (die) {
-    die.addEventListener("click", rollDice);
-  }
+// The screenshot-style bottom action is intentionally the only human dice
+// control. Corner dice are live visual cards and never start a second roll.
+Object.values(dicePanelsByColor).forEach(panel => {
+  if (!panel) return;
+  panel.disabled = true;
+  panel.tabIndex = -1;
 });
+rollDiceBtnEl?.addEventListener("click", rollDice);
+syncDicePanelLabels();
 refreshNearWinEffects();
 resetDiceInteractivity();
 scheduleChaosOverlayRender();

@@ -119,6 +119,11 @@
     <strong class="announcement-title" id="turn-announcement-title"></strong>
     <span class="announcement-detail" id="turn-announcement-detail"></span>
   </div>
+  <div class="roll-guidance" id="roll-guidance" role="status" aria-live="polite" aria-atomic="true">
+    <span class="roll-guidance-gem" aria-hidden="true"></span>
+    <strong id="roll-guidance-text">ROLL THE DICE</strong>
+    <span class="roll-guidance-gem" aria-hidden="true"></span>
+  </div>
   <div class="event-announcement" id="event-announcement" role="status" aria-live="polite" aria-atomic="true">
     <span class="announcement-event" id="event-announcement-text"></span>
   </div>
@@ -157,6 +162,7 @@
       <div class="spark-layer" id="spark-layer" aria-hidden="true"></div>
 
       <button class="dice-panel top-left" data-color="red" type="button" aria-label="Red dice">
+        <span class="dice-player-label" id="dice-label-red" aria-hidden="true">RED</span>
         <div class="dice" id="dice-red">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -168,6 +174,7 @@
       </button>
 
       <button class="dice-panel top-right" data-color="green" type="button" aria-label="Green dice">
+        <span class="dice-player-label" id="dice-label-green" aria-hidden="true">GREEN</span>
         <div class="dice" id="dice-green">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -178,6 +185,7 @@
         </div>
       </button>
       <button class="dice-panel bottom-right" data-color="yellow" type="button" aria-label="Yellow dice">
+        <span class="dice-player-label" id="dice-label-yellow" aria-hidden="true">YELLOW</span>
         <div class="dice" id="dice-yellow">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -188,6 +196,7 @@
         </div>
       </button>
       <button class="dice-panel bottom-left" data-color="blue" type="button" aria-label="Blue dice">
+        <span class="dice-player-label" id="dice-label-blue" aria-hidden="true">BLUE</span>
         <div class="dice" id="dice-blue">
           <div class="face one"><img></div>
           <div class="face two"><img></div>
@@ -199,6 +208,11 @@
       </button>
     </div>
   </div>
+  <button class="roll-dice-action" id="roll-dice-btn" type="button" disabled>
+    <span class="roll-dice-ornament" aria-hidden="true">◆</span>
+    <span>ROLL DICE</span>
+    <span class="roll-dice-ornament" aria-hidden="true">◆</span>
+  </button>
 
   <div class="result-modal" id="result-modal" aria-hidden="true">
     <div class="result-card">
