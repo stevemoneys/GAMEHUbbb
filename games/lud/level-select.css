@@ -391,6 +391,56 @@ body.teleporting > *:not(.teleport-overlay) { opacity: .34; filter: saturate(.7)
   body.teleporting > *:not(.teleport-overlay) { transition-duration: 1ms; }
 }
 
+/* Match assets are prepared before the portal is allowed to start. This is a
+   compact acknowledgement, not a second teleport animation. */
+.asset-prep-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 24px;
+  color: var(--gh-color-text-on-dark, #f4fbff);
+  text-align: center;
+  background: rgba(3, 15, 28, .7);
+  backdrop-filter: blur(7px);
+}
+
+.asset-prep-overlay strong {
+  font-size: clamp(17px, 5vw, 24px);
+  letter-spacing: .08em;
+}
+
+.asset-prep-overlay > span:last-child {
+  color: rgba(222, 245, 251, .76);
+  font-size: 13px;
+}
+
+.asset-prep-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(255, 226, 116, .25);
+  border-top-color: #ffe274;
+  border-radius: 50%;
+  animation: asset-prep-spin 760ms linear infinite;
+}
+
+.level-btn.asset-prep-failed,
+.continue-level-btn.asset-prep-failed {
+  animation: asset-prep-failure 420ms ease;
+}
+
+@keyframes asset-prep-spin { to { transform: rotate(360deg); } }
+@keyframes asset-prep-failure { 50% { filter: brightness(1.22) saturate(1.3); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .asset-prep-spinner,
+  .level-btn.asset-prep-failed,
+  .continue-level-btn.asset-prep-failed { animation: none; }
+}
+
 /* Step 2 premium progression journey layer. Progression state remains authoritative in level-select.html. */
 :root {
   color-scheme: dark;

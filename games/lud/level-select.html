@@ -102,9 +102,116 @@
 
     let teleportStarted = false;
 
-    function startTeleport(url, sourceEl, level) {
+    // Match boot uses this same cache/version.  Preparing this exact critical
+    // set here means the visual teleport only starts after the selected match
+    // can render with its board, dice, and token artwork already available.
+    const MATCH_PRELOAD_CACHE = "ludo-preload-assets-v1";
+    const MATCH_PRELOAD_VERSION = "2026-08-25-v39";
+    const MATCH_PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
+    const MATCH_PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
+
+    function getOwnedSkin(key, prefix, max) {
+      const active = (localStorage.getItem(key) || "classic").trim();
+      if (active === "classic") return "classic";
+      const match = active.match(new RegExp(`^${prefix}(\\d+)$`));
+      if (!match) return "classic";
+      const index = Number(match[1]);
+      if (!Number.isInteger(index) || index < 1 || index > max) return "classic";
+      try {
+        const ownershipKey = key === "ludo_active_dice_skin"
+          ? "ludo_owned_dice_skins"
+          : "ludo_owned_token_skins";
+        const owned = JSON.parse(localStorage.getItem(ownershipKey) || "[]");
+        return Array.isArray(owned) && owned.includes(active) ? active : "classic";
+      } catch {
+        return "classic";
+      }
+    }
+
+    function getMatchAssetList(url) {
+      const target = new URL(url, window.location.href);
+      const targetPlayers = Math.min(4, Math.max(2, Number(target.searchParams.get("players")) || 4));
+      const targetHuman = (target.searchParams.get("human") || "red").toLowerCase();
+      const colors = ["red", "green", "yellow", "blue"];
+      const humanIndex = Math.max(0, colors.indexOf(targetHuman));
+      const activeColors = targetPlayers === 2
+        ? [colors[humanIndex], colors[(humanIndex + 2) % colors.length]]
+        : Array.from({ length: targetPlayers }, (_, index) => colors[(humanIndex + index) % colors.length]);
+      const diceSkin = getOwnedSkin("ludo_active_dice_skin", "skin", 20);
+      const tokenSkin = getOwnedSkin("ludo_active_token_skin", "skin", 10);
+      const diceFaces = ["1_result.webp", "2_result.webp", "3_result.webp", "4_result.webp", "5_result.webp", "6_result.webp"];
+      const skinDiceFaces = ["1_result.webp", "4_result.webp", "6_result.webp", "3_result.webp", "2_result.webp", "5_result.webp"];
+      const tokenAssets = (skin) => activeColors.map(color => skin === "classic"
+        ? `./tokens/${color}_result.webp`
+        : `./tokens/skins/${skin}/${color}_result.webp`);
+
+      return Array.from(new Set([
+        "./ludo.html", "./ludo.css", "./design-tokens.css", "./boot.js",
+        "./game.js", "./board.js", "./movement.js", "./ai.js",
+        "./backgrounds/bg1_result.webp",
+        ...diceFaces.map(face => `./dice/${face}`),
+        ...(diceSkin === "classic" ? diceFaces : skinDiceFaces).map(face => diceSkin === "classic" ? `./dice/${face}` : `./dice/skins/${diceSkin}/${face}`),
+        ...tokenAssets(tokenSkin),
+        ...tokenAssets("classic")
+      ]));
+    }
+
+    async function prepareMatchAssets(url) {
+      const assets = getMatchAssetList(url);
+      let cache = null;
+      if ("caches" in window) cache = await caches.open(MATCH_PRELOAD_CACHE);
+
+      const results = await Promise.allSettled(assets.map(async asset => {
+        const request = new Request(asset, { method: "GET", credentials: "same-origin" });
+        if (cache && await cache.match(request)) return;
+        const response = await fetch(request, { cache: "force-cache" });
+        if (!response.ok) throw new Error(`Unable to load ${asset}`);
+        if (cache) await cache.put(request, response.clone());
+      }));
+      const failures = results.filter(result => result.status === "rejected");
+      if (failures.length) throw new Error("Critical match assets could not be prepared.");
+
+      localStorage.setItem(MATCH_PRELOAD_VERSION_KEY, MATCH_PRELOAD_VERSION);
+      localStorage.setItem(MATCH_PRELOAD_UPDATED_AT_KEY, String(Date.now()));
+    }
+
+    function setLevelControlsBusy(isBusy) {
+      document.querySelectorAll(".level-btn, .continue-level-btn").forEach(control => {
+        control.setAttribute("aria-disabled", isBusy ? "true" : "false");
+        if (control instanceof HTMLButtonElement) control.disabled = isBusy || control.classList.contains("locked");
+      });
+    }
+
+    function showAssetPreparation(level) {
+      const overlay = document.createElement("div");
+      overlay.className = "asset-prep-overlay";
+      overlay.setAttribute("role", "status");
+      overlay.setAttribute("aria-live", "polite");
+      overlay.innerHTML = `<span class="asset-prep-spinner" aria-hidden="true"></span><strong>PREPARING LEVEL ${String(level).padStart(2, "0")}</strong><span>Loading match assets</span>`;
+      document.body.appendChild(overlay);
+      return overlay;
+    }
+
+    async function startTeleport(url, sourceEl, level) {
       if (teleportStarted || !url) return;
       teleportStarted = true;
+
+      document.documentElement.setAttribute("aria-busy", "true");
+      setLevelControlsBusy(true);
+      const preparation = showAssetPreparation(level);
+      try {
+        await prepareMatchAssets(url);
+      } catch (error) {
+        console.warn("Match asset preparation failed.", error);
+        preparation.remove();
+        document.documentElement.removeAttribute("aria-busy");
+        setLevelControlsBusy(false);
+        teleportStarted = false;
+        sourceEl?.classList.add("asset-prep-failed");
+        window.setTimeout(() => sourceEl?.classList.remove("asset-prep-failed"), 900);
+        return;
+      }
+      preparation.remove();
 
       try {
         sessionStorage.setItem("ludo_teleport_arrival_v1", "1");
@@ -120,11 +227,6 @@
 
       sourceEl?.classList.add("teleport-source", "teleport-selected");
       document.body.classList.add("teleporting");
-      document.documentElement.setAttribute("aria-busy", "true");
-      document.querySelectorAll(".level-btn, .continue-level-btn").forEach(control => {
-        control.setAttribute("aria-disabled", "true");
-        if (control instanceof HTMLButtonElement) control.disabled = true;
-      });
 
       const overlay = document.createElement("div");
       overlay.className = `teleport-overlay${reducedMotion ? " reduced-motion" : ""}`;

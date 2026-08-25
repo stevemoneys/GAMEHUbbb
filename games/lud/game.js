@@ -866,6 +866,7 @@ function clearHighlights() {
     t.classList.remove("selectable-gold");
     t.classList.remove("selectable-black");
     t.classList.remove("selectable-single");
+    t.parentElement?.classList.remove("move-target");
     t.tabIndex = -1;
   });
 }
@@ -2829,7 +2830,7 @@ function setupBackgroundSlideshow() {
     const prev = active;
     active = inactive;
     inactive = prev;
-  }, 10000);
+  }, 120000);
 }
 
 function playSfx(type, volume = 0.7) {
@@ -3044,6 +3045,7 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
     const token = tokenEls[player.color][tokenIndex];
     if (dice === 6) token.classList.add("selectable-gold");
     else token.classList.add("selectable-black");
+    token.parentElement?.classList.add("move-target");
     token.tabIndex = 0;
   });
   if (moves.length === 1) {

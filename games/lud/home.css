@@ -1220,3 +1220,14 @@ body.menu-open::after { opacity: .18; }
   .home-shell::before,.home-shell::after { transform: none; }
   .mode-switch-card,.mode-btn,.hub-back-btn,.menu-btn,.mode-switch-btn { transition-duration: 1ms !important; }
 }
+
+/* The open command drawer owns the screen. Keep the fixed lobby controls out
+   of sight until it closes so they cannot compete with or sit above the menu. */
+body.menu-open .hub-back-btn,
+body.menu-open .menu-btn,
+body.menu-open .mode-switch-btn,
+body.menu-open .mode-switch-panel {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
