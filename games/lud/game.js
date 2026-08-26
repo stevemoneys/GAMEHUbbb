@@ -375,22 +375,15 @@ function rewardHumanEvent(type, sourceEl = null, sourcePoint = null, multiplier 
   }
 }
 
-const rotations = {
-  1: "rotateX(0deg) rotateY(0deg)",
-  2: "rotateX(-90deg) rotateY(0deg)",
-  3: "rotateX(0deg) rotateY(90deg)",
-  4: "rotateX(0deg) rotateY(-90deg)",
-  5: "rotateX(90deg) rotateY(0deg)",
-  6: "rotateX(180deg) rotateY(0deg)"
-};
-
-const rotationAngles = {
-  1: { x: 0, y: 0 },
-  2: { x: -90, y: 0 },
-  3: { x: 0, y: 90 },
-  4: { x: 0, y: -90 },
-  5: { x: 90, y: 0 },
-  6: { x: 180, y: 0 }
+// Existing skin files use this historical face order. The visual layer maps
+// it to a flat 2D face without changing how dice results are calculated.
+const DICE_FACE_INDEX_BY_VALUE = {
+  1: 0,
+  2: 4,
+  3: 3,
+  4: 1,
+  5: 5,
+  6: 2
 };
 
 const diceSkins = {
@@ -804,6 +797,7 @@ function loadDiceSkin(skin) {
         diceFaces[color][i].src = diceSkins.classic[i];
       };
     });
+    setDiceVisibleFace(color, 1);
   });
 }
 
@@ -909,6 +903,17 @@ function clearHighlights() {
     t.parentElement?.classList.remove("move-target");
     t.tabIndex = -1;
   });
+}
+
+function setDiceVisibleFace(color, value) {
+  const diceEl = diceEls[color];
+  if (!diceEl) return;
+  const targetIndex = DICE_FACE_INDEX_BY_VALUE[value] ?? DICE_FACE_INDEX_BY_VALUE[1];
+  const faces = Array.from(diceEl.querySelectorAll(".face"));
+  faces.forEach((face, faceIndex) => {
+    face.classList.toggle("face-visible", faceIndex === targetIndex);
+  });
+  diceEl.dataset.value = String(value);
 }
 
 // Gameplay feedback is deliberately presentation-only: every effect is a
@@ -1056,15 +1061,18 @@ function announceTurn(player, extraTurn = false) {
   if (!player || gameOver) return;
   const panel = dicePanelsByColor[player.color];
   const home = document.querySelector(`.home.${player.color}`);
+  Object.values(dicePanelsByColor).forEach(diePanel => {
+    diePanel?.classList.remove("extra-turn");
+  });
+  panel?.classList.toggle("extra-turn", Boolean(extraTurn));
   triggerFeedback(panel, player.isAI ? "ai-turn-start" : "human-turn-start", 520);
   if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "battle" || gameMode === "power") {
     triggerFeedback(home, player.isAI ? "ai-home-turn" : "human-home-turn", 520);
   }
-  if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "battle" || gameMode === "power") {
-    showTurnAnnouncement(player, extraTurn);
-  } else {
-    showToast(player.isAI ? `${player.color.toUpperCase()} AI TURN` : "YOUR TURN");
-  }
+  // The active-die arrow is the persistent turn language. The one compact
+  // status capsule is reserved for real gameplay events only.
+  turnAnnouncementEl?.classList.remove("show", "human", "ai");
+  rollGuidanceEl?.classList.remove("show");
 }
 
 function showTurnAnnouncement(player, extraTurn = false) {
@@ -3112,85 +3120,78 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
 function animateDiceRoll(color, onDone) {
   const diceEl = diceEls[color];
   const panel = dicePanelsByColor[color];
-  triggerFeedback(panel, "dice-rolling", 900);
-  diceEl.style.pointerEvents = "none";
+  if (!diceEl) {
+    onDone(1);
+    return;
+  }
+
+  // The game result remains authoritative. The cycling faces are only a
+  // responsive 2D presentation and cannot influence the selected value.
   const value = computeRollValue(color);
-  const target = rotationAngles[value] || rotationAngles[1];
-  // Preserve the existing authoritative face mapping. Intermediate rotations
-  // use quarter turns, then the cube lands on the exact mapped face instead
-  // of finishing on an arbitrary fractional angle.
-  const quarterTurn = () => 90 * Math.floor(Math.random() * 4);
-  const spinX = target.x + 720 + quarterTurn();
-  const spinY = target.y + 720 + quarterTurn();
-  const spinZ = (Math.random() < 0.5 ? -1 : 1) * (360 + quarterTurn());
+  const sequence = Array.from({ length: 8 }, () => 1 + Math.floor(Math.random() * 6));
+  sequence.push(value);
+  const frameDelays = [58, 58, 62, 68, 76, 88, 106, 132];
 
-  diceEl.style.transition = "none";
-  diceEl.style.transform = "translateY(0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg)";
+  triggerFeedback(panel, "dice-rolling", 860);
+  diceEl.classList.remove("dice-settled", "dice-cycling", "dice-press");
   void diceEl.offsetWidth;
-  diceEl.style.transition = "transform 100ms cubic-bezier(.2,.85,.25,1)";
-  diceEl.style.transform = "translateY(-3px) scale(1.045) rotateX(12deg) rotateY(-10deg) rotateZ(0deg)";
+  diceEl.classList.add("dice-press");
 
-  const waitForResume = (callback, delay) => {
-    setTimeout(() => {
-      if (isPaused) {
-        waitForResume(callback, 90);
-        return;
-      }
+  const resumeWhenReady = callback => {
+    if (!isPaused) {
       callback();
-    }, delay);
+      return;
+    }
+    setTimeout(() => resumeWhenReady(callback), 90);
   };
 
-  waitForResume(() => {
-    diceEl.style.transition = "transform 510ms cubic-bezier(.16,.78,.2,1)";
-    diceEl.style.transform = `translateY(-1px) scale(1) rotateX(${spinX}deg) rotateY(${spinY}deg) rotateZ(${spinZ}deg)`;
-  }, 100);
+  const finish = () => {
+    diceEl.classList.remove("dice-cycling", "dice-press");
+    setDiceVisibleFace(color, value);
+    diceEl.classList.add("dice-settled");
+    triggerFeedback(panel, "dice-landed", 260);
 
-  waitForResume(() => {
-    diceEl.style.transition = "transform 125ms cubic-bezier(.2,.72,.28,1)";
-    diceEl.style.transform = `translateY(0) scale(1.025) rotateX(${target.x + (target.x === 0 ? 4 : 0)}deg) rotateY(${target.y + (target.y === 0 ? -4 : 0)}deg) rotateZ(0deg)`;
-  }, 610);
-
-  waitForResume(() => {
-    diceEl.style.transition = "transform 105ms cubic-bezier(.2,.8,.25,1)";
-    diceEl.style.transform = `translateY(0) scale(1) rotateX(${target.x}deg) rotateY(${target.y}deg) rotateZ(0deg)`;
-  }, 735);
-
-  waitForResume(() => {
-    triggerFeedback(panel, "dice-landed", 300);
     if (value === 6) {
       if (color === humanColor) playSfx("entry", 0.28);
       setTimeout(() => {
         if (gameOver) return;
         triggerFeedback(panel, "dice-six", 520);
         showSixFeedback(panel);
-      }, 80);
+      }, 55);
     }
 
     state.diceValue = value;
-
     const player = state.players[state.currentPlayer];
     if (player && color === humanColor && value === 6) {
       rewardHumanEvent("rollSix", diceEl);
     }
 
     if (player) {
-      if (value === 6) {
-        player.sixStreak += 1;
-      } else {
-        player.sixStreak = 0;
-      }
-
+      player.sixStreak = value === 6 ? player.sixStreak + 1 : 0;
       if (player.sixStreak >= 3) {
         player.sixStreak = 0;
         state.diceValue = null;
         showToast("TRIPLE 6 - TURN LOST");
-        onDone(value);
-        return;
       }
     }
 
     onDone(value);
-  }, 840);
+  };
+
+  const showFrame = frameIndex => {
+    resumeWhenReady(() => {
+      if (frameIndex >= sequence.length) {
+        finish();
+        return;
+      }
+      diceEl.classList.remove("dice-press");
+      diceEl.classList.add("dice-cycling");
+      setDiceVisibleFace(color, sequence[frameIndex]);
+      setTimeout(() => showFrame(frameIndex + 1), frameDelays[frameIndex] || 0);
+    });
+  };
+
+  setTimeout(() => showFrame(0), 70);
 }
 
 function nextTurn(extraTurn = false) {
@@ -3250,9 +3251,6 @@ function nextTurn(extraTurn = false) {
 
   const currentPlayer = state.players[state.currentPlayer];
   announceTurn(currentPlayer, extraTurn);
-  if (extraTurn && currentPlayer) {
-    showEventAnnouncement(`${currentPlayer.color.toUpperCase()} EXTRA TURN`, "event");
-  }
   if (currentPlayer.isAI) {
     setTimeout(runAITurn, 700);
   }
