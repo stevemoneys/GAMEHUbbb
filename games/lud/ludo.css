@@ -16,6 +16,9 @@
   --dice-card-w: clamp(58px, 18vw, 86px);
   --dice-card-h: clamp(72px, 22vw, 104px);
   --dice-board-gap: clamp(7px, 2vw, 13px);
+  /* The generated pawn art has transparent space below its visible base.
+     This board-relative shift aligns that visible base to the real cell centre. */
+  --token-contact-shift: 11%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -147,7 +150,9 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 .cell,
 .path {
   position: relative;
-  z-index: 7;
+  /* Do not create a cell-level stacking context: a pawn inside a cell must
+     be able to paint above the board grid and centre artwork. */
+  z-index: auto;
   display: grid;
   place-items: center;
   overflow: visible;
@@ -244,6 +249,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
    the requested substantial visual size. */
 .token {
   position: absolute;
+  /* The gameplay pawn layer sits above board markings and selection rings. */
   z-index: 45;
   width: 100%;
   height: 100%;
@@ -284,7 +290,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 .cell > .token {
   top: 50%;
   left: 50%;
-  translate: -50% -100%;
+  translate: -50% calc(-100% + var(--token-contact-shift));
   --stack-scale: 1;
   scale: var(--stack-scale);
 }
@@ -304,15 +310,15 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 }
 
 /* Compact formations are all centered around the same cell anchor. */
-.cell > .token:nth-child(1):nth-last-child(2) { --stack-scale: .72; translate: calc(-50% - 18%) -100%; }
-.cell > .token:nth-child(2):nth-last-child(1) { --stack-scale: .72; translate: calc(-50% + 18%) -100%; }
-.cell > .token:nth-child(1):nth-last-child(3) { --stack-scale: .65; translate: -50% calc(-100% - 20%); }
-.cell > .token:nth-child(2):nth-last-child(2) { --stack-scale: .65; translate: calc(-50% - 20%) calc(-100% + 14%); }
-.cell > .token:nth-child(3):nth-last-child(1) { --stack-scale: .65; translate: calc(-50% + 20%) calc(-100% + 14%); }
-.cell > .token:nth-child(1):nth-last-child(4) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% - 17%); }
-.cell > .token:nth-child(2):nth-last-child(3) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% - 17%); }
-.cell > .token:nth-child(3):nth-last-child(2) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% + 17%); }
-.cell > .token:nth-child(4):nth-last-child(1) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% + 17%); }
+.cell > .token:nth-child(1):nth-last-child(2) { --stack-scale: .72; translate: calc(-50% - 18%) calc(-100% + var(--token-contact-shift)); }
+.cell > .token:nth-child(2):nth-last-child(1) { --stack-scale: .72; translate: calc(-50% + 18%) calc(-100% + var(--token-contact-shift)); }
+.cell > .token:nth-child(1):nth-last-child(3) { --stack-scale: .65; translate: -50% calc(-100% + var(--token-contact-shift) - 20%); }
+.cell > .token:nth-child(2):nth-last-child(2) { --stack-scale: .65; translate: calc(-50% - 20%) calc(-100% + var(--token-contact-shift) + 14%); }
+.cell > .token:nth-child(3):nth-last-child(1) { --stack-scale: .65; translate: calc(-50% + 20%) calc(-100% + var(--token-contact-shift) + 14%); }
+.cell > .token:nth-child(1):nth-last-child(4) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% + var(--token-contact-shift) - 17%); }
+.cell > .token:nth-child(2):nth-last-child(3) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% + var(--token-contact-shift) - 17%); }
+.cell > .token:nth-child(3):nth-last-child(2) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% + var(--token-contact-shift) + 17%); }
+.cell > .token:nth-child(4):nth-last-child(1) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% + var(--token-contact-shift) + 17%); }
 
 .goal-slot {
   position: absolute;
@@ -353,24 +359,24 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 .token-slot.move-target::after {
   content: "";
   position: absolute;
+  /* Board < selection ring < pawn artwork. */
   z-index: 34;
-  left: 17%;
-  right: 17%;
-  bottom: 7%;
-  height: 18%;
-  border: 1px solid rgba(255, 238, 151, .96);
+  left: 50%;
+  top: calc(50% + var(--token-contact-shift));
+  width: 60%;
+  aspect-ratio: 1;
+  border: max(1px, .12vmin) solid rgba(255, 239, 151, .98);
   border-radius: 999px;
-  background: rgba(255, 210, 67, .2);
-  box-shadow: 0 0 8px rgba(255, 210, 67, .6);
+  background: radial-gradient(circle, rgba(255, 243, 169, .44) 0 26%, rgba(255, 210, 67, .2) 50%, rgba(255, 210, 67, .04) 72%);
+  box-shadow: 0 0 0 1px rgba(94, 59, 3, .3), 0 0 10px rgba(255, 210, 67, .75);
   pointer-events: none;
+  translate: -50% -50%;
   animation: cell-selection-pulse 1.2s ease-in-out infinite;
 }
 
 .token-slot.move-target::after {
-  left: 27%;
-  right: 27%;
-  bottom: 11%;
-  height: 10%;
+  top: 50%;
+  width: 64%;
 }
 
 @keyframes cell-selection-pulse {
@@ -442,7 +448,18 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   padding: 0 7px;
 }
 
-.match-hud .coin-icon { width: 15px; height: 15px; }
+.match-hud .coin-icon {
+  /* The project has no raster coin asset. Reuse the established gold coin
+     treatment already used by the shop and reward particles. */
+  display: inline-block;
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #c18e12;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff2a0 0%, #ffd54f 40%, #d4a324 100%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.72), 0 1px 2px rgba(0,0,0,.38);
+}
 .match-hud .coin-total { color: #fff8d1; font-size: 13px; font-weight: 900; }
 
 .match-hud .pause-btn {
