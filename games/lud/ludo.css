@@ -322,23 +322,63 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 
 .goal-slot {
   position: absolute;
+  /* Each finished-token group uses the same central coordinate space. The
+     individual centres below are deliberately inside its colour triangle. */
   z-index: 50;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  width: 18%;
-  height: 18%;
+  left: 40%;
+  top: 40%;
+  width: 20%;
+  height: 20%;
   pointer-events: none;
 }
 
-.goal-red { left: 39%; top: 41%; }
-.goal-green { left: 43%; top: 39%; }
-.goal-yellow { left: 43%; top: 45%; }
-.goal-blue { left: 37%; top: 44%; }
-.goal-slot > .token { position: relative; width: 24%; height: 24%; translate: none; scale: 1; }
-.goal-slot > .token img { position: static; width: 100%; height: 100%; object-fit: contain; transform: rotate(var(--token-upright-rotation)); }
+/* Board.js routes these colours to the centre in this physical order:
+   Red enters from the left, Green from the top, Yellow from the right,
+   and Blue from the bottom. These point centres keep every finished pawn
+   fully inside its own coloured wedge rather than crossing the centre. */
+.goal-slot > .token {
+  position: absolute;
+  z-index: 1;
+  width: 16%;
+  height: 16%;
+  margin: 0;
+  translate: -50% -50%;
+  scale: 1;
+}
+
+.goal-slot > .token img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: rotate(var(--token-upright-rotation));
+  transform-origin: center;
+}
+
+/* Red: left wedge. */
+.goal-red > .token:nth-child(1) { left: 17.5%; top: 30%; }
+.goal-red > .token:nth-child(2) { left: 17.5%; top: 70%; }
+.goal-red > .token:nth-child(3) { left: 32.5%; top: 42.5%; }
+.goal-red > .token:nth-child(4) { left: 32.5%; top: 57.5%; }
+
+/* Green: top wedge. */
+.goal-green > .token:nth-child(1) { left: 30%; top: 17.5%; }
+.goal-green > .token:nth-child(2) { left: 70%; top: 17.5%; }
+.goal-green > .token:nth-child(3) { left: 42.5%; top: 32.5%; }
+.goal-green > .token:nth-child(4) { left: 57.5%; top: 32.5%; }
+
+/* Yellow: right wedge. */
+.goal-yellow > .token:nth-child(1) { left: 82.5%; top: 30%; }
+.goal-yellow > .token:nth-child(2) { left: 82.5%; top: 70%; }
+.goal-yellow > .token:nth-child(3) { left: 67.5%; top: 42.5%; }
+.goal-yellow > .token:nth-child(4) { left: 67.5%; top: 57.5%; }
+
+/* Blue: bottom wedge. */
+.goal-blue > .token:nth-child(1) { left: 30%; top: 82.5%; }
+.goal-blue > .token:nth-child(2) { left: 70%; top: 82.5%; }
+.goal-blue > .token:nth-child(3) { left: 42.5%; top: 67.5%; }
+.goal-blue > .token:nth-child(4) { left: 57.5%; top: 67.5%; }
 
 /* Selection belongs to the board location only, never to the full pawn. */
 .token.selectable-gold,
