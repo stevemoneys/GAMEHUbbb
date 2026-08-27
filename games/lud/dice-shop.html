@@ -103,6 +103,13 @@
     const TOTAL_SKINS = 20;
     const SKINS_PER_PAGE = 5;
     const PAGE_COUNT = TOTAL_SKINS / SKINS_PER_PAGE;
+    const SKIN_NAMES = {
+      1: "Crystal Prism", 2: "Inferno Core", 3: "Frost Rune", 4: "Verdant Spirit",
+      5: "Stormcore", 6: "Sovereign Gold", 7: "Dragonforge", 8: "Nebula Veil",
+      9: "Arcane Sigil", 10: "Shadowveil", 11: "Chrono Relic", 12: "Abyssal Tide",
+      13: "Celestia", 14: "Hellforged", 15: "Primal Nexus", 16: "Void Rift",
+      17: "Champion's Crown", 18: "Divine Forge", 19: "Starcore", 20: "Eternity"
+    };
     const SKIN_META = {
       1: { price: 100, effect: "No effects" },
       2: { price: 200, effect: "+2 bonus coins per match" },
@@ -155,6 +162,7 @@
     const unlockContinue = document.getElementById("unlock-continue");
     let previewId = null;
     let unlockedId = null;
+    let skinVisibilityObserver = null;
 
     let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
     let owned = [];
@@ -169,6 +177,10 @@
 
     function skinKey(id) {
       return `skin${id}`;
+    }
+
+    function skinName(id) {
+      return SKIN_NAMES[Number(id)] || "Classic Dice";
     }
 
     function skinPrice(id) {
@@ -205,7 +217,7 @@
         loadoutPreviewEl.src = activeSkin === "classic" ? "dice/5_result.webp" : `dice/skins/${activeSkin}/6_result.webp`;
         loadoutPreviewEl.onerror = () => { loadoutPreviewEl.src = "dice/5_result.webp"; };
       }
-      if (loadoutNameEl) loadoutNameEl.textContent = activeSkin === "classic" ? "Classic Dice" : `Skin ${activeSkin.replace("skin", "")}`;
+      if (loadoutNameEl) loadoutNameEl.textContent = activeSkin === "classic" ? "Classic Dice" : skinName(activeSkin.replace("skin", ""));
       if (loadoutStateEl) loadoutStateEl.textContent = activeSkin === "classic" ? "DEFAULT LOADOUT" : "EQUIPPED ✓";
     }
 
@@ -230,8 +242,13 @@
       previewId = id;
       const key = skinKey(id);
       diceAsset(key, previewImage);
-      previewImage.alt = `Dice skin ${id} preview`;
-      previewTitle.textContent = `Skin ${id}`;
+      previewImage.alt = `${skinName(id)} dice preview`;
+      previewTitle.textContent = skinName(id);
+      previewModal.dataset.skinId = String(id);
+      previewModal.classList.remove("previewing");
+      void previewModal.offsetWidth;
+      previewModal.classList.add("previewing");
+      setTimeout(() => previewModal.classList.remove("previewing"), 1250);
       previewEffect.innerHTML = `<span>BONUS EFFECT</span>${SKIN_META[id]?.effect || "No effects"}`;
       previewPrice.textContent = owns(id) ? "OWNED" : `${skinPrice(id)} COINS`;
       previewAction.textContent = owns(id) ? (activeSkin === key ? "EQUIPPED ✓" : "EQUIP") : "UNLOCK";
@@ -242,8 +259,13 @@
     function showUnlock(id) {
       unlockedId = id;
       diceAsset(skinKey(id), unlockImage);
-      unlockImage.alt = `Unlocked dice skin ${id}`;
-      unlockTitle.textContent = `Skin ${id}`;
+      unlockImage.alt = `Unlocked ${skinName(id)} dice`;
+      unlockTitle.textContent = skinName(id);
+      unlockModal.dataset.skinId = String(id);
+      unlockModal.classList.remove("unlocking");
+      void unlockModal.offsetWidth;
+      unlockModal.classList.add("unlocking");
+      setTimeout(() => unlockModal.classList.remove("unlocking"), 1500);
       unlockEffect.textContent = SKIN_META[id]?.effect || "No effects";
       unlockModal.hidden = false;
     }
@@ -255,7 +277,7 @@
 
     function announceUnlock(id) {
       if (!feedbackEl) return;
-      feedbackEl.textContent = `NEW DICE SKIN UNLOCKED — SKIN ${id}`;
+      feedbackEl.textContent = `NEW DICE SKIN UNLOCKED — ${skinName(id).toUpperCase()}`;
       feedbackEl.classList.remove("show");
       void feedbackEl.offsetWidth;
       feedbackEl.classList.add("show");
@@ -271,6 +293,7 @@
 
       const card = document.createElement("article");
       card.className = "skin-card";
+      card.classList.add(`skin-${id}`);
       if (!ownedNow && coins >= price) card.classList.add("affordable");
       card.dataset.skinKey = key;
 
@@ -279,13 +302,13 @@
       const preview = document.createElement("img");
       preview.className = "skin-preview";
       preview.src = `dice/skins/${key}/6_result.webp`;
-      preview.alt = `Dice skin ${id}`;
+      preview.alt = `${skinName(id)} dice`;
       preview.onerror = () => {
         preview.src = "dice/5_result.webp";
       };
 
       const title = document.createElement("h3");
-      title.textContent = `Skin ${id}`;
+      title.textContent = skinName(id);
       const effect = document.createElement("p");
       effect.className = "effect";
       effect.innerHTML = `<span>BONUS EFFECT</span>${SKIN_META[id]?.effect || "No effects"}`;
@@ -363,6 +386,15 @@
       const end = start + SKINS_PER_PAGE - 1;
       for (let id = start; id <= end; id++) {
         rowEl.appendChild(buildCard(id));
+      }
+      if (skinVisibilityObserver) skinVisibilityObserver.disconnect();
+      if ("IntersectionObserver" in window) {
+        skinVisibilityObserver = new IntersectionObserver(entries => {
+          entries.forEach(entry => entry.target.classList.toggle("is-visible", entry.isIntersecting));
+        }, { threshold: 0.15 });
+        rowEl.querySelectorAll(".skin-card").forEach(card => skinVisibilityObserver.observe(card));
+      } else {
+        rowEl.querySelectorAll(".skin-card").forEach(card => card.classList.add("is-visible"));
       }
       renderNav();
     }

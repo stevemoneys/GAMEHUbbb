@@ -6,9 +6,32 @@
 .skin-card.affordable { border-color:rgba(255,212,90,.58); }
 .skin-card.affordable::before { content:"READY TO UNLOCK"; position:absolute; top:8px; left:8px; z-index:2; color:var(--gh-color-reward); font-size:8px; font-weight:900; letter-spacing:.08em; }
 .skin-card.affordable .btn.buy { box-shadow:0 0 0 2px rgba(255,212,90,.14); }
-.skin-art { animation:cosmetic-drift 7s ease-in-out infinite; }
-.skin-card:nth-child(2n) .skin-art { animation-delay:-2.4s; animation-duration:8.5s; }
-.skin-card:nth-child(3n) .skin-art { animation-delay:-4.8s; animation-duration:10s; }
+.skin-art { position:relative; isolation:isolate; }
+.skin-art::before,.skin-art::after,.preview-art::before,.preview-art::after,.unlock-art::before,.unlock-art::after { content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit; }
+.preview-art,.unlock-art { position:relative; isolation:isolate; }
+.skin-art::before,.preview-art::before,.unlock-art::before { z-index:0; background:radial-gradient(circle at 50% 46%,var(--skin-accent,#6ce5ef),transparent 68%); opacity:.28; animation:none; }
+.skin-art::after,.preview-art::after,.unlock-art::after { z-index:2; background:linear-gradient(120deg,transparent 25%,var(--skin-accent,#fff) 50%,transparent 75%); translate:-120% 0; opacity:0; }
+.skin-art > img,.preview-art > img,.unlock-art > img { position:relative; z-index:1; }
+.skin-card.is-visible .skin-art::before,.preview-modal.previewing .preview-art::before,.unlock-modal.unlocking .unlock-art::before { animation:skin-breathe 3.8s ease-in-out both; }
+.skin-card.is-visible .skin-art::after,.preview-modal.previewing .preview-art::after,.unlock-modal.unlocking .unlock-art::after { animation:skin-sweep 1050ms cubic-bezier(.2,.8,.2,1) both; }
+.skin-card.skin-1,.skin-card.skin-3,.skin-card.skin-4,.skin-card.skin-8,.skin-card.skin-12,.skin-card.skin-13,.skin-card.skin-16,.skin-card.skin-19 { --skin-accent:#79ddff; }
+.skin-card.skin-2,.skin-card.skin-7,.skin-card.skin-14 { --skin-accent:#ff7043; }
+.skin-card.skin-5,.skin-card.skin-9,.skin-card.skin-11,.skin-card.skin-15 { --skin-accent:#a579ff; }
+.skin-card.skin-6,.skin-card.skin-17,.skin-card.skin-18 { --skin-accent:#ffd45a; }
+.skin-card.skin-10 { --skin-accent:#e7475d; }
+.skin-card.skin-20 { --skin-accent:#f3d5ff; }
+.preview-modal[data-skin-id="1"],.unlock-modal[data-skin-id="1"] { --skin-accent:#79ddff; }
+.preview-modal[data-skin-id="2"],.unlock-modal[data-skin-id="2"],.preview-modal[data-skin-id="7"],.unlock-modal[data-skin-id="7"],.preview-modal[data-skin-id="14"],.unlock-modal[data-skin-id="14"] { --skin-accent:#ff7043; }
+.preview-modal[data-skin-id="6"],.unlock-modal[data-skin-id="6"],.preview-modal[data-skin-id="17"],.unlock-modal[data-skin-id="17"],.preview-modal[data-skin-id="18"],.unlock-modal[data-skin-id="18"] { --skin-accent:#ffd45a; }
+.preview-modal[data-skin-id="10"],.unlock-modal[data-skin-id="10"] { --skin-accent:#e7475d; }
+.preview-modal[data-skin-id="20"],.unlock-modal[data-skin-id="20"] { --skin-accent:#f3d5ff; }
+.preview-modal[data-skin-id="3"],.unlock-modal[data-skin-id="3"],.preview-modal[data-skin-id="4"],.unlock-modal[data-skin-id="4"],.preview-modal[data-skin-id="8"],.unlock-modal[data-skin-id="8"],.preview-modal[data-skin-id="12"],.unlock-modal[data-skin-id="12"],.preview-modal[data-skin-id="13"],.unlock-modal[data-skin-id="13"],.preview-modal[data-skin-id="19"],.unlock-modal[data-skin-id="19"] { --skin-accent:#79ddff; }
+.preview-modal[data-skin-id="5"],.unlock-modal[data-skin-id="5"],.preview-modal[data-skin-id="9"],.unlock-modal[data-skin-id="9"],.preview-modal[data-skin-id="11"],.unlock-modal[data-skin-id="11"],.preview-modal[data-skin-id="15"],.unlock-modal[data-skin-id="15"],.preview-modal[data-skin-id="16"],.unlock-modal[data-skin-id="16"] { --skin-accent:#a579ff; }
+
+/* Keep the collection containment stable on narrow phones. */
+html,body,.shop-wrap,.shop-stage,.skin-row { min-width:0; max-width:100%; }
+.shop-stage,.skin-row { width:100%; }
+.skin-card { max-width:100%; }
 .skin-card.newly-unlocked { animation:cosmetic-unlocked 720ms var(--gh-ease-enter); }
 .coin-badge.coin-pulse,.collection-count.collection-pulse { animation:reward-pulse 520ms var(--gh-ease-enter); }
 .preview-modal[hidden],.unlock-modal[hidden] { display:none; }
@@ -40,13 +63,18 @@
 @keyframes unlock-art-enter { from{opacity:0;transform:translateY(8px) scale(.88)} to{opacity:1;transform:none} }
 @keyframes cosmetic-unlocked { 0%{transform:scale(1)} 45%{transform:scale(1.04);box-shadow:0 0 0 5px rgba(255,212,90,.22),var(--gh-shadow-card)} 100%{transform:scale(1)} }
 @keyframes reward-pulse { 0%{transform:scale(1)} 45%{transform:scale(1.06)} 100%{transform:scale(1)} }
+@keyframes skin-breathe { 0%,100% { opacity:.18; scale:.94; } 50% { opacity:.42; scale:1.04; } }
+@keyframes skin-sweep { 0% { translate:-120% 0; opacity:0; } 18% { opacity:.9; } 100% { translate:120% 0; opacity:0; } }
 @media (max-width:560px) {
+  .shop-head { display:grid; grid-template-columns:40px minmax(0,1fr) auto; gap:6px; padding-inline:8px; }
+  .shop-head h1 { font-size:20px; white-space:nowrap; }
+  .shop-head .coin-badge { min-width:70px; padding-inline:7px; }
   .preview-modal,.unlock-modal { align-items:end; padding:0; }
   .preview-sheet,.unlock-sheet { width:100%; max-height:88svh; border-radius:var(--gh-radius-lg) var(--gh-radius-lg) 0 0; padding:20px 16px max(20px,env(safe-area-inset-bottom)); }
   .preview-art,.unlock-art { width:min(58vw,220px); }
 }
 @media (prefers-reduced-motion:reduce) {
-  .skin-art,.skin-card.newly-unlocked,.coin-badge.coin-pulse,.collection-count.collection-pulse,.preview-sheet,.unlock-sheet,.unlock-art { animation:none!important; }
+  .skin-art::before,.skin-art::after,.preview-art::before,.preview-art::after,.unlock-art::before,.unlock-art::after,.skin-card.newly-unlocked,.coin-badge.coin-pulse,.collection-count.collection-pulse,.preview-sheet,.unlock-sheet,.unlock-art { animation:none!important; translate:none!important; }
 }
 
 
@@ -405,7 +433,7 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
 /* Step 4 cascade corrections */
 .skin-card.affordable { border-color:rgba(255,212,90,.58); }
 .skin-card.affordable::before { content:"READY TO UNLOCK"; position:absolute; top:8px; left:8px; z-index:2; color:var(--gh-color-reward); font-size:8px; font-weight:900; letter-spacing:.08em; }
-.skin-art { animation:cosmetic-drift 7s ease-in-out infinite; }
+.skin-art { animation:none; }
 .preview-modal[hidden],.unlock-modal[hidden] { display:none; }
 .preview-modal,.unlock-modal { position:fixed; inset:0; z-index:var(--gh-z-modal); display:grid; place-items:center; padding:18px; }
 .preview-backdrop { position:absolute; inset:0; background:rgba(3,14,25,.78); backdrop-filter:blur(8px); }
@@ -432,3 +460,18 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
 @keyframes unlock-art-enter { from{opacity:0;transform:translateY(8px) scale(.88)} to{opacity:1;transform:none} }
 @media (max-width:560px) { .preview-modal,.unlock-modal { align-items:end; padding:0; } .preview-sheet,.unlock-sheet { width:100%; max-height:88svh; border-radius:var(--gh-radius-lg) var(--gh-radius-lg) 0 0; padding:20px 16px max(20px,env(safe-area-inset-bottom)); } }
 @media (prefers-reduced-motion:reduce) { .skin-art,.preview-sheet,.unlock-sheet,.unlock-art { animation:none!important; } }
+
+/* Final narrow-screen containment pass: keep the header, coin badge, and
+   collection cards inside the viewport after the legacy mobile rules above. */
+@media (max-width:560px) {
+  html, body { max-width:100%; overflow-x:hidden; }
+  .shop-wrap { width:100%; max-width:100vw; min-width:0; }
+  .shop-head { position:relative; display:block!important; width:100%; min-width:0; overflow:hidden; padding-inline:8px; }
+  .shop-head .back-btn { position:absolute; left:8px; top:50%; translate:0 -50%; }
+  .shop-head .coin-badge { position:absolute; right:8px; top:50%; translate:0 -50%; width:72px; min-width:0; max-width:72px; padding-inline:5px; }
+  .shop-title { min-width:0; max-width:100%; overflow:hidden; padding-inline:44px 76px; }
+  .shop-title h1 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .shop-stage { display:grid!important; grid-template-columns:34px minmax(0,1fr) 34px!important; width:100%; min-width:0; overflow:hidden; }
+  .skin-row { width:100%; min-width:0; overflow-x:hidden; }
+  .skin-card { width:100%; min-width:0; max-width:100%; overflow:hidden; }
+}

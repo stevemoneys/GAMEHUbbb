@@ -454,8 +454,12 @@ function getDiceSkinFaces(skinKey) {
   ];
 }
 
+const activeDiceSkinKey = getActiveDiceSkin();
 const activeSkinIndex = getActiveSkinIndex();
 const activeSkinEffects = SKIN_EFFECTS[activeSkinIndex] || SKIN_EFFECTS[1];
+// Presentation hook only: gameplay values and cosmetic ownership remain
+// authoritative elsewhere. CSS uses this index to tint the shared roll effect.
+document.body.dataset.diceSkin = activeDiceSkinKey === "classic" ? "classic" : String(activeSkinIndex);
 const matchEffectState = {
   shieldUsed: false,
   plusOneUsed: false,

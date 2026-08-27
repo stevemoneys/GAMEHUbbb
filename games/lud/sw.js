@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-08-26-v43";
+const CACHE_VERSION = "2026-08-27-v45";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 // These paths are intentionally runtime-only. They must never delay entering
