@@ -639,6 +639,37 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   pointer-events: none;
 }
 .dice-panel.dice-rolling .dice::after { animation: dice-skin-roll 760ms ease-out both; }
+.dice::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -15%;
+  border: 1px solid var(--skin-accent, #ffe27a);
+  border-radius: 32%;
+  opacity: 0;
+  pointer-events: none;
+}
+.dice-panel.dice-rolling .dice::before { animation: dice-effect-pulse 760ms ease-out both; }
+body[data-dice-effect="crystal"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-refract; border-radius:20%; }
+body[data-dice-effect="inferno"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="dragon"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="hellforged"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-ember; border-radius:42%; }
+body[data-dice-effect="frost"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="tide"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-frost; border-style:dashed; }
+body[data-dice-effect="storm"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="arcane"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="chrono"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-spark; border-radius:50%; }
+body[data-dice-effect="nebula"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="void"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="starcore"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-cosmic; border-radius:50%; }
+body[data-dice-effect="verdant"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="sovereign"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="celestia"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="champion"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="divine"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-radiance; }
+body[data-dice-effect="primal"] .dice-panel.dice-rolling .dice::before,
+body[data-dice-effect="eternity"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-convergence; border-radius:50%; }
+body[data-dice-effect="shadow"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-shadow; border-radius:50%; }
 body[data-dice-skin="1"] .dice-panel { --skin-accent:#79ddff; }
 body[data-dice-skin="2"] .dice-panel,body[data-dice-skin="7"] .dice-panel,body[data-dice-skin="14"] .dice-panel { --skin-accent:#ff7043; }
 body[data-dice-skin="3"] .dice-panel,body[data-dice-skin="4"] .dice-panel,body[data-dice-skin="8"] .dice-panel,body[data-dice-skin="12"] .dice-panel,body[data-dice-skin="13"] .dice-panel,body[data-dice-skin="19"] .dice-panel { --skin-accent:#79ddff; }
@@ -652,6 +683,15 @@ body[data-dice-skin="20"] .dice-panel { --skin-accent:#f3d5ff; }
   100% { opacity: 1; scale: 1; }
 }
 @keyframes dice-skin-roll { 0% { opacity:0; scale:.8; } 35% { opacity:.8; scale:1.04; } 100% { opacity:0; scale:1.14; } }
+@keyframes dice-effect-pulse { 0% { opacity:0; scale:.82; } 45% { opacity:.5; scale:1.04; } 100% { opacity:0; scale:1.12; } }
+@keyframes dice-effect-refract { 0% { opacity:0; scale:.86; rotate:-8deg; } 42% { opacity:.7; scale:1.06; rotate:5deg; } 100% { opacity:0; scale:1.16; rotate:0deg; } }
+@keyframes dice-effect-ember { 0% { opacity:0; scale:.8; } 38% { opacity:.9; scale:1.08; } 62% { opacity:.42; scale:1.02; } 100% { opacity:0; scale:1.18; } }
+@keyframes dice-effect-frost { 0% { opacity:0; scale:.9; } 55% { opacity:.7; scale:1.08; } 100% { opacity:0; scale:1.12; } }
+@keyframes dice-effect-spark { 0%,100% { opacity:0; scale:.94; } 22%,58% { opacity:.86; scale:1.06; } }
+@keyframes dice-effect-cosmic { 0% { opacity:0; scale:.66; } 50% { opacity:.62; scale:1.08; } 100% { opacity:0; scale:1.22; } }
+@keyframes dice-effect-radiance { 0% { opacity:0; scale:.9; } 48% { opacity:.68; scale:1.1; } 100% { opacity:0; scale:1.16; } }
+@keyframes dice-effect-convergence { 0% { opacity:0; scale:.7; } 60% { opacity:.8; scale:1.05; } 100% { opacity:0; scale:1.2; } }
+@keyframes dice-effect-shadow { 0% { opacity:0; scale:1.14; } 52% { opacity:.54; scale:.9; } 100% { opacity:0; scale:1.04; } }
 
 .dice-panel.dice-active {
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.17), inset 0 0 18px var(--die-glow), 0 0 0 2px rgba(255, 243, 182, .75), 0 0 16px var(--die-glow), 0 6px 0 rgba(0,0,0,.34), 0 11px 18px rgba(0,0,0,.35);

@@ -386,6 +386,19 @@ const DICE_FACE_INDEX_BY_VALUE = {
   6: 2
 };
 
+// One shared presentation engine, with a stable identity configuration for
+// every collectible. These values only select CSS accents; they never affect
+// dice results, timing authority, ownership, or gameplay rules.
+const DICE_SKIN_EFFECTS = Object.freeze({
+  1: { type: "crystal" }, 2: { type: "inferno" }, 3: { type: "frost" },
+  4: { type: "verdant" }, 5: { type: "storm" }, 6: { type: "sovereign" },
+  7: { type: "dragon" }, 8: { type: "nebula" }, 9: { type: "arcane" },
+  10: { type: "shadow" }, 11: { type: "chrono" }, 12: { type: "tide" },
+  13: { type: "celestia" }, 14: { type: "hellforged" }, 15: { type: "primal" },
+  16: { type: "void" }, 17: { type: "champion" }, 18: { type: "divine" },
+  19: { type: "starcore" }, 20: { type: "eternity" }
+});
+
 const diceSkins = {
   classic: ["dice/1_result.webp", "dice/4_result.webp", "dice/6_result.webp", "dice/3_result.webp", "dice/2_result.webp", "dice/5_result.webp"]
 };
@@ -460,6 +473,9 @@ const activeSkinEffects = SKIN_EFFECTS[activeSkinIndex] || SKIN_EFFECTS[1];
 // Presentation hook only: gameplay values and cosmetic ownership remain
 // authoritative elsewhere. CSS uses this index to tint the shared roll effect.
 document.body.dataset.diceSkin = activeDiceSkinKey === "classic" ? "classic" : String(activeSkinIndex);
+document.body.dataset.diceEffect = activeDiceSkinKey === "classic"
+  ? "classic"
+  : (DICE_SKIN_EFFECTS[activeSkinIndex]?.type || "crystal");
 const matchEffectState = {
   shieldUsed: false,
   plusOneUsed: false,

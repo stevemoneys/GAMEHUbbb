@@ -465,13 +465,96 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
    collection cards inside the viewport after the legacy mobile rules above. */
 @media (max-width:560px) {
   html, body { max-width:100%; overflow-x:hidden; }
-  .shop-wrap { width:100%; max-width:100vw; min-width:0; }
-  .shop-head { position:relative; display:block!important; width:100%; min-width:0; overflow:hidden; padding-inline:8px; }
-  .shop-head .back-btn { position:absolute; left:8px; top:50%; translate:0 -50%; }
-  .shop-head .coin-badge { position:absolute; right:8px; top:50%; translate:0 -50%; width:72px; min-width:0; max-width:72px; padding-inline:5px; }
-  .shop-title { min-width:0; max-width:100%; overflow:hidden; padding-inline:44px 76px; }
+  /* Use the visual viewport explicitly; a legacy min-content child must not
+     make the collection shell wider than a 320–430px phone. */
+  .shop-wrap { width:100vw!important; max-width:100vw!important; min-width:0; margin:0!important; }
+  .shop-head { position:relative; display:grid!important; grid-template-columns:40px minmax(0,1fr); grid-auto-rows:auto; width:auto!important; min-width:0; overflow:hidden; padding:8px; }
+  .shop-head .back-btn { position:static; grid-column:1; grid-row:1; }
+  .shop-head .coin-badge { position:static; grid-column:1/-1; grid-row:2; justify-self:center; translate:none; width:76px; min-width:0; max-width:76px; padding-inline:5px; margin-top:4px; }
+  .shop-title { grid-column:2; grid-row:1; min-width:0; max-width:100%; overflow:hidden; padding-inline:0; }
   .shop-title h1 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .shop-stage { display:grid!important; grid-template-columns:34px minmax(0,1fr) 34px!important; width:100%; min-width:0; overflow:hidden; }
-  .skin-row { width:100%; min-width:0; overflow-x:hidden; }
-  .skin-card { width:100%; min-width:0; max-width:100%; overflow:hidden; }
+  .shop-stage { display:grid!important; grid-template-columns:34px minmax(0,1fr) 34px!important; width:auto!important; min-width:0; overflow:hidden; }
+  .skin-row { width:auto!important; min-width:0; overflow-x:hidden; }
+  .skin-card { width:70vw!important; min-width:0; max-width:70vw!important; overflow:hidden; }
+  .skin-card > *, .skin-copy, .skin-card h3, .skin-card .effect, .skin-card .btn, .skin-card .price { min-width:0; max-width:100%; }
+}
+
+/* Skin identity map: one inexpensive animation framework, with a distinct
+   visual signature for each family of generated dice. The artwork remains
+   authoritative; these layers are presentation-only and self-cleaning. */
+.skin-card.skin-1,.preview-modal[data-skin-id="1"],.unlock-modal[data-skin-id="1"] { --shop-preview-animation:shop-prism; --shop-unlock-animation:shop-prism-unlock; }
+.skin-card.skin-2,.preview-modal[data-skin-id="2"],.unlock-modal[data-skin-id="2"] { --shop-preview-animation:shop-inferno; --shop-unlock-animation:shop-inferno-unlock; }
+.skin-card.skin-3,.preview-modal[data-skin-id="3"],.unlock-modal[data-skin-id="3"] { --shop-preview-animation:shop-frost; --shop-unlock-animation:shop-frost-unlock; }
+.skin-card.skin-4,.preview-modal[data-skin-id="4"],.unlock-modal[data-skin-id="4"] { --shop-preview-animation:shop-verdant; --shop-unlock-animation:shop-verdant-unlock; }
+.skin-card.skin-5,.preview-modal[data-skin-id="5"],.unlock-modal[data-skin-id="5"] { --shop-preview-animation:shop-storm; --shop-unlock-animation:shop-storm-unlock; }
+.skin-card.skin-6,.preview-modal[data-skin-id="6"],.unlock-modal[data-skin-id="6"] { --shop-preview-animation:shop-sovereign; --shop-unlock-animation:shop-sovereign-unlock; }
+.skin-card.skin-7,.preview-modal[data-skin-id="7"],.unlock-modal[data-skin-id="7"] { --shop-preview-animation:shop-dragon; --shop-unlock-animation:shop-dragon-unlock; }
+.skin-card.skin-8,.preview-modal[data-skin-id="8"],.unlock-modal[data-skin-id="8"] { --shop-preview-animation:shop-nebula; --shop-unlock-animation:shop-nebula-unlock; }
+.skin-card.skin-9,.preview-modal[data-skin-id="9"],.unlock-modal[data-skin-id="9"] { --shop-preview-animation:shop-arcane; --shop-unlock-animation:shop-arcane-unlock; }
+.skin-card.skin-10,.preview-modal[data-skin-id="10"],.unlock-modal[data-skin-id="10"] { --shop-preview-animation:shop-shadow; --shop-unlock-animation:shop-shadow-unlock; }
+.skin-card.skin-11,.preview-modal[data-skin-id="11"],.unlock-modal[data-skin-id="11"] { --shop-preview-animation:shop-chrono; --shop-unlock-animation:shop-chrono-unlock; }
+.skin-card.skin-12,.preview-modal[data-skin-id="12"],.unlock-modal[data-skin-id="12"] { --shop-preview-animation:shop-tide; --shop-unlock-animation:shop-tide-unlock; }
+.skin-card.skin-13,.preview-modal[data-skin-id="13"],.unlock-modal[data-skin-id="13"] { --shop-preview-animation:shop-celestia; --shop-unlock-animation:shop-celestia-unlock; }
+.skin-card.skin-14,.preview-modal[data-skin-id="14"],.unlock-modal[data-skin-id="14"] { --shop-preview-animation:shop-hellforged; --shop-unlock-animation:shop-hellforged-unlock; }
+.skin-card.skin-15,.preview-modal[data-skin-id="15"],.unlock-modal[data-skin-id="15"] { --shop-preview-animation:shop-primal; --shop-unlock-animation:shop-primal-unlock; }
+.skin-card.skin-16,.preview-modal[data-skin-id="16"],.unlock-modal[data-skin-id="16"] { --shop-preview-animation:shop-void; --shop-unlock-animation:shop-void-unlock; }
+.skin-card.skin-17,.preview-modal[data-skin-id="17"],.unlock-modal[data-skin-id="17"] { --shop-preview-animation:shop-champion; --shop-unlock-animation:shop-champion-unlock; }
+.skin-card.skin-18,.preview-modal[data-skin-id="18"],.unlock-modal[data-skin-id="18"] { --shop-preview-animation:shop-divine; --shop-unlock-animation:shop-divine-unlock; }
+.skin-card.skin-19,.preview-modal[data-skin-id="19"],.unlock-modal[data-skin-id="19"] { --shop-preview-animation:shop-starcore; --shop-unlock-animation:shop-starcore-unlock; }
+.skin-card.skin-20,.preview-modal[data-skin-id="20"],.unlock-modal[data-skin-id="20"] { --shop-preview-animation:shop-eternity; --shop-unlock-animation:shop-eternity-unlock; }
+.skin-card.is-visible .skin-art::before,
+.preview-modal.previewing .preview-art::before { animation:var(--shop-preview-animation,skin-breathe) 900ms ease-out both; }
+.unlock-modal.unlocking .unlock-art::before { animation:var(--shop-unlock-animation,skin-breathe) 1250ms ease-out both; }
+
+@keyframes shop-prism { 0%{opacity:0;transform:translateX(-32%) scale(.86)} 48%{opacity:.8;transform:translateX(4%) scale(1.05)} 100%{opacity:0;transform:translateX(30%) scale(1.08)} }
+@keyframes shop-prism-unlock { 0%{opacity:0;transform:scale(.62)} 52%{opacity:.9;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-inferno { 0%{opacity:.05;transform:scale(.82)} 42%{opacity:.9;transform:scale(1.08)} 64%{opacity:.35;transform:scale(.96)} 100%{opacity:0;transform:scale(1.14)} }
+@keyframes shop-inferno-unlock { 0%{opacity:0;transform:scale(.58)} 66%{opacity:1;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes shop-frost { 0%{opacity:0;transform:scale(.9)} 55%{opacity:.72;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-frost-unlock { 0%{opacity:0;transform:scale(1.18)} 52%{opacity:.82;transform:scale(.94)} 100%{opacity:0;transform:scale(1)} }
+@keyframes shop-verdant { 0%{opacity:0;transform:translateY(8%) scale(.9)} 50%{opacity:.7;transform:translateY(-2%) scale(1.05)} 100%{opacity:0;transform:translateY(-9%) scale(1.02)} }
+@keyframes shop-verdant-unlock { 0%{opacity:0;transform:scale(.72)} 60%{opacity:.72;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.16)} }
+@keyframes shop-storm { 0%,100%{opacity:0;transform:scale(.94)} 18%,56%{opacity:.9;transform:scale(1.08)} }
+@keyframes shop-storm-unlock { 0%,100%{opacity:0;transform:scale(.78)} 22%,68%{opacity:.92;transform:scale(1.1)} }
+@keyframes shop-sovereign { 0%{opacity:0;transform:translateX(-24%)} 50%{opacity:.68;transform:translateX(0)} 100%{opacity:0;transform:translateX(24%)} }
+@keyframes shop-sovereign-unlock { 0%{opacity:0;transform:scale(.84)} 55%{opacity:.88;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes shop-dragon { 0%{opacity:0;transform:scale(.8)} 38%{opacity:.88;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.18)} }
+@keyframes shop-dragon-unlock { 0%{opacity:0;transform:scale(.55)} 58%{opacity:1;transform:scale(1.15)} 100%{opacity:0;transform:scale(1.03)} }
+@keyframes shop-nebula { 0%{opacity:0;transform:scale(.7) rotate(-8deg)} 52%{opacity:.65;transform:scale(1.08) rotate(3deg)} 100%{opacity:0;transform:scale(1.18) rotate(8deg)} }
+@keyframes shop-nebula-unlock { 0%{opacity:0;transform:scale(.42)} 62%{opacity:.9;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-arcane { 0%{opacity:0;transform:rotate(-22deg) scale(.8)} 55%{opacity:.72;transform:rotate(12deg) scale(1.06)} 100%{opacity:0;transform:rotate(0) scale(1.1)} }
+@keyframes shop-arcane-unlock { 0%{opacity:0;transform:rotate(-35deg) scale(.62)} 65%{opacity:.9;transform:rotate(18deg) scale(1.08)} 100%{opacity:0;transform:rotate(0) scale(1)} }
+@keyframes shop-shadow { 0%{opacity:0;transform:scale(1.16)} 52%{opacity:.58;transform:scale(.88)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes shop-shadow-unlock { 0%{opacity:0;transform:scale(1.22)} 58%{opacity:.7;transform:scale(.84)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-chrono { 0%{opacity:0;transform:rotate(0) scale(.76)} 55%{opacity:.72;transform:rotate(180deg) scale(1.06)} 100%{opacity:0;transform:rotate(360deg) scale(1)} }
+@keyframes shop-chrono-unlock { 0%{opacity:0;transform:rotate(-90deg) scale(.58)} 68%{opacity:.9;transform:rotate(260deg) scale(1.1)} 100%{opacity:0;transform:rotate(360deg) scale(1)} }
+@keyframes shop-tide { 0%{opacity:0;transform:scale(.72)} 50%{opacity:.68;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.26)} }
+@keyframes shop-tide-unlock { 0%{opacity:0;transform:scale(.5)} 58%{opacity:.88;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes shop-celestia { 0%{opacity:0;transform:scale(.86)} 48%{opacity:.76;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes shop-celestia-unlock { 0%{opacity:0;transform:scale(.56)} 54%{opacity:1;transform:scale(1.18)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-hellforged { 0%{opacity:0;transform:scale(.82)} 44%{opacity:.9;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.16)} }
+@keyframes shop-hellforged-unlock { 0%{opacity:0;transform:scale(.5)} 62%{opacity:1;transform:scale(1.16)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-primal { 0%{opacity:0;transform:scale(.8)} 25%{opacity:.6;transform:scale(1.02)} 52%{opacity:.88;transform:scale(.94)} 78%{opacity:.6;transform:scale(1.08)} 100%{opacity:0;transform:scale(1)} }
+@keyframes shop-primal-unlock { 0%{opacity:0;transform:scale(.54)} 30%{opacity:.65;transform:scale(.94)} 62%{opacity:1;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-void { 0%{opacity:0;transform:scale(.55)} 50%{opacity:.66;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.3)} }
+@keyframes shop-void-unlock { 0%{opacity:0;transform:scale(1.24)} 56%{opacity:.82;transform:scale(.74)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-champion { 0%{opacity:0;transform:scale(.72)} 48%{opacity:.82;transform:scale(1.16)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-champion-unlock { 0%{opacity:0;transform:translateY(8%) scale(.6)} 58%{opacity:1;transform:translateY(-4%) scale(1.16)} 100%{opacity:0;transform:translateY(0) scale(1)} }
+@keyframes shop-divine { 0%{opacity:0;transform:translateX(-18%) scale(.9)} 50%{opacity:.8;transform:translateX(0) scale(1.1)} 100%{opacity:0;transform:translateX(18%) scale(1.16)} }
+@keyframes shop-divine-unlock { 0%{opacity:0;transform:scale(.64)} 54%{opacity:1;transform:scale(1.2)} 100%{opacity:0;transform:scale(1.02)} }
+@keyframes shop-starcore { 0%{opacity:0;transform:scale(.5)} 50%{opacity:.9;transform:scale(1.08)} 100%{opacity:0;transform:scale(.74)} }
+@keyframes shop-starcore-unlock { 0%{opacity:0;transform:scale(.34)} 60%{opacity:1;transform:scale(1.24)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes shop-eternity { 0%{opacity:0;transform:scale(.62)} 30%{opacity:.52;transform:scale(.92)} 62%{opacity:.9;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.06)} }
+@keyframes shop-eternity-unlock { 0%{opacity:0;transform:scale(.3)} 38%{opacity:.58;transform:scale(.84)} 70%{opacity:1;transform:scale(1.24)} 100%{opacity:0;transform:scale(1.04)} }
+
+@media (prefers-reduced-motion:reduce) {
+  .skin-card.is-visible .skin-art::before,
+  .preview-modal.previewing .preview-art::before,
+  .unlock-modal.unlocking .unlock-art::before { animation:none!important; }
+}
+
+@media (max-width:400px) {
+  .shop-title { position:absolute; left:72px; right:8px; top:8px; width:auto; grid-column:auto; grid-row:auto; padding:0!important; }
+  .shop-title h1 { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; font-size:clamp(18px,6vw,21px); line-height:1.12; }
+  .skin-card { width:60vw!important; max-width:60vw!important; }
 }
