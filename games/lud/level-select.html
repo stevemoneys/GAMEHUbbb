@@ -106,7 +106,7 @@
     // set here means the visual teleport only starts after the selected match
     // can render with its board, dice, and token artwork already available.
     const MATCH_PRELOAD_CACHE = "ludo-preload-assets-v1";
-    const MATCH_PRELOAD_VERSION = "2026-08-27-v45";
+    const MATCH_PRELOAD_VERSION = "2026-08-28-v46";
     const MATCH_PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
     const MATCH_PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 
@@ -163,10 +163,17 @@
 
       const results = await Promise.allSettled(assets.map(async asset => {
         const request = new Request(asset, { method: "GET", credentials: "same-origin" });
-        if (cache && await cache.match(request)) return;
-        const response = await fetch(request, { cache: "force-cache" });
-        if (!response.ok) throw new Error(`Unable to load ${asset}`);
-        if (cache) await cache.put(request, response.clone());
+        const cached = cache ? await cache.match(request) : null;
+        try {
+          // Stable filenames may contain new deployment content. Revalidate
+          // while online, but retain the warmed response when offline.
+          const response = await fetch(request, { cache: "no-cache" });
+          if (!response.ok) throw new Error(`Unable to load ${asset}`);
+          if (cache) await cache.put(request, response.clone());
+        } catch (error) {
+          if (cached) return;
+          throw error;
+        }
       }));
       const failures = results.filter(result => result.status === "rejected");
       if (failures.length) throw new Error("Critical match assets could not be prepared.");
@@ -323,7 +330,9 @@
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
+        navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" })
+          .then(registration => registration.update())
+          .catch(() => {});
       });
     }
   </script>

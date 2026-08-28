@@ -1,15 +1,9 @@
-const CACHE_VERSION = "2026-08-27-v45";
+const CACHE_VERSION = "2026-08-28-v46";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
-// These paths are intentionally runtime-only. They must never delay entering
-// a match; stale-while-revalidate makes them available after first use.
-const OPTIONAL_ASSET_PREFIXES = [
-  "/backgrounds/",
-  "/dice/skins/",
-  "/tokens/skins/",
-  "/sounds/"
-];
-
+const PRELOAD_CACHE = "ludo-preload-assets-v1";
+const OWN_CACHE_PREFIX = "ludo-";
+const NETWORK_TIMEOUT_MS = 4500;
 function getColors() {
   return ["red", "green", "yellow", "blue"];
 }
@@ -49,11 +43,6 @@ function buildAssetManifest() {
 
 const PRECACHE_ASSETS = buildAssetManifest();
 
-function isOptionalAsset(request) {
-  const pathname = new URL(request.url).pathname;
-  return OPTIONAL_ASSET_PREFIXES.some(prefix => pathname.includes(prefix));
-}
-
 function isSameOriginStaticAsset(request) {
   if (request.method !== "GET") return false;
   const url = new URL(request.url);
@@ -68,7 +57,11 @@ async function addAssetsToCache(cacheName, assets) {
   const cache = await caches.open(cacheName);
   for (const asset of assets) {
     try {
-      await cache.add(asset);
+      // Bypass the browser HTTP cache while building a new SW cache. Cache
+      // versioning alone is insufficient when filenames stay unchanged.
+      const request = new Request(asset, { cache: "reload" });
+      const response = await fetch(request);
+      if (response.ok) await cache.put(request, response.clone());
     } catch (error) {
       // Continue caching other assets even when one fails.
       console.warn("[sw] precache failed:", asset, error);
@@ -85,10 +78,11 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
-    const keep = new Set([STATIC_CACHE, RUNTIME_CACHE]);
+    const keep = new Set([STATIC_CACHE, RUNTIME_CACHE, PRELOAD_CACHE]);
     const keys = await caches.keys();
     await Promise.all(keys.map(key => {
-      if (keep.has(key)) return Promise.resolve();
+      // Never delete caches owned by another application on this origin.
+      if (!key.startsWith(OWN_CACHE_PREFIX) || keep.has(key)) return Promise.resolve();
       return caches.delete(key);
     }));
     await self.clients.claim();
@@ -97,8 +91,11 @@ self.addEventListener("activate", event => {
 
 async function networkFirst(request) {
   const runtime = await caches.open(RUNTIME_CACHE);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
   try {
-    const fresh = await fetch(request);
+    // Revalidate mutable files so unchanged filenames still receive deploys.
+    const fresh = await fetch(request, { cache: "no-cache", signal: controller.signal });
     if (fresh && fresh.ok) {
       await runtime.put(request, fresh.clone());
     }
@@ -106,49 +103,25 @@ async function networkFirst(request) {
   } catch (error) {
     const cached = await caches.match(request);
     if (cached) return cached;
-    const appShell = await caches.match("./ludo.html");
-    if (appShell) return appShell;
-    throw error;
-  }
-}
-
-async function staleWhileRevalidate(request, event) {
-  const cached = await caches.match(request);
-  const networkFetch = fetch(request).then(async fresh => {
-    if (fresh && fresh.ok) {
-      const runtime = await caches.open(RUNTIME_CACHE);
-      await runtime.put(request, fresh.clone());
+    if (request.mode === "navigate") {
+      const appShell = await caches.match("./ludo.html");
+      if (appShell) return appShell;
     }
-    return fresh;
-  }).catch(() => null);
-
-  if (cached) {
-    event.waitUntil(networkFetch);
-    return cached;
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const fresh = await networkFetch;
-  if (fresh) return fresh;
-  return new Response("", { status: 504, statusText: "Offline" });
 }
 
 self.addEventListener("fetch", event => {
   const { request } = event;
   if (!isSameOriginStaticAsset(request)) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // Critical shell assets are already in STATIC_CACHE. Optional skins,
-  // backgrounds, and sounds deliberately use the runtime path below.
-  if (isOptionalAsset(request)) {
-    event.respondWith(staleWhileRevalidate(request, event));
-    return;
-  }
-
-  event.respondWith(staleWhileRevalidate(request, event));
+  // Every same-origin application resource is mutable in this project:
+  // backgrounds, audio, CSS, JS, and HTML retain stable filenames between
+  // deployments. Network-first gives updates priority and cached fallback
+  // keeps the game usable offline. Optional assets still remain runtime-only.
+  event.respondWith(networkFirst(request));
 });
 
 self.addEventListener("message", event => {

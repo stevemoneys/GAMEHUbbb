@@ -1,5 +1,5 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-27-v45";
+const PRELOAD_VERSION = "2026-08-28-v46";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
@@ -97,7 +97,9 @@ function shortAssetLabel(path) {
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   try {
-    const registration = await navigator.serviceWorker.register("./sw.js");
+    // Do not allow the browser HTTP cache to hide a newly deployed worker.
+    const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+    await registration.update();
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
     }
@@ -138,22 +140,18 @@ async function resetPreloadCacheIfVersionChanged() {
 
 async function warmSingleAsset(assetPath, cache) {
   const request = new Request(assetPath, { method: "GET", credentials: "same-origin" });
-  if (cache) {
-    const cached = await cache.match(request);
-    if (cached) return;
-  }
-
-  const response = await fetch(request, { cache: "force-cache" });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${assetPath}`);
-  }
-
-  if (cache) {
-    try {
-      await cache.put(request, response.clone());
-    } catch {
-      // ignore put failures so boot never hard-fails
+  const cached = cache ? await cache.match(request) : null;
+  try {
+    // Revalidate critical assets on every online boot. If offline, retain the
+    // previously warmed response instead of blocking the match indefinitely.
+    const response = await fetch(request, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`Failed to fetch ${assetPath}`);
+    if (cache) {
+      try { await cache.put(request, response.clone()); } catch { /* best effort */ }
     }
+  } catch (error) {
+    if (cached) return;
+    throw error;
   }
 }
 
