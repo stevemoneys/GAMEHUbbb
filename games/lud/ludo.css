@@ -218,6 +218,49 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 .cell.yellow-home-turn::after { content: "◀"; color: #987300; }
 .cell.blue-home-turn::after { content: "▲"; color: #1565a7; }
 
+/* Mode-specific board markers. These are presentation-only: existing game
+   logic owns placement and effects. Classic never receives these classes,
+   while Chaos keeps snakes/ladders event-only until an endpoint is reached. */
+.cell.power-tile,
+.cell.battle-tile,
+.cell.arena-reward-tile { overflow:visible; }
+.cell.power-tile::after,
+.cell.battle-tile::after,
+.cell.arena-reward-tile::after {
+  content:""; position:absolute; inset:12%; z-index:1; border:2px solid currentColor;
+  border-radius:24%; opacity:.86; pointer-events:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 0 9px currentColor;
+}
+.cell.power-tile { color:#7ff4d2; }
+.cell.power-speed { background-image:radial-gradient(circle,rgba(102,255,197,.34),transparent 66%); }
+.cell.power-shield { color:#a4c8ff; background-image:radial-gradient(circle,rgba(99,153,255,.36),transparent 66%); }
+.cell.power-teleport { color:#e2adff; background-image:radial-gradient(circle,rgba(184,103,255,.36),transparent 66%); }
+.cell.power-speed::before,.cell.power-shield::before,.cell.power-teleport::before,
+.cell.battle-risk::before,.cell.battle-block::before,.cell.arena-reward-tile::before {
+  position:absolute; inset:0; z-index:2; display:grid; place-items:center; color:currentColor;
+  font-size:clamp(9px,2.6vmin,18px); font-weight:900; line-height:1;
+  text-shadow:0 1px 2px rgba(0,0,0,.45); pointer-events:none;
+}
+.cell.power-speed::before { content:"✦"; }
+.cell.power-shield::before { content:"◈"; }
+.cell.power-teleport::before { content:"↯"; }
+.cell.battle-tile { color:#ffb16d; }
+.cell.battle-risk { background-image:radial-gradient(circle,rgba(255,105,81,.34),transparent 66%); }
+.cell.battle-block { color:#ffe58a; background-image:radial-gradient(circle,rgba(255,207,66,.34),transparent 66%); }
+.cell.battle-risk::before { content:"⚔"; }
+.cell.battle-block::before { content:"▦"; }
+.cell.battle-block-active { animation:battle-block-pulse 1.35s ease-in-out infinite; }
+.cell.battle-block-owner-red { color:#ff7c73; }
+.cell.battle-block-owner-green { color:#78e6a0; }
+.cell.battle-block-owner-yellow { color:#ffe27a; }
+.cell.battle-block-owner-blue { color:#7bc8ff; }
+.token.battle-risk-vulnerable img { filter:drop-shadow(0 0 4px rgba(255,91,72,.95)) drop-shadow(0 3px 3px rgba(0,0,0,.36)); }
+.cell.arena-reward-tile { color:#ffe27a; background-image:radial-gradient(circle,rgba(255,211,77,.42),transparent 68%); }
+.cell.arena-reward-tile::before { content:"★"; }
+.cell.arena-reward-tile::after { border-radius:50%; animation:arena-reward-pulse 1.8s ease-in-out infinite; }
+@keyframes battle-block-pulse { 0%,100%{filter:saturate(1)} 50%{filter:saturate(1.28) brightness(1.08)} }
+@keyframes arena-reward-pulse { 0%,100%{opacity:.48;transform:scale(.9)} 50%{opacity:1;transform:scale(1.08)} }
+
 /* Home slots are direct, generated board-grid children. Their own center is
    the source of truth for every home token, independent of player colour. */
 .token-slot.generated {
@@ -403,12 +446,12 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   z-index: 34;
   left: 50%;
   top: calc(50% + var(--token-contact-shift));
-  width: 60%;
-  aspect-ratio: 1;
-  border: max(1px, .12vmin) solid rgba(255, 239, 151, .98);
+   width: 64%;
+   aspect-ratio: 1;
+   border: max(2px, .2vmin) solid rgba(255, 239, 151, .98);
   border-radius: 999px;
   background: radial-gradient(circle, rgba(255, 243, 169, .44) 0 26%, rgba(255, 210, 67, .2) 50%, rgba(255, 210, 67, .04) 72%);
-  box-shadow: 0 0 0 1px rgba(94, 59, 3, .3), 0 0 10px rgba(255, 210, 67, .75);
+   box-shadow: 0 0 0 1px rgba(94, 59, 3, .36), 0 0 13px rgba(255, 210, 67, .84);
   pointer-events: none;
   translate: -50% -50%;
   animation: cell-selection-pulse 1.2s ease-in-out infinite;
@@ -416,7 +459,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 
 .token-slot.move-target::after {
   top: 50%;
-  width: 64%;
+   width: 68%;
 }
 
 @keyframes cell-selection-pulse {
