@@ -156,6 +156,19 @@ async function offlineFallback(request, originalError) {
 async function networkFirst(request, event) {
   // Storage may be unavailable (quota/private mode).  That must not prevent
   // an online resource from being delivered.
+  const isRangeRequest = request.headers && request.headers.has("range");
+
+  // Audio/video elements use byte-range requests.  Let the browser receive
+  // those responses directly so Cache Storage and the asset timeout cannot
+  // interfere with media streaming.
+  if (isRangeRequest) {
+    try {
+      return await fetch(request, { cache: "no-cache" });
+    } catch (error) {
+      return offlineFallback(request, error);
+    }
+  }
+
   let runtime = null;
   try {
     runtime = await caches.open(RUNTIME_CACHE);
@@ -179,7 +192,14 @@ async function networkFirst(request, event) {
   // late abort can never cancel a cache write.
   clearTimeout(timeout);
 
-  if (fresh && fresh.ok && runtime) {
+  const canCacheResponse = fresh && fresh.ok
+    && fresh.status === 200
+    && fresh.type !== "opaque"
+    && !isRangeRequest;
+
+  // Media elements commonly request MP3s in byte ranges.  Return those
+  // responses untouched; partial media responses are not cacheable snapshots.
+  if (canCacheResponse && runtime) {
     try {
       const cacheUpdate = updateRuntimeCache(runtime, request, fresh.clone());
       // Keep cache maintenance independent from the response promise.  Any
