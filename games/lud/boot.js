@@ -1,5 +1,5 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-28-v46";
+const PRELOAD_VERSION = "2026-08-28-v47";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
