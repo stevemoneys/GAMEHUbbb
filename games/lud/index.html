@@ -14,35 +14,51 @@
   <link rel="stylesheet" href="home.css" />
 </head>
 <body>
-  <a class="hub-back-btn" href="../../index.html" aria-label="Back to GameHub">Back to GameHub</a>
-  <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu">
-    <span></span><span></span><span></span>
-  </button>
-  <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode">
-    <span class="mode-switch-glyph" aria-hidden="true"></span>
-    <span class="mode-switch-value" id="mode-switch-value">Classic</span>
-  </button>
-  <section class="mode-switch-panel" id="mode-switch-panel" aria-hidden="true">
-    <h3>Select Rule Mode</h3>
+  <header class="lobby-topbar" aria-label="Lobby status">
+    <div class="topbar-progress">
+      <div class="lobby-level-card">
+        <span class="lobby-status-label">Level</span>
+        <strong id="home-level-value">1</strong>
+      </div>
+      <div class="lobby-coin-card">
+        <span class="coin-orb" aria-hidden="true"></span>
+        <strong id="home-coin-value">0</strong>
+        <span class="lobby-status-label">Coins</span>
+      </div>
+    </div>
+    <a class="hub-back-btn" href="../../index.html" aria-label="Back to GameHub">Back to<br><strong>GameHub</strong></a>
+  </header>
+
+  <div class="mode-overlay" id="mode-overlay" aria-hidden="true"></div>
+  <section class="mode-switch-panel" id="mode-switch-panel" role="dialog" aria-modal="true" aria-labelledby="mode-panel-title" aria-hidden="true">
+    <div class="mode-panel-head">
+      <div>
+        <p>Rule Set</p>
+        <h3 id="mode-panel-title">Select Game Mode</h3>
+      </div>
+      <button class="close-mode-panel" id="close-mode-panel" type="button" aria-label="Close mode selection">×</button>
+    </div>
     <div class="mode-switch-grid">
-      <button class="mode-switch-card active" data-game-mode="classic" type="button">Classic</button>
-      <button class="mode-switch-card" data-game-mode="chaos" type="button">Chaos</button>
-      <button class="mode-switch-card" data-game-mode="power" type="button">Power</button>
-      <button class="mode-switch-card" data-game-mode="battle" type="button">Battle</button>
-      <button class="mode-switch-card" data-game-mode="arena" type="button">Arena</button>
+      <button class="mode-switch-card active" data-game-mode="classic" type="button"><span class="mode-card-name">Classic</span><span class="mode-card-description">Traditional Ludo rules</span></button>
+      <button class="mode-switch-card" data-game-mode="chaos" type="button"><span class="mode-card-name">Chaos</span><span class="mode-card-description">Snakes, ladders, unpredictable moves</span></button>
+      <button class="mode-switch-card" data-game-mode="power" type="button"><span class="mode-card-name">Power</span><span class="mode-card-description">Speed, teleport, and shield tiles</span></button>
+      <button class="mode-switch-card" data-game-mode="battle" type="button"><span class="mode-card-name">Battle</span><span class="mode-card-description">Capture-focused risk and blockade tiles</span></button>
+      <button class="mode-switch-card" data-game-mode="arena" type="button"><span class="mode-card-name">Arena</span><span class="mode-card-description">Mixed event tiles and arena bonuses</span></button>
     </div>
   </section>
 
-  <aside class="side-menu" id="side-menu" aria-hidden="true">
+  <aside class="side-menu" id="side-menu" role="dialog" aria-modal="true" aria-labelledby="sheet-title" aria-hidden="true">
     <div class="side-menu-head">
-      <h2>Command Center</h2>
-      <button class="close-menu" id="close-menu" type="button" aria-label="Close menu">X</button>
+      <div>
+        <p class="sheet-kicker">Ludo Master</p>
+        <h2 id="sheet-title">Settings</h2>
+      </div>
+      <button class="close-menu" id="close-menu" type="button" aria-label="Close panel">×</button>
     </div>
 
     <nav class="menu-tabs" aria-label="Menu Sections">
       <button class="menu-tab active" data-tab="settings" type="button" aria-selected="true">Settings</button>
       <button class="menu-tab" data-tab="rules" type="button" aria-selected="false">Rules</button>
-      <button class="menu-tab" data-tab="shop" type="button" aria-selected="false">Shop</button>
     </nav>
 
     <section class="menu-panel active" id="panel-settings" aria-label="Audio Settings">
@@ -67,38 +83,29 @@
       <p>Exact movement is needed in the home lane.</p>
     </section>
 
-    <section class="menu-panel" id="panel-shop" aria-label="Shop">
-      <h3>Customization</h3>
-      <p>Upgrade visuals and unlock gameplay effects.</p>
-      <button class="shop-link-btn" id="open-dice-shop" type="button">Open Dice Shop</button>
-      <button class="shop-link-btn" id="open-token-shop" type="button">Open Token Shop</button>
-    </section>
   </aside>
   <div class="menu-backdrop" id="menu-backdrop" aria-hidden="true"></div>
 
   <main class="home-shell">
     <section class="home-card">
-      <header class="lobby-status" aria-label="Player status">
-        <div class="lobby-level-card">
-          <span class="lobby-status-label">Level</span>
-          <strong id="home-level-value">1</strong>
-        </div>
-        <div class="lobby-coin-card">
-          <span class="coin-orb" aria-hidden="true"></span>
-          <strong id="home-coin-value">0</strong>
-          <span class="lobby-status-label">Coins</span>
-        </div>
-      </header>
       <div class="home-intro">
-        <p class="eyebrow" id="mode-eyebrow">Classic Mode</p>
+        <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode">
+          <span class="mode-switch-glyph" aria-hidden="true">✦</span>
+          <span><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span></span>
+        </button>
         <div class="ludo-brand" aria-hidden="true">
           <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
           <span class="brand-crown">✦</span>
         </div>
-        <h1>Lead Every Roll. Own The Board.</h1>
-        <p class="lead">
-          Choose your mode and jump in. Your selected rules follow you into every match.
-        </p>
+        <h1>Classic Board Arena</h1>
+        <p class="lead" id="mode-description">Traditional Ludo rules. Pure strategy.</p>
+        <div class="lobby-arena" aria-hidden="true">
+          <div class="arena-board">
+            <span class="arena-quadrant arena-red"></span><span class="arena-quadrant arena-green"></span><span class="arena-quadrant arena-yellow"></span><span class="arena-quadrant arena-blue"></span>
+            <span class="arena-star">✦</span>
+          </div>
+          <span class="arena-pawn pawn-blue"></span><span class="arena-pawn pawn-red"></span><span class="arena-pawn pawn-green"></span><span class="arena-pawn pawn-yellow"></span>
+        </div>
         <div class="meta-strip">
           <div class="meta-item">
             <strong>60</strong>
@@ -117,7 +124,6 @@
 
       <div class="home-actions">
         <h2>Choose Your Match</h2>
-        <p class="mode-current" id="mode-current">Rule Mode: Classic</p>
         <button class="mode-btn primary" id="play-vs-computer-btn" type="button">
           <span class="mode-title">Play Vs Computer</span>
           <span class="mode-sub">Climb levels and outplay adaptive AI</span>
@@ -127,6 +133,12 @@
           <span class="mode-sub">Local multiplayer on one device</span>
         </button>
       </div>
+      <nav class="lobby-shortcuts" aria-label="Lobby shortcuts">
+        <button class="shortcut-btn shortcut-dice" id="open-dice-shop" type="button"><span aria-hidden="true">⚄</span><strong>Dice Shop</strong></button>
+        <button class="shortcut-btn shortcut-token" id="open-token-shop" type="button"><span aria-hidden="true">♟</span><strong>Token Shop</strong></button>
+        <button class="shortcut-btn shortcut-rules" id="open-rules" type="button"><span aria-hidden="true">✦</span><strong>Rules</strong></button>
+        <button class="shortcut-btn shortcut-settings" id="open-settings" type="button"><span aria-hidden="true">⚙</span><strong>Settings</strong></button>
+      </nav>
     </section>
   </main>
 
@@ -145,15 +157,14 @@
       arena: "Arena"
     };
 
-    const menuBtn = document.getElementById("menu-btn");
     const closeBtn = document.getElementById("close-menu");
     const sideMenu = document.getElementById("side-menu");
     const backdrop = document.getElementById("menu-backdrop");
+    const sheetTitleEl = document.getElementById("sheet-title");
     const tabs = Array.from(document.querySelectorAll(".menu-tab"));
     const panels = {
       settings: document.getElementById("panel-settings"),
-      rules: document.getElementById("panel-rules"),
-      shop: document.getElementById("panel-shop")
+      rules: document.getElementById("panel-rules")
     };
 
     const bgmToggle = document.getElementById("toggle-bgm");
@@ -165,8 +176,11 @@
     const modeSwitchBtn = document.getElementById("mode-switch-btn");
     const modeSwitchValueEl = document.getElementById("mode-switch-value");
     const modeSwitchPanel = document.getElementById("mode-switch-panel");
-    const modeCurrentEl = document.getElementById("mode-current");
-    const modeEyebrowEl = document.getElementById("mode-eyebrow");
+    const closeModePanelBtn = document.getElementById("close-mode-panel");
+    const modeOverlay = document.getElementById("mode-overlay");
+    const modeDescriptionEl = document.getElementById("mode-description");
+    const openRulesBtn = document.getElementById("open-rules");
+    const openSettingsBtn = document.getElementById("open-settings");
     const modeCards = Array.from(document.querySelectorAll("[data-game-mode]"));
     const homeCoinValueEl = document.getElementById("home-coin-value");
     const homeLevelValueEl = document.getElementById("home-level-value");
@@ -174,6 +188,13 @@
     const pageParams = new URLSearchParams(window.location.search);
     let selectedGameMode = (pageParams.get("gm") || localStorage.getItem(GAME_MODE_KEY) || "classic").toLowerCase();
     if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
+    const MODE_DESCRIPTIONS = {
+      classic: "Traditional Ludo rules. Pure strategy.",
+      chaos: "Snakes, ladders, and unpredictable moves.",
+      power: "Speed, teleport, and shield tiles.",
+      battle: "Capture-focused risk and blockade tiles.",
+      arena: "Mixed event tiles and arena bonuses."
+    };
 
     function setGameMode(mode) {
       if (!MODE_LABELS[mode]) return;
@@ -181,8 +202,7 @@
       localStorage.setItem(GAME_MODE_KEY, mode);
       document.body.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
-      if (modeCurrentEl) modeCurrentEl.textContent = `Rule Mode: ${MODE_LABELS[mode]}`;
-      if (modeEyebrowEl) modeEyebrowEl.textContent = `${MODE_LABELS[mode]} Mode`;
+      if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
       modeCards.forEach(card => {
         card.classList.toggle("active", card.dataset.gameMode === mode);
       });
@@ -192,12 +212,16 @@
       if (!modeSwitchPanel) return;
       modeSwitchPanel.classList.add("show");
       modeSwitchPanel.setAttribute("aria-hidden", "false");
+      modeOverlay?.classList.add("show");
+      modeOverlay?.setAttribute("aria-hidden", "false");
     }
 
     function closeModePanel() {
       if (!modeSwitchPanel) return;
       modeSwitchPanel.classList.remove("show");
       modeSwitchPanel.setAttribute("aria-hidden", "true");
+      modeOverlay?.classList.remove("show");
+      modeOverlay?.setAttribute("aria-hidden", "true");
     }
 
     function toggleModePanel() {
@@ -236,8 +260,9 @@
       btn.classList.toggle("off", !enabled);
     }
 
-    function openMenu() {
+    function openPanel(key) {
       if (!sideMenu || !backdrop) return;
+      activateTab(key);
       sideMenu.classList.add("open");
       backdrop.classList.add("show");
       sideMenu.setAttribute("aria-hidden", "false");
@@ -262,6 +287,7 @@
       Object.keys(panels).forEach(panelKey => {
         panels[panelKey]?.classList.toggle("active", panelKey === key);
       });
+      if (sheetTitleEl) sheetTitleEl.textContent = key === "rules" ? "Rules" : "Settings";
     }
 
     tabs.forEach(tab => {
@@ -285,10 +311,13 @@
       renderToggle(sfxToggle, sfxEnabled);
     });
 
-    menuBtn?.addEventListener("click", openMenu);
     closeBtn?.addEventListener("click", closeMenu);
     backdrop?.addEventListener("click", closeMenu);
+    openRulesBtn?.addEventListener("click", () => openPanel("rules"));
+    openSettingsBtn?.addEventListener("click", () => openPanel("settings"));
     modeSwitchBtn?.addEventListener("click", toggleModePanel);
+    closeModePanelBtn?.addEventListener("click", closeModePanel);
+    modeOverlay?.addEventListener("click", closeModePanel);
     modeCards.forEach(card => {
       card.addEventListener("click", () => {
         setGameMode(card.dataset.gameMode);
@@ -301,14 +330,6 @@
         closeModePanel();
       }
     });
-    document.addEventListener("click", event => {
-      if (!modeSwitchPanel || !modeSwitchBtn) return;
-      if (!modeSwitchPanel.classList.contains("show")) return;
-      const target = event.target;
-      if (modeSwitchPanel.contains(target) || modeSwitchBtn.contains(target)) return;
-      closeModePanel();
-    });
-
     openDiceShopBtn?.addEventListener("click", () => {
       window.location.href = "dice-shop.html";
     });
