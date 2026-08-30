@@ -403,6 +403,101 @@ body.menu-open {
 .lobby-coin-card { grid-column: 2; justify-self: center; }
 .hub-back-btn { grid-column: 3; justify-self: end; }
 
+/* QA stabilization: neutralize legacy min-content sizing at phone widths. */
+.lobby-topbar {
+  display: grid !important;
+  grid-template-columns: minmax(52px, 1fr) minmax(0, auto) minmax(72px, 1fr) !important;
+  column-gap: 7px !important;
+}
+.lobby-level-card,
+.lobby-coin-card,
+.hub-back-btn {
+  min-width: 0 !important;
+  max-width: 100%;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.hub-back-btn {
+  position: relative !important;
+  display: grid !important;
+  min-width: 72px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.lobby-coin-card { max-width: 132px; }
+.lobby-coin-card strong { min-width: 0; white-space: nowrap; }
+
+.mode-switch-btn { justify-self: center !important; left: auto !important; right: auto !important; }
+
+.home-actions {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important;
+}
+.mode-btn,
+.mode-title,
+.mode-sub { min-width: 0 !important; max-width: 100%; }
+.mode-btn { width: 100% !important; }
+.mode-title { overflow-wrap: anywhere; }
+.mode-sub { overflow-wrap: break-word; }
+
+.lobby-shortcuts {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.shortcut-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden;
+}
+.shortcut-btn strong { min-width: 0; overflow-wrap: anywhere; }
+.shortcut-btn::before { content: none !important; }
+.shortcut-icon {
+  display: block;
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: var(--home-cyan);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+.shortcut-token .shortcut-icon { stroke: #f1b17a; }
+.shortcut-rules .shortcut-icon { stroke: var(--home-gold); }
+.shortcut-settings .shortcut-icon { stroke: #b4c5e8; }
+
+@media (max-width: 350px) {
+  .lobby-topbar { grid-template-columns: minmax(46px, 1fr) auto minmax(64px, 1fr) !important; column-gap: 5px !important; }
+  .hub-back-btn { min-width: 64px !important; }
+  .lobby-coin-card { max-width: 104px; }
+  .shortcut-icon { width: 20px; height: 20px; }
+}
+
+/* Absolute HUD positioning avoids legacy grid offsets at mobile widths. */
+body .lobby-topbar { display: block !important; }
+body .lobby-level-card { position: absolute !important; top: calc(9px + var(--lobby-safe-top)); left: 12px !important; }
+body .lobby-coin-card { position: absolute !important; top: calc(10px + var(--lobby-safe-top)); left: 50% !important; transform: translateX(-50%) !important; }
+body .hub-back-btn { position: absolute !important; top: calc(9px + var(--lobby-safe-top)); right: 12px !important; left: auto !important; }
+
+@media (max-width: 350px) {
+  .lobby-level-card { left: 0 !important; }
+  .hub-back-btn { right: 0 !important; }
+}
+
+/* The three HUD items deliberately share one header plane without competing for grid space. */
+.lobby-topbar { display: block !important; }
+.lobby-level-card { position: absolute; top: calc(9px + var(--lobby-safe-top)); left: 14px; }
+.lobby-coin-card { position: absolute; top: calc(10px + var(--lobby-safe-top)); left: 50%; transform: translateX(-50%); }
+.hub-back-btn { position: absolute !important; top: calc(9px + var(--lobby-safe-top)); right: 14px; }
+
+@media (max-width: 350px) {
+  .lobby-level-card { left: 8px; }
+  .hub-back-btn { right: 8px; }
+}
+
 /* -------------------------------------------------------------------------
    V1 mobile lobby polish: a single restrained visual system, rather than a
    stack of unrelated cards. The existing IDs and JavaScript remain intact.
@@ -655,6 +750,42 @@ body::before {
   .home-card { width: min(100%, 900px) !important; }
   .home-actions { max-width: 700px; width: 100%; justify-self: center; }
   .lobby-shortcuts { width: min(100%, 700px); justify-self: center; }
+}
+
+/* Consistent inline SVG system for the utility dock. */
+.shortcut-btn::before { content: none !important; }
+.shortcut-icon {
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: var(--home-cyan);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .94;
+}
+.shortcut-token .shortcut-icon { stroke: #f1b17a; }
+.shortcut-rules .shortcut-icon { stroke: var(--home-gold); }
+.shortcut-settings .shortcut-icon { stroke: #b4c5e8; }
+.shortcut-btn:hover .shortcut-icon,
+.shortcut-btn:focus-visible .shortcut-icon { filter: drop-shadow(0 0 5px color-mix(in srgb, var(--mode-accent) 45%, transparent)); }
+
+.mode-switch-btn::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 4px;
+  border-right: 1.5px solid var(--home-cyan);
+  border-bottom: 1.5px solid var(--home-cyan);
+  transform: rotate(45deg);
+  transition: transform 180ms ease;
+}
+.mode-switch-btn:hover::after,
+.mode-switch-btn:focus-visible::after { transform: translateY(2px) rotate(45deg); }
+
+@media (max-width: 350px) {
+  .shortcut-icon { width: 20px; height: 20px; }
 }
 
 .home-intro {
@@ -2514,3 +2645,74 @@ body::after {
 .lobby-level-card { grid-column: 1; justify-self: start; }
 .lobby-coin-card { grid-column: 2; justify-self: center; }
 .hub-back-btn { grid-column: 3; justify-self: end; }
+
+/* Final browser-QA overrides: these must remain after legacy responsive rules. */
+.lobby-topbar {
+  grid-template-columns: minmax(52px, 1fr) minmax(0, auto) minmax(72px, 1fr) !important;
+  column-gap: 7px !important;
+}
+.lobby-level-card,
+.lobby-coin-card,
+.hub-back-btn {
+  min-width: 0 !important;
+  max-width: 100%;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+.hub-back-btn {
+  position: relative !important;
+  display: grid !important;
+  min-width: 72px !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.lobby-coin-card { max-width: 132px; }
+.lobby-coin-card strong { min-width: 0; white-space: nowrap; }
+
+.mode-switch-btn { justify-self: center !important; left: auto !important; right: auto !important; }
+.home-actions {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important;
+}
+.mode-btn,
+.mode-title,
+.mode-sub { min-width: 0 !important; max-width: 100%; }
+.mode-btn { width: 100% !important; }
+.mode-title { overflow-wrap: anywhere; }
+.mode-sub { overflow-wrap: break-word; }
+
+.lobby-shortcuts {
+  width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+.shortcut-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden;
+}
+.shortcut-btn strong { min-width: 0; overflow-wrap: anywhere; }
+.shortcut-btn::before { content: none !important; }
+.shortcut-icon {
+  display: block;
+  width: 23px;
+  height: 23px;
+  fill: none;
+  stroke: var(--home-cyan);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: 0 0 auto;
+}
+.shortcut-token .shortcut-icon { stroke: #f1b17a; }
+.shortcut-rules .shortcut-icon { stroke: var(--home-gold); }
+.shortcut-settings .shortcut-icon { stroke: #b4c5e8; }
+
+@media (max-width: 350px) {
+  .lobby-topbar { grid-template-columns: minmax(46px, 1fr) auto minmax(64px, 1fr) !important; column-gap: 5px !important; }
+  .hub-back-btn { min-width: 64px !important; }
+  .lobby-coin-card { max-width: 104px; }
+  .shortcut-icon { width: 20px; height: 20px; }
+}
