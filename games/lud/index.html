@@ -93,11 +93,12 @@
           <span class="mode-switch-glyph" aria-hidden="true">✦</span>
           <span><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span></span>
         </button>
+        <div class="celestial-mark" aria-hidden="true"><span></span><i></i><b></b></div>
         <div class="ludo-brand" aria-hidden="true">
           <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
           <span class="brand-crown">✦</span>
         </div>
-        <h1>Classic Board Arena</h1>
+        <h1 id="mode-title">Classic Board Arena</h1>
         <p class="lead" id="mode-description">Traditional Ludo rules. Pure strategy.</p>
         <div class="lobby-arena" aria-hidden="true">
           <div class="arena-board">
@@ -179,6 +180,7 @@
     const closeModePanelBtn = document.getElementById("close-mode-panel");
     const modeOverlay = document.getElementById("mode-overlay");
     const modeDescriptionEl = document.getElementById("mode-description");
+    const modeTitleEl = document.getElementById("mode-title");
     const openRulesBtn = document.getElementById("open-rules");
     const openSettingsBtn = document.getElementById("open-settings");
     const modeCards = Array.from(document.querySelectorAll("[data-game-mode]"));
@@ -203,6 +205,7 @@
       document.body.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
       if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
+      if (modeTitleEl) modeTitleEl.textContent = `${MODE_LABELS[mode]} Board Arena`;
       modeCards.forEach(card => {
         card.classList.toggle("active", card.dataset.gameMode === mode);
       });
