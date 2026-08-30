@@ -6,6 +6,9 @@ let gameOver = false;
 let hasRolledThisTurn = false;
 let waitingForTokenMove = false;
 const LUDO_RESUME_KEY = "ludo_saved_match_v1";
+// This is deliberately session-only. It prevents pagehide from recreating a
+// snapshot after an intentional restart, next-level transition, or completed match.
+let shouldSaveResumeOnDeparture = true;
 
 const stageEl = document.querySelector(".ludo-stage");
 const boardEl = document.querySelector(".ludo-board");
@@ -74,6 +77,7 @@ const activeColors = playerCount === 2
   });
 
 function clearResumeSnapshot() {
+  shouldSaveResumeOnDeparture = false;
   localStorage.removeItem(LUDO_RESUME_KEY);
 }
 
@@ -578,6 +582,15 @@ let isPaused = false;
 let bgmWasPlayingBeforePause = false;
 
 function saveResumeSnapshot() {
+  if (!shouldSaveResumeOnDeparture || gameOver) return;
+  const resumableDiceValue = (
+    !isMoving &&
+    waitingForTokenMove &&
+    !state.players[state.currentPlayer]?.isAI &&
+    Number.isInteger(state.diceValue) &&
+    state.diceValue >= 1 &&
+    state.diceValue <= 6
+  ) ? state.diceValue : null;
   const players = state.players.map(player => {
     const tokens = player.tokens.map((pos, tokenIndex) => {
       const tokenEl = tokenEls[player.color]?.[tokenIndex];
@@ -606,6 +619,10 @@ function saveResumeSnapshot() {
     humanColor,
     currentLevel,
     currentPlayer: state.currentPlayer,
+    // A pending human token choice is logical game state. Dice-roll and token
+    // animation frames are intentionally excluded, so no visual interim state
+    // can be restored as if it were a legal board position.
+    diceValue: resumableDiceValue,
     players,
     returnUrl: window.location.href,
     savedAt: Date.now()
@@ -655,13 +672,13 @@ function maybeRestoreSavedGame() {
   let parsed = null;
   try {
     const raw = localStorage.getItem(LUDO_RESUME_KEY);
-    if (!raw) return;
+    if (!raw) return false;
     parsed = JSON.parse(raw);
   } catch {
-    return;
+    return false;
   }
 
-  if (!parsed || typeof parsed !== "object") return;
+  if (!parsed || typeof parsed !== "object") return false;
   const savedRuleMode = Object.prototype.hasOwnProperty.call(MODES, parsed.ruleMode)
     ? parsed.ruleMode
     : (Object.prototype.hasOwnProperty.call(MODES, parsed.gameMode) ? parsed.gameMode : "classic");
@@ -672,10 +689,10 @@ function maybeRestoreSavedGame() {
     parsed.humanColor !== humanColor ||
     Number(parsed.currentLevel) !== currentLevel
   ) {
-    return;
+    return false;
   }
 
-  if (!Array.isArray(parsed.players)) return;
+  if (!Array.isArray(parsed.players)) return false;
 
   state.players.forEach((player, playerIndex) => {
     const savedPlayer = parsed.players.find(p => p && p.color === player.color) || parsed.players[playerIndex];
@@ -707,10 +724,13 @@ function maybeRestoreSavedGame() {
     state.currentPlayer = savedCurrent;
   }
 
-  state.diceValue = null;
+  const savedDiceValue = Number(parsed.diceValue);
+  state.diceValue = Number.isInteger(savedDiceValue) && savedDiceValue >= 1 && savedDiceValue <= 6
+    ? savedDiceValue
+    : null;
   gameOver = false;
   isMoving = false;
-  hasRolledThisTurn = false;
+  hasRolledThisTurn = state.diceValue !== null;
   waitingForTokenMove = false;
   clearHighlights();
   activeRollMultiplier = 1;
@@ -718,6 +738,7 @@ function maybeRestoreSavedGame() {
   arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
   arenaDoubleRollColor = null;
   refreshNearWinEffects();
+  return true;
 }
 
 document.body.classList.add(`orient-${humanColor}`);
@@ -848,6 +869,11 @@ pauseRestartBtnEl?.addEventListener("click", () => {
 });
 pauseExitBtnEl?.addEventListener("click", () => {
   exitPausedMatch();
+});
+window.addEventListener("pagehide", () => {
+  // localStorage is synchronous; this is the final safety net for Back,
+  // browser navigation, refreshes, and tab/page lifecycle departure.
+  saveResumeSnapshot();
 });
 window.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
@@ -2517,8 +2543,9 @@ function togglePause() {
 }
 
 function exitPausedMatch() {
+  // Preserve the existing match before leaving; Continue remains available.
+  saveResumeSnapshot();
   setPaused(false);
-  clearResumeSnapshot();
   const query = new URLSearchParams({ gm: gameMode });
   window.location.href = `index.html?${query.toString()}`;
 }
@@ -3172,7 +3199,6 @@ function animateDiceRoll(color, onDone) {
     triggerFeedback(panel, "dice-landed", 260);
 
     if (value === 6) {
-      if (color === humanColor) playSfx("entry", 0.28);
       setTimeout(() => {
         if (gameOver) return;
         triggerFeedback(panel, "dice-six", 520);
@@ -3211,7 +3237,7 @@ function animateDiceRoll(color, onDone) {
     });
   };
 
-  setTimeout(() => showFrame(0), 70);
+  setTimeout(() => showFrame(0), 100);
 }
 
 function nextTurn(extraTurn = false) {
@@ -3592,7 +3618,7 @@ async function executeMove(move) {
   }
 }
 
-maybeRestoreSavedGame();
+const restoredSavedMatch = maybeRestoreSavedGame();
 
 // The screenshot-style bottom action is intentionally the only human dice
 // control. Corner dice are live visual cards and never start a second roll.
@@ -3612,6 +3638,9 @@ announceTurn(state.players[state.currentPlayer]);
 // A saved match may resume while an AI player owns the turn.  Restoring clears
 // transient locks by design, so explicitly restart that AI turn instead of
 // leaving the match waiting for a human-only dice click.
-if (state.players[state.currentPlayer]?.isAI) {
+if (restoredSavedMatch && state.diceValue !== null && !state.players[state.currentPlayer]?.isAI) {
+  // Resume an already-rolled human turn at the normal selectable-token step.
+  setTimeout(handleTurn, 0);
+} else if (state.players[state.currentPlayer]?.isAI) {
   setTimeout(runAITurn, 140);
 }

@@ -479,82 +479,212 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
   .skin-card > *, .skin-copy, .skin-card h3, .skin-card .effect, .skin-card .btn, .skin-card .price { min-width:0; max-width:100%; }
 }
 
-/* Skin identity map: one inexpensive animation framework, with a distinct
-   visual signature for each family of generated dice. The artwork remains
-   authoritative; these layers are presentation-only and self-cleaning. */
-.skin-card.skin-1,.preview-modal[data-skin-id="1"],.unlock-modal[data-skin-id="1"] { --shop-preview-animation:shop-prism; --shop-unlock-animation:shop-prism-unlock; }
-.skin-card.skin-2,.preview-modal[data-skin-id="2"],.unlock-modal[data-skin-id="2"] { --shop-preview-animation:shop-inferno; --shop-unlock-animation:shop-inferno-unlock; }
-.skin-card.skin-3,.preview-modal[data-skin-id="3"],.unlock-modal[data-skin-id="3"] { --shop-preview-animation:shop-frost; --shop-unlock-animation:shop-frost-unlock; }
-.skin-card.skin-4,.preview-modal[data-skin-id="4"],.unlock-modal[data-skin-id="4"] { --shop-preview-animation:shop-verdant; --shop-unlock-animation:shop-verdant-unlock; }
-.skin-card.skin-5,.preview-modal[data-skin-id="5"],.unlock-modal[data-skin-id="5"] { --shop-preview-animation:shop-storm; --shop-unlock-animation:shop-storm-unlock; }
-.skin-card.skin-6,.preview-modal[data-skin-id="6"],.unlock-modal[data-skin-id="6"] { --shop-preview-animation:shop-sovereign; --shop-unlock-animation:shop-sovereign-unlock; }
-.skin-card.skin-7,.preview-modal[data-skin-id="7"],.unlock-modal[data-skin-id="7"] { --shop-preview-animation:shop-dragon; --shop-unlock-animation:shop-dragon-unlock; }
-.skin-card.skin-8,.preview-modal[data-skin-id="8"],.unlock-modal[data-skin-id="8"] { --shop-preview-animation:shop-nebula; --shop-unlock-animation:shop-nebula-unlock; }
-.skin-card.skin-9,.preview-modal[data-skin-id="9"],.unlock-modal[data-skin-id="9"] { --shop-preview-animation:shop-arcane; --shop-unlock-animation:shop-arcane-unlock; }
-.skin-card.skin-10,.preview-modal[data-skin-id="10"],.unlock-modal[data-skin-id="10"] { --shop-preview-animation:shop-shadow; --shop-unlock-animation:shop-shadow-unlock; }
-.skin-card.skin-11,.preview-modal[data-skin-id="11"],.unlock-modal[data-skin-id="11"] { --shop-preview-animation:shop-chrono; --shop-unlock-animation:shop-chrono-unlock; }
-.skin-card.skin-12,.preview-modal[data-skin-id="12"],.unlock-modal[data-skin-id="12"] { --shop-preview-animation:shop-tide; --shop-unlock-animation:shop-tide-unlock; }
-.skin-card.skin-13,.preview-modal[data-skin-id="13"],.unlock-modal[data-skin-id="13"] { --shop-preview-animation:shop-celestia; --shop-unlock-animation:shop-celestia-unlock; }
-.skin-card.skin-14,.preview-modal[data-skin-id="14"],.unlock-modal[data-skin-id="14"] { --shop-preview-animation:shop-hellforged; --shop-unlock-animation:shop-hellforged-unlock; }
-.skin-card.skin-15,.preview-modal[data-skin-id="15"],.unlock-modal[data-skin-id="15"] { --shop-preview-animation:shop-primal; --shop-unlock-animation:shop-primal-unlock; }
-.skin-card.skin-16,.preview-modal[data-skin-id="16"],.unlock-modal[data-skin-id="16"] { --shop-preview-animation:shop-void; --shop-unlock-animation:shop-void-unlock; }
-.skin-card.skin-17,.preview-modal[data-skin-id="17"],.unlock-modal[data-skin-id="17"] { --shop-preview-animation:shop-champion; --shop-unlock-animation:shop-champion-unlock; }
-.skin-card.skin-18,.preview-modal[data-skin-id="18"],.unlock-modal[data-skin-id="18"] { --shop-preview-animation:shop-divine; --shop-unlock-animation:shop-divine-unlock; }
-.skin-card.skin-19,.preview-modal[data-skin-id="19"],.unlock-modal[data-skin-id="19"] { --shop-preview-animation:shop-starcore; --shop-unlock-animation:shop-starcore-unlock; }
-.skin-card.skin-20,.preview-modal[data-skin-id="20"],.unlock-modal[data-skin-id="20"] { --shop-preview-animation:shop-eternity; --shop-unlock-animation:shop-eternity-unlock; }
-.skin-card.is-visible .skin-art::before,
-.preview-modal.previewing .preview-art::before { animation:var(--shop-preview-animation,skin-breathe) 900ms ease-out both; }
-.unlock-modal.unlocking .unlock-art::before { animation:var(--shop-unlock-animation,skin-breathe) 1250ms ease-out both; }
-
-@keyframes shop-prism { 0%{opacity:0;transform:translateX(-32%) scale(.86)} 48%{opacity:.8;transform:translateX(4%) scale(1.05)} 100%{opacity:0;transform:translateX(30%) scale(1.08)} }
-@keyframes shop-prism-unlock { 0%{opacity:0;transform:scale(.62)} 52%{opacity:.9;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-inferno { 0%{opacity:.05;transform:scale(.82)} 42%{opacity:.9;transform:scale(1.08)} 64%{opacity:.35;transform:scale(.96)} 100%{opacity:0;transform:scale(1.14)} }
-@keyframes shop-inferno-unlock { 0%{opacity:0;transform:scale(.58)} 66%{opacity:1;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.04)} }
-@keyframes shop-frost { 0%{opacity:0;transform:scale(.9)} 55%{opacity:.72;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-frost-unlock { 0%{opacity:0;transform:scale(1.18)} 52%{opacity:.82;transform:scale(.94)} 100%{opacity:0;transform:scale(1)} }
-@keyframes shop-verdant { 0%{opacity:0;transform:translateY(8%) scale(.9)} 50%{opacity:.7;transform:translateY(-2%) scale(1.05)} 100%{opacity:0;transform:translateY(-9%) scale(1.02)} }
-@keyframes shop-verdant-unlock { 0%{opacity:0;transform:scale(.72)} 60%{opacity:.72;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.16)} }
-@keyframes shop-storm { 0%,100%{opacity:0;transform:scale(.94)} 18%,56%{opacity:.9;transform:scale(1.08)} }
-@keyframes shop-storm-unlock { 0%,100%{opacity:0;transform:scale(.78)} 22%,68%{opacity:.92;transform:scale(1.1)} }
-@keyframes shop-sovereign { 0%{opacity:0;transform:translateX(-24%)} 50%{opacity:.68;transform:translateX(0)} 100%{opacity:0;transform:translateX(24%)} }
-@keyframes shop-sovereign-unlock { 0%{opacity:0;transform:scale(.84)} 55%{opacity:.88;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.2)} }
-@keyframes shop-dragon { 0%{opacity:0;transform:scale(.8)} 38%{opacity:.88;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.18)} }
-@keyframes shop-dragon-unlock { 0%{opacity:0;transform:scale(.55)} 58%{opacity:1;transform:scale(1.15)} 100%{opacity:0;transform:scale(1.03)} }
-@keyframes shop-nebula { 0%{opacity:0;transform:scale(.7) rotate(-8deg)} 52%{opacity:.65;transform:scale(1.08) rotate(3deg)} 100%{opacity:0;transform:scale(1.18) rotate(8deg)} }
-@keyframes shop-nebula-unlock { 0%{opacity:0;transform:scale(.42)} 62%{opacity:.9;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-arcane { 0%{opacity:0;transform:rotate(-22deg) scale(.8)} 55%{opacity:.72;transform:rotate(12deg) scale(1.06)} 100%{opacity:0;transform:rotate(0) scale(1.1)} }
-@keyframes shop-arcane-unlock { 0%{opacity:0;transform:rotate(-35deg) scale(.62)} 65%{opacity:.9;transform:rotate(18deg) scale(1.08)} 100%{opacity:0;transform:rotate(0) scale(1)} }
-@keyframes shop-shadow { 0%{opacity:0;transform:scale(1.16)} 52%{opacity:.58;transform:scale(.88)} 100%{opacity:0;transform:scale(1.04)} }
-@keyframes shop-shadow-unlock { 0%{opacity:0;transform:scale(1.22)} 58%{opacity:.7;transform:scale(.84)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-chrono { 0%{opacity:0;transform:rotate(0) scale(.76)} 55%{opacity:.72;transform:rotate(180deg) scale(1.06)} 100%{opacity:0;transform:rotate(360deg) scale(1)} }
-@keyframes shop-chrono-unlock { 0%{opacity:0;transform:rotate(-90deg) scale(.58)} 68%{opacity:.9;transform:rotate(260deg) scale(1.1)} 100%{opacity:0;transform:rotate(360deg) scale(1)} }
-@keyframes shop-tide { 0%{opacity:0;transform:scale(.72)} 50%{opacity:.68;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.26)} }
-@keyframes shop-tide-unlock { 0%{opacity:0;transform:scale(.5)} 58%{opacity:.88;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.04)} }
-@keyframes shop-celestia { 0%{opacity:0;transform:scale(.86)} 48%{opacity:.76;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.2)} }
-@keyframes shop-celestia-unlock { 0%{opacity:0;transform:scale(.56)} 54%{opacity:1;transform:scale(1.18)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-hellforged { 0%{opacity:0;transform:scale(.82)} 44%{opacity:.9;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.16)} }
-@keyframes shop-hellforged-unlock { 0%{opacity:0;transform:scale(.5)} 62%{opacity:1;transform:scale(1.16)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-primal { 0%{opacity:0;transform:scale(.8)} 25%{opacity:.6;transform:scale(1.02)} 52%{opacity:.88;transform:scale(.94)} 78%{opacity:.6;transform:scale(1.08)} 100%{opacity:0;transform:scale(1)} }
-@keyframes shop-primal-unlock { 0%{opacity:0;transform:scale(.54)} 30%{opacity:.65;transform:scale(.94)} 62%{opacity:1;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-void { 0%{opacity:0;transform:scale(.55)} 50%{opacity:.66;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.3)} }
-@keyframes shop-void-unlock { 0%{opacity:0;transform:scale(1.24)} 56%{opacity:.82;transform:scale(.74)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-champion { 0%{opacity:0;transform:scale(.72)} 48%{opacity:.82;transform:scale(1.16)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-champion-unlock { 0%{opacity:0;transform:translateY(8%) scale(.6)} 58%{opacity:1;transform:translateY(-4%) scale(1.16)} 100%{opacity:0;transform:translateY(0) scale(1)} }
-@keyframes shop-divine { 0%{opacity:0;transform:translateX(-18%) scale(.9)} 50%{opacity:.8;transform:translateX(0) scale(1.1)} 100%{opacity:0;transform:translateX(18%) scale(1.16)} }
-@keyframes shop-divine-unlock { 0%{opacity:0;transform:scale(.64)} 54%{opacity:1;transform:scale(1.2)} 100%{opacity:0;transform:scale(1.02)} }
-@keyframes shop-starcore { 0%{opacity:0;transform:scale(.5)} 50%{opacity:.9;transform:scale(1.08)} 100%{opacity:0;transform:scale(.74)} }
-@keyframes shop-starcore-unlock { 0%{opacity:0;transform:scale(.34)} 60%{opacity:1;transform:scale(1.24)} 100%{opacity:0;transform:scale(1.04)} }
-@keyframes shop-eternity { 0%{opacity:0;transform:scale(.62)} 30%{opacity:.52;transform:scale(.92)} 62%{opacity:.9;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.06)} }
-@keyframes shop-eternity-unlock { 0%{opacity:0;transform:scale(.3)} 38%{opacity:.58;transform:scale(.84)} 70%{opacity:1;transform:scale(1.24)} 100%{opacity:0;transform:scale(1.04)} }
-
-@media (prefers-reduced-motion:reduce) {
-  .skin-card.is-visible .skin-art::before,
-  .preview-modal.previewing .preview-art::before,
-  .unlock-modal.unlocking .unlock-art::before { animation:none!important; }
-}
-
 @media (max-width:400px) {
   .shop-title { position:absolute; left:72px; right:8px; top:8px; width:auto; grid-column:auto; grid-row:auto; padding:0!important; }
   .shop-title h1 { white-space:normal!important; overflow:visible!important; text-overflow:clip!important; font-size:clamp(18px,6vw,21px); line-height:1.12; }
   .skin-card { width:60vw!important; max-width:60vw!important; }
+}
+
+/* Targeted collection containment: cards use ordinary flex flow so artwork,
+   names, effects, price, and both actions always remain within one surface. */
+.skin-row {
+  align-items:stretch;
+  grid-auto-rows:max-content;
+}
+
+.skin-card {
+  position:relative;
+  min-width:0;
+  min-height:390px;
+  height:auto;
+  padding:clamp(12px,1.4vw,18px);
+  gap:10px;
+  overflow:hidden;
+}
+
+.skin-art {
+  flex:0 0 auto;
+  width:min(100%,190px);
+  min-height:132px;
+  aspect-ratio:1;
+}
+
+.skin-copy {
+  display:flex;
+  width:100%;
+  min-width:0;
+  flex:1 1 auto;
+  flex-direction:column;
+  gap:6px;
+}
+
+.skin-card h3,
+.skin-card .effect,
+.skin-card .price,
+.skin-card .btn {
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+
+.skin-card h3 {
+  min-height:2.45em;
+  margin:0;
+  line-height:1.18;
+  text-align:center;
+}
+
+.skin-card .effect {
+  min-height:4.1em;
+  margin:0;
+  line-height:1.35;
+}
+
+.skin-card .btn {
+  flex:0 0 auto;
+  min-height:44px;
+}
+
+.skin-card .price {
+  flex:0 0 auto;
+  min-height:24px;
+  line-height:1.2;
+}
+
+@media (max-width:900px) {
+  .skin-row { height:auto; min-height:0; max-height:none; }
+  .skin-card { min-height:360px; }
+}
+
+@media (max-width:560px) {
+  .shop-stage { align-items:start; overflow:visible!important; }
+  .skin-row { display:grid!important; grid-template-columns:minmax(0,1fr)!important; overflow:visible!important; }
+  .skin-card {
+    display:flex!important;
+    width:100%!important;
+    max-width:none!important;
+    min-height:0;
+    padding:14px;
+  }
+  .skin-art { width:min(100%,150px); min-height:128px; margin-inline:auto; }
+  .skin-copy { min-height:0; }
+  .skin-card h3 { min-height:0; font-size:clamp(18px,5.2vw,22px); }
+  .skin-card .effect { min-height:0; font-size:clamp(12px,3.7vw,14px); }
+  .skin-card .btn,.skin-card .price { grid-column:auto!important; }
+}
+
+/* Reusable cosmetic framework. The generated dice image remains the only dice
+   artwork; these two lightweight CSS layers communicate each material identity. */
+.skin-art,.preview-art,.unlock-art {
+  --fx-frame:radial-gradient(circle,rgba(124,229,255,.42),transparent 66%);
+  --fx-detail:linear-gradient(115deg,transparent 28%,rgba(255,255,255,.68) 48%,transparent 67%);
+  --fx-idle:fx-prism-idle;
+  --fx-unlock:fx-crystallize;
+  --fx-clip:inset(0 round 24%);
+  overflow:hidden;
+}
+.skin-art::before,.preview-art::before,.unlock-art::before {
+  inset:-16%!important;
+  background:var(--fx-frame)!important;
+  clip-path:var(--fx-clip);
+  opacity:.18!important;
+  filter:saturate(1.1);
+}
+.skin-art::after,.preview-art::after,.unlock-art::after {
+  inset:4%!important;
+  background:var(--fx-detail)!important;
+  clip-path:var(--fx-clip);
+  opacity:0!important;
+  translate:0!important;
+}
+.skin-card.is-visible .skin-art::before {
+  animation:var(--fx-idle) var(--fx-idle-duration,4.6s) ease-in-out infinite!important;
+}
+.skin-card.is-visible .skin-art::after {
+  animation:fx-detail-idle var(--fx-idle-duration,4.6s) ease-in-out infinite!important;
+}
+.skin-card:hover .skin-art::before,.skin-card:focus-within .skin-art::before {
+  animation:var(--fx-idle) 1.45s cubic-bezier(.22,.8,.2,1) infinite!important;
+  opacity:.34!important;
+}
+.preview-modal.previewing .preview-art::before {
+  animation:var(--fx-idle) 1.45s cubic-bezier(.16,.78,.2,1) both!important;
+  opacity:.62!important;
+}
+.preview-modal.previewing .preview-art::after {
+  animation:fx-detail-preview 1.45s ease-out both!important;
+}
+.unlock-modal.unlocking .unlock-art::before {
+  animation:var(--fx-unlock) 1.8s cubic-bezier(.16,.8,.2,1) both!important;
+  opacity:.78!important;
+}
+.unlock-modal.unlocking .unlock-art::after {
+  animation:fx-detail-unlock 1.8s ease-out both!important;
+}
+
+/* 20 material profiles: gradients, silhouettes, and motion are intentionally
+   distinct while the same small pseudo-element framework stays performant. */
+.skin-1,.preview-modal[data-skin-id="1"],.unlock-modal[data-skin-id="1"] { --fx-frame:conic-gradient(from 200deg,rgba(77,226,255,.06),rgba(255,112,220,.5),rgba(255,232,110,.42),rgba(77,226,255,.06)); --fx-detail:linear-gradient(125deg,transparent 28%,rgba(255,255,255,.92) 49%,rgba(111,206,255,.2) 54%,transparent 67%); --fx-idle:fx-prism-idle; --fx-unlock:fx-crystallize; }
+.skin-2,.preview-modal[data-skin-id="2"],.unlock-modal[data-skin-id="2"] { --fx-frame:radial-gradient(circle at 48% 66%,rgba(255,190,56,.72),rgba(222,57,17,.48) 34%,rgba(35,12,8,.16) 68%); --fx-detail:repeating-linear-gradient(132deg,transparent 0 11%,rgba(255,209,89,.7) 12% 14%,transparent 15% 24%); --fx-idle:fx-inferno-idle; --fx-unlock:fx-forge; --fx-clip:inset(4% round 34%); }
+.skin-3,.preview-modal[data-skin-id="3"],.unlock-modal[data-skin-id="3"] { --fx-frame:radial-gradient(circle,rgba(226,252,255,.72),rgba(104,218,255,.35) 44%,transparent 69%); --fx-detail:repeating-linear-gradient(45deg,transparent 0 16%,rgba(236,253,255,.78) 17% 19%,transparent 20% 34%); --fx-idle:fx-frost-idle; --fx-unlock:fx-crystallize; --fx-clip:polygon(50% 0,94% 20%,100% 66%,66% 100%,14% 88%,0 34%); }
+.skin-4,.preview-modal[data-skin-id="4"],.unlock-modal[data-skin-id="4"] { --fx-frame:radial-gradient(circle at 40% 70%,rgba(127,238,106,.56),rgba(32,127,62,.3) 47%,transparent 70%); --fx-detail:repeating-radial-gradient(circle at 50% 110%,transparent 0 10%,rgba(191,255,135,.56) 11% 13%,transparent 14% 24%); --fx-idle:fx-verdant-idle; --fx-unlock:fx-grow; --fx-clip:inset(2% round 42% 18%); }
+.skin-5,.preview-modal[data-skin-id="5"],.unlock-modal[data-skin-id="5"] { --fx-frame:radial-gradient(circle,rgba(120,194,255,.28),rgba(96,84,255,.42) 48%,transparent 71%); --fx-detail:linear-gradient(150deg,transparent 30%,rgba(236,255,255,.94) 45% 48%,transparent 51%),linear-gradient(35deg,transparent 47%,rgba(138,203,255,.8) 49% 52%,transparent 54%); --fx-idle:fx-storm-idle; --fx-unlock:fx-charge; --fx-clip:inset(0 round 18%); }
+.skin-6,.preview-modal[data-skin-id="6"],.unlock-modal[data-skin-id="6"] { --fx-frame:linear-gradient(120deg,rgba(89,54,8,.2),rgba(255,220,104,.7),rgba(77,120,255,.34),rgba(89,54,8,.2)); --fx-detail:linear-gradient(105deg,transparent 24%,rgba(255,249,203,.92) 48%,transparent 70%); --fx-idle:fx-gold-idle; --fx-unlock:fx-gild; }
+.skin-7,.preview-modal[data-skin-id="7"],.unlock-modal[data-skin-id="7"] { --fx-frame:radial-gradient(circle at 52% 70%,rgba(255,90,37,.66),rgba(83,15,10,.36) 46%,transparent 71%); --fx-detail:repeating-radial-gradient(ellipse at 50% 100%,transparent 0 11%,rgba(255,177,76,.58) 12% 14%,transparent 15% 24%); --fx-idle:fx-dragon-idle; --fx-unlock:fx-forge; --fx-clip:inset(1% round 30% 18%); }
+.skin-8,.preview-modal[data-skin-id="8"],.unlock-modal[data-skin-id="8"] { --fx-frame:radial-gradient(circle at 27% 68%,rgba(119,84,255,.56),transparent 40%),radial-gradient(circle at 75% 30%,rgba(72,220,255,.46),transparent 42%),rgba(17,11,62,.25); --fx-detail:radial-gradient(circle at 25% 30%,rgba(255,255,255,.9) 0 2%,transparent 3%),radial-gradient(circle at 72% 64%,rgba(255,255,255,.75) 0 1.5%,transparent 2.5%); --fx-idle:fx-nebula-idle; --fx-unlock:fx-coalesce; --fx-clip:circle(50% at 50% 50%); }
+.skin-9,.preview-modal[data-skin-id="9"],.unlock-modal[data-skin-id="9"] { --fx-frame:repeating-radial-gradient(circle,rgba(199,129,255,.3) 0 2%,transparent 3% 12%); --fx-detail:conic-gradient(from 0deg,transparent 0 10%,rgba(225,180,255,.78) 11% 13%,transparent 14% 24%); --fx-idle:fx-arcane-idle; --fx-unlock:fx-materialize; --fx-clip:circle(48% at 50% 50%); }
+.skin-10,.preview-modal[data-skin-id="10"],.unlock-modal[data-skin-id="10"] { --fx-frame:radial-gradient(circle,rgba(217,34,70,.56),rgba(17,5,19,.48) 48%,transparent 72%); --fx-detail:radial-gradient(ellipse at 50% 96%,rgba(0,0,0,.86),transparent 56%); --fx-idle:fx-shadow-idle; --fx-unlock:fx-condense; --fx-clip:inset(4% round 48%); }
+.skin-11,.preview-modal[data-skin-id="11"],.unlock-modal[data-skin-id="11"] { --fx-frame:conic-gradient(from 0deg,transparent 0 8%,rgba(255,211,104,.54) 9% 12%,transparent 13% 25%); --fx-detail:repeating-radial-gradient(circle,transparent 0 17%,rgba(255,239,170,.58) 18% 20%,transparent 21% 32%); --fx-idle:fx-chrono-idle; --fx-unlock:fx-rewind; --fx-clip:circle(49% at 50% 50%); }
+.skin-12,.preview-modal[data-skin-id="12"],.unlock-modal[data-skin-id="12"] { --fx-frame:radial-gradient(ellipse at 50% 94%,rgba(45,227,255,.66),rgba(5,87,151,.35) 47%,transparent 72%); --fx-detail:repeating-radial-gradient(ellipse at 50% 110%,transparent 0 15%,rgba(172,249,255,.64) 16% 18%,transparent 19% 29%); --fx-idle:fx-tide-idle; --fx-unlock:fx-tideform; --fx-clip:ellipse(49% 42% at 50% 53%); }
+.skin-13,.preview-modal[data-skin-id="13"],.unlock-modal[data-skin-id="13"] { --fx-frame:radial-gradient(circle,rgba(255,250,209,.72),rgba(255,207,78,.34) 46%,transparent 72%); --fx-detail:linear-gradient(90deg,transparent 28%,rgba(255,255,238,.9) 50%,transparent 72%); --fx-idle:fx-celestia-idle; --fx-unlock:fx-materialize; }
+.skin-14,.preview-modal[data-skin-id="14"],.unlock-modal[data-skin-id="14"] { --fx-frame:radial-gradient(circle at 50% 65%,rgba(255,45,24,.7),rgba(82,8,10,.43) 42%,transparent 70%); --fx-detail:repeating-linear-gradient(60deg,transparent 0 14%,rgba(255,105,65,.64) 15% 17%,transparent 18% 28%); --fx-idle:fx-hellforged-idle; --fx-unlock:fx-forge; --fx-clip:inset(4% round 22%); }
+.skin-15,.preview-modal[data-skin-id="15"],.unlock-modal[data-skin-id="15"] { --fx-frame:conic-gradient(from 0deg,rgba(116,76,35,.55),rgba(255,96,37,.56),rgba(158,243,255,.56),rgba(155,130,255,.6),rgba(116,76,35,.55)); --fx-detail:linear-gradient(45deg,transparent 40%,rgba(255,255,255,.78) 48% 51%,transparent 59%); --fx-idle:fx-primal-idle; --fx-unlock:fx-converge; --fx-clip:circle(50% at 50% 50%); }
+.skin-16,.preview-modal[data-skin-id="16"],.unlock-modal[data-skin-id="16"] { --fx-frame:radial-gradient(circle,rgba(12,4,26,.84) 0 23%,rgba(108,48,173,.52) 28%,rgba(9,2,28,.18) 62%,transparent 72%); --fx-detail:radial-gradient(circle,transparent 0 36%,rgba(193,119,255,.55) 37% 39%,transparent 40%); --fx-idle:fx-void-idle; --fx-unlock:fx-condense; --fx-clip:circle(50% at 50% 50%); }
+.skin-17,.preview-modal[data-skin-id="17"],.unlock-modal[data-skin-id="17"] { --fx-frame:radial-gradient(circle at 50% 38%,rgba(255,234,133,.74),rgba(217,157,33,.32) 47%,transparent 72%); --fx-detail:conic-gradient(from 215deg,transparent 0 39%,rgba(255,250,205,.86) 40% 46%,transparent 47% 100%); --fx-idle:fx-champion-idle; --fx-unlock:fx-gild; }
+.skin-18,.preview-modal[data-skin-id="18"],.unlock-modal[data-skin-id="18"] { --fx-frame:linear-gradient(145deg,rgba(255,246,196,.46),rgba(255,188,73,.58),rgba(111,79,198,.38)); --fx-detail:repeating-linear-gradient(90deg,transparent 0 17%,rgba(255,246,191,.76) 18% 20%,transparent 21% 33%); --fx-idle:fx-divine-idle; --fx-unlock:fx-forge; }
+.skin-19,.preview-modal[data-skin-id="19"],.unlock-modal[data-skin-id="19"] { --fx-frame:radial-gradient(circle,rgba(255,255,234,.86) 0 7%,rgba(255,211,85,.57) 20%,rgba(253,109,50,.24) 43%,transparent 71%); --fx-detail:radial-gradient(circle at 28% 31%,rgba(255,255,255,.9) 0 2%,transparent 3%),radial-gradient(circle at 71% 68%,rgba(255,255,255,.8) 0 1.4%,transparent 2.5%); --fx-idle:fx-starcore-idle; --fx-unlock:fx-coalesce; --fx-clip:circle(49% at 50% 50%); }
+.skin-20,.preview-modal[data-skin-id="20"],.unlock-modal[data-skin-id="20"] { --fx-frame:radial-gradient(circle at 50% 88%,rgba(255,88,39,.52),transparent 34%),radial-gradient(circle at 50% 44%,rgba(255,246,189,.56),transparent 45%),radial-gradient(circle at 50% 22%,rgba(128,133,255,.5),transparent 46%); --fx-detail:radial-gradient(circle at 24% 29%,rgba(255,255,255,.94) 0 1.6%,transparent 2.5%),radial-gradient(circle at 74% 68%,rgba(255,255,255,.85) 0 1.4%,transparent 2.5%); --fx-idle:fx-eternity-idle; --fx-unlock:fx-eternity-form; --fx-idle-duration:5s; --fx-clip:circle(50% at 50% 50%); }
+
+@keyframes fx-detail-idle { 0%,100%{opacity:0;transform:translateX(-16%)} 42%{opacity:.2} 55%{opacity:.08;transform:translateX(16%)} }
+@keyframes fx-detail-preview { 0%{opacity:0;transform:scale(.78)} 34%{opacity:.65} 72%{opacity:.22;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes fx-detail-unlock { 0%{opacity:0;transform:scale(.45)} 56%{opacity:.78;transform:scale(1.08)} 100%{opacity:0;transform:scale(1.28)} }
+@keyframes fx-prism-idle { 0%,100%{transform:translateX(-5%) scale(.96);opacity:.13} 50%{transform:translateX(5%) scale(1.04);opacity:.3} }
+@keyframes fx-inferno-idle { 0%,100%{transform:scale(.94);opacity:.14} 48%{transform:scale(1.07);opacity:.36} 62%{transform:scale(.98);opacity:.2} }
+@keyframes fx-frost-idle { 0%,100%{transform:scale(.96);opacity:.14} 50%{transform:scale(1.04);opacity:.31} }
+@keyframes fx-verdant-idle { 0%,100%{transform:translateY(5%) scale(.96);opacity:.12} 50%{transform:translateY(-4%) scale(1.03);opacity:.3} }
+@keyframes fx-storm-idle { 0%,100%{transform:scale(.95);opacity:.08} 16%,52%{transform:scale(1.06);opacity:.36} }
+@keyframes fx-gold-idle { 0%,100%{transform:translateX(-12%);opacity:.1} 50%{transform:translateX(12%);opacity:.34} }
+@keyframes fx-dragon-idle { 0%,100%{transform:scale(.94);opacity:.12} 46%{transform:scale(1.06);opacity:.35} 64%{transform:scale(.99);opacity:.18} }
+@keyframes fx-nebula-idle { 0%,100%{transform:scale(.94);opacity:.12} 50%{transform:scale(1.1);opacity:.32} }
+@keyframes fx-arcane-idle { 0%,100%{transform:scale(.9);opacity:.1} 50%{transform:scale(1.05);opacity:.31} }
+@keyframes fx-shadow-idle { 0%,100%{transform:scale(1.06);opacity:.12} 52%{transform:scale(.9);opacity:.3} }
+@keyframes fx-chrono-idle { 0%,100%{transform:scale(.9);opacity:.1} 50%{transform:scale(1.06);opacity:.3} }
+@keyframes fx-tide-idle { 0%,100%{transform:translateY(6%) scale(.93);opacity:.1} 50%{transform:translateY(-3%) scale(1.07);opacity:.32} }
+@keyframes fx-celestia-idle { 0%,100%{transform:scale(.94);opacity:.1} 50%{transform:scale(1.08);opacity:.3} }
+@keyframes fx-hellforged-idle { 0%,100%{transform:scale(.94);opacity:.1} 42%{transform:scale(1.08);opacity:.36} 64%{transform:scale(.98);opacity:.18} }
+@keyframes fx-primal-idle { 0%,100%{transform:scale(.93);opacity:.1} 25%{transform:scale(1.02);opacity:.24} 52%{transform:scale(.96);opacity:.32} 76%{transform:scale(1.06);opacity:.22} }
+@keyframes fx-void-idle { 0%,100%{transform:scale(1.1);opacity:.1} 52%{transform:scale(.84);opacity:.3} }
+@keyframes fx-champion-idle { 0%,100%{transform:translateY(4%) scale(.95);opacity:.1} 50%{transform:translateY(-3%) scale(1.07);opacity:.32} }
+@keyframes fx-divine-idle { 0%,100%{transform:translateX(-7%) scale(.94);opacity:.1} 50%{transform:translateX(7%) scale(1.07);opacity:.32} }
+@keyframes fx-starcore-idle { 0%,100%{transform:scale(.76);opacity:.1} 50%{transform:scale(1.1);opacity:.38} }
+@keyframes fx-eternity-idle { 0%,100%{transform:scale(.92);opacity:.1} 32%{transform:scale(1.02);opacity:.2} 64%{transform:scale(1.1);opacity:.32} }
+@keyframes fx-crystallize { 0%{transform:scale(.52);opacity:0} 34%{transform:scale(.84);opacity:.5} 68%{transform:scale(1.1);opacity:.8} 100%{transform:scale(1);opacity:.12} }
+@keyframes fx-forge { 0%{transform:scale(.62);opacity:0} 38%{transform:scale(.98);opacity:.82} 60%{transform:scale(1.08);opacity:.54} 100%{transform:scale(1);opacity:.14} }
+@keyframes fx-grow { 0%{transform:translateY(22%) scale(.55);opacity:0} 58%{transform:translateY(-2%) scale(1.08);opacity:.72} 100%{transform:translateY(0) scale(1);opacity:.15} }
+@keyframes fx-charge { 0%,100%{transform:scale(.82);opacity:0} 26%,64%{transform:scale(1.1);opacity:.85} }
+@keyframes fx-gild { 0%{transform:translateX(-45%);opacity:0} 52%{transform:translateX(0);opacity:.78} 100%{transform:translateX(38%);opacity:.12} }
+@keyframes fx-coalesce { 0%{transform:scale(.38);opacity:0} 62%{transform:scale(1.13);opacity:.78} 100%{transform:scale(1);opacity:.14} }
+@keyframes fx-materialize { 0%{transform:scale(.7);opacity:0} 50%{transform:scale(1.1);opacity:.78} 100%{transform:scale(1);opacity:.15} }
+@keyframes fx-condense { 0%{transform:scale(1.26);opacity:0} 56%{transform:scale(.78);opacity:.72} 100%{transform:scale(1);opacity:.12} }
+@keyframes fx-rewind { 0%{transform:scale(.62);opacity:0} 45%{transform:scale(1.12);opacity:.72} 70%{transform:scale(.92);opacity:.6} 100%{transform:scale(1);opacity:.14} }
+@keyframes fx-tideform { 0%{transform:translateY(25%) scale(.56);opacity:0} 58%{transform:translateY(-5%) scale(1.12);opacity:.76} 100%{transform:translateY(0) scale(1);opacity:.12} }
+@keyframes fx-converge { 0%{transform:scale(.48);opacity:0} 32%{transform:scale(.92);opacity:.5} 68%{transform:scale(1.15);opacity:.84} 100%{transform:scale(1);opacity:.14} }
+@keyframes fx-eternity-form { 0%{transform:scale(.28);opacity:0} 24%{transform:scale(.7);opacity:.32} 58%{transform:scale(1.14);opacity:.84} 100%{transform:scale(1);opacity:.16} }
+
+@media (prefers-reduced-motion:reduce) {
+  .skin-card.is-visible .skin-art::before,.skin-card.is-visible .skin-art::after,
+  .preview-modal.previewing .preview-art::before,.preview-modal.previewing .preview-art::after,
+  .unlock-modal.unlocking .unlock-art::before,.unlock-modal.unlocking .unlock-art::after { animation:none!important; }
 }

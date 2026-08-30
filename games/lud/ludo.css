@@ -18,7 +18,7 @@
   --dice-board-gap: clamp(7px, 2vw, 13px);
   /* The generated pawn art has transparent space below its visible base.
      This board-relative shift aligns that visible base to the real cell centre. */
-  --token-contact-shift: 11%;
+  --token-contact-shift: 17%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -305,6 +305,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   cursor: pointer;
   pointer-events: auto;
   transform-origin: center bottom;
+  touch-action: manipulation;
 }
 
 /* A home pawn is geometrically centered in its authoritative circle. */
@@ -440,31 +441,159 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 
 .cell.move-target::after,
 .token-slot.move-target::after {
-  content: "";
+  content: none;
   position: absolute;
   /* Board < selection ring < pawn artwork. */
   z-index: 34;
   left: 50%;
   top: calc(50% + var(--token-contact-shift));
-   width: 64%;
+   width: 62%;
    aspect-ratio: 1;
-   border: max(2px, .2vmin) solid rgba(255, 239, 151, .98);
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 243, 169, .44) 0 26%, rgba(255, 210, 67, .2) 50%, rgba(255, 210, 67, .04) 72%);
-   box-shadow: 0 0 0 1px rgba(94, 59, 3, .36), 0 0 13px rgba(255, 210, 67, .84);
+   border: max(2px, .24vmin) solid rgba(4, 8, 12, .98);
+   border-radius: 999px;
+   background: radial-gradient(circle, rgba(255,255,255,.12) 0 32%, rgba(5, 9, 14, .58) 35% 54%, rgba(5, 9, 14, 0) 57%);
+   box-shadow: 0 0 0 max(1px, .12vmin) rgba(255,255,255,.92), 0 0 0 max(3px, .32vmin) rgba(4,8,12,.88), 0 3px 8px rgba(0,0,0,.42);
   pointer-events: none;
   translate: -50% -50%;
   animation: cell-selection-pulse 1.2s ease-in-out infinite;
 }
 
+/* The selection visual follows the token's own interactive wrapper. This keeps
+   the whole visible pawn and the marker beneath it in one legal touch target,
+   even where generated artwork extends outside the cell-sized wrapper. */
+.token.selectable-gold::before,
+.token.selectable-black::before,
+.token.selectable-single::before {
+  content:"" !important;
+  display:block !important;
+  position:absolute;
+  z-index:0;
+  left:50%;
+  top:50%;
+  width:64%;
+  aspect-ratio:1;
+  border:max(2px,.24vmin) solid rgba(255,247,179,.98);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.2) 0 31%,rgba(255,211,74,.42) 34% 54%,rgba(255,211,74,0) 58%);
+  box-shadow:0 0 0 max(1px,.12vmin) rgba(32,23,3,.72),0 0 0 max(3px,.32vmin) rgba(255,244,158,.9),0 3px 9px rgba(0,0,0,.34);
+  pointer-events:auto;
+  translate:-50% -50%;
+  animation:cell-selection-pulse 1.2s ease-in-out infinite;
+}
+
+.cell > .token.selectable-gold::before,
+.cell > .token.selectable-black::before,
+.cell > .token.selectable-single::before {
+  top:100%;
+  width:62%;
+  border-color:rgba(4,8,12,.98);
+  background:radial-gradient(circle,rgba(255,255,255,.12) 0 32%,rgba(5,9,14,.58) 35% 54%,rgba(5,9,14,0) 57%);
+  box-shadow:0 0 0 max(1px,.12vmin) rgba(255,255,255,.92),0 0 0 max(3px,.32vmin) rgba(4,8,12,.88),0 3px 8px rgba(0,0,0,.42);
+}
+
+.token.selectable-gold img,
+.token.selectable-black img,
+.token.selectable-single img { z-index:1; }
+
 .token-slot.move-target::after {
   top: 50%;
-   width: 68%;
+   width: 64%;
+   border-color: rgba(255,247,179,.98);
+   background: radial-gradient(circle, rgba(255,255,255,.2) 0 31%, rgba(255,211,74,.42) 34% 54%, rgba(255,211,74,0) 58%);
+   box-shadow: 0 0 0 max(1px, .12vmin) rgba(32,23,3,.72), 0 0 0 max(3px, .32vmin) rgba(255,244,158,.9), 0 3px 9px rgba(0,0,0,.34);
 }
 
 @keyframes cell-selection-pulse {
-  0%, 100% { opacity: .58; }
-  50% { opacity: 1; box-shadow: 0 0 11px rgba(255, 214, 70, .82); }
+  0%, 100% { opacity: .72; }
+  50% { opacity: 1; }
+}
+
+/* The token wrapper owns movement. The real pawn art deliberately bubbles its
+   click back to that wrapper when (and only when) the token is legally selectable.
+   This makes the artwork, base, and selection ring one comfortable touch target. */
+.token.selectable-gold img,
+.token.selectable-black img,
+.token.selectable-single img {
+  pointer-events: auto;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Dice skin roll framework: 2D face cycling remains authoritative in game.js.
+   These material layers only frame the real generated face image during a roll. */
+.dice {
+  --dice-aura:radial-gradient(circle,rgba(125,224,255,.5),transparent 68%);
+  --dice-trace:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.76) 50%,transparent 70%);
+  --dice-roll-motion:dice-prism-roll;
+  --dice-settle-shadow:drop-shadow(0 0 8px rgba(125,224,255,.62));
+}
+.dice.dice-press {
+  animation:dice-physical-press 110ms cubic-bezier(.18,.88,.28,1) both!important;
+  filter:drop-shadow(0 5px 2px rgba(0,0,0,.42));
+}
+.dice-panel.dice-rolling .dice::before {
+  inset:-18%!important;
+  border:0!important;
+  border-radius:var(--dice-aura-shape,38%)!important;
+  background:var(--dice-aura)!important;
+  box-shadow:none!important;
+  animation:var(--dice-roll-motion) 860ms cubic-bezier(.16,.78,.2,1) both!important;
+}
+.dice-panel.dice-rolling .dice::after {
+  inset:3%!important;
+  border-radius:var(--dice-aura-shape,38%)!important;
+  background:var(--dice-trace)!important;
+  animation:dice-skin-detail 860ms ease-out both!important;
+}
+.dice.dice-settled { filter:var(--dice-settle-shadow)!important; }
+
+body[data-dice-effect="crystal"] .dice { --dice-aura:conic-gradient(from 210deg,rgba(68,220,255,.08),rgba(255,120,225,.54),rgba(255,235,112,.42),rgba(68,220,255,.08)); --dice-trace:linear-gradient(124deg,transparent 28%,rgba(255,255,255,.94) 48%,rgba(109,205,255,.26) 55%,transparent 68%); --dice-roll-motion:dice-prism-roll; --dice-settle-shadow:drop-shadow(0 0 9px rgba(120,229,255,.72)); }
+body[data-dice-effect="inferno"] .dice { --dice-aura:radial-gradient(circle at 48% 68%,rgba(255,196,62,.8),rgba(229,57,16,.54) 36%,transparent 70%); --dice-trace:repeating-linear-gradient(132deg,transparent 0 14%,rgba(255,210,95,.72) 15% 17%,transparent 18% 29%); --dice-roll-motion:dice-inferno-roll; --dice-settle-shadow:drop-shadow(0 0 10px rgba(255,93,42,.72)); }
+body[data-dice-effect="frost"] .dice { --dice-aura:radial-gradient(circle,rgba(236,254,255,.8),rgba(103,218,255,.44) 45%,transparent 71%); --dice-trace:repeating-linear-gradient(45deg,transparent 0 15%,rgba(238,253,255,.78) 16% 18%,transparent 19% 31%); --dice-roll-motion:dice-frost-roll; --dice-aura-shape:18%; --dice-settle-shadow:drop-shadow(0 0 9px rgba(157,238,255,.76)); }
+body[data-dice-effect="verdant"] .dice { --dice-aura:radial-gradient(circle at 42% 72%,rgba(131,244,109,.6),rgba(28,125,59,.32) 48%,transparent 71%); --dice-trace:repeating-radial-gradient(circle at 50% 112%,transparent 0 11%,rgba(194,255,137,.7) 12% 14%,transparent 15% 25%); --dice-roll-motion:dice-verdant-roll; --dice-settle-shadow:drop-shadow(0 0 8px rgba(119,231,111,.66)); }
+body[data-dice-effect="storm"] .dice { --dice-aura:radial-gradient(circle,rgba(131,203,255,.28),rgba(96,85,255,.48) 48%,transparent 72%); --dice-trace:linear-gradient(150deg,transparent 30%,rgba(241,255,255,.95) 45% 48%,transparent 51%),linear-gradient(35deg,transparent 46%,rgba(142,204,255,.82) 49% 52%,transparent 54%); --dice-roll-motion:dice-storm-roll; --dice-aura-shape:22%; --dice-settle-shadow:drop-shadow(0 0 10px rgba(130,198,255,.78)); }
+body[data-dice-effect="sovereign"] .dice { --dice-aura:linear-gradient(120deg,rgba(87,52,8,.18),rgba(255,221,106,.74),rgba(82,119,255,.35),rgba(87,52,8,.18)); --dice-trace:linear-gradient(105deg,transparent 24%,rgba(255,249,207,.95) 48%,transparent 70%); --dice-roll-motion:dice-gold-roll; --dice-settle-shadow:drop-shadow(0 0 9px rgba(255,213,95,.72)); }
+body[data-dice-effect="dragon"] .dice { --dice-aura:radial-gradient(circle at 53% 70%,rgba(255,92,38,.72),rgba(81,14,10,.37) 47%,transparent 72%); --dice-trace:repeating-radial-gradient(ellipse at 50% 104%,transparent 0 11%,rgba(255,180,78,.64) 12% 14%,transparent 15% 25%); --dice-roll-motion:dice-dragon-roll; --dice-settle-shadow:drop-shadow(0 0 10px rgba(255,96,44,.72)); }
+body[data-dice-effect="nebula"] .dice { --dice-aura:radial-gradient(circle at 27% 68%,rgba(122,86,255,.62),transparent 40%),radial-gradient(circle at 75% 30%,rgba(72,220,255,.5),transparent 42%),rgba(17,11,62,.3); --dice-trace:radial-gradient(circle at 25% 30%,rgba(255,255,255,.95) 0 2%,transparent 3%),radial-gradient(circle at 72% 64%,rgba(255,255,255,.8) 0 1.5%,transparent 2.5%); --dice-roll-motion:dice-nebula-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 10px rgba(132,105,255,.7)); }
+body[data-dice-effect="arcane"] .dice { --dice-aura:repeating-radial-gradient(circle,rgba(201,130,255,.35) 0 2%,transparent 3% 12%); --dice-trace:conic-gradient(from 0deg,transparent 0 10%,rgba(227,182,255,.82) 11% 13%,transparent 14% 24%); --dice-roll-motion:dice-arcane-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 9px rgba(202,128,255,.72)); }
+body[data-dice-effect="shadow"] .dice { --dice-aura:radial-gradient(circle,rgba(216,34,71,.62),rgba(17,5,19,.56) 48%,transparent 72%); --dice-trace:radial-gradient(ellipse at 50% 96%,rgba(0,0,0,.9),transparent 56%); --dice-roll-motion:dice-shadow-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 9px rgba(183,35,69,.58)); }
+body[data-dice-effect="chrono"] .dice { --dice-aura:conic-gradient(from 0deg,transparent 0 8%,rgba(255,213,106,.62) 9% 12%,transparent 13% 25%); --dice-trace:repeating-radial-gradient(circle,transparent 0 17%,rgba(255,240,172,.64) 18% 20%,transparent 21% 32%); --dice-roll-motion:dice-chrono-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 9px rgba(255,215,105,.7)); }
+body[data-dice-effect="tide"] .dice { --dice-aura:radial-gradient(ellipse at 50% 94%,rgba(46,228,255,.72),rgba(5,87,151,.4) 48%,transparent 72%); --dice-trace:repeating-radial-gradient(ellipse at 50% 110%,transparent 0 15%,rgba(174,249,255,.68) 16% 18%,transparent 19% 29%); --dice-roll-motion:dice-tide-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 9px rgba(61,220,255,.73)); }
+body[data-dice-effect="celestia"] .dice { --dice-aura:radial-gradient(circle,rgba(255,250,211,.78),rgba(255,208,79,.38) 47%,transparent 72%); --dice-trace:linear-gradient(90deg,transparent 28%,rgba(255,255,238,.94) 50%,transparent 72%); --dice-roll-motion:dice-celestia-roll; --dice-settle-shadow:drop-shadow(0 0 10px rgba(255,224,126,.75)); }
+body[data-dice-effect="hellforged"] .dice { --dice-aura:radial-gradient(circle at 50% 65%,rgba(255,45,24,.78),rgba(81,8,10,.45) 43%,transparent 71%); --dice-trace:repeating-linear-gradient(60deg,transparent 0 14%,rgba(255,108,67,.7) 15% 17%,transparent 18% 28%); --dice-roll-motion:dice-hellforged-roll; --dice-settle-shadow:drop-shadow(0 0 11px rgba(255,54,33,.72)); }
+body[data-dice-effect="primal"] .dice { --dice-aura:conic-gradient(from 0deg,rgba(116,76,35,.58),rgba(255,96,37,.62),rgba(158,243,255,.62),rgba(155,130,255,.66),rgba(116,76,35,.58)); --dice-trace:linear-gradient(45deg,transparent 40%,rgba(255,255,255,.84) 48% 51%,transparent 59%); --dice-roll-motion:dice-primal-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 10px rgba(213,184,255,.7)); }
+body[data-dice-effect="void"] .dice { --dice-aura:radial-gradient(circle,rgba(12,4,26,.9) 0 23%,rgba(108,48,173,.58) 28%,rgba(9,2,28,.2) 62%,transparent 72%); --dice-trace:radial-gradient(circle,transparent 0 36%,rgba(194,120,255,.62) 37% 39%,transparent 40%); --dice-roll-motion:dice-void-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 10px rgba(154,78,230,.68)); }
+body[data-dice-effect="champion"] .dice { --dice-aura:radial-gradient(circle at 50% 38%,rgba(255,234,135,.8),rgba(218,158,34,.35) 47%,transparent 72%); --dice-trace:conic-gradient(from 215deg,transparent 0 39%,rgba(255,250,206,.9) 40% 46%,transparent 47% 100%); --dice-roll-motion:dice-champion-roll; --dice-settle-shadow:drop-shadow(0 0 10px rgba(255,218,111,.75)); }
+body[data-dice-effect="divine"] .dice { --dice-aura:linear-gradient(145deg,rgba(255,246,198,.5),rgba(255,188,74,.64),rgba(111,79,198,.42)); --dice-trace:repeating-linear-gradient(90deg,transparent 0 17%,rgba(255,246,193,.82) 18% 20%,transparent 21% 33%); --dice-roll-motion:dice-divine-roll; --dice-settle-shadow:drop-shadow(0 0 11px rgba(255,215,111,.76)); }
+body[data-dice-effect="starcore"] .dice { --dice-aura:radial-gradient(circle,rgba(255,255,235,.92) 0 7%,rgba(255,211,86,.64) 20%,rgba(253,109,50,.28) 43%,transparent 71%); --dice-trace:radial-gradient(circle at 28% 31%,rgba(255,255,255,.95) 0 2%,transparent 3%),radial-gradient(circle at 71% 68%,rgba(255,255,255,.85) 0 1.4%,transparent 2.5%); --dice-roll-motion:dice-starcore-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 12px rgba(255,202,83,.77)); }
+body[data-dice-effect="eternity"] .dice { --dice-aura:radial-gradient(circle at 50% 88%,rgba(255,89,40,.58),transparent 34%),radial-gradient(circle at 50% 44%,rgba(255,246,190,.64),transparent 45%),radial-gradient(circle at 50% 22%,rgba(128,133,255,.58),transparent 46%); --dice-trace:radial-gradient(circle at 24% 29%,rgba(255,255,255,.95) 0 1.6%,transparent 2.5%),radial-gradient(circle at 74% 68%,rgba(255,255,255,.9) 0 1.4%,transparent 2.5%); --dice-roll-motion:dice-eternity-roll; --dice-aura-shape:50%; --dice-settle-shadow:drop-shadow(0 0 13px rgba(237,203,255,.78)); }
+
+@keyframes dice-physical-press { 0%{translate:0 0;scale:1} 48%{translate:0 3px;scale:.955} 100%{translate:0 0;scale:1} }
+@keyframes dice-skin-detail { 0%{opacity:0;transform:scale(.76)} 38%{opacity:.7} 72%{opacity:.22;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes dice-prism-roll { 0%{opacity:0;transform:translateX(-22%) scale(.86)} 48%{opacity:.68;transform:translateX(3%) scale(1.05)} 100%{opacity:0;transform:translateX(24%) scale(1.1)} }
+@keyframes dice-inferno-roll { 0%{opacity:.02;transform:scale(.8)} 42%{opacity:.78;transform:scale(1.1)} 65%{opacity:.3;transform:scale(.97)} 100%{opacity:0;transform:scale(1.16)} }
+@keyframes dice-frost-roll { 0%{opacity:0;transform:scale(.94)} 55%{opacity:.66;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes dice-verdant-roll { 0%{opacity:0;transform:translateY(12%) scale(.88)} 54%{opacity:.66;transform:translateY(-3%) scale(1.06)} 100%{opacity:0;transform:translateY(-10%) scale(1.04)} }
+@keyframes dice-storm-roll { 0%,100%{opacity:0;transform:scale(.92)} 18%,56%{opacity:.84;transform:scale(1.1)} }
+@keyframes dice-gold-roll { 0%{opacity:0;transform:translateX(-20%)} 50%{opacity:.66;transform:translateX(0)} 100%{opacity:0;transform:translateX(20%)} }
+@keyframes dice-dragon-roll { 0%{opacity:0;transform:scale(.78)} 40%{opacity:.8;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.18)} }
+@keyframes dice-nebula-roll { 0%{opacity:0;transform:scale(.68)} 52%{opacity:.68;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes dice-arcane-roll { 0%{opacity:0;transform:scale(.76)} 55%{opacity:.72;transform:scale(1.1)} 100%{opacity:0;transform:scale(1.08)} }
+@keyframes dice-shadow-roll { 0%{opacity:0;transform:scale(1.16)} 52%{opacity:.58;transform:scale(.86)} 100%{opacity:0;transform:scale(1.04)} }
+@keyframes dice-chrono-roll { 0%{opacity:0;transform:scale(.76)} 34%{opacity:.36;transform:scale(.9)} 64%{opacity:.76;transform:scale(1.1)} 100%{opacity:0;transform:scale(1)} }
+@keyframes dice-tide-roll { 0%{opacity:0;transform:translateY(12%) scale(.74)} 52%{opacity:.68;transform:translateY(-2%) scale(1.12)} 100%{opacity:0;transform:translateY(-9%) scale(1.2)} }
+@keyframes dice-celestia-roll { 0%{opacity:0;transform:scale(.86)} 48%{opacity:.72;transform:scale(1.14)} 100%{opacity:0;transform:scale(1.2)} }
+@keyframes dice-hellforged-roll { 0%{opacity:0;transform:scale(.8)} 44%{opacity:.86;transform:scale(1.12)} 100%{opacity:0;transform:scale(1.18)} }
+@keyframes dice-primal-roll { 0%{opacity:0;transform:scale(.8)} 25%{opacity:.45;transform:scale(1.02)} 54%{opacity:.84;transform:scale(.95)} 78%{opacity:.52;transform:scale(1.1)} 100%{opacity:0;transform:scale(1)} }
+@keyframes dice-void-roll { 0%{opacity:0;transform:scale(1.22)} 52%{opacity:.64;transform:scale(.78)} 100%{opacity:0;transform:scale(1.06)} }
+@keyframes dice-champion-roll { 0%{opacity:0;transform:translateY(10%) scale(.72)} 50%{opacity:.78;transform:translateY(-3%) scale(1.16)} 100%{opacity:0;transform:translateY(0) scale(1.04)} }
+@keyframes dice-divine-roll { 0%{opacity:0;transform:translateX(-17%) scale(.9)} 50%{opacity:.8;transform:translateX(0) scale(1.12)} 100%{opacity:0;transform:translateX(17%) scale(1.16)} }
+@keyframes dice-starcore-roll { 0%{opacity:0;transform:scale(.5)} 50%{opacity:.88;transform:scale(1.12)} 100%{opacity:0;transform:scale(.78)} }
+@keyframes dice-eternity-roll { 0%{opacity:0;transform:scale(.62)} 28%{opacity:.42;transform:scale(.9)} 58%{opacity:.78;transform:scale(1.1)} 78%{opacity:.88;transform:scale(1.16)} 100%{opacity:0;transform:scale(1.05)} }
+
+@media (prefers-reduced-motion:reduce) {
+  .dice.dice-press,.dice-panel.dice-rolling .dice::before,.dice-panel.dice-rolling .dice::after { animation:none!important; }
 }
 
 /* The board-side FLIP animation is driven by moveTokenStep(). CSS deliberately
@@ -669,9 +798,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 
 .dice .face.face-visible { opacity: 1; }
 .dice .face img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.dice.dice-press { scale: .95; }
 .dice.dice-cycling .face.face-visible { animation: dice-face-tick 75ms ease-out; }
-.dice.dice-settled { filter: drop-shadow(0 0 6px rgba(255, 227, 112, .5)); }
 .dice::after {
   content: "";
   position: absolute;
@@ -681,7 +808,6 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   opacity: 0;
   pointer-events: none;
 }
-.dice-panel.dice-rolling .dice::after { animation: dice-skin-roll 760ms ease-out both; }
 .dice::before {
   content: "";
   position: absolute;
@@ -692,27 +818,6 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   opacity: 0;
   pointer-events: none;
 }
-.dice-panel.dice-rolling .dice::before { animation: dice-effect-pulse 760ms ease-out both; }
-body[data-dice-effect="crystal"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-refract; border-radius:20%; }
-body[data-dice-effect="inferno"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="dragon"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="hellforged"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-ember; border-radius:42%; }
-body[data-dice-effect="frost"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="tide"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-frost; border-style:dashed; }
-body[data-dice-effect="storm"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="arcane"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="chrono"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-spark; border-radius:50%; }
-body[data-dice-effect="nebula"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="void"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="starcore"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-cosmic; border-radius:50%; }
-body[data-dice-effect="verdant"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="sovereign"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="celestia"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="champion"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="divine"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-radiance; }
-body[data-dice-effect="primal"] .dice-panel.dice-rolling .dice::before,
-body[data-dice-effect="eternity"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-convergence; border-radius:50%; }
-body[data-dice-effect="shadow"] .dice-panel.dice-rolling .dice::before { animation-name:dice-effect-shadow; border-radius:50%; }
 body[data-dice-skin="1"] .dice-panel { --skin-accent:#79ddff; }
 body[data-dice-skin="2"] .dice-panel,body[data-dice-skin="7"] .dice-panel,body[data-dice-skin="14"] .dice-panel { --skin-accent:#ff7043; }
 body[data-dice-skin="3"] .dice-panel,body[data-dice-skin="4"] .dice-panel,body[data-dice-skin="8"] .dice-panel,body[data-dice-skin="12"] .dice-panel,body[data-dice-skin="13"] .dice-panel,body[data-dice-skin="19"] .dice-panel { --skin-accent:#79ddff; }
@@ -725,16 +830,6 @@ body[data-dice-skin="20"] .dice-panel { --skin-accent:#f3d5ff; }
   0% { opacity: .55; scale: .97; }
   100% { opacity: 1; scale: 1; }
 }
-@keyframes dice-skin-roll { 0% { opacity:0; scale:.8; } 35% { opacity:.8; scale:1.04; } 100% { opacity:0; scale:1.14; } }
-@keyframes dice-effect-pulse { 0% { opacity:0; scale:.82; } 45% { opacity:.5; scale:1.04; } 100% { opacity:0; scale:1.12; } }
-@keyframes dice-effect-refract { 0% { opacity:0; scale:.86; rotate:-8deg; } 42% { opacity:.7; scale:1.06; rotate:5deg; } 100% { opacity:0; scale:1.16; rotate:0deg; } }
-@keyframes dice-effect-ember { 0% { opacity:0; scale:.8; } 38% { opacity:.9; scale:1.08; } 62% { opacity:.42; scale:1.02; } 100% { opacity:0; scale:1.18; } }
-@keyframes dice-effect-frost { 0% { opacity:0; scale:.9; } 55% { opacity:.7; scale:1.08; } 100% { opacity:0; scale:1.12; } }
-@keyframes dice-effect-spark { 0%,100% { opacity:0; scale:.94; } 22%,58% { opacity:.86; scale:1.06; } }
-@keyframes dice-effect-cosmic { 0% { opacity:0; scale:.66; } 50% { opacity:.62; scale:1.08; } 100% { opacity:0; scale:1.22; } }
-@keyframes dice-effect-radiance { 0% { opacity:0; scale:.9; } 48% { opacity:.68; scale:1.1; } 100% { opacity:0; scale:1.16; } }
-@keyframes dice-effect-convergence { 0% { opacity:0; scale:.7; } 60% { opacity:.8; scale:1.05; } 100% { opacity:0; scale:1.2; } }
-@keyframes dice-effect-shadow { 0% { opacity:0; scale:1.14; } 52% { opacity:.54; scale:.9; } 100% { opacity:0; scale:1.04; } }
 
 .dice-panel.dice-active {
   box-shadow: inset 0 0 0 2px rgba(255,255,255,.17), inset 0 0 18px var(--die-glow), 0 0 0 2px rgba(255, 243, 182, .75), 0 0 16px var(--die-glow), 0 6px 0 rgba(0,0,0,.34), 0 11px 18px rgba(0,0,0,.35);

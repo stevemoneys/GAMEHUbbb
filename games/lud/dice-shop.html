@@ -163,6 +163,7 @@
     let previewId = null;
     let unlockedId = null;
     let skinVisibilityObserver = null;
+    let previewFaceTimers = [];
 
     let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
     let owned = [];
@@ -236,7 +237,36 @@
       target.onerror = () => { target.src = "dice/5_result.webp"; };
     }
 
-    function closePreview() { if (previewModal) previewModal.hidden = true; previewId = null; }
+    function diceFaceAsset(id, value, target) {
+      target.src = id === "classic"
+        ? `dice/${value}_result.webp`
+        : `dice/skins/${id}/${value}_result.webp`;
+      target.onerror = () => { target.src = "dice/5_result.webp"; };
+    }
+
+    function clearPreviewFaceCycle() {
+      previewFaceTimers.forEach(timer => clearTimeout(timer));
+      previewFaceTimers = [];
+    }
+
+    function playPreviewFaceCycle(id) {
+      clearPreviewFaceCycle();
+      // A short finite cycle uses the generated face artwork only. It is a
+      // shop preview, not a game roll and cannot affect gameplay randomness.
+      const sequence = [1, 4, 2, 6, 3, 5, 2, 4, 6];
+      const delays = [0, 74, 146, 222, 306, 398, 498, 606, 728];
+      sequence.forEach((face, index) => {
+        previewFaceTimers.push(setTimeout(() => {
+          if (previewId === id && !previewModal.hidden) diceFaceAsset(skinKey(id), face, previewImage);
+        }, delays[index]));
+      });
+    }
+
+    function closePreview() {
+      clearPreviewFaceCycle();
+      if (previewModal) previewModal.hidden = true;
+      previewId = null;
+    }
 
     function openPreview(id) {
       previewId = id;
@@ -248,7 +278,8 @@
       previewModal.classList.remove("previewing");
       void previewModal.offsetWidth;
       previewModal.classList.add("previewing");
-      setTimeout(() => previewModal.classList.remove("previewing"), 1250);
+      playPreviewFaceCycle(id);
+      setTimeout(() => previewModal.classList.remove("previewing"), 1500);
       previewEffect.innerHTML = `<span>BONUS EFFECT</span>${SKIN_META[id]?.effect || "No effects"}`;
       previewPrice.textContent = owns(id) ? "OWNED" : `${skinPrice(id)} COINS`;
       previewAction.textContent = owns(id) ? (activeSkin === key ? "EQUIPPED ✓" : "EQUIP") : "UNLOCK";
@@ -265,7 +296,7 @@
       unlockModal.classList.remove("unlocking");
       void unlockModal.offsetWidth;
       unlockModal.classList.add("unlocking");
-      setTimeout(() => unlockModal.classList.remove("unlocking"), 1500);
+      setTimeout(() => unlockModal.classList.remove("unlocking"), id === 20 ? 2200 : 1800);
       unlockEffect.textContent = SKIN_META[id]?.effect || "No effects";
       unlockModal.hidden = false;
     }
