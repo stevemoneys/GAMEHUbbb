@@ -98,7 +98,7 @@
           <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
           <span class="brand-crown">✦</span>
         </div>
-        <h1 id="mode-title">Classic Board Arena</h1>
+        <h1 id="mode-title">Classic Mode</h1>
         <p class="lead" id="mode-description">Traditional Ludo rules. Pure strategy.</p>
         <div class="lobby-arena" aria-hidden="true">
           <div class="arena-board">
@@ -127,11 +127,11 @@
         <h2>Choose Your Match</h2>
         <button class="mode-btn primary" id="play-vs-computer-btn" type="button">
           <span class="mode-title">Play Vs Computer</span>
-          <span class="mode-sub">Climb levels and outplay adaptive AI</span>
+          <span class="mode-sub">Play against AI</span>
         </button>
         <button class="mode-btn secondary" id="pass-play-btn" type="button">
           <span class="mode-title">Pass And Play</span>
-          <span class="mode-sub">Local multiplayer on one device</span>
+          <span class="mode-sub">Play locally with friends</span>
         </button>
       </div>
       <nav class="lobby-shortcuts" aria-label="Lobby shortcuts">
@@ -205,7 +205,7 @@
       document.body.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
       if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
-      if (modeTitleEl) modeTitleEl.textContent = `${MODE_LABELS[mode]} Board Arena`;
+      if (modeTitleEl) modeTitleEl.textContent = `${MODE_LABELS[mode]} Mode`;
       modeCards.forEach(card => {
         card.classList.toggle("active", card.dataset.gameMode === mode);
       });
