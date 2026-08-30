@@ -78,11 +78,26 @@
 
   <main class="home-shell">
     <section class="home-card">
+      <header class="lobby-status" aria-label="Player status">
+        <div class="lobby-level-card">
+          <span class="lobby-status-label">Level</span>
+          <strong id="home-level-value">1</strong>
+        </div>
+        <div class="lobby-coin-card">
+          <span class="coin-orb" aria-hidden="true"></span>
+          <strong id="home-coin-value">0</strong>
+          <span class="lobby-status-label">Coins</span>
+        </div>
+      </header>
       <div class="home-intro">
-        <p class="eyebrow">Classic Board Arena</p>
+        <p class="eyebrow" id="mode-eyebrow">Classic Mode</p>
+        <div class="ludo-brand" aria-hidden="true">
+          <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
+          <span class="brand-crown">✦</span>
+        </div>
         <h1>Lead Every Roll. Own The Board.</h1>
         <p class="lead">
-          Choose your mode and jump in. Same classic Ludo rules, upgraded flow, sharper visuals.
+          Choose your mode and jump in. Your selected rules follow you into every match.
         </p>
         <div class="meta-strip">
           <div class="meta-item">
@@ -101,7 +116,7 @@
       </div>
 
       <div class="home-actions">
-        <h2>Select Match Type</h2>
+        <h2>Choose Your Match</h2>
         <p class="mode-current" id="mode-current">Rule Mode: Classic</p>
         <button class="mode-btn primary" id="play-vs-computer-btn" type="button">
           <span class="mode-title">Play Vs Computer</span>
@@ -119,6 +134,9 @@
     const MUSIC_KEY = "ludo_bgm_enabled";
     const SFX_KEY = "ludo_sfx_enabled";
     const GAME_MODE_KEY = "ludo_game_mode";
+    const COINS_KEY = "ludo_coins";
+    const LEVEL_KEY = "ludo_unlocked_level";
+    const TOTAL_LEVELS = 60;
     const MODE_LABELS = {
       classic: "Classic",
       chaos: "Chaos",
@@ -148,7 +166,10 @@
     const modeSwitchValueEl = document.getElementById("mode-switch-value");
     const modeSwitchPanel = document.getElementById("mode-switch-panel");
     const modeCurrentEl = document.getElementById("mode-current");
+    const modeEyebrowEl = document.getElementById("mode-eyebrow");
     const modeCards = Array.from(document.querySelectorAll("[data-game-mode]"));
+    const homeCoinValueEl = document.getElementById("home-coin-value");
+    const homeLevelValueEl = document.getElementById("home-level-value");
 
     const pageParams = new URLSearchParams(window.location.search);
     let selectedGameMode = (pageParams.get("gm") || localStorage.getItem(GAME_MODE_KEY) || "classic").toLowerCase();
@@ -158,8 +179,10 @@
       if (!MODE_LABELS[mode]) return;
       selectedGameMode = mode;
       localStorage.setItem(GAME_MODE_KEY, mode);
+      document.body.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
       if (modeCurrentEl) modeCurrentEl.textContent = `Rule Mode: ${MODE_LABELS[mode]}`;
+      if (modeEyebrowEl) modeEyebrowEl.textContent = `${MODE_LABELS[mode]} Mode`;
       modeCards.forEach(card => {
         card.classList.toggle("active", card.dataset.gameMode === mode);
       });
@@ -184,6 +207,18 @@
     }
 
     setGameMode(selectedGameMode);
+
+    function renderLobbyStatus() {
+      const coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
+      const unlocked = Math.min(TOTAL_LEVELS, Math.max(1, Number(localStorage.getItem(LEVEL_KEY) || "1")));
+      if (homeCoinValueEl) homeCoinValueEl.textContent = coins.toLocaleString();
+      if (homeLevelValueEl) homeLevelValueEl.textContent = String(unlocked);
+    }
+
+    renderLobbyStatus();
+    window.addEventListener("storage", event => {
+      if (event.key === COINS_KEY || event.key === LEVEL_KEY) renderLobbyStatus();
+    });
 
     function getEnabled(key, fallback = true) {
       const raw = localStorage.getItem(key);
