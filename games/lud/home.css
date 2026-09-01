@@ -476,6 +476,483 @@ body.menu-open {
   .shortcut-icon { width: 20px; height: 20px; }
 }
 
+/* LAYER 2 FINAL AUTHORITY — this block intentionally targets the HUD only. */
+.lobby-topbar {
+  position: fixed !important;
+  inset: 0 0 auto 0 !important;
+  z-index: var(--gh-z-controls, 120) !important;
+  display: block !important;
+  height: calc(72px + var(--lobby-safe-top, 0px)) !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  background: linear-gradient(180deg, rgba(2, 9, 26, .9), rgba(2, 9, 26, .42) 72%, transparent) !important;
+}
+.topbar-progress { display: contents !important; }
+.lobby-level-card,
+.lobby-coin-card,
+.hub-back-btn {
+  position: absolute !important;
+  top: calc(10px + var(--lobby-safe-top, 0px)) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: var(--gh-touch-target-comfortable, 48px) !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  overflow: visible !important;
+  transition: transform var(--gh-duration-fast, 140ms) var(--gh-ease-standard, cubic-bezier(.2,.8,.24,1)), filter var(--gh-duration-fast, 140ms) var(--gh-ease-standard, cubic-bezier(.2,.8,.24,1));
+}
+.lobby-level-card {
+  left: max(10px, env(safe-area-inset-left, 0px)) !important;
+  width: clamp(58px, 16vw, 72px) !important;
+  height: 56px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1px !important;
+  padding: 5px 7px 6px !important;
+  border: 1px solid rgba(255, 211, 106, .58) !important;
+  border-radius: var(--gh-radius-md, 14px) !important;
+  background: linear-gradient(145deg, rgba(24, 39, 73, .96), rgba(5, 14, 36, .94)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.28), 0 0 16px rgba(255,202,72,.1) !important;
+}
+.lobby-level-card .lobby-status-label {
+  color: rgba(238,244,255,.7) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: .16em !important;
+  line-height: 1 !important;
+}
+.lobby-level-card strong {
+  color: var(--gh-color-reward, #ffd45a) !important;
+  font-family: "Bebas Neue", Impact, sans-serif !important;
+  font-size: clamp(27px, 7.4vw, 34px) !important;
+  font-weight: 400 !important;
+  letter-spacing: .02em !important;
+  line-height: .86 !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,.25), 0 0 9px rgba(255,206,87,.23) !important;
+}
+.lobby-coin-card {
+  left: 50% !important;
+  width: clamp(112px, 31vw, 150px) !important;
+  height: 52px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 6px 10px !important;
+  transform: translateX(-50%) !important;
+  border: 1px solid rgba(255,216,107,.5) !important;
+  border-radius: var(--gh-radius-pill, 999px) !important;
+  background: linear-gradient(145deg, rgba(22,42,80,.97), rgba(5,16,40,.96)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 9px 20px rgba(0,0,0,.3), 0 0 18px rgba(255,194,48,.1) !important;
+}
+.coin-orb {
+  position: relative !important;
+  width: 25px !important;
+  height: 25px !important;
+  flex: 0 0 25px !important;
+  border: 1px solid rgba(255,244,176,.98) !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 33% 27%, #fffbd2 0 8%, #ffe36a 9% 22%, #ffc52f 33%, #d98708 72%, #8f4e03 100%) !important;
+  box-shadow: inset 1px 2px 2px rgba(255,255,255,.78), inset -2px -2px 3px rgba(101,49,0,.44), 0 0 0 2px rgba(93,52,3,.48), 0 0 11px rgba(255,198,46,.32) !important;
+}
+.coin-orb::after { content:""; position:absolute; width:7px; height:4px; top:4px; left:5px; border-radius:50%; background:rgba(255,255,232,.82); transform:rotate(-24deg); }
+.lobby-coin-card strong {
+  min-width: 0 !important;
+  color: var(--gh-color-text-on-dark, #f7fcff) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: clamp(18px, 5vw, 25px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.045em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+}
+.lobby-coin-card .lobby-status-label {
+  display: inline !important;
+  color: rgba(255,221,126,.8) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  letter-spacing: .1em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+.hub-back-btn {
+  right: max(10px, env(safe-area-inset-right, 0px)) !important;
+  left: auto !important;
+  width: clamp(86px, 24vw, 122px) !important;
+  height: 52px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 6px 9px !important;
+  border: 1px solid color-mix(in srgb, var(--mode-primary, #289bff) 65%, #c6a8ff) !important;
+  border-radius: var(--gh-radius-md, 14px) !important;
+  background: linear-gradient(145deg, rgba(18,35,72,.96), rgba(6,15,38,.95)) !important;
+  color: var(--gh-color-text-on-dark, #f7fcff) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .1em !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  text-transform: uppercase !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.28), 0 0 14px color-mix(in srgb, var(--mode-primary, #289bff) 15%, transparent) !important;
+}
+.hub-nav-icon { width:18px; height:18px; flex:0 0 18px; fill:none; stroke:var(--gh-color-reward,#ffd45a); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.hub-nav-label { white-space: nowrap; }
+.lobby-level-card:hover,.lobby-level-card:focus-visible,.hub-back-btn:hover,.hub-back-btn:focus-visible { transform:translateY(-1px) !important; filter:brightness(1.08) !important; }
+.lobby-coin-card:hover,.lobby-coin-card:focus-visible { transform:translateX(-50%) translateY(-1px) !important; filter:brightness(1.06) !important; }
+.lobby-level-card:active,.hub-back-btn:active { transform:translateY(1px) scale(.97) !important; filter:brightness(.98) !important; }
+.lobby-coin-card:active { transform:translateX(-50%) translateY(1px) scale(.98) !important; filter:brightness(.98) !important; }
+.lobby-level-card:focus-visible,.lobby-coin-card:focus-visible,.hub-back-btn:focus-visible { outline:2px solid var(--gh-color-reward,#ffd45a) !important; outline-offset:3px !important; }
+@media (max-width: 350px) {
+  .lobby-level-card { left:max(8px,env(safe-area-inset-left,0px)) !important; width:58px !important; }
+  .lobby-coin-card { width:108px !important; gap:5px !important; padding-inline:7px !important; }
+  .coin-orb { width:22px !important; height:22px !important; flex-basis:22px !important; }
+  .lobby-coin-card .lobby-status-label { display:inline !important; font-size:7px !important; letter-spacing:.08em !important; }
+  .hub-back-btn { right:max(8px,env(safe-area-inset-right,0px)) !important; width:84px !important; gap:5px !important; padding-inline:6px !important; font-size:9px !important; }
+  .hub-nav-icon { width:16px; height:16px; flex-basis:16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-level-card,.lobby-coin-card,.hub-back-btn { transition-duration:1ms !important; }
+}
+
+/* -------------------------------------------------------------------------
+   LAYER 2 — premium top HUD
+   This is the authoritative presentation layer for the three existing HUD
+   controls. It intentionally leaves the home content and all handlers alone.
+   ------------------------------------------------------------------------- */
+.lobby-topbar {
+  position: fixed !important;
+  inset: 0 0 auto 0 !important;
+  z-index: var(--gh-z-controls, 120) !important;
+  display: block !important;
+  height: calc(72px + var(--lobby-safe-top)) !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  background: linear-gradient(180deg, rgba(2, 9, 26, .9), rgba(2, 9, 26, .42) 72%, transparent) !important;
+}
+
+.topbar-progress { display: contents !important; }
+
+.lobby-level-card,
+.lobby-coin-card,
+.hub-back-btn {
+  position: absolute !important;
+  top: calc(10px + var(--lobby-safe-top)) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  min-height: var(--gh-touch-target-comfortable, 48px) !important;
+  box-sizing: border-box !important;
+  pointer-events: auto !important;
+  overflow: visible !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transition: transform var(--gh-duration-fast, 140ms) var(--gh-ease-standard, cubic-bezier(.2,.8,.24,1)),
+    filter var(--gh-duration-fast, 140ms) var(--gh-ease-standard, cubic-bezier(.2,.8,.24,1)),
+    box-shadow var(--gh-duration-fast, 140ms) var(--gh-ease-standard, cubic-bezier(.2,.8,.24,1));
+}
+
+.lobby-level-card {
+  left: max(10px, env(safe-area-inset-left)) !important;
+  width: clamp(58px, 16vw, 72px) !important;
+  height: 56px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1px !important;
+  padding: 5px 7px 6px !important;
+  border: 1px solid rgba(255, 211, 106, .58) !important;
+  border-radius: var(--gh-radius-md, 14px) !important;
+  background: linear-gradient(145deg, rgba(24, 39, 73, .96), rgba(5, 14, 36, .94)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 8px 18px rgba(0, 0, 0, .28),
+    0 0 16px rgba(255, 202, 72, .1) !important;
+}
+
+.lobby-level-card .lobby-status-label {
+  color: rgba(238, 244, 255, .7) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 8px !important;
+  font-weight: 700 !important;
+  letter-spacing: .16em !important;
+  line-height: 1 !important;
+}
+
+.lobby-level-card strong {
+  color: var(--gh-color-reward, #ffd45a) !important;
+  font-family: "Bebas Neue", Impact, sans-serif !important;
+  font-size: clamp(27px, 7.4vw, 34px) !important;
+  font-weight: 400 !important;
+  letter-spacing: .02em !important;
+  line-height: .86 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .25), 0 0 9px rgba(255, 206, 87, .23) !important;
+}
+
+.lobby-coin-card {
+  left: 50% !important;
+  width: clamp(112px, 31vw, 150px) !important;
+  height: 52px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 6px 10px !important;
+  transform: translateX(-50%) !important;
+  border: 1px solid rgba(255, 216, 107, .5) !important;
+  border-radius: var(--gh-radius-pill, 999px) !important;
+  background: linear-gradient(145deg, rgba(22, 42, 80, .97), rgba(5, 16, 40, .96)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16),
+    0 9px 20px rgba(0, 0, 0, .3),
+    0 0 18px rgba(255, 194, 48, .1) !important;
+}
+
+.coin-orb {
+  position: relative !important;
+  width: 25px !important;
+  height: 25px !important;
+  flex: 0 0 25px !important;
+  border: 1px solid rgba(255, 244, 176, .98) !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 33% 27%, #fffbd2 0 8%, #ffe36a 9% 22%, #ffc52f 33%, #d98708 72%, #8f4e03 100%) !important;
+  box-shadow: inset 1px 2px 2px rgba(255, 255, 255, .78),
+    inset -2px -2px 3px rgba(101, 49, 0, .44),
+    0 0 0 2px rgba(93, 52, 3, .48),
+    0 0 11px rgba(255, 198, 46, .32) !important;
+}
+
+.coin-orb::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 4px;
+  top: 4px;
+  left: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 232, .82);
+  transform: rotate(-24deg);
+  filter: blur(.2px);
+}
+
+.lobby-coin-card strong {
+  min-width: 0 !important;
+  color: var(--gh-color-text-on-dark, #f7fcff) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: clamp(18px, 5vw, 25px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.045em !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, .16) !important;
+}
+
+.lobby-coin-card .lobby-status-label {
+  color: rgba(255, 221, 126, .8) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+
+.hub-back-btn {
+  right: max(10px, env(safe-area-inset-right)) !important;
+  width: clamp(86px, 24vw, 122px) !important;
+  height: 52px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  padding: 6px 9px !important;
+  border: 1px solid color-mix(in srgb, var(--mode-primary, #289bff) 65%, #c6a8ff) !important;
+  border-radius: var(--gh-radius-md, 14px) !important;
+  background: linear-gradient(145deg, rgba(18, 35, 72, .96), rgba(6, 15, 38, .95)) !important;
+  color: var(--gh-color-text-on-dark, #f7fcff) !important;
+  font-family: var(--gh-font-ui, "Sora", sans-serif) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .1em !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  text-decoration: none !important;
+  text-transform: uppercase !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 8px 18px rgba(0, 0, 0, .28),
+    0 0 14px color-mix(in srgb, var(--mode-primary, #289bff) 15%, transparent) !important;
+}
+
+.hub-nav-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: var(--gh-color-reward, #ffd45a);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hub-nav-label { white-space: nowrap; }
+
+.lobby-level-card:hover,
+.lobby-level-card:focus-visible,
+.hub-back-btn:hover,
+.hub-back-btn:focus-visible {
+  transform: translateY(-1px) !important;
+  filter: brightness(1.08) !important;
+}
+
+.lobby-coin-card:hover,
+.lobby-coin-card:focus-visible {
+  transform: translateX(-50%) translateY(-1px) !important;
+  filter: brightness(1.06) !important;
+}
+
+.lobby-level-card:active,
+.hub-back-btn:active {
+  transform: translateY(1px) scale(.97) !important;
+  filter: brightness(.98) !important;
+}
+
+.lobby-coin-card:active {
+  transform: translateX(-50%) translateY(1px) scale(.98) !important;
+  filter: brightness(.98) !important;
+}
+
+.lobby-level-card:focus-visible,
+.lobby-coin-card:focus-visible,
+.hub-back-btn:focus-visible {
+  outline: 2px solid var(--gh-color-reward, #ffd45a) !important;
+  outline-offset: 3px !important;
+}
+
+@media (max-width: 350px) {
+  .lobby-level-card { left: max(8px, env(safe-area-inset-left)) !important; width: 58px !important; }
+  .lobby-coin-card { width: 108px !important; gap: 5px !important; padding-inline: 7px !important; }
+  .coin-orb { width: 22px !important; height: 22px !important; flex-basis: 22px !important; }
+  .lobby-coin-card .lobby-status-label { display: inline !important; font-size: 7px !important; letter-spacing: .08em !important; }
+  .hub-back-btn { right: max(8px, env(safe-area-inset-right)) !important; width: 84px !important; gap: 5px !important; padding-inline: 6px !important; font-size: 9px !important; }
+  .hub-nav-icon { width: 16px; height: 16px; flex-basis: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lobby-level-card,
+  .lobby-coin-card,
+  .hub-back-btn { transition-duration: 1ms !important; }
+}
+
+/* LAYER 1 — viewport, atmosphere and one cohesive game shell. */
+html {
+  width: 100%;
+  min-height: 100%;
+  background: #030817;
+}
+
+html,
+body {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  min-height: 100dvh !important;
+  height: 100dvh !important;
+  overflow: hidden !important;
+  background:
+    radial-gradient(ellipse 78% 46% at 50% 17%, color-mix(in srgb, var(--mode-glow) 38%, transparent), transparent 72%),
+    radial-gradient(ellipse 48% 35% at 8% 74%, rgba(39, 67, 153, .18), transparent 76%),
+    radial-gradient(ellipse 42% 32% at 94% 59%, rgba(111, 48, 155, .15), transparent 76%),
+    radial-gradient(ellipse 36% 26% at 56% 100%, rgba(194, 132, 44, .08), transparent 80%),
+    linear-gradient(160deg, #081735 0%, #050f26 52%, #020613 100%) !important;
+}
+
+body::before {
+  opacity: .34;
+  background-image:
+    radial-gradient(circle at 17% 21%, rgba(215, 236, 255, .75) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 79% 17%, rgba(175, 202, 255, .57) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 62% 71%, rgba(255, 220, 145, .38) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 91% 83%, rgba(196, 159, 255, .45) 0 1px, transparent 1.5px),
+    linear-gradient(118deg, transparent 47%, rgba(128, 157, 255, .055) 50%, transparent 53%);
+  background-size: 113px 107px, 157px 149px, 197px 181px, 239px 223px, 100% 100%;
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.58) 70%, transparent 100%);
+}
+
+body::after {
+  width: min(72vw, 620px);
+  height: min(72vw, 620px);
+  right: -25vw;
+  bottom: -36vw;
+  border: 0;
+  opacity: .5;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 34%, rgba(106, 127, 221, .08) 34.4% 34.9%, transparent 35.3% 53%, rgba(180, 113, 219, .055) 53.4% 53.8%, transparent 54.2%),
+    radial-gradient(circle, rgba(62, 70, 173, .12), transparent 68%);
+  box-shadow: none;
+}
+
+.home-shell {
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  padding-top: calc(var(--lobby-topbar-height) + var(--lobby-safe-top) + var(--gh-space-2, 8px)) !important;
+  padding-right: max(12px, env(safe-area-inset-right)) !important;
+  padding-bottom: calc(10px + var(--lobby-safe-bottom)) !important;
+  padding-left: max(12px, env(safe-area-inset-left)) !important;
+}
+
+.home-card {
+  width: min(100%, 720px) !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border: 1px solid rgba(143, 189, 255, .24) !important;
+  border-radius: clamp(18px, 4vw, 26px) !important;
+  background:
+    linear-gradient(165deg, rgba(11, 30, 68, .76), rgba(3, 12, 31, .9) 78%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.1),
+    0 18px 48px rgba(0, 2, 12, .38) !important;
+}
+
+.home-card::before {
+  inset: 0 !important;
+  opacity: .55 !important;
+  background:
+    radial-gradient(ellipse 72% 44% at 50% 18%, color-mix(in srgb, var(--mode-primary) 20%, transparent), transparent 75%),
+    linear-gradient(135deg, rgba(255,255,255,.07), transparent 28%, transparent 77%, rgba(98, 164, 255, .055)) !important;
+}
+
+.home-intro::before {
+  width: min(74vw, 390px) !important;
+  opacity: .5;
+  border-color: rgba(125, 169, 255, .08) !important;
+  background: radial-gradient(circle, color-mix(in srgb, var(--mode-glow) 18%, transparent), transparent 67%) !important;
+  box-shadow: 0 0 54px color-mix(in srgb, var(--mode-glow) 14%, transparent) !important;
+}
+
+@media (max-width: 350px) {
+  .home-shell { padding-inline: 8px !important; }
+  .home-card { border-radius: 18px !important; }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .home-shell { padding-top: calc(58px + var(--lobby-safe-top)) !important; }
+  .home-card { max-width: 760px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none !important; }
+}
+
 /* Absolute HUD positioning avoids legacy grid offsets at mobile widths. */
 body .lobby-topbar { display: block !important; }
 body .lobby-level-card { position: absolute !important; top: calc(9px + var(--lobby-safe-top)); left: 12px !important; }
