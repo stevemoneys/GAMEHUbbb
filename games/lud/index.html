@@ -95,7 +95,7 @@
   <main class="home-shell">
     <section class="home-card">
       <div class="home-intro">
-        <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode">
+        <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode" aria-haspopup="dialog" aria-expanded="false">
           <span class="mode-switch-glyph" aria-hidden="true">✦</span>
           <span><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span></span>
         </button>
@@ -195,6 +195,7 @@
       selectedGameMode = mode;
       localStorage.setItem(GAME_MODE_KEY, mode);
       document.body.dataset.gameMode = mode;
+      if (modeSwitchBtn) modeSwitchBtn.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
       if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
       if (modeTitleEl) modeTitleEl.textContent = MODE_TITLES[mode];
@@ -207,6 +208,7 @@
       if (!modeSwitchPanel) return;
       modeSwitchPanel.classList.add("show");
       modeSwitchPanel.setAttribute("aria-hidden", "false");
+      modeSwitchBtn?.setAttribute("aria-expanded", "true");
       modeOverlay?.classList.add("show");
       modeOverlay?.setAttribute("aria-hidden", "false");
     }
@@ -215,6 +217,7 @@
       if (!modeSwitchPanel) return;
       modeSwitchPanel.classList.remove("show");
       modeSwitchPanel.setAttribute("aria-hidden", "true");
+      modeSwitchBtn?.setAttribute("aria-expanded", "false");
       modeOverlay?.classList.remove("show");
       modeOverlay?.setAttribute("aria-hidden", "true");
     }
