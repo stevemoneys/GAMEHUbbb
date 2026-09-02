@@ -97,14 +97,22 @@
       <div class="home-intro">
         <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode" aria-haspopup="dialog" aria-expanded="false">
           <span class="mode-switch-glyph" aria-hidden="true">✦</span>
-          <span><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span></span>
+          <span class="mode-switch-copy"><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span><span class="mode-switch-summary" id="mode-switch-summary">Traditional Ludo rules.</span></span>
         </button>
-        <div class="celestial-mark" aria-hidden="true"><span></span><i></i><b></b></div>
-        <div class="ludo-brand" aria-hidden="true">
+        <div class="hero-stage" aria-hidden="true">
+          <div class="hero-die hero-die-left"></div>
+          <div class="hero-die hero-die-right"></div>
+          <div class="hero-crown"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="celestial-mark"><span></span><i></i><b></b></div>
+          <div class="ludo-brand">
           <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
-          <span class="brand-crown">✦</span>
         </div>
-        <h1 id="mode-title">Classic Board Arena</h1>
+          <div class="hero-board-scene">
+            <div class="hero-board"><span></span></div>
+            <i class="hero-pawn hero-pawn-blue"></i><i class="hero-pawn hero-pawn-red"></i><i class="hero-pawn hero-pawn-green"></i><i class="hero-pawn hero-pawn-yellow"></i>
+          </div>
+        </div>
+        <div class="hero-arena-ribbon"><i></i><h1 id="mode-title">Classic Board Arena</h1><i></i></div>
         <p class="lead" id="mode-description">Traditional Ludo rules. Pure strategy.</p>
       </div>
 
@@ -161,6 +169,7 @@
     const passPlayBtn = document.getElementById("pass-play-btn");
     const modeSwitchBtn = document.getElementById("mode-switch-btn");
     const modeSwitchValueEl = document.getElementById("mode-switch-value");
+    const modeSwitchSummaryEl = document.getElementById("mode-switch-summary");
     const modeSwitchPanel = document.getElementById("mode-switch-panel");
     const closeModePanelBtn = document.getElementById("close-mode-panel");
     const modeOverlay = document.getElementById("mode-overlay");
@@ -197,6 +206,7 @@
       document.body.dataset.gameMode = mode;
       if (modeSwitchBtn) modeSwitchBtn.dataset.gameMode = mode;
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
+      if (modeSwitchSummaryEl) modeSwitchSummaryEl.textContent = MODE_DESCRIPTIONS[mode];
       if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
       if (modeTitleEl) modeTitleEl.textContent = MODE_TITLES[mode];
       modeCards.forEach(card => {
