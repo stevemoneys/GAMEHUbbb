@@ -1,0 +1,9 @@
+node_modules/
+venv/
+.venv/
+env/
+.git/
+.cache/
+*.log
+*.json
+*.csv
