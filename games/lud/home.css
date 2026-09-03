@@ -3706,3 +3706,100 @@ body[data-game-mode="arena"] .mode-switch-glyph::before { content: "◆"; font-s
 @media (prefers-reduced-motion: reduce) {
   .mode-btn.primary, .mode-action-arrow, .ai-head, .ai-core { transition-duration: 1ms !important; }
 }
+
+/* Layer 6: the existing local-match button mirrors the AI portal with a warmer shared-play identity. */
+.mode-btn.secondary {
+  isolation: isolate;
+  display: grid !important;
+  grid-template-columns: clamp(54px, 16vw, 76px) minmax(0, 1fr) 34px;
+  align-items: center;
+  column-gap: clamp(7px, 2vw, 13px);
+  min-height: 116px !important;
+  padding: clamp(12px, 3vw, 17px) clamp(10px, 2.6vw, 16px) !important;
+  overflow: hidden !important;
+  text-align: left;
+  border: 1px solid rgba(255, 190, 85, .82) !important;
+  background:
+    radial-gradient(circle at 13% 22%, rgba(255, 205, 89, .2), transparent 25%),
+    radial-gradient(circle at 89% 91%, rgba(255, 109, 29, .25), transparent 39%),
+    linear-gradient(135deg, #54311a 0%, #241629 51%, #11183e 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 249, 225, .28),
+    inset 0 -18px 30px rgba(31, 8, 1, .26),
+    0 10px 22px rgba(0, 0, 0, .34),
+    0 0 17px rgba(255, 153, 41, .18) !important;
+}
+.mode-btn.secondary::before,
+.mode-btn.secondary::after { content: none !important; }
+.mode-btn.secondary > * { min-width: 0; }
+.mode-btn.secondary .mode-copy { position: relative; z-index: 2; display: grid; min-width: 0; gap: 5px; }
+.mode-btn.secondary .mode-title {
+  color: #fff8e7 !important;
+  font-family: "Arial Black", var(--gh-font-ui, "Sora"), sans-serif !important;
+  font-size: clamp(20px, 5.55vw, 31px) !important;
+  font-weight: 900 !important;
+  line-height: .87 !important;
+  letter-spacing: -.04em !important;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 rgba(56, 17, 3, .86), 0 0 11px rgba(255, 195, 91, .18);
+  overflow-wrap: normal !important;
+}
+.mode-btn.secondary .mode-title b { display: block; color: #ffd278; font: inherit; }
+.mode-btn.secondary .mode-sub { max-width: 15ch; margin: 0 !important; color: rgba(255, 235, 204, .88) !important; font-size: clamp(10px, 2.7vw, 13px) !important; font-weight: 700; line-height: 1.18 !important; }
+
+.local-portal-visual {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: clamp(52px, 15.5vw, 72px);
+  aspect-ratio: .86;
+  align-self: center;
+  filter: drop-shadow(0 6px 5px rgba(35, 9, 0, .54));
+}
+.local-portal-visual::before {
+  content: "";
+  position: absolute;
+  inset: 9% -13% 5%;
+  border: 1px solid rgba(255, 208, 108, .45);
+  border-radius: 47% 47% 39% 39%;
+  background: radial-gradient(circle at 50% 42%, rgba(255, 192, 63, .17), transparent 40%);
+  box-shadow: inset 0 0 12px rgba(255, 159, 29, .12), 0 0 14px rgba(255, 151, 34, .14);
+}
+.local-player {
+  position: absolute;
+  z-index: 1;
+  bottom: 13%;
+  width: 43%;
+  height: 54%;
+  border: 1px solid rgba(255, 244, 207, .72);
+  border-radius: 48% 48% 33% 33% / 39% 39% 28% 28%;
+  box-shadow: inset 2px 2px 4px rgba(255,255,255,.43), inset -4px -4px 7px rgba(72,24,2,.38), 0 0 9px rgba(255,177,46,.27);
+}
+.local-player::before { content:""; position:absolute; top:-42%; left:50%; width:58%; aspect-ratio:1; transform:translateX(-50%); border:1px solid rgba(255,250,223,.78); border-radius:50%; background:radial-gradient(circle at 33% 26%,#fff9dc 0 8%,transparent 10%),linear-gradient(145deg,#ffd882,#e1761a 65%,#803008); box-shadow:inset 2px 2px 3px rgba(255,255,255,.46); }
+.local-player-one { left: 6%; transform: scale(.82); background:linear-gradient(145deg,#ffb63e,#d85215 62%,#77220b); }
+.local-player-two { z-index:2; left:29%; bottom:10%; background:linear-gradient(145deg,#ffda6d,#f07b1c 60%,#9c3008); }
+.local-player-three { right: 6%; transform:scale(.82); background:linear-gradient(145deg,#ffe296,#b87622 60%,#613510); }
+
+.mode-btn.secondary .mode-action-arrow {
+  border-color: rgba(255, 227, 161, .84);
+  background: linear-gradient(145deg, rgba(255, 188, 66, .68), rgba(194, 70, 16, .92));
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.58), 0 4px 7px rgba(0,0,0,.36), 0 0 9px rgba(255,157,35,.38);
+}
+.mode-btn.secondary:hover,
+.mode-btn.secondary:focus-visible { border-color: #ffe0a4 !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -18px 30px rgba(31,8,1,.26), 0 13px 25px rgba(0,0,0,.36), 0 0 25px rgba(255,158,40,.34) !important; }
+.mode-btn.secondary:hover .local-player { box-shadow: inset 2px 2px 4px rgba(255,255,255,.56), inset -4px -4px 7px rgba(72,24,2,.38), 0 0 15px rgba(255,189,59,.57); }
+.mode-btn.secondary:hover .mode-action-arrow,
+.mode-btn.secondary:focus-visible .mode-action-arrow { transform: translateX(3px); box-shadow: inset 0 1px 2px rgba(255,255,255,.7), 0 4px 7px rgba(0,0,0,.36), 0 0 15px rgba(255,176,50,.78); }
+.mode-btn.secondary:active { transform: translateY(1px) scale(.985) !important; }
+.mode-btn.secondary:active .mode-action-arrow { transform: translateX(3px) scale(.9); }
+.mode-btn.secondary:focus-visible { outline: 3px solid #fff0c6 !important; outline-offset: 3px; }
+
+@media (max-width:350px) {
+  .mode-btn.secondary { grid-template-columns: 46px minmax(0,1fr) 29px; min-height: 96px !important; column-gap: 6px; padding-inline: 9px !important; }
+  .local-portal-visual { width: 45px; }
+  .mode-btn.secondary .mode-title { font-size: clamp(18px, 5.8vw, 22px) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-btn.secondary, .mode-btn.secondary .mode-action-arrow, .local-player { transition-duration: 1ms !important; }
+}
