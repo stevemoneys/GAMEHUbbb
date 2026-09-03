@@ -118,9 +118,17 @@
 
       <div class="home-actions">
         <h2>Choose Your Match</h2>
-        <button class="mode-btn primary" id="play-vs-computer-btn" type="button">
-          <span class="mode-title">Play Vs Computer</span>
-          <span class="mode-sub">Play against AI</span>
+        <button class="mode-btn primary" id="play-vs-computer-btn" type="button" aria-label="Play versus computer">
+          <span class="ai-portal-visual" aria-hidden="true">
+            <span class="ai-antenna"></span>
+            <span class="ai-head"><i></i><i></i></span>
+            <span class="ai-core"></span>
+          </span>
+          <span class="mode-copy">
+            <span class="mode-title">Play Vs <b>Computer</b></span>
+            <span class="mode-sub">Play against AI</span>
+          </span>
+          <span class="mode-action-arrow" aria-hidden="true">→</span>
         </button>
         <button class="mode-btn secondary" id="pass-play-btn" type="button">
           <span class="mode-title">Pass And Play</span>
