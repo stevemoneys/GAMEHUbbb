@@ -580,6 +580,55 @@ let arenaTileState = {
 };
 let isPaused = false;
 let bgmWasPlayingBeforePause = false;
+let isNavigatingAway = false;
+let gameplayEffectEpoch = 0;
+const activeGameplayAnimations = new Set();
+const gameplayTimerIds = new Set();
+
+function scheduleGameplayTask(callback, delay = 0) {
+  const id = setTimeout(() => {
+    gameplayTimerIds.delete(id);
+    if (isNavigatingAway) return;
+    callback();
+  }, Math.max(0, Number(delay) || 0));
+  gameplayTimerIds.add(id);
+  return id;
+}
+
+function cancelPendingGameplayTasks() {
+  gameplayEffectEpoch += 1;
+  gameplayTimerIds.forEach(id => clearTimeout(id));
+  gameplayTimerIds.clear();
+  activeGameplayAnimations.forEach(animation => {
+    try { animation.cancel(); } catch {}
+  });
+  activeGameplayAnimations.clear();
+  if (chaosRenderRaf !== null) {
+    cancelAnimationFrame(chaosRenderRaf);
+    chaosRenderRaf = null;
+  }
+  chaosOverlayEl?.classList.remove("event-active", "snake-event", "ladder-event");
+  chaosOverlayEl?.replaceChildren();
+}
+
+function prepareForNavigation() {
+  if (isNavigatingAway) return;
+  // Save before invalidating motion. The snapshot contains logical state only.
+  saveResumeSnapshot();
+  isNavigatingAway = true;
+  cancelPendingGameplayTasks();
+  isMoving = false;
+  waitingForTokenMove = false;
+  clearHighlights();
+}
+
+function isRealMoveReason(reason) {
+  return reason === "playerMove" || reason === "aiMove";
+}
+
+function canRunTileEffect(reason, epoch) {
+  return !isNavigatingAway && !gameOver && isRealMoveReason(reason) && epoch === gameplayEffectEpoch;
+}
 
 function saveResumeSnapshot() {
   if (!shouldSaveResumeOnDeparture || gameOver) return;
@@ -798,32 +847,51 @@ state.players.forEach(player => {
     HOME_SLOTS[player.color][i].el.appendChild(token);
     tokenEls[player.color].push(token);
 
-    token.addEventListener("click", () => {
-      if (gameOver) return;
-      if (isPaused) return;
-      const activePlayer = state.players[state.currentPlayer];
-      if (!activePlayer) return;
-      if (activePlayer.isAI) return;
-      if (player.color !== activePlayer.color) return;
-      if (state.diceValue === null) return;
-      if (!waitingForTokenMove) return;
-      if (!canTokenMove(state.currentPlayer, i, getCurrentMoveSteps(state.currentPlayer))) return;
-
-      if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return;
-      if (state.diceValue !== 6 && !token.classList.contains("selectable-black")) return;
-
-      clearHighlights();
-      triggerFeedback(token, "token-selected", 240);
-      executeMove({ playerIndex: state.currentPlayer, tokenIndex: i }).catch(() => {
-        isMoving = false;
-        nextTurn(false);
-      });
-    });
+    token.addEventListener("click", () => selectLegalToken(state.currentPlayer, i));
     token.addEventListener("keydown", event => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       token.click();
     });
+  }
+});
+
+function selectLegalToken(playerIndex, tokenIndex) {
+  if (isNavigatingAway || gameOver || isPaused) return false;
+  const activePlayer = state.players[state.currentPlayer];
+  const player = state.players[playerIndex];
+  const token = player ? tokenEls[player.color]?.[tokenIndex] : null;
+  if (!activePlayer || !player || !token || activePlayer.isAI) return false;
+  if (playerIndex !== state.currentPlayer || player.color !== activePlayer.color) return false;
+  if (state.diceValue === null || !waitingForTokenMove) return false;
+  if (!canTokenMove(state.currentPlayer, tokenIndex, getCurrentMoveSteps(state.currentPlayer))) return false;
+  if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return false;
+  if (state.diceValue !== 6 && !token.classList.contains("selectable-black")) return false;
+
+  clearHighlights();
+  triggerFeedback(token, "token-selected", 240);
+  executeMove({ playerIndex: state.currentPlayer, tokenIndex }).catch(() => {
+    if (isNavigatingAway) return;
+    isMoving = false;
+    nextTurn(false);
+  });
+  return true;
+}
+
+// A legal move may be selected through the visible pawn or through its own
+// highlighted board/home cell. The board never decides legality; both paths
+// enter the same guarded token-selection function above.
+boardEl?.addEventListener("click", event => {
+  if (event.target.closest(".token")) return;
+  const target = event.target.closest(".move-target");
+  if (!target) return;
+  const player = state.players[state.currentPlayer];
+  if (!player || player.isAI) return;
+  const tokenIndex = tokenEls[player.color]?.findIndex(token => token.parentElement === target && (
+    token.classList.contains("selectable-gold") || token.classList.contains("selectable-black")
+  ));
+  if (Number.isInteger(tokenIndex) && tokenIndex >= 0) {
+    selectLegalToken(state.currentPlayer, tokenIndex);
   }
 });
 
@@ -873,7 +941,7 @@ pauseExitBtnEl?.addEventListener("click", () => {
 window.addEventListener("pagehide", () => {
   // localStorage is synchronous; this is the final safety net for Back,
   // browser navigation, refreshes, and tab/page lifecycle departure.
-  saveResumeSnapshot();
+  prepareForNavigation();
 });
 window.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
@@ -891,8 +959,7 @@ if (restartBtnEl) {
 
 if (backLevelsBtnEl) {
   backLevelsBtnEl.addEventListener("click", () => {
-    setPaused(false);
-    saveResumeSnapshot();
+    prepareForNavigation();
     if (matchMode === "pass-play") {
       const query = new URLSearchParams({ mode: "pass-play", gm: gameMode });
       window.location.href = `vs-computer.html?${query.toString()}`;
@@ -918,8 +985,7 @@ if (btnPlayAgainEl) {
 
 if (btnCancelEl) {
   btnCancelEl.addEventListener("click", () => {
-    setPaused(false);
-    saveResumeSnapshot();
+    prepareForNavigation();
     const query = new URLSearchParams({ gm: gameMode });
     window.location.href = `index.html?${query.toString()}`;
   });
@@ -972,7 +1038,7 @@ function triggerFeedback(el, className, duration = 320) {
   el.classList.remove(className);
   void el.offsetWidth;
   el.classList.add(className);
-  setTimeout(() => {
+  scheduleGameplayTask(() => {
     if (el.dataset[key] === String(id)) el.classList.remove(className);
   }, duration);
 }
@@ -984,6 +1050,7 @@ function triggerFeedback(el, className, duration = 320) {
 async function moveTokenStep(token, destinationEl, feedbackClass = "token-step", options = {}) {
   if (!token || !destinationEl) return;
   const shouldAnimate = options.animate !== false;
+  const duration = Math.max(0, Number(options.duration) || 165);
   const from = token.getBoundingClientRect();
   destinationEl.appendChild(token);
   token.style.transform = "";
@@ -999,16 +1066,21 @@ async function moveTokenStep(token, destinationEl, feedbackClass = "token-step",
           { transform: `translate3d(${dx}px, ${dy}px, 0)` },
           { transform: "translate3d(0, 0, 0)" }
         ],
-        { duration: 165, easing: "cubic-bezier(.2,.82,.24,1)", fill: "none" }
+        { duration, easing: "cubic-bezier(.2,.82,.24,1)", fill: "none" }
       );
+      activeGameplayAnimations.add(animation);
       await animation.finished;
+      activeGameplayAnimations.delete(animation);
     } catch {
+      // A cancelled navigation or older WebView still leaves the token in its
+      // authoritative destination cell, so no visual fallback is required.
       // Older WebViews can reject finished promises; the token is already in
       // the correct cell, so continuing is safe.
     }
   } else if (shouldAnimate) {
-    await wait(165);
+    await wait(duration);
   }
+  if (isNavigatingAway) return;
   triggerFeedback(token, feedbackClass, 120);
 }
 
@@ -1065,42 +1137,12 @@ function createCaptureBurst(point, color = "yellow") {
   setTimeout(() => burst.remove(), 700);
 }
 
-function animateCapturedTokenHome(tokenEl, homeEl) {
-  if (!tokenEl || !homeEl) return;
-  const fromPoint = getElementCenter(tokenEl);
-  const toPoint = getElementCenter(homeEl);
-  if (!fromPoint || !toPoint) {
-    homeEl.appendChild(tokenEl);
-    triggerFeedback(tokenEl, "token-returned-home", 240);
-    return;
-  }
-
-  const ghost = createTokenGhost(tokenEl, fromPoint);
-  if (!ghost) {
-    homeEl.appendChild(tokenEl);
-    triggerFeedback(tokenEl, "token-returned-home", 240);
-    return;
-  }
-
-  ghost.classList.remove("capturing", "token-captured", "capture-returning");
-  tokenEl.classList.add("capture-returning");
-  ghost.classList.add("capture-return-ghost");
-  const dx = toPoint.x - fromPoint.x;
-  const dy = toPoint.y - fromPoint.y;
-  void animateWithFallback(ghost, [
-    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
-    { transform: `translate3d(${dx * 0.48}px, ${dy * 0.4 - 18}px, 0) scale(0.86) rotate(-8deg)`, opacity: 0.92, offset: 0.48 },
-    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.72) rotate(0deg)`, opacity: 0.9, offset: 1 }
-  ], {
-    duration: 440,
-    easing: "cubic-bezier(.2,.8,.22,1)",
-    fill: "forwards"
-  }).then(() => {
-    ghost.remove();
-    homeEl.appendChild(tokenEl);
-    tokenEl.classList.remove("capture-returning", "capturing");
-    triggerFeedback(tokenEl, "token-returned-home", 240);
-  });
+async function animateCapturedTokenHome(tokenEl, homeEl) {
+  if (!tokenEl || !homeEl || isNavigatingAway) return;
+  // Reuse the real pawn and its normal FLIP movement. There is no enlarged
+  // duplicate token or off-board capture object.
+  await moveTokenStep(tokenEl, homeEl, "token-returned-home", { duration: 220 });
+  tokenEl.classList.remove("capturing");
 }
 
 function announceTurn(player, extraTurn = false) {

@@ -18,7 +18,7 @@
   --dice-board-gap: clamp(7px, 2vw, 13px);
   /* The generated pawn art has transparent space below its visible base.
      This board-relative shift aligns that visible base to the real cell centre. */
-  --token-contact-shift: 17%;
+  --token-contact-shift: 25%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -258,6 +258,37 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
 .cell.arena-reward-tile { color:#ffe27a; background-image:radial-gradient(circle,rgba(255,211,77,.42),transparent 68%); }
 .cell.arena-reward-tile::before { content:"★"; }
 .cell.arena-reward-tile::after { border-radius:50%; animation:arena-reward-pulse 1.8s ease-in-out infinite; }
+.cell.chaos-reward-tile {
+  color:#ffe27a;
+  overflow:visible;
+  background-image:radial-gradient(circle at 50% 48%,rgba(255,215,83,.52),rgba(238,150,17,.18) 45%,transparent 69%);
+}
+.cell.chaos-reward-tile::before {
+  content:"+";
+  position:absolute;
+  z-index:2;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:#fff5bd;
+  font-size:clamp(10px,3.1vmin,20px);
+  font-weight:900;
+  line-height:1;
+  text-shadow:0 1px 2px rgba(74,42,0,.9),0 0 5px rgba(255,220,105,.65);
+  pointer-events:none;
+}
+.cell.chaos-reward-tile::after {
+  content:"";
+  position:absolute;
+  z-index:1;
+  inset:12%;
+  border:2px solid rgba(255,224,121,.94);
+  border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(104,57,3,.62),0 0 8px rgba(255,202,54,.52);
+  pointer-events:none;
+  animation:chaos-reward-idle 2.4s ease-in-out infinite;
+}
+@keyframes chaos-reward-idle { 0%,100%{opacity:.72;transform:scale(.92)} 50%{opacity:1;transform:scale(1)} }
 @keyframes battle-block-pulse { 0%,100%{filter:saturate(1)} 50%{filter:saturate(1.28) brightness(1.08)} }
 @keyframes arena-reward-pulse { 0%,100%{opacity:.48;transform:scale(.9)} 50%{opacity:1;transform:scale(1.08)} }
 
@@ -604,7 +635,6 @@ body[data-dice-effect="eternity"] .dice { --dice-aura:radial-gradient(circle at 
 .token.token-selected,
 .token.token-home-lane { animation: none !important; }
 
-.token.capture-returning { visibility: hidden; }
 .token.event-hidden { visibility: hidden; }
 
 /* HUD: compact status only, with navigation safely contained in the menu. */
@@ -683,7 +713,25 @@ body[data-dice-effect="eternity"] .dice { --dice-aura:radial-gradient(circle at 
   cursor: pointer;
 }
 
-.match-hud .pause-btn > span:first-child { font-size: 18px; line-height: 1; }
+.match-hud .pause-icon {
+  position:relative;
+  display:block;
+  width:15px;
+  height:18px;
+}
+.match-hud .pause-icon::before,
+.match-hud .pause-icon::after {
+  content:"";
+  position:absolute;
+  top:1px;
+  bottom:1px;
+  width:4px;
+  border-radius:999px;
+  background:linear-gradient(180deg,#fff9ca,#ffd65a 54%,#d38c11);
+  box-shadow:0 1px 2px rgba(0,0,0,.55),0 0 5px rgba(255,215,85,.34);
+}
+.match-hud .pause-icon::before { left:1px; }
+.match-hud .pause-icon::after { right:1px; }
 .match-hud .pause-btn .control-label { display: none; }
 .match-hud .pause-btn:focus-visible,
 .roll-dice-action:focus-visible { outline: 2px solid #fff2a2; outline-offset: 3px; }
@@ -992,6 +1040,7 @@ body.orient-blue .dice-panel[data-color="blue"] { right: calc(-1 * var(--dice-bo
 }
 
 .pause-card { padding: 21px 16px 16px; text-align: center; }
+.pause-card { max-height:min(86dvh,720px); overflow:auto; overscroll-behavior:contain; }
 .pause-kicker { display: block; margin-bottom: 6px; color: #ffdb68; font-size: 10px; font-weight: 900; letter-spacing: .16em; }
 .pause-card h2,
 .result-card h2 { margin: 0 0 7px; color: #fff; }
@@ -1013,6 +1062,29 @@ body.orient-blue .dice-panel[data-color="blue"] { right: calc(-1 * var(--dice-bo
 .pause-actions #pause-resume-btn,
 .result-actions #btn-next-level { border-color: rgba(255,218,101,.8); background: linear-gradient(180deg, #1774b8, #073c77); }
 .pause-actions .back-levels-btn { position: static !important; min-width: 0; }
+.pause-rules { margin-top:12px; border:1px solid rgba(160,213,255,.18); border-radius:12px; background:rgba(4,20,49,.5); text-align:left; }
+.pause-rules summary { min-height:44px; display:flex; align-items:center; padding:0 13px; color:#ffe38a; font-size:12px; font-weight:900; cursor:pointer; list-style:none; }
+.pause-rules summary::-webkit-details-marker { display:none; }
+.pause-rules summary::after { content:"+"; margin-left:auto; color:#d8efff; font-size:18px; transition:transform 180ms ease; }
+.pause-rules[open] summary::after { transform:rotate(45deg); }
+.pause-rules-grid { display:grid; gap:7px; padding:0 10px 11px; }
+.pause-rules-grid article { display:grid; gap:3px; padding:9px 10px; border:1px solid rgba(178,222,255,.13); border-radius:9px; background:rgba(12,48,94,.42); }
+.pause-rules-grid strong { color:#fff0a6; font-size:11px; }
+.pause-rules-grid span { color:rgba(230,244,255,.84); font-size:11px; line-height:1.35; }
+
+/* Gameplay polish: the visual marker sits below the live token, while the
+   token wrapper and the highlighted cell remain the only interaction targets. */
+.cell.chaos-reward-tile > .token { z-index:45; }
+.cell.move-target,
+.token-slot.move-target { cursor:pointer; touch-action:manipulation; }
+.token.selectable-gold,
+.token.selectable-black,
+.token.selectable-single { z-index:48; }
+
+@media (prefers-reduced-motion:reduce) {
+  .cell.chaos-reward-tile::after { animation:none; }
+  .pause-rules summary::after { transition:none; }
+}
 
 .result-card { padding: 22px 18px; text-align: center; }
 .result-card p { white-space: pre-line; color: rgba(240,249,255,.78); font-size: 13px; }

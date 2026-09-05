@@ -3909,3 +3909,224 @@ body[data-game-mode="arena"] .mode-switch-glyph::before { content: "◆"; font-s
 @media (prefers-reduced-motion: reduce) {
   .lobby-shortcuts, .shortcut-btn, .shortcut-icon { transition-duration: 1ms !important; }
 }
+
+/* Layer 8: familiar functions presented as concise, game-ready sheets. */
+.mode-overlay,
+.menu-backdrop { backdrop-filter: blur(7px) saturate(1.08); }
+.mode-switch-panel,
+.side-menu {
+  border-color: rgba(143, 207, 255, .36) !important;
+  background: linear-gradient(155deg, rgba(13, 40, 84, .98), rgba(3, 14, 42, .99)) !important;
+  box-shadow: inset 0 1px 0 rgba(236, 250, 255, .17), inset 0 20px 36px rgba(64, 160, 255, .07), 0 22px 48px rgba(0, 0, 0, .52), 0 0 24px rgba(64, 173, 255, .13) !important;
+}
+.mode-switch-panel { overflow: hidden; }
+.mode-switch-panel::before,
+.side-menu::before { content:""; position:absolute; z-index:-1; top:0; left:12%; right:12%; height:1px; background:linear-gradient(90deg,transparent,rgba(183,233,255,.88),transparent); box-shadow:0 0 9px rgba(112,203,255,.5); }
+.mode-switch-card { position:relative; overflow:hidden; border:1px solid rgba(164, 208, 255, .18) !important; background:linear-gradient(135deg,rgba(31,79,142,.25),rgba(6,20,54,.48)) !important; transition: transform 220ms var(--gh-ease-standard, ease), border-color 220ms var(--gh-ease-standard, ease), background 220ms var(--gh-ease-standard, ease), box-shadow 220ms var(--gh-ease-standard, ease) !important; }
+.mode-switch-card:hover,.mode-switch-card:focus-visible { transform:translateY(-2px); border-color:rgba(166,226,255,.68) !important; background:linear-gradient(135deg,rgba(53,129,212,.39),rgba(10,29,73,.66)) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 8px 16px rgba(0,0,0,.23) !important; }
+.mode-switch-card.active { box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 1px color-mix(in srgb,var(--mode-accent,#75cfff) 55%,transparent),0 0 17px color-mix(in srgb,var(--mode-glow,#528dff) 29%,transparent) !important; }
+.close-mode-panel,.close-menu { transition:transform 160ms var(--gh-ease-standard,ease),background 160ms var(--gh-ease-standard,ease),box-shadow 160ms var(--gh-ease-standard,ease) !important; }.close-mode-panel:hover,.close-menu:hover { transform:scale(1.06) rotate(3deg); background:rgba(147,213,255,.18) !important; box-shadow:0 0 12px rgba(105,204,255,.24); }
+
+.side-menu { overflow-y:auto; overscroll-behavior:contain; }
+.menu-tabs { padding:4px; border:1px solid rgba(164,213,255,.16); border-radius:14px; background:rgba(1,12,37,.42); }
+.menu-tab { color:rgba(219,238,255,.73) !important; border:1px solid transparent !important; border-radius:10px !important; background:transparent !important; transition:color 170ms var(--gh-ease-standard,ease),background 170ms var(--gh-ease-standard,ease),border-color 170ms var(--gh-ease-standard,ease),transform 170ms var(--gh-ease-standard,ease) !important; }
+.menu-tab.active { color:#fff !important; border-color:rgba(147,218,255,.54) !important; background:linear-gradient(135deg,rgba(49,137,220,.5),rgba(24,53,132,.72)) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 3px 9px rgba(0,0,0,.2); }
+.menu-panel { border:1px solid rgba(163,211,255,.13); border-radius:15px; background:linear-gradient(160deg,rgba(12,45,91,.44),rgba(1,12,37,.56)) !important; }
+.setting-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:11px 2px; color:#f2f8ff; font-weight:750; }
+.setting-row + .setting-row { border-top:1px solid rgba(173,219,255,.12); }
+.toggle-btn { position:relative; min-width:74px; min-height:42px !important; padding:0 11px 0 30px !important; overflow:hidden; border:1px solid rgba(127,235,189,.7) !important; border-radius:999px !important; color:#eafff2 !important; font-size:11px !important; font-weight:900 !important; letter-spacing:.08em; text-align:right; background:linear-gradient(135deg,#147b53,#0b533d) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 0 11px rgba(50,218,142,.18) !important; transition:background 180ms var(--gh-ease-standard,ease),border-color 180ms var(--gh-ease-standard,ease),box-shadow 180ms var(--gh-ease-standard,ease),transform 180ms var(--gh-ease-standard,ease) !important; }
+.toggle-btn::before { content:""; position:absolute; top:6px; left:7px; width:28px; height:28px; border-radius:50%; background:radial-gradient(circle at 35% 29%,#fff 0 13%,#e2fff1 15% 43%,#8fe8b5 45% 100%); box-shadow:0 2px 4px rgba(0,0,0,.37); transition:transform 180ms var(--gh-ease-standard,ease),background 180ms var(--gh-ease-standard,ease); }
+.toggle-btn.off { padding:0 30px 0 11px !important; text-align:left; border-color:rgba(255,156,158,.66) !important; color:#ffe9ea !important; background:linear-gradient(135deg,#7b293a,#4d1726) !important; box-shadow:inset 0 1px 0 rgba(255,255,255,.13),0 0 9px rgba(255,85,102,.13) !important; }
+.toggle-btn.off::before { transform:translateX(32px); background:radial-gradient(circle at 35% 29%,#fff 0 13%,#ffe1e2 15% 43%,#ff929a 45% 100%); }
+.toggle-btn:active { transform:scale(.96); }
+
+.rules-intro { margin-bottom:11px; padding:12px; border:1px solid rgba(255,214,107,.3); border-radius:12px; background:linear-gradient(135deg,rgba(150,98,15,.25),rgba(37,32,77,.25)); }.rules-intro span { color:#ffe08b; font-size:9px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }.rules-intro p { margin:4px 0 0 !important; color:rgba(245,249,255,.89); font-size:12px; line-height:1.35; }
+.rules-grid { display:grid; gap:8px; }.rule-card { padding:10px 11px; border:1px solid rgba(168,213,255,.14); border-radius:11px; background:rgba(6,28,66,.4); }.rule-card strong { display:block; color:#fbe5a0; font-size:12px; letter-spacing:.01em; }.rule-card p { margin:4px 0 0 !important; color:rgba(228,242,255,.8); font-size:11px; line-height:1.35; }
+
+@media (prefers-reduced-motion: reduce) { .mode-switch-panel,.side-menu,.mode-switch-card,.menu-tab,.toggle-btn,.toggle-btn::before,.close-mode-panel,.close-menu { transition-duration:1ms !important; } }
+
+/* Layer 9: responsive containment and restrained tactile feedback for the whole lobby. */
+html { min-width:0; background:#02091d; }
+body {
+  min-width:0;
+  min-height:100dvh;
+  overflow-x:hidden;
+  overscroll-behavior-x:none;
+}
+button,
+a { -webkit-tap-highlight-color:transparent; }
+button { touch-action:manipulation; }
+.home-shell,
+.home-card,
+.home-intro,
+.hero-stage,
+.home-actions,
+.mode-btn,
+.mode-copy,
+.lobby-shortcuts,
+.shortcut-btn,
+.mode-switch-panel,
+.side-menu,
+.menu-panel { min-width:0; max-width:100%; }
+.mode-btn .mode-title,
+.mode-btn .mode-sub,
+.mode-switch-copy,
+.mode-card-name,
+.mode-card-description,
+.menu-tab,
+.rule-card p,
+.setting-row span,
+.hub-nav-label { overflow-wrap:anywhere; }
+
+/* Keep the visual hierarchy compact while protecting clear 44px touch targets. */
+.mode-switch-btn,
+.hub-back-btn,
+.lobby-level-card,
+.lobby-coin-card,
+.mode-btn,
+.shortcut-btn,
+.toggle-btn,
+.menu-tab,
+.mode-switch-card,
+.close-menu,
+.close-mode-panel { cursor:pointer; }
+.mode-switch-btn:active,
+.hub-back-btn:active,
+.mode-switch-card:active,
+.menu-tab:active,
+.toggle-btn:active,
+.close-menu:active,
+.close-mode-panel:active { transform:scale(.975); }
+.mode-switch-btn:focus-visible,
+.mode-switch-card:focus-visible,
+.menu-tab:focus-visible,
+.toggle-btn:focus-visible,
+.close-menu:focus-visible,
+.close-mode-panel:focus-visible {
+  outline:2px solid #eaf8ff !important;
+  outline-offset:3px;
+}
+
+/* A single fluid composition, rather than device-specific positioning. */
+.home-shell { width:min(100%,760px) !important; padding-inline:max(8px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-right)) !important; }
+.home-card { gap:clamp(8px,1.8dvh,16px) !important; padding-bottom:max(10px,env(safe-area-inset-bottom)) !important; }
+.home-intro { height:clamp(388px,55dvh,530px) !important; }
+.hero-stage { height:calc(100% - clamp(54px,8dvh,66px)) !important; }
+.home-actions { gap:clamp(8px,1.8vw,15px) !important; }
+.home-actions > h2 { font-size:clamp(14px,3.2vw,19px) !important; line-height:1.1 !important; text-wrap:balance; }
+.mode-btn { min-height:clamp(98px,16dvh,132px) !important; }
+.mode-action-arrow { flex:0 0 auto; }
+.lobby-shortcuts { margin-bottom:max(0px,env(safe-area-inset-bottom)) !important; }
+
+@media (max-width:380px) {
+  .lobby-topbar { height:calc(66px + var(--lobby-safe-top,0px)) !important; }
+  .lobby-level-card { width:56px !important; height:50px !important; }
+  .lobby-level-card strong { font-size:27px !important; }
+  .lobby-coin-card { width:92px !important; height:48px !important; gap:5px !important; }
+  .lobby-coin-card strong { font-size:18px !important; }
+  .hub-back-btn { width:48px !important; min-width:48px !important; padding-inline:0 !important; }
+  .hub-back-btn .hub-nav-label { display:none !important; }
+  .home-intro { height:clamp(368px,52dvh,438px) !important; }
+  .hero-stage { height:calc(100% - 52px) !important; }
+  .hero-board-scene { width:min(98vw,404px) !important; height:clamp(168px,49vw,208px) !important; }
+  .hero-arena-ribbon { width:min(86vw,326px) !important; padding-inline:12px !important; }
+  .hero-arena-ribbon h1 { font-size:clamp(10px,3vw,13px) !important; }
+  .home-actions { grid-template-columns:1fr !important; }
+  .mode-btn { min-height:94px !important; }
+}
+
+@media (min-width:600px) {
+  .home-shell { width:min(100%,720px) !important; }
+  .home-intro { height:clamp(480px,58dvh,560px) !important; }
+  .home-actions { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .mode-btn { min-height:136px !important; }
+  .lobby-shortcuts { width:min(calc(100% - 32px),620px) !important; }
+}
+
+@media (max-height:760px) and (min-width:381px) {
+  .home-intro { height:clamp(370px,51dvh,414px) !important; }
+  .home-card { gap:8px !important; }
+  .mode-btn { min-height:92px !important; }
+  .lobby-shortcuts { min-height:64px !important; }
+  .shortcut-btn { min-height:54px !important; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .home-intro::before,
+  .home-intro::after,
+  .hero-stage::before,
+  .hero-stage::after,
+  .mode-switch-btn,
+  .hub-back-btn,
+  .mode-btn,
+  .mode-action-arrow,
+  .shortcut-btn,
+  .shortcut-icon,
+  .mode-switch-panel,
+  .side-menu { animation:none !important; transition-duration:1ms !important; }
+}
+
+/* Layer 10: final composition authority. Keep the hero dominant and controls balanced. */
+.home-actions > h2 {
+  grid-column:1 / -1;
+  margin:0 !important;
+  color:rgba(240,248,255,.92) !important;
+  font-weight:800 !important;
+  letter-spacing:.075em !important;
+  text-transform:uppercase;
+}
+.home-actions > h2::before,
+.home-actions > h2::after {
+  content:"";
+  display:inline-block;
+  width:clamp(18px,6vw,42px);
+  height:1px;
+  margin:0 .55em .32em;
+  background:linear-gradient(90deg,transparent,rgba(126,203,255,.74));
+  vertical-align:middle;
+}
+.home-actions > h2::after { background:linear-gradient(90deg,rgba(126,203,255,.74),transparent); }
+.mode-btn.primary,
+.mode-btn.secondary {
+  border-radius:clamp(17px,4.8vw,23px) !important;
+  will-change:transform;
+}
+.mode-btn.primary .mode-title,
+.mode-btn.secondary .mode-title {
+  font-family:"Bebas Neue",Impact,sans-serif !important;
+  font-weight:400 !important;
+  letter-spacing:.025em !important;
+  line-height:.93 !important;
+}
+.mode-btn.primary .mode-sub,
+.mode-btn.secondary .mode-sub { font-weight:700 !important; letter-spacing:.005em; }
+
+@media (min-width:381px) and (max-width:599px) {
+  .home-actions { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .mode-btn.primary,
+  .mode-btn.secondary {
+    grid-template-columns:clamp(43px,13vw,54px) minmax(0,1fr) 30px !important;
+    column-gap:6px !important;
+    min-height:104px !important;
+    padding-inline:9px !important;
+  }
+  .ai-portal-visual,
+  .local-portal-visual { width:clamp(43px,13vw,54px) !important; }
+  .mode-action-arrow { width:30px !important; height:30px !important; font-size:20px !important; }
+  .mode-btn.primary .mode-title,
+  .mode-btn.secondary .mode-title { font-size:clamp(18px,5vw,25px) !important; }
+  .mode-btn.primary .mode-sub,
+  .mode-btn.secondary .mode-sub { font-size:clamp(10px,2.55vw,12px) !important; }
+}
+
+@media (max-width:380px) {
+  .mode-switch-btn {
+    width:auto !important;
+    min-width:130px !important;
+    min-height:48px !important;
+    padding-block:6px !important;
+  }
+  .mode-switch-summary { display:none !important; }
+  .hub-back-btn { width:64px !important; min-width:64px !important; gap:4px !important; }
+  .hub-back-btn .hub-nav-label { display:inline !important; font-size:8px !important; letter-spacing:.055em !important; }
+}

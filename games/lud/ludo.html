@@ -110,7 +110,7 @@
         <span class="coin-total" id="coin-total">0</span>
       </div>
     </div>
-    <button class="pause-btn" id="pause-btn" type="button" aria-label="Open game menu" aria-pressed="false"><span aria-hidden="true">☰</span><span class="control-label">Menu</span></button>
+    <button class="pause-btn" id="pause-btn" type="button" aria-label="Pause game" aria-pressed="false"><span class="pause-icon" aria-hidden="true"></span><span class="control-label">Pause</span></button>
   </header>
   <div class="coin-fx-layer" id="coin-fx-layer" aria-hidden="true"></div>
   <div class="toast-layer" id="toast-layer" aria-live="polite" aria-atomic="true"></div>
@@ -246,6 +246,24 @@
         <button type="button" id="pause-restart-btn">Restart</button>
         <button type="button" id="pause-exit-btn">Exit</button>
       </div>
+      <details class="pause-rules">
+        <summary>How to play</summary>
+        <div class="pause-rules-grid">
+          <article><strong>Objective</strong><span>Bring all four of your tokens from home to the center before everyone else.</span></article>
+          <article><strong>Starting tokens</strong><span>Your four tokens begin inside your colored home area.</span></article>
+          <article><strong>Dice</strong><span>On your turn, roll once and move one highlighted legal token by that exact number.</span></article>
+          <article><strong>Movement</strong><span>Move around the outside path, then into your own colored home lane.</span></article>
+          <article><strong>Bringing tokens out</strong><span>Roll a 6 to move a token from home onto its matching entry square.</span></article>
+          <article><strong>Safe squares</strong><span>Tokens on marked safe squares cannot be captured.</span></article>
+          <article><strong>Capturing</strong><span>Land on an opponent on a non-safe square to send that token back home.</span></article>
+          <article><strong>Home lane</strong><span>Only your own color can enter your lane toward the center.</span></article>
+          <article><strong>Finishing</strong><span>You need the exact roll to move a token into the center.</span></article>
+          <article><strong>Winning</strong><span>The first player to finish all four tokens wins.</span></article>
+          <article><strong>Special six rule</strong><span>Rolling a 6 gives you another turn after that move.</span></article>
+          <article><strong>Three sixes rule</strong><span>Three 6s in a row end that player’s turn.</span></article>
+          <article><strong>Current mode rules</strong><span>Classic uses standard Ludo. Chaos adds snakes, ladders, and a bonus coin tile. Power adds special tiles. Battle emphasizes captures and blocks. Arena combines advanced events.</span></article>
+        </div>
+      </details>
     </div>
   </div>
   <script type="module" src="boot.js"></script>
