@@ -18,7 +18,7 @@
   --dice-board-gap: clamp(7px, 2vw, 13px);
   /* The generated pawn art has transparent space below its visible base.
      This board-relative shift aligns that visible base to the real cell centre. */
-  --token-contact-shift: 25%;
+  --token-contact-shift: 44%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;

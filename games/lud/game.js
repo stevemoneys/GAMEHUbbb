@@ -6,6 +6,7 @@ let gameOver = false;
 let hasRolledThisTurn = false;
 let waitingForTokenMove = false;
 const LUDO_RESUME_KEY = "ludo_saved_match_v1";
+const GAME_RULES_SEEN_KEY = "ludo_game_rules_seen_v1";
 // This is deliberately session-only. It prevents pagehide from recreating a
 // snapshot after an intentional restart, next-level transition, or completed match.
 let shouldSaveResumeOnDeparture = true;
@@ -205,7 +206,9 @@ bgMusic.volume = 0.22;
 let bgMusicStarted = false;
 const BGM_ENABLED_KEY = "ludo_bgm_enabled";
 const SFX_ENABLED_KEY = "ludo_sfx_enabled";
-let isBgmEnabled = localStorage.getItem(BGM_ENABLED_KEY) !== "0";
+// Music is opt-in for a fresh install. A player who explicitly enabled it
+// keeps that preference through the existing storage key.
+let isBgmEnabled = localStorage.getItem(BGM_ENABLED_KEY) === "1";
 let isSfxEnabled = localStorage.getItem(SFX_ENABLED_KEY) !== "0";
 
 const EVENT_COIN_REWARDS = {
@@ -623,7 +626,7 @@ function prepareForNavigation() {
 }
 
 function isRealMoveReason(reason) {
-  return reason === "playerMove" || reason === "aiMove";
+  return reason === "playerMove" || reason === "aiMove" || reason === "arenaEvent";
 }
 
 function canRunTileEffect(reason, epoch) {
@@ -1069,8 +1072,11 @@ async function moveTokenStep(token, destinationEl, feedbackClass = "token-step",
         { duration, easing: "cubic-bezier(.2,.82,.24,1)", fill: "none" }
       );
       activeGameplayAnimations.add(animation);
-      await animation.finished;
-      activeGameplayAnimations.delete(animation);
+      try {
+        await animation.finished;
+      } finally {
+        activeGameplayAnimations.delete(animation);
+      }
     } catch {
       // A cancelled navigation or older WebView still leaves the token in its
       // authoritative destination cell, so no visual fallback is required.
@@ -1898,7 +1904,8 @@ function renderChaosOverlay() {
 }
 
 function showChaosEventOverlay(type, fromIndex, toIndex, side = "left") {
-  if (gameMode !== "chaos" || !chaosOverlayEl || !stageEl) return () => {};
+  const supportsChaosRoutes = MODES[gameMode]?.snakes || MODES[gameMode]?.allEvents;
+  if (!supportsChaosRoutes || !chaosOverlayEl || !stageEl) return () => {};
   const stageRect = stageEl.getBoundingClientRect();
   if (stageRect.width <= 0 || stageRect.height <= 0) return () => {};
 
@@ -1942,6 +1949,7 @@ function setupChaosMode() {
 async function wait(ms) {
   let remaining = Math.max(0, Number(ms) || 0);
   while (remaining > 0) {
+    if (isNavigatingAway) return;
     if (isPaused) {
       await new Promise(resolve => setTimeout(resolve, 70));
       continue;
@@ -2057,94 +2065,41 @@ function triggerSnakeHeadChomp(side) {
   }, 520);
 }
 
-async function animateLadderTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "left") {
+async function animateChaosTransfer(playerIndex, tokenIndex, fromIndex, toIndex, type, side, { reason = "restore", epoch = gameplayEffectEpoch } = {}) {
   const player = state.players[playerIndex];
-  if (!player) return;
-  const token = tokenEls[player.color]?.[tokenIndex];
-  if (!token) return;
-
+  const token = player ? tokenEls[player.color]?.[tokenIndex] : null;
+  const destination = PATHS.common[toIndex]?.el;
   const fromPoint = getElementCenter(PATHS.common[fromIndex]?.el);
-  const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
-  if (!fromPoint || !toPoint) return;
+  const toPoint = getElementCenter(destination);
+  if (!player || !token || !destination || !fromPoint || !toPoint || isNavigatingAway) return false;
 
-  const clearEventOverlay = showChaosEventOverlay("ladder", fromIndex, toIndex, side);
-
-  token.classList.add("event-hidden");
-  const ghost = createTokenGhost(token, fromPoint);
-  if (!ghost) {
-    token.classList.remove("event-hidden");
+  const clearEventOverlay = showChaosEventOverlay(type, fromIndex, toIndex, side);
+  if (type === "snake") triggerSnakeHeadChomp(side);
+  // The board route is visible briefly first, then the same real pawn moves.
+  await wait(type === "snake" ? 340 : 280);
+  if (!canRunTileEffect(reason, epoch)) {
     clearEventOverlay();
-    return;
+    return false;
   }
-
-  createTransitTrail(fromPoint, toPoint, "ladder");
-
-  const dx = toPoint.x - fromPoint.x;
-  const dy = toPoint.y - fromPoint.y;
-  const arcY = Math.max(26, Math.min(70, Math.abs(dx) * 0.22 + 20));
-  const arcX = side === "left" ? -16 : 16;
-
-  await animateWithFallback(ghost, [
-    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
-    { transform: `translate3d(${dx * 0.55 + arcX}px, ${dy * 0.42 - arcY}px, 0) scale(1.12) rotate(${side === "left" ? -8 : 8}deg)`, opacity: 1, offset: 0.56 },
-    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.98) rotate(${side === "left" ? -4 : 4}deg)`, opacity: 0.96, offset: 1 }
-  ], {
-    duration: 460,
-    easing: "cubic-bezier(.16,.86,.2,1)",
-    fill: "forwards"
-  });
-
-  ghost.remove();
-  token.classList.remove("event-hidden");
+  await moveTokenStep(token, destination, type === "snake" ? "token-snake-transfer" : "token-ladder-transfer", { duration: type === "snake" ? 250 : 220 });
+  if (isNavigatingAway) {
+    clearEventOverlay();
+    return false;
+  }
+  player.tokens[tokenIndex] = toIndex;
+  token.dataset.path = "common";
+  createImpactPulse(toPoint, type);
+  await wait(360);
   clearEventOverlay();
-  createImpactPulse(toPoint, "ladder");
+  return true;
 }
 
-async function animateSnakeTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "top") {
-  const player = state.players[playerIndex];
-  if (!player) return;
-  const token = tokenEls[player.color]?.[tokenIndex];
-  if (!token) return;
+function animateLadderTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "left", reason = "restore", epoch = gameplayEffectEpoch) {
+  return animateChaosTransfer(playerIndex, tokenIndex, fromIndex, toIndex, "ladder", side, { reason, epoch });
+}
 
-  const fromPoint = getElementCenter(PATHS.common[fromIndex]?.el);
-  const toPoint = getElementCenter(PATHS.common[toIndex]?.el);
-  if (!fromPoint || !toPoint) return;
-
-  const clearEventOverlay = showChaosEventOverlay("snake", fromIndex, toIndex, side);
-
-  triggerSnakeHeadChomp(side);
-  token.classList.add("event-hidden");
-  const ghost = createTokenGhost(token, fromPoint);
-  if (!ghost) {
-    token.classList.remove("event-hidden");
-    clearEventOverlay();
-    return;
-  }
-
-  createTransitTrail(fromPoint, toPoint, "snake");
-
-  const dx = toPoint.x - fromPoint.x;
-  const dy = toPoint.y - fromPoint.y;
-  const sideBias = side === "top" ? -1 : 1;
-  const bendX = sideBias * 22;
-  const bendY = sideBias * 14;
-
-  await animateWithFallback(ghost, [
-    { transform: "translate3d(0,0,0) scale(1) rotate(0deg)", opacity: 1, offset: 0 },
-    { transform: "translate3d(-5px, -2px, 0) scale(1.04) rotate(-10deg)", opacity: 1, offset: 0.14 },
-    { transform: "translate3d(5px, 1px, 0) scale(0.8) rotate(8deg)", opacity: 0.96, offset: 0.27 },
-    { transform: `translate3d(${dx * 0.52 + bendX}px, ${dy * 0.46 + bendY}px, 0) scale(0.72) rotate(${sideBias * 16}deg)`, opacity: 0.94, offset: 0.58 },
-    { transform: `translate3d(${dx}px, ${dy}px, 0) scale(0.98) rotate(0deg)`, opacity: 0.96, offset: 1 }
-  ], {
-    duration: 560,
-    easing: "cubic-bezier(.22,.74,.2,1)",
-    fill: "forwards"
-  });
-
-  ghost.remove();
-  token.classList.remove("event-hidden");
-  clearEventOverlay();
-  createImpactPulse(toPoint, "snake");
+function animateSnakeTransfer(playerIndex, tokenIndex, fromIndex, toIndex, side = "top", reason = "restore", epoch = gameplayEffectEpoch) {
+  return animateChaosTransfer(playerIndex, tokenIndex, fromIndex, toIndex, "snake", side, { reason, epoch });
 }
 
 function clearPowerTileMarkers() {
@@ -2552,8 +2507,8 @@ function setPaused(nextPaused) {
     pauseModalEl.setAttribute("aria-hidden", isPaused ? "false" : "true");
   }
   if (pauseBtnEl) {
-    pauseBtnEl.innerHTML = `<span aria-hidden="true">${isPaused ? "×" : "☰"}</span><span class="control-label">${isPaused ? "Close" : "Menu"}</span>`;
-    pauseBtnEl.setAttribute("aria-label", isPaused ? "Close game menu" : "Open game menu");
+    pauseBtnEl.innerHTML = '<span class="pause-icon" aria-hidden="true"></span><span class="control-label">Pause</span>';
+    pauseBtnEl.setAttribute("aria-label", "Pause game");
     pauseBtnEl.setAttribute("aria-pressed", isPaused ? "true" : "false");
   }
   Object.values(dicePanelsByColor).forEach(panel => {
@@ -2575,7 +2530,7 @@ function setPaused(nextPaused) {
     const current = state.players[state.currentPlayer];
     if (current) announceTurn(current);
     if (current && current.isAI && !isMoving) {
-      setTimeout(runAITurn, 140);
+      scheduleGameplayTask(runAITurn, 140);
     }
   }
 }
@@ -2586,8 +2541,7 @@ function togglePause() {
 
 function exitPausedMatch() {
   // Preserve the existing match before leaving; Continue remains available.
-  saveResumeSnapshot();
-  setPaused(false);
+  prepareForNavigation();
   const query = new URLSearchParams({ gm: gameMode });
   window.location.href = `index.html?${query.toString()}`;
 }
@@ -2598,7 +2552,8 @@ function getCurrentMoveSteps(playerIndex) {
 }
 
 function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
-  const { skipSafeBonus = false } = options;
+  const { skipSafeBonus = false, reason = "restore", epoch = gameplayEffectEpoch } = options;
+  if (!canRunTileEffect(reason, epoch)) return;
   const player = state.players[playerIndex];
   if (!player) return;
   const color = player.color;
@@ -2651,7 +2606,8 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
   }
 }
 
-async function handleTileEvent(playerIndex, tokenIndex) {
+async function handleTileEvent(playerIndex, tokenIndex, reason = "restore", epoch = gameplayEffectEpoch) {
+  if (!canRunTileEffect(reason, epoch)) return;
   const modeConfig = getModeConfig();
   if (!modeConfig || gameMode === "classic") return;
 
@@ -2669,6 +2625,7 @@ async function handleTileEvent(playerIndex, tokenIndex) {
   const activeBattleTiles = getActiveBattleTiles();
 
   while (iterations < 5) {
+    if (!canRunTileEffect(reason, epoch)) return;
     iterations += 1;
     let moved = false;
     const ladderPair = (modeConfig.ladders || modeConfig.allEvents)
@@ -2681,25 +2638,25 @@ async function handleTileEvent(playerIndex, tokenIndex) {
     if (ladderPair) {
       const fromPos = currentPos;
       const target = toCommonIndex(ladderPair.end);
-      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Ladder Boost");
-      if (moved) {
-        if (gameMode === "chaos") {
-          showEventAnnouncement(`CHAOS LADDER +${ladderPair.end - ladderPair.start}`, "event");
+        moved = await animateLadderTransfer(playerIndex, tokenIndex, fromPos, target, ladderPair.side, reason, epoch);
+        if (moved) {
+          showToast("Ladder Boost");
+          if (gameMode === "chaos") {
+            showEventAnnouncement(`CHAOS LADDER +${ladderPair.end - ladderPair.start}`, "event");
+          }
+          playSfx("entry", 0.46);
         }
-        await animateLadderTransfer(playerIndex, tokenIndex, fromPos, target, ladderPair.side);
-        playSfx("entry", 0.46);
-      }
     } else if (snakePair) {
       const fromPos = currentPos;
       const target = toCommonIndex(snakePair.tail);
-      moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Snake Drop");
-      if (moved) {
-        if (gameMode === "chaos") {
-          showEventAnnouncement(`CHAOS SNAKE -${snakePair.mouth - snakePair.tail}`, "event");
+        moved = await animateSnakeTransfer(playerIndex, tokenIndex, fromPos, target, snakePair.side, reason, epoch);
+        if (moved) {
+          showToast("Snake Drop");
+          if (gameMode === "chaos") {
+            showEventAnnouncement(`CHAOS SNAKE -${snakePair.mouth - snakePair.tail}`, "event");
+          }
+          playSfx("goal", 0.24);
         }
-        await animateSnakeTransfer(playerIndex, tokenIndex, fromPos, target, snakePair.side);
-        playSfx("goal", 0.24);
-      }
     } else if ((modeConfig.powerTiles || modeConfig.allEvents) && activePowerTiles.speed.includes(currentTile)) {
       const target = (currentPos + 3) % PATHS.common.length;
       moved = moveTokenToCommonIndex(playerIndex, tokenIndex, target, "Speed +3");
@@ -2776,7 +2733,7 @@ async function handleTileEvent(playerIndex, tokenIndex) {
 
 function triggerRandomEvent() {
   if (gameMode !== "arena") return;
-  if (isPaused) return;
+  if (isPaused || isNavigatingAway) return;
   const events = ["all_step_two", "double_next_roll"];
   const selected = events[Math.floor(Math.random() * events.length)];
 
@@ -2790,7 +2747,7 @@ function triggerRandomEvent() {
       if (tokenIndex < 0) return;
       const target = (player.tokens[tokenIndex] + 2) % PATHS.common.length;
       moveTokenToCommonIndex(playerIndex, tokenIndex, target);
-      applyPostLandingEffects(playerIndex, tokenIndex, { skipSafeBonus: true });
+      applyPostLandingEffects(playerIndex, tokenIndex, { skipSafeBonus: true, reason: "arenaEvent" });
     });
     showToast("Arena Event: All +2");
   }
@@ -3207,6 +3164,7 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
 }
 
 function animateDiceRoll(color, onDone) {
+  if (isNavigatingAway) return;
   const diceEl = diceEls[color];
   const panel = dicePanelsByColor[color];
   if (!diceEl) {
@@ -3227,6 +3185,7 @@ function animateDiceRoll(color, onDone) {
   diceEl.classList.add("dice-press");
 
   const resumeWhenReady = callback => {
+    if (isNavigatingAway) return;
     if (!isPaused) {
       callback();
       return;
@@ -3235,6 +3194,7 @@ function animateDiceRoll(color, onDone) {
   };
 
   const finish = () => {
+    if (isNavigatingAway) return;
     diceEl.classList.remove("dice-cycling", "dice-press");
     setDiceVisibleFace(color, value);
     diceEl.classList.add("dice-settled");
@@ -3242,7 +3202,7 @@ function animateDiceRoll(color, onDone) {
 
     if (value === 6) {
       setTimeout(() => {
-        if (gameOver) return;
+        if (gameOver || isNavigatingAway) return;
         triggerFeedback(panel, "dice-six", 520);
         showSixFeedback(panel);
       }, 55);
@@ -3268,6 +3228,7 @@ function animateDiceRoll(color, onDone) {
 
   const showFrame = frameIndex => {
     resumeWhenReady(() => {
+      if (isNavigatingAway) return;
       if (frameIndex >= sequence.length) {
         finish();
         return;
@@ -3283,7 +3244,7 @@ function animateDiceRoll(color, onDone) {
 }
 
 function nextTurn(extraTurn = false) {
-  if (gameOver) return;
+  if (gameOver || isNavigatingAway) return;
   if (isPaused) {
     setTimeout(() => nextTurn(extraTurn), 120);
     return;
@@ -3345,7 +3306,7 @@ function nextTurn(extraTurn = false) {
 }
 
 function handleTurn() {
-  if (gameOver) return;
+  if (gameOver || isNavigatingAway) return;
   if (isPaused) return;
   const playerIndex = state.currentPlayer;
   if (state.players[playerIndex].isAI) return;
@@ -3376,7 +3337,7 @@ function handleTurn() {
 }
 
 function rollDice() {
-  if (gameOver) return;
+  if (gameOver || isNavigatingAway) return;
   if (isPaused) return;
   if (isMoving) return;
   if (state.players[state.currentPlayer].isAI) return;
@@ -3396,7 +3357,7 @@ function rollDice() {
 }
 
 function runAITurn() {
-  if (gameOver) return;
+  if (gameOver || isNavigatingAway) return;
   if (isPaused) return;
   if (isMoving) return;
 
@@ -3410,6 +3371,11 @@ function runAITurn() {
   if (panel) panel.classList.add("ai-anticipation");
 
   setTimeout(() => {
+    if (isNavigatingAway) {
+      if (panel) panel.classList.remove("ai-anticipation");
+      isMoving = false;
+      return;
+    }
     if (isPaused) {
       if (panel) panel.classList.remove("ai-anticipation");
       isMoving = false;
@@ -3453,6 +3419,7 @@ function runAITurn() {
 }
 
 async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
+  if (isNavigatingAway) return;
   await moveTokenStep(token, goalEls[color], "token-finished");
   playSfx("goal", 0.65);
   token.dataset.path = "goal";
@@ -3483,7 +3450,7 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
 
 async function executeMove(move) {
   try {
-    if (gameOver) return;
+    if (gameOver || isNavigatingAway) return;
     if (isPaused) return;
     isMoving = true;
     waitingForTokenMove = false;
@@ -3502,6 +3469,8 @@ async function executeMove(move) {
     }
 
     const color = player.color;
+    const movementReason = player.isAI ? "aiMove" : "playerMove";
+    const movementEpoch = gameplayEffectEpoch;
     const token = tokenEls[color][tokenIndex];
     const dice = state.diceValue;
     const baseMoveSteps = getCurrentMoveSteps(playerIndex);
@@ -3554,8 +3523,8 @@ async function executeMove(move) {
       player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
       player.finished[tokenIndex] = false;
       showEventAnnouncement(`${color.toUpperCase()} ENTERED BOARD`, "event");
-      await handleTileEvent(playerIndex, tokenIndex);
-      applyPostLandingEffects(playerIndex, tokenIndex);
+      await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
+      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
       refreshNearWinEffects();
       isMoving = false;
       nextTurn(consumeBonusTurn(true));
@@ -3578,8 +3547,8 @@ async function executeMove(move) {
         playSfx("step", 0.35);
       }
       player.tokens[tokenIndex] += moveSteps;
-      await handleTileEvent(playerIndex, tokenIndex);
-      applyPostLandingEffects(playerIndex, tokenIndex);
+      await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
+      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
       triggerFeedback(token, "token-landed", 260);
       refreshNearWinEffects();
       isMoving = false;
@@ -3646,8 +3615,8 @@ async function executeMove(move) {
       triggerFeedback(token, "token-landed", 260);
     } else {
       player.tokens[tokenIndex] = commonPos;
-      await handleTileEvent(playerIndex, tokenIndex);
-      applyPostLandingEffects(playerIndex, tokenIndex);
+      await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
+      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
       triggerFeedback(token, "token-landed", 260);
     }
 
@@ -3685,4 +3654,15 @@ if (restoredSavedMatch && state.diceValue !== null && !state.players[state.curre
   setTimeout(handleTurn, 0);
 } else if (state.players[state.currentPlayer]?.isAI) {
   setTimeout(runAITurn, 140);
+}
+
+// A new player receives the complete rules once, inside the existing pause
+// interface. Returning players keep their uninterrupted match flow.
+if (!localStorage.getItem(GAME_RULES_SEEN_KEY) && !restoredSavedMatch) {
+  scheduleGameplayTask(() => {
+    if (gameOver || isNavigatingAway) return;
+    pauseModalEl?.querySelector(".pause-rules")?.setAttribute("open", "");
+    setPaused(true);
+    localStorage.setItem(GAME_RULES_SEEN_KEY, "1");
+  }, 360);
 }

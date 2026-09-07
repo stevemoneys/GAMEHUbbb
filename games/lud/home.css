@@ -4130,3 +4130,41 @@ button { touch-action:manipulation; }
   .hub-back-btn { width:64px !important; min-width:64px !important; gap:4px !important; }
   .hub-back-btn .hub-nav-label { display:inline !important; font-size:8px !important; letter-spacing:.055em !important; }
 }
+
+/* Keep the home-screen coin amount intentionally compact. */
+#home-coin-value {
+  font-size: clamp(11px, 3vw, 14px) !important;
+}
+
+/* Reference-style hero finish: polished gold crown, floating dice, raised
+   LUDO lettering, and a larger perspective board with four glossy pawns. */
+.hero-stage { height: calc(100% - 48px) !important; }
+.hero-crown { z-index: 8 !important; }
+.hero-crown::before {
+  background: linear-gradient(180deg, #fffbd0 0%, #ffdf45 24%, #e99a08 62%, #864000 100%) !important;
+  box-shadow: inset 0 2px 2px rgba(255,255,255,.92), 0 0 13px rgba(255,195,24,.72) !important;
+}
+.hero-crown::after { background: linear-gradient(90deg, #a75400, #ffca18 23%, #fff5a2 49%, #f9aa09 74%, #924400) !important; }
+.hero-die {
+  border-color: rgba(255,255,255,.94) !important;
+  background:
+    radial-gradient(circle at 27% 28%, #151323 0 5%, transparent 5.7%),
+    radial-gradient(circle at 73% 28%, #151323 0 5%, transparent 5.7%),
+    radial-gradient(circle at 50% 50%, #151323 0 5%, transparent 5.7%),
+    radial-gradient(circle at 27% 72%, #151323 0 5%, transparent 5.7%),
+    radial-gradient(circle at 73% 72%, #151323 0 5%, transparent 5.7%),
+    linear-gradient(145deg, #ffffff 0%, #e8e7ef 37%, #9796ae 100%) !important;
+}
+.brand-yellow { color: #169fff !important; }
+.brand-blue { color: #ffd018 !important; }
+.hero-board-scene { width: min(100vw, 490px) !important; height: clamp(205px, 58vw, 276px) !important; }
+.hero-board {
+  background:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.34) 0 1px, transparent 1px 13px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.34) 0 1px, transparent 1px 13px),
+    linear-gradient(90deg, transparent 49.3%, rgba(255,255,255,.9) 49.5% 50.5%, transparent 50.7%),
+    linear-gradient(transparent 49.1%, rgba(255,255,255,.9) 49.4% 50.6%, transparent 50.9%),
+    conic-gradient(from 45deg, #0d71d9 0 25%, #e32b26 25% 50%, #f3cc1d 50% 75%, #21a946 75% 100%) !important;
+}
+.hero-pawn::before,
+.hero-pawn::after { box-shadow: inset 3px 3px 4px rgba(255,255,255,.43), inset -5px -5px 8px rgba(0,0,0,.4) !important; }
