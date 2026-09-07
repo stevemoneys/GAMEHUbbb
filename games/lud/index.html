@@ -107,15 +107,22 @@
           <span class="mode-switch-copy"><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span><span class="mode-switch-summary" id="mode-switch-summary">Traditional Ludo rules.</span></span>
         </button>
         <div class="hero-stage" aria-hidden="true">
+          <img class="reference-hero-art" src="assets/reference-ludo-hero.png" alt="" />
           <div class="hero-die hero-die-left"></div>
           <div class="hero-die hero-die-right"></div>
           <div class="hero-crown"><i></i><i></i><i></i><i></i><i></i></div>
           <div class="celestial-mark"><span></span><i></i><b></b></div>
           <div class="ludo-brand">
-          <span class="brand-letter brand-red">L</span><span class="brand-letter brand-green">U</span><span class="brand-letter brand-yellow">D</span><span class="brand-letter brand-blue">O</span>
+          <span class="brand-letter brand-red" data-letter="L">L</span><span class="brand-letter brand-green" data-letter="U">U</span><span class="brand-letter brand-yellow" data-letter="D">D</span><span class="brand-letter brand-blue" data-letter="O">O</span>
         </div>
           <div class="hero-board-scene">
-            <div class="hero-board"><span></span></div>
+            <div class="hero-board">
+              <span class="hero-board-center" aria-hidden="true"></span>
+              <i class="hero-board-home hero-board-home-blue" aria-hidden="true"></i>
+              <i class="hero-board-home hero-board-home-red" aria-hidden="true"></i>
+              <i class="hero-board-home hero-board-home-green" aria-hidden="true"></i>
+              <i class="hero-board-home hero-board-home-yellow" aria-hidden="true"></i>
+            </div>
             <i class="hero-pawn hero-pawn-blue"></i><i class="hero-pawn hero-pawn-red"></i><i class="hero-pawn hero-pawn-green"></i><i class="hero-pawn hero-pawn-yellow"></i>
           </div>
         </div>
@@ -136,6 +143,7 @@
             <span class="mode-sub">Play against AI</span>
           </span>
           <span class="mode-action-arrow" aria-hidden="true">→</span>
+          <span class="mode-play-cta" aria-hidden="true">Play Now <b>&rarr;</b></span>
         </button>
         <button class="mode-btn secondary" id="pass-play-btn" type="button" aria-label="Pass and play local multiplayer">
           <span class="local-portal-visual" aria-hidden="true">
@@ -148,6 +156,7 @@
             <span class="mode-sub">Play locally with friends</span>
           </span>
           <span class="mode-action-arrow" aria-hidden="true">→</span>
+          <span class="mode-play-cta" aria-hidden="true">Play Now <b>&rarr;</b></span>
         </button>
       </div>
       <nav class="lobby-shortcuts" aria-label="Lobby shortcuts">

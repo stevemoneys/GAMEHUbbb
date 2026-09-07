@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-08-28-v47";
+const CACHE_VERSION = "2026-09-06-v48";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 const PRELOAD_CACHE = "ludo-preload-assets-v1";
@@ -37,6 +37,9 @@ function buildAssetManifest() {
     "./movement.js",
     "./boot.js",
     "./game.js",
+    "./assets/reference-ludo-hero.png",
+    "./assets/reference-play-vs-computer.png",
+    "./assets/reference-pass-and-play.png",
     "./backgrounds/bg1_result.webp",
     ...getDiceFaces().map(face => `./dice/${face}`),
     ...getColors().map(color => `./tokens/${color}_result.webp`)
