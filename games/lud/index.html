@@ -13,14 +13,22 @@
   <link rel="stylesheet" href="design-tokens.css" />
   <link rel="stylesheet" href="home.css?v=home-v1-qa2" />
 </head>
-<body>
-  <header class="lobby-topbar" aria-label="Lobby status">
+<body class="home-page">
+  <div class="home-background" aria-hidden="true">
+    <div class="home-background-base"></div>
+    <div class="home-background-atmosphere"></div>
+    <div class="home-background-light"></div>
+    <div class="home-background-stars"></div>
+    <div class="home-background-pattern"></div>
+    <div class="home-background-vignette"></div>
+  </div>
+  <header class="lobby-topbar home-top-hud" aria-label="Player status and navigation">
     <div class="topbar-progress">
-      <div class="lobby-level-card">
+      <div class="lobby-level-card hud-level" aria-label="Current level">
         <span class="lobby-status-label">Level</span>
         <strong id="home-level-value">1</strong>
       </div>
-      <div class="lobby-coin-card">
+      <div class="lobby-coin-card hud-coins" role="status" aria-label="Current coin balance">
         <span class="coin-orb" aria-hidden="true"></span>
         <strong id="home-coin-value">0</strong>
         <span class="lobby-status-label">Coins</span>
@@ -31,7 +39,7 @@
         <path d="M10 5H6.5A2.5 2.5 0 0 0 4 7.5v9A2.5 2.5 0 0 0 6.5 19H10" />
         <path d="m13 8 4 4-4 4M17 12H8" />
       </svg>
-      <span class="hub-nav-label">GameHub</span>
+      <span class="hub-nav-copy"><span class="hub-nav-kicker">Back to</span><span class="hub-nav-label">GameHub</span></span>
     </a>
   </header>
 
@@ -45,11 +53,11 @@
       <button class="close-mode-panel" id="close-mode-panel" type="button" aria-label="Close mode selection">×</button>
     </div>
     <div class="mode-switch-grid">
-      <button class="mode-switch-card active" data-game-mode="classic" type="button"><span class="mode-card-name">Classic</span><span class="mode-card-description">Traditional Ludo rules</span></button>
-      <button class="mode-switch-card" data-game-mode="chaos" type="button"><span class="mode-card-name">Chaos</span><span class="mode-card-description">Snakes, ladders, unpredictable moves</span></button>
-      <button class="mode-switch-card" data-game-mode="power" type="button"><span class="mode-card-name">Power</span><span class="mode-card-description">Speed, teleport, and shield tiles</span></button>
-      <button class="mode-switch-card" data-game-mode="battle" type="button"><span class="mode-card-name">Battle</span><span class="mode-card-description">Capture-focused risk and blockade tiles</span></button>
-      <button class="mode-switch-card" data-game-mode="arena" type="button"><span class="mode-card-name">Arena</span><span class="mode-card-description">Mixed event tiles and arena bonuses</span></button>
+      <button class="mode-switch-card active" data-game-mode="classic" type="button" aria-pressed="true"><span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 16 1.5-8 4 4 1.5-7 1.5 7 4-4 1.5 8zM7 19h10"/></svg></span><span class="mode-card-copy"><span class="mode-card-name">Classic</span><span class="mode-card-description">Traditional Ludo rules</span></span><span class="mode-card-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>
+      <button class="mode-switch-card" data-game-mode="chaos" type="button" aria-pressed="false"><span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m13.5 2-8 12h5l-1 8 9-13h-5z"/></svg></span><span class="mode-card-copy"><span class="mode-card-name">Chaos</span><span class="mode-card-description">Snakes, ladders, unpredictable moves</span></span><span class="mode-card-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>
+      <button class="mode-switch-card" data-game-mode="power" type="button" aria-pressed="false"><span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 7 7-7 13L5 9zM5 9h14M12 2v20"/></svg></span><span class="mode-card-copy"><span class="mode-card-name">Power</span><span class="mode-card-description">Speed, teleport, and shield tiles</span></span><span class="mode-card-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>
+      <button class="mode-switch-card" data-game-mode="battle" type="button" aria-pressed="false"><span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 5 10 14M17 5 7 19M5 7l2-2 2 2M15 7l2-2 2 2"/></svg></span><span class="mode-card-copy"><span class="mode-card-name">Battle</span><span class="mode-card-description">Capture-focused risk and blockade tiles</span></span><span class="mode-card-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>
+      <button class="mode-switch-card" data-game-mode="arena" type="button" aria-pressed="false"><span class="mode-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 2 2.1 6.4H21l-5.5 4 2.1 6.6-5.6-4-5.6 4 2.1-6.6-5.5-4h6.9z"/></svg></span><span class="mode-card-copy"><span class="mode-card-name">Arena</span><span class="mode-card-description">Mixed event tiles and arena bonuses</span></span><span class="mode-card-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4 10-10"/></svg></span></button>
     </div>
   </section>
 
@@ -104,9 +112,14 @@
       <div class="home-intro">
         <button class="mode-switch-btn" id="mode-switch-btn" type="button" aria-label="Change game mode" aria-haspopup="dialog" aria-expanded="false">
           <span class="mode-switch-glyph" aria-hidden="true">✦</span>
+          <span class="mode-selector-icon-wrap" aria-hidden="true"><svg class="mode-selector-icon mode-selector-icon-classic" viewBox="0 0 24 24"><path d="m5 16 1.5-8 4 4 1.5-7 1.5 7 4-4 1.5 8zM7 19h10"/></svg><svg class="mode-selector-icon mode-selector-icon-chaos" viewBox="0 0 24 24"><path d="m13.5 2-8 12h5l-1 8 9-13h-5z"/></svg><svg class="mode-selector-icon mode-selector-icon-power" viewBox="0 0 24 24"><path d="m12 2 7 7-7 13L5 9zM5 9h14M12 2v20"/></svg><svg class="mode-selector-icon mode-selector-icon-battle" viewBox="0 0 24 24"><path d="m7 5 10 14M17 5 7 19M5 7l2-2 2 2M15 7l2-2 2 2"/></svg><svg class="mode-selector-icon mode-selector-icon-arena" viewBox="0 0 24 24"><path d="m12 2 2.1 6.4H21l-5.5 4 2.1 6.6-5.6-4-5.6 4 2.1-6.6-5.5-4h6.9z"/></svg></span>
+          <span class="mode-selector-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></span>
           <span class="mode-switch-copy"><span class="mode-switch-value" id="mode-switch-value">Classic</span><span class="mode-switch-sub">Mode</span><span class="mode-switch-summary" id="mode-switch-summary">Traditional Ludo rules.</span></span>
         </button>
         <div class="hero-stage" aria-hidden="true">
+          <div class="hero-atmosphere"></div>
+          <div class="hero-arena-field"></div>
+          <div class="hero-particles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <div class="hero-die hero-die-left"></div>
           <div class="hero-die hero-die-right"></div>
           <div class="hero-crown"><i></i><i></i><i></i><i></i><i></i></div>
@@ -235,13 +248,18 @@
       selectedGameMode = mode;
       localStorage.setItem(GAME_MODE_KEY, mode);
       document.body.dataset.gameMode = mode;
-      if (modeSwitchBtn) modeSwitchBtn.dataset.gameMode = mode;
+      if (modeSwitchBtn) {
+        modeSwitchBtn.dataset.gameMode = mode;
+        modeSwitchBtn.setAttribute("aria-label", `Change game mode. Current mode: ${MODE_LABELS[mode]}`);
+      }
       if (modeSwitchValueEl) modeSwitchValueEl.textContent = MODE_LABELS[mode];
       if (modeSwitchSummaryEl) modeSwitchSummaryEl.textContent = MODE_DESCRIPTIONS[mode];
       if (modeDescriptionEl) modeDescriptionEl.textContent = MODE_DESCRIPTIONS[mode];
       if (modeTitleEl) modeTitleEl.textContent = MODE_TITLES[mode];
       modeCards.forEach(card => {
-        card.classList.toggle("active", card.dataset.gameMode === mode);
+        const isActive = card.dataset.gameMode === mode;
+        card.classList.toggle("active", isActive);
+        card.setAttribute("aria-pressed", String(isActive));
       });
     }
 
@@ -269,13 +287,36 @@
       else openModePanel();
     }
 
+    function selectGameMode(mode) {
+      if (!MODE_LABELS[mode]) return;
+      setGameMode(mode);
+      const selectedCard = modeCards.find(card => card.dataset.gameMode === mode);
+      if (selectedCard) {
+        selectedCard.classList.remove("mode-selection-confirmed");
+        void selectedCard.offsetWidth;
+        selectedCard.classList.add("mode-selection-confirmed");
+      }
+      window.setTimeout(closeModePanel, 220);
+    }
+
     setGameMode(selectedGameMode);
+
+    let lastRenderedCoinValue = null;
 
     function renderLobbyStatus() {
       const coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
       const unlocked = Math.min(TOTAL_LEVELS, Math.max(1, Number(localStorage.getItem(LEVEL_KEY) || "1")));
-      if (homeCoinValueEl) homeCoinValueEl.textContent = coins.toLocaleString();
+      const formattedCoins = coins.toLocaleString();
+      const coinsChanged = lastRenderedCoinValue !== null && lastRenderedCoinValue !== formattedCoins;
+      if (homeCoinValueEl) {
+        homeCoinValueEl.textContent = formattedCoins;
+        if (coinsChanged) {
+          homeCoinValueEl.classList.remove("hud-coin-updated");
+          requestAnimationFrame(() => homeCoinValueEl.classList.add("hud-coin-updated"));
+        }
+      }
       if (homeLevelValueEl) homeLevelValueEl.textContent = String(unlocked);
+      lastRenderedCoinValue = formattedCoins;
     }
 
     renderLobbyStatus();
@@ -359,8 +400,7 @@
     modeOverlay?.addEventListener("click", closeModePanel);
     modeCards.forEach(card => {
       card.addEventListener("click", () => {
-        setGameMode(card.dataset.gameMode);
-        closeModePanel();
+        selectGameMode(card.dataset.gameMode);
       });
     });
     document.addEventListener("keydown", event => {
