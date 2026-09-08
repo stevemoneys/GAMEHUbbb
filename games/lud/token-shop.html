@@ -148,6 +148,35 @@
     const unlockContinue = document.getElementById("unlock-continue");
     let previewId = null;
     let unlockedId = null;
+    const modalTimers = new WeakMap();
+
+    function refreshModalLock() {
+      document.body.classList.toggle("shop-modal-open", !previewModal.hidden || !unlockModal.hidden);
+    }
+
+    function openShopModal(modal) {
+      if (!modal) return;
+      window.clearTimeout(modalTimers.get(modal));
+      modal.hidden = false;
+      modal.classList.remove("is-closing");
+      window.requestAnimationFrame(() => modal.classList.add("is-open"));
+      refreshModalLock();
+      window.setTimeout(() => modal.querySelector("button:not([disabled])")?.focus(), 0);
+    }
+
+    function closeShopModal(modal, afterClose) {
+      if (!modal || modal.hidden) { afterClose?.(); return; }
+      window.clearTimeout(modalTimers.get(modal));
+      modal.classList.remove("is-open");
+      modal.classList.add("is-closing");
+      const timer = window.setTimeout(() => {
+        modal.hidden = true;
+        modal.classList.remove("is-closing");
+        refreshModalLock();
+        afterClose?.();
+      }, 180);
+      modalTimers.set(modal, timer);
+    }
 
     let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
     let owned = [];
@@ -208,7 +237,7 @@
       target.onerror = () => { target.src = "tokens/red_result.webp"; };
     }
 
-    function closePreview() { if (previewModal) previewModal.hidden = true; previewId = null; }
+    function closePreview() { closeShopModal(previewModal); previewId = null; }
 
     function openPreview(id) {
       previewId = id;
@@ -220,7 +249,7 @@
       previewPrice.textContent = owns(id) ? "OWNED" : `${skinPrice(id)} COINS`;
       previewAction.textContent = owns(id) ? (activeSkin === key ? "EQUIPPED ✓" : "EQUIP") : "UNLOCK";
       previewAction.disabled = activeSkin === key;
-      previewModal.hidden = false;
+      openShopModal(previewModal);
     }
 
     function showUnlock(id) {
@@ -229,7 +258,7 @@
       unlockImage.alt = `Unlocked token skin ${id}`;
       unlockTitle.textContent = `Skin ${id}`;
       unlockEffect.textContent = "COLLECTIBLE TOKEN";
-      unlockModal.hidden = false;
+      openShopModal(unlockModal);
     }
 
     function renderNav() {
@@ -355,6 +384,11 @@
     });
 
     document.querySelectorAll("[data-preview-close]").forEach((el) => el.addEventListener("click", closePreview));
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      if (!unlockModal.hidden) closeShopModal(unlockModal, () => { unlockedId = null; });
+      else if (!previewModal.hidden) closePreview();
+    });
     previewAction.addEventListener("click", () => {
       if (previewId == null) return;
       const card = rowEl.querySelector(`[data-skin-key="${skinKey(previewId)}"]`);
@@ -362,13 +396,12 @@
       closePreview();
       action?.click();
     });
-    unlockContinue.addEventListener("click", () => { unlockModal.hidden = true; unlockedId = null; });
+    unlockContinue.addEventListener("click", () => closeShopModal(unlockModal, () => { unlockedId = null; }));
     unlockEquip.addEventListener("click", () => {
       if (unlockedId == null) return;
       const card = rowEl.querySelector(`[data-skin-key="${skinKey(unlockedId)}"]`);
       card?.querySelector(".use")?.click();
-      unlockModal.hidden = true;
-      unlockedId = null;
+      closeShopModal(unlockModal, () => { unlockedId = null; });
     });
 
     prevBtn.addEventListener("click", () => {

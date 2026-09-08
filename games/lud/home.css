@@ -4549,6 +4549,242 @@ body.home-page {
   .home-background-stars { animation: none !important; }
 }
 
+/* Phase 8: Rules and settings are focused, accessible in-app panels. */
+.home-page .menu-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: calc(var(--home-z-controls, 40) + 20) !important;
+  display: block !important;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background: rgba(2, 7, 24, .74) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(.8);
+  backdrop-filter: blur(10px) saturate(.8);
+  transition: opacity 220ms ease, visibility 0s linear 220ms;
+}
+.home-page .menu-backdrop.show {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.home-page .side-menu {
+  position: fixed !important;
+  z-index: calc(var(--home-z-controls, 40) + 21) !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  display: flex !important;
+  flex-direction: column;
+  width: min(calc(100vw - 28px), 444px) !important;
+  max-height: min(82dvh, 660px) !important;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 16px !important;
+  overflow: hidden !important;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  color: #eaf4ff;
+  background:
+    radial-gradient(110% 65% at 8% 0%, rgba(74, 136, 255, .18), transparent 47%),
+    linear-gradient(145deg, rgba(15, 30, 74, .98), rgba(5, 12, 35, .985)) !important;
+  border: 1px solid rgba(135, 188, 255, .58) !important;
+  border-radius: 25px !important;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, .66), 0 0 0 1px rgba(103, 61, 255, .2), inset 0 1px 0 rgba(255,255,255,.13) !important;
+  transform: translate(-50%, -45%) scale(.96) !important;
+  transition: opacity 210ms ease, transform 260ms cubic-bezier(.2,.9,.24,1), visibility 0s linear 260ms;
+}
+.home-page .side-menu::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(125deg, rgba(255,255,255,.12), transparent 23%, transparent 77%, rgba(122,63,255,.12));
+}
+.home-page .side-menu.open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) scale(1) !important;
+  transition-delay: 0s;
+}
+.home-page .side-menu-head,
+.home-page .menu-tabs,
+.home-page .menu-panel { position: relative; z-index: 1; }
+.home-page .side-menu-head {
+  flex: 0 0 auto;
+  align-items: center;
+  min-height: 54px;
+  margin: 0 0 12px !important;
+  padding: 2px 2px 0 !important;
+}
+.home-page .sheet-kicker {
+  margin: 0 0 3px !important;
+  color: #82b8ff !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .17em !important;
+  text-transform: uppercase;
+}
+.home-page .side-menu h2 {
+  margin: 0 !important;
+  color: #fff !important;
+  font-family: "Sora", sans-serif !important;
+  font-size: clamp(21px, 6vw, 26px) !important;
+  font-weight: 800 !important;
+  letter-spacing: -.045em;
+  text-shadow: 0 2px 16px rgba(101, 176, 255, .34);
+}
+.home-page .close-menu {
+  display: grid !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px;
+  place-items: center;
+  padding: 0 !important;
+  color: #eaf4ff !important;
+  font-size: 27px !important;
+  line-height: 1;
+  background: linear-gradient(145deg, rgba(83, 124, 203, .3), rgba(14, 27, 64, .8)) !important;
+  border: 1px solid rgba(166, 206, 255, .4) !important;
+  border-radius: 13px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 5px 14px rgba(0,0,0,.22);
+}
+.home-page .close-menu:hover,
+.home-page .close-menu:focus-visible { background: linear-gradient(145deg, rgba(109, 158, 255, .48), rgba(40, 65, 134, .94)) !important; outline: 2px solid #d6edff; outline-offset: 2px; }
+.home-page .menu-tabs {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr);
+  flex: 0 0 auto;
+  gap: 5px;
+  margin: 0 0 13px !important;
+  padding: 5px !important;
+  background: rgba(2, 10, 31, .65) !important;
+  border: 1px solid rgba(111, 155, 229, .22) !important;
+  border-radius: 15px !important;
+}
+.home-page .menu-tab {
+  min-height: 38px;
+  color: #91a8d0 !important;
+  font-family: "Sora", sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  letter-spacing: .035em;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.home-page .menu-tab.active {
+  color: #f7fbff !important;
+  background: linear-gradient(135deg, #265ad8, #6747d8) !important;
+  box-shadow: 0 5px 15px rgba(44, 94, 236, .36), inset 0 1px 0 rgba(255,255,255,.25) !important;
+}
+.home-page .menu-tab:hover,
+.home-page .menu-tab:focus-visible { color: #fff !important; transform: translateY(-1px); outline: 2px solid #bbd9ff; outline-offset: 1px; }
+.home-page .menu-panel {
+  display: none;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+}
+.home-page .menu-panel.active { display: block !important; }
+.home-page #panel-rules.menu-panel.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-right: 3px !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(113, 169, 255, .6) transparent;
+}
+.home-page #panel-rules::-webkit-scrollbar { width: 5px; }
+.home-page #panel-rules::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(113, 169, 255, .62); }
+.home-page #panel-settings.menu-panel.active { padding: 2px 0 4px !important; }
+.home-page .setting-row {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+  gap: 12px;
+  margin: 0 0 10px !important;
+  padding: 12px 13px !important;
+  color: #edf6ff !important;
+  background: linear-gradient(135deg, rgba(40, 72, 144, .32), rgba(12, 25, 62, .72)) !important;
+  border: 1px solid rgba(121, 172, 250, .28) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 18px rgba(0,0,0,.16);
+}
+.home-page .setting-label { display: inline-flex; align-items: center; min-width: 0; gap: 10px; font-family: "Sora", sans-serif; font-size: 13px; font-weight: 700; }
+.home-page .setting-label svg { width: 21px; height: 21px; flex: 0 0 auto; fill: none; stroke: #8ac2ff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 5px rgba(87,181,255,.55)); }
+.home-page .toggle-btn {
+  position: relative;
+  width: 62px !important;
+  min-width: 62px;
+  height: 31px !important;
+  padding: 0 8px 0 29px !important;
+  color: #eafaff !important;
+  font-family: "Sora", sans-serif !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: .08em;
+  text-align: center;
+  background: linear-gradient(135deg, #197bd2, #3755ca) !important;
+  border: 1px solid rgba(158, 221, 255, .7) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 0 14px rgba(39, 151, 255, .35), inset 0 1px 0 rgba(255,255,255,.28) !important;
+}
+.home-page .toggle-btn::before { content: ""; position: absolute; top: 4px; left: 4px; width: 21px; height: 21px; border-radius: 50%; background: #f6fdff; box-shadow: 0 2px 5px rgba(0,0,0,.35); transition: transform 170ms ease, background 170ms ease; }
+.home-page .toggle-btn.off { padding: 0 28px 0 8px !important; color: #9aa9c6 !important; background: #172342 !important; border-color: rgba(139, 163, 205, .35) !important; box-shadow: inset 0 1px 3px rgba(0,0,0,.35) !important; }
+.home-page .toggle-btn.off::before { transform: translateX(30px); background: #aebbd0; }
+.home-page .toggle-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.home-page .rules-intro {
+  margin: 0 0 12px !important;
+  padding: 14px !important;
+  color: #dbeeff !important;
+  background: linear-gradient(135deg, rgba(38, 102, 215, .34), rgba(62, 31, 138, .28)) !important;
+  border: 1px solid rgba(124, 184, 255, .34) !important;
+  border-radius: 16px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+}
+.home-page .rules-intro span { display: block; margin-bottom: 5px; color: #91caff; font-family: "Sora", sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.home-page .rules-intro p { margin: 0 !important; font-family: "Sora", sans-serif; font-size: 12px !important; line-height: 1.52 !important; }
+.home-page .rules-grid { display: grid !important; grid-template-columns: 1fr; gap: 8px !important; padding-bottom: 2px; counter-reset: ludo-rule; }
+.home-page .rule-card {
+  position: relative;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 12px 12px 12px 48px !important;
+  color: #dbe9ff !important;
+  background: linear-gradient(135deg, rgba(29, 55, 112, .52), rgba(10, 20, 54, .74)) !important;
+  border: 1px solid rgba(114, 159, 232, .23) !important;
+  border-radius: 14px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  counter-increment: ludo-rule;
+}
+.home-page .rule-card::before { content: counter(ludo-rule); position: absolute; top: 12px; left: 12px; display: grid; width: 25px; height: 25px; place-items: center; color: #fff2bc; font-family: "Sora", sans-serif; font-size: 10px; font-weight: 800; background: radial-gradient(circle at 35% 30%, #fff0a1, #d79618 57%, #88500a); border: 1px solid #ffe27e; border-radius: 50%; box-shadow: 0 0 9px rgba(255,193,61,.36); }
+.home-page .rule-card strong { display: block; margin: 0 0 4px !important; color: #f5f9ff !important; font-family: "Sora", sans-serif; font-size: 12px !important; font-weight: 800 !important; line-height: 1.25; }
+.home-page .rule-card p { margin: 0 !important; color: #b9cbe7 !important; font-family: "Sora", sans-serif; font-size: 11px !important; line-height: 1.45 !important; }
+.home-page .rule-card strong::first-letter { color: inherit; }
+@media (max-height: 560px) and (orientation: landscape) {
+  .home-page .side-menu { max-height: calc(100dvh - 22px) !important; width: min(calc(100vw - 26px), 600px) !important; padding: 12px !important; }
+  .home-page .side-menu-head { min-height: 42px; margin-bottom: 7px !important; }
+  .home-page .menu-tabs { margin-bottom: 8px !important; }
+  .home-page .rules-intro { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page .side-menu,
+  .home-page .menu-backdrop,
+  .home-page .menu-tab,
+  .home-page .toggle-btn,
+  .home-page .toggle-btn::before { transition-duration: 1ms !important; }
+}
+
 /* Phase 3 — premium mode selector system */
 .home-page .mode-switch-btn {
   --mode-accent: #f6c94b;
@@ -6141,4 +6377,206 @@ body.home-page {
   .home-page .bottom-nav-item,
   .home-page .bottom-nav-item::before,
   .home-page .bottom-nav-item .shortcut-icon { transition-duration: 1ms !important; }
+}
+
+/* --------------------------------------------------------------------------
+   Phase 9: final home composition
+   One viewport-bound mobile layout shared by the existing HUD, hero, cards,
+   dock, and panels. These rules intentionally own page-level sizing so the
+   feature layers above can remain focused on their individual components.
+   -------------------------------------------------------------------------- */
+.home-page {
+  --home-content-width: 430px;
+  --home-space-1: 4px;
+  --home-space-2: 8px;
+  --home-space-3: 12px;
+  --home-space-4: 16px;
+  --home-radius-control: 14px;
+  --home-radius-panel: 22px;
+  --home-border: rgba(151, 204, 255, .34);
+  --home-shadow-panel: 0 14px 30px rgba(0, 3, 22, .34);
+  --home-motion-fast: 160ms cubic-bezier(.2, .8, .24, 1);
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+html { height: 100%; overflow: hidden; }
+.home-page,
+.home-page button,
+.home-page a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.home-page button { -webkit-user-select: none; user-select: none; }
+
+.home-page .home-shell {
+  position: relative !important;
+  z-index: 1;
+  width: min(calc(100vw - max(20px, env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px))), var(--home-content-width)) !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.home-page .home-card {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--home-space-2) !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: calc(68px + env(safe-area-inset-top, 0px)) 0 calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.home-page .home-intro {
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+.home-page .hero-stage { height: calc(100% - 42px) !important; }
+.home-page .home-intro > .lead,
+.home-page .home-actions > h2 { display: none !important; }
+
+.home-page .mode-switch-btn {
+  border-radius: var(--home-radius-control) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 18px rgba(0,3,24,.3), 0 0 14px color-mix(in srgb, var(--mode-glow, rgba(98,127,255,.3)) 26%, transparent) !important;
+  transition: transform var(--home-motion-fast), filter var(--home-motion-fast), border-color var(--home-motion-fast), box-shadow var(--home-motion-fast) !important;
+}
+.home-page .mode-switch-btn:active { transform: scale(.97) !important; }
+
+.home-page .home-actions {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: var(--home-space-2) !important;
+  width: 100% !important;
+  height: clamp(220px, 30dvh, 258px) !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+.home-page .home-actions .mode-btn,
+.home-page .play-computer-card,
+.home-page .play-friends-card {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  border-radius: var(--home-radius-panel) !important;
+}
+.home-page .play-computer-card,
+.home-page .play-friends-card {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -16px 27px rgba(1,4,25,.28), var(--home-shadow-panel) !important;
+}
+.home-page .play-computer-card { border-color: rgba(126, 213, 255, .58) !important; }
+.home-page .play-friends-card { border-color: rgba(167, 184, 255, .5) !important; }
+.home-page .play-computer-cta,
+.home-page .play-friends-cta {
+  min-height: 40px !important;
+  border-radius: 13px !important;
+  transition: transform var(--home-motion-fast), filter var(--home-motion-fast), box-shadow var(--home-motion-fast) !important;
+}
+.home-page .play-computer-card:active,
+.home-page .play-friends-card:active { transform: scale(.97) !important; }
+
+/* Keep the home screen alive through response and atmosphere, not perpetual
+   motion on every card illustration. */
+.home-page .play-computer-visual,
+.home-page .play-computer-visual::before,
+.home-page .play-computer-visual .ai-head i,
+.home-page .play-friends-visual,
+.home-page .play-friends-visual::before,
+.home-page .play-friends-visual .local-player,
+.home-page .play-computer-card::before,
+.home-page .play-friends-card::before { animation: none !important; }
+
+.home-page .bottom-navigation-dock {
+  width: min(calc(100vw - 20px), var(--home-content-width)) !important;
+  height: clamp(64px, 12dvh, 76px) !important;
+  bottom: max(7px, env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: var(--home-radius-panel) !important;
+  box-shadow: inset 0 1px 0 rgba(238,247,255,.17), inset 0 -10px 16px rgba(0,3,20,.2), 0 8px 19px rgba(0,2,16,.38), 0 0 14px rgba(91,154,255,.08) !important;
+}
+.home-page .bottom-nav-item { min-height: 52px !important; border-radius: var(--home-radius-control) !important; }
+.home-page .bottom-nav-item:active { transform: scale(.96) !important; }
+
+@keyframes home-page-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes home-page-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.home-page .home-background { animation: home-page-fade 260ms ease-out both; }
+.home-page .home-top-hud { animation: home-page-rise 280ms cubic-bezier(.18,.88,.24,1) both; }
+.home-page .home-intro { animation: home-page-rise 380ms 55ms cubic-bezier(.18,.88,.24,1) both; }
+.home-page .home-actions { animation: home-page-rise 420ms 120ms cubic-bezier(.18,.88,.24,1) both; }
+
+@media (max-height: 720px) {
+  .home-page .home-card {
+    gap: 6px !important;
+    padding-top: calc(61px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .home-page .hero-stage { height: calc(100% - 35px) !important; }
+  .home-page .home-actions {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important;
+    grid-template-rows: minmax(0, 1fr);
+    height: clamp(106px, 19dvh, 132px) !important;
+    gap: 7px !important;
+  }
+  .home-page .play-computer-card,
+  .home-page .play-friends-card { padding: 9px !important; grid-template-columns: minmax(38px, 31%) minmax(0, 1fr) !important; row-gap: 4px !important; column-gap: 7px !important; }
+  .home-page .play-computer-visual,
+  .home-page .play-friends-visual { width: clamp(42px, 14vw, 58px) !important; }
+  .home-page .play-computer-title,
+  .home-page .play-friends-title { font-size: clamp(12px, 3.8vw, 16px) !important; line-height: 1.02 !important; }
+  .home-page .play-computer-description,
+  .home-page .play-friends-description { display: none !important; }
+  .home-page .play-computer-cta,
+  .home-page .play-friends-cta { min-height: 31px !important; padding: 6px !important; font-size: 9px !important; }
+  .home-page .bottom-navigation-dock { height: 62px !important; }
+  .home-page .bottom-nav-item { min-height: 50px !important; }
+}
+
+@media (max-width: 350px) {
+  .home-page .home-shell { width: min(calc(100vw - 16px), var(--home-content-width)) !important; }
+  .home-page .home-card { padding-top: calc(57px + env(safe-area-inset-top, 0px)) !important; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+  .home-page .mode-switch-btn { width: 104px !important; min-height: 88px !important; padding: 9px 18px 8px 10px !important; }
+  .home-page .mode-switch-summary { display: none !important; }
+  .home-page .hero-stage { height: calc(100% - 28px) !important; }
+  .home-page .bottom-navigation-dock { width: min(calc(100vw - 16px), var(--home-content-width)) !important; }
+  .home-page .bottom-nav-item strong { font-size: 7px !important; }
+}
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .home-page .home-shell { width: min(calc(100vw - 24px), 620px) !important; }
+  .home-page .home-card { padding-top: calc(58px + env(safe-area-inset-top, 0px)) !important; padding-bottom: calc(69px + env(safe-area-inset-bottom, 0px)) !important; }
+  .home-page .home-actions { height: 104px !important; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) !important; grid-template-rows: 1fr; }
+  .home-page .hero-board-scene { height: clamp(128px, 32vh, 168px) !important; }
+  .home-page .hero-arena-ribbon { bottom: 34px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page .home-background,
+  .home-page .home-top-hud,
+  .home-page .home-intro,
+  .home-page .home-actions { animation: none !important; }
+  .home-page .mode-switch-btn,
+  .home-page .play-computer-cta,
+  .home-page .play-friends-cta,
+  .home-page .bottom-nav-item { transition-duration: 1ms !important; }
 }
