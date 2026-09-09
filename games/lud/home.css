@@ -6809,12 +6809,14 @@ html { height: 100%; overflow: hidden; }
 
 /* Preserve a clear touch/action zone above the fixed dock at every height. */
 .home-page .home-card {
-  padding-bottom: calc(var(--home-dock-height) + 42px + env(safe-area-inset-bottom, 0px)) !important;
+  padding-bottom: calc(var(--home-dock-height) + 138px + env(safe-area-inset-bottom, 0px)) !important;
 }
 .home-page .play-computer-card,
 .home-page .play-friends-card { position: relative !important; }
 .home-page .play-computer-content,
-.home-page .play-friends-content { padding-bottom: 30px !important; }
+.home-page .play-friends-content { align-self: start !important; padding: 12px 0 0 !important; }
+.home-page .play-computer-description,
+.home-page .play-friends-description { display: none !important; }
 .home-page .play-computer-cta,
 .home-page .play-friends-cta {
   position: absolute !important;
@@ -6823,7 +6825,8 @@ html { height: 100%; overflow: hidden; }
   grid-column: auto !important;
   grid-row: auto !important;
   right: 10px !important;
-  bottom: 9px !important;
+  top: 52px !important;
+  bottom: auto !important;
   left: calc(30% + 8px) !important;
   z-index: 4 !important;
   width: auto !important;
@@ -6831,12 +6834,12 @@ html { height: 100%; overflow: hidden; }
   visibility: visible !important;
 }
 @media (max-width: 350px) {
-  .home-page .home-card { padding-bottom: calc(var(--home-dock-height) + 31px + env(safe-area-inset-bottom, 0px)) !important; }
+  .home-page .home-card { padding-bottom: calc(var(--home-dock-height) + 72px + env(safe-area-inset-bottom, 0px)) !important; }
   .home-page .play-computer-cta,
   .home-page .play-friends-cta { right: 8px !important; bottom: 7px !important; left: calc(28% + 7px) !important; }
 }
 @media (orientation: landscape) and (max-height: 560px) {
-  .home-page .home-card { padding-bottom: calc(var(--home-dock-height) + 18px + env(safe-area-inset-bottom, 0px)) !important; }
+  .home-page .home-card { padding-bottom: calc(var(--home-dock-height) + 42px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
 /* The card itself is the existing accessible action button. Its visible CTA is
@@ -6848,7 +6851,8 @@ html { height: 100%; overflow: hidden; }
   z-index: 5 !important;
   top: auto !important;
   right: 10px !important;
-  bottom: 9px !important;
+  top: 52px !important;
+  bottom: auto !important;
   left: calc(30% + 8px) !important;
   display: flex !important;
   align-items: center;
@@ -6885,5 +6889,5 @@ html { height: 100%; overflow: hidden; }
 .home-page .play-friends-cta { display: none !important; }
 @media (max-width: 350px) {
   .home-page .play-computer-card::after,
-  .home-page .play-friends-card::after { right: 8px !important; bottom: 7px !important; left: calc(28% + 7px) !important; min-height: 28px; font-size: 7px; }
+  .home-page .play-friends-card::after { right: 8px !important; top: 44px !important; bottom: auto !important; left: calc(28% + 7px) !important; min-height: 28px; font-size: 7px; }
 }
