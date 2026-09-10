@@ -427,6 +427,32 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
   .shop-wrap { display:flex!important; width:calc(100vw - 12px)!important; height:calc(100dvh - 12px)!important; min-height:0!important; max-height:none!important; }
   .shop-scroll { -webkit-overflow-scrolling:touch; }
 }
+
+/* These are full shop pages on mobile, so browser-native vertical scrolling
+   remains available across the existing collection and action controls. */
+@media (max-width:900px) {
+  html,body { height:auto!important; min-height:100%; overflow-x:hidden!important; overflow-y:auto!important; }
+  body { display:block!important; place-items:initial!important; min-height:100dvh; }
+  .rotate-overlay,.rotate-overlay.show { display:none!important; }
+  .shop-wrap { display:flex!important; width:100%!important; height:auto!important; min-height:100dvh!important; max-height:none!important; overflow:visible!important; }
+  .shop-scroll,.shop-stage,.skin-row { height:auto!important; max-height:none!important; overflow:visible!important; }
+  .shop-scroll { flex:0 0 auto!important; min-height:0!important; padding-bottom:max(18px, env(safe-area-inset-bottom))!important; }
+}
+
+@media (max-width:560px) {
+  .shop-wrap,.shop-scroll,.shop-head,.shop-stage,.skin-row { min-width:0!important; max-width:100%!important; }
+  .shop-scroll { width:100%!important; }
+  .shop-stage { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; grid-template-rows:auto auto; width:100%!important; min-width:0!important; gap:8px!important; }
+  .shop-stage #prev-btn { grid-column:1; grid-row:1; }
+  .shop-stage #next-btn { grid-column:2; grid-row:1; }
+  .shop-stage .nav-btn { width:100%!important; height:40px!important; min-height:40px!important; }
+  .skin-row { grid-column:1/-1; grid-row:2; display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr))!important; width:100%!important; min-width:0!important; gap:8px!important; }
+  .skin-card { width:auto!important; min-width:0!important; max-width:100%!important; padding:9px!important; }
+  .skin-art { width:100%!important; min-height:0!important; aspect-ratio:1!important; }
+  .skin-card h3 { font-size:13px!important; }
+  .skin-card .effect,.skin-card .price { font-size:10px!important; }
+  .skin-card .btn { min-height:38px!important; font-size:10px!important; }
+}
 /* Step 4 cascade corrections */
 .skin-card.affordable { border-color:rgba(255,212,90,.58); }
 .skin-card.affordable::before { content:"READY TO UNLOCK"; position:absolute; top:8px; left:8px; z-index:2; color:var(--gh-color-reward); font-size:8px; font-weight:900; letter-spacing:.08em; }
