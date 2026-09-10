@@ -479,7 +479,9 @@ function getDiceSkinFaces(skinKey) {
   ];
 }
 
-function getVictoryRewardForLevel(level) {
+// The only level-completion reward formula. It is deliberately centralized so
+// later levels scale predictably without changing the rest of the economy.
+function calculateLevelReward(level) {
   const safeLevel = Math.min(TOTAL_LEVELS, Math.max(1, Math.floor(Number(level) || 1)));
   return VICTORY_REWARD_BASE + VICTORY_REWARD_STEP * (safeLevel - 1);
 }
@@ -3073,7 +3075,7 @@ function checkAndShowWinner(playerIndex) {
   let matchCoinsAwarded = 0;
 
   if (matchMode === "vs-computer" && player.color === humanColor) {
-    let winCoins = getVictoryRewardForLevel(currentLevel);
+    let winCoins = calculateLevelReward(currentLevel);
     winCoins += activeSkinEffects.bonusWinCoins || 0;
     if (activeSkinEffects.winBonusPercent) {
       winCoins += Math.floor(winCoins * activeSkinEffects.winBonusPercent);

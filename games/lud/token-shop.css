@@ -417,6 +417,15 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
 .shop-scroll > :first-child { margin-top:0; }
 .shop-scroll .skin-row { overflow-y:visible !important; }
 @media (max-width:900px) and (orientation:landscape) { body { overflow:hidden; } .shop-wrap { height:calc(100dvh - 16px); max-height:none; } .shop-scroll { -webkit-overflow-scrolling:touch; } }
+
+/* Keep the existing collection panel usable in portrait: it owns scrolling,
+   while ownership, equipped skins, and button behavior remain unchanged. */
+@media (max-width:900px) and (orientation:portrait) {
+  .rotate-overlay,.rotate-overlay.show { display:none!important; }
+  body { display:grid!important; place-items:center; min-height:100dvh; overflow:hidden!important; }
+  .shop-wrap { display:flex!important; width:calc(100vw - 12px)!important; height:calc(100dvh - 12px)!important; min-height:0!important; max-height:none!important; }
+  .shop-scroll { -webkit-overflow-scrolling:touch; }
+}
 /* Step 4 cascade corrections */
 .skin-card.affordable { border-color:rgba(255,212,90,.58); }
 .skin-card.affordable::before { content:"READY TO UNLOCK"; position:absolute; top:8px; left:8px; z-index:2; color:var(--gh-color-reward); font-size:8px; font-weight:900; letter-spacing:.08em; }

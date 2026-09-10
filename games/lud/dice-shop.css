@@ -755,3 +755,13 @@ body.shop-modal-open { overflow: hidden; }
 .shop-scroll > :first-child { margin-top:0; }
 .shop-scroll .skin-row { overflow-y:visible !important; }
 @media (max-width:900px) and (orientation:landscape) { body { overflow:hidden; } .shop-wrap { height:calc(100dvh - 16px); max-height:none; } .shop-scroll { -webkit-overflow-scrolling:touch; } }
+
+/* The collection itself—not the game page—scrolls on phone portrait sizes.
+   This supersedes the older rotate-only guard without changing shop state,
+   card data, or controls. */
+@media (max-width:900px) and (orientation:portrait) {
+  .rotate-overlay,.rotate-overlay.show { display:none!important; }
+  body { display:grid!important; place-items:center; min-height:100dvh; overflow:hidden!important; }
+  .shop-wrap { display:flex!important; width:calc(100vw - 12px)!important; height:calc(100dvh - 12px)!important; min-height:0!important; max-height:none!important; }
+  .shop-scroll { -webkit-overflow-scrolling:touch; }
+}
