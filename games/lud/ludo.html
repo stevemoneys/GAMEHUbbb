@@ -216,11 +216,17 @@
 
   <div class="result-modal" id="result-modal" aria-hidden="true">
     <div class="result-card">
+      <span class="result-kicker">MATCH RESULT</span>
       <h2 id="result-title">YOU WIN</h2>
+      <div class="result-dice-showcase" id="result-dice-showcase" aria-hidden="true" hidden>
+        <span class="result-dice-aura"></span>
+        <img id="result-dice-image" src="dice/6_result.webp" alt="" />
+        <span class="result-dice-particles" id="result-dice-particles"></span>
+      </div>
       <div class="result-reward" id="result-reward" aria-live="polite" hidden>
         <span class="result-reward-label">COINS EARNED</span>
         <strong id="result-reward-value">+0</strong>
-        <span class="result-reward-unit">COINS</span>
+        <span class="result-reward-unit">VICTORY REWARD</span>
       </div>
       <p id="result-subtitle"></p>
       <div class="level-unlock-callout" id="level-unlock-callout" aria-live="polite" hidden>

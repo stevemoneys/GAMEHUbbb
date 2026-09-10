@@ -18,7 +18,7 @@
   --dice-board-gap: clamp(7px, 2vw, 13px);
   /* The generated pawn art has transparent space below its visible base.
      This board-relative shift aligns that visible base to the real cell centre. */
-  --token-contact-shift: 44%;
+  --token-contact-shift: 52%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -1093,6 +1093,28 @@ body.orient-blue .dice-panel[data-color="blue"] { right: calc(-1 * var(--dice-bo
 .result-reward strong { font-size: 31px; line-height: 1; }
 .level-unlock-callout { margin: 12px 0; padding: 10px; border: 1px solid rgba(255,218,101,.66); border-radius: 12px; background: rgba(255,209,63,.12); }
 .level-unlock-callout[hidden],.result-reward[hidden] { display: none; }
+
+/* Victory hierarchy: result, equipped-die celebration, reward, progression,
+   and actions. The die effect is decorative and cannot affect a game roll. */
+.result-card { display:grid; justify-items:center; gap:8px; overflow:hidden; }
+.result-kicker { color:rgba(193,228,255,.76); font-size:10px; font-weight:900; letter-spacing:.18em; }
+.result-card h2 { margin:0; font-size:clamp(26px,6vw,38px); letter-spacing:.04em; text-shadow:0 3px 16px rgba(75,204,255,.26); }
+.result-dice-showcase { position:relative; display:grid; place-items:center; width:94px; height:78px; margin:0; isolation:isolate; }
+.result-dice-showcase[hidden] { display:none; }
+.result-dice-showcase img { position:relative; z-index:2; width:72px; height:72px; object-fit:contain; filter:drop-shadow(0 10px 10px rgba(0,0,0,.35)); }
+.result-dice-aura { position:absolute; inset:8px; border-radius:50%; background:radial-gradient(circle,rgba(255,222,104,.48),rgba(74,175,255,.18) 46%,transparent 72%); filter:blur(2px); }
+.result-dice-particles { position:absolute; inset:0; z-index:3; pointer-events:none; }
+.result-dice-particles i { position:absolute; top:50%; left:50%; width:5px; height:5px; border-radius:50%; background:#fff0a1; box-shadow:0 0 7px #ffe073; transform:rotate(var(--particle-angle)) translateY(-30px); animation:result-dice-particle 820ms ease-out var(--particle-delay) both; }
+.result-dice-showcase.result-dice-classic .result-dice-aura { opacity:.34; }
+.result-dice-showcase.result-dice-inferno .result-dice-aura,.result-dice-showcase.result-dice-dragon .result-dice-aura,.result-dice-showcase.result-dice-hellforged .result-dice-aura { background:radial-gradient(circle,rgba(255,217,78,.8),rgba(239,70,31,.42) 46%,transparent 72%); }
+.result-dice-showcase.result-dice-frost .result-dice-aura,.result-dice-showcase.result-dice-tide .result-dice-aura,.result-dice-showcase.result-dice-crystal .result-dice-aura { background:radial-gradient(circle,rgba(226,254,255,.8),rgba(75,202,255,.37) 47%,transparent 72%); }
+.result-dice-showcase.result-dice-nebula .result-dice-aura,.result-dice-showcase.result-dice-void .result-dice-aura,.result-dice-showcase.result-dice-arcane .result-dice-aura { background:radial-gradient(circle,rgba(226,173,255,.75),rgba(106,72,255,.42) 47%,transparent 72%); }
+.result-dice-reveal img { animation:result-dice-enter 700ms cubic-bezier(.18,.88,.22,1) both; }
+.result-dice-reveal .result-dice-aura { animation:result-dice-aura 1.2s ease-in-out infinite; }
+@keyframes result-dice-enter { from { opacity:0; transform:translateY(12px) scale(.5) rotate(-18deg); } 65% { opacity:1; transform:translateY(-3px) scale(1.1) rotate(7deg); } to { transform:none; } }
+@keyframes result-dice-aura { 0%,100% { opacity:.42; transform:scale(.82); } 50% { opacity:.95; transform:scale(1.16); } }
+@keyframes result-dice-particle { from { opacity:0; transform:rotate(var(--particle-angle)) translateY(-18px) scale(.4); } 35% { opacity:1; } to { opacity:0; transform:rotate(var(--particle-angle)) translateY(-48px) scale(1); } }
+@media (prefers-reduced-motion:reduce) { .result-dice-reveal img,.result-dice-reveal .result-dice-aura,.result-dice-particles i { animation:none!important; } }
 .unlock-level { display: block; margin: 3px 0; color: #ffe17c; font-size: 20px; }
 
 body.mode-chaos .ludo-board { box-shadow: 0 18px 42px rgba(0,5,14,.48), 0 0 0 3px rgba(255,100,100,.66); }

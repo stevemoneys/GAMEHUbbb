@@ -151,6 +151,9 @@ const resultTitleEl = document.getElementById("result-title");
 const resultSubtitleEl = document.getElementById("result-subtitle");
 const resultRewardEl = document.getElementById("result-reward");
 const resultRewardValueEl = document.getElementById("result-reward-value");
+const resultDiceShowcaseEl = document.getElementById("result-dice-showcase");
+const resultDiceImageEl = document.getElementById("result-dice-image");
+const resultDiceParticlesEl = document.getElementById("result-dice-particles");
 const btnPlayAgainEl = document.getElementById("btn-play-again");
 const btnCancelEl = document.getElementById("btn-cancel");
 const btnNextLevelEl = document.getElementById("btn-next-level");
@@ -231,6 +234,8 @@ const nearWinAnnounced = new Set();
 
 const DAILY_LOGIN_COINS = 25;
 const DAILY_LOGIN_KEY = "ludo_last_login_date";
+const VICTORY_REWARD_BASE = 100;
+const VICTORY_REWARD_STEP = 25;
 let totalCoins = Math.max(0, Number(localStorage.getItem("ludo_coins") || "0"));
 let matchRewardGranted = false;
 let coinCounterAnimationId = 0;
@@ -472,6 +477,43 @@ function getDiceSkinFaces(skinKey) {
     `dice/skins/${skinKey}/2_result.webp`,
     `dice/skins/${skinKey}/5_result.webp`
   ];
+}
+
+function getVictoryRewardForLevel(level) {
+  const safeLevel = Math.min(TOTAL_LEVELS, Math.max(1, Math.floor(Number(level) || 1)));
+  return VICTORY_REWARD_BASE + VICTORY_REWARD_STEP * (safeLevel - 1);
+}
+
+// This presentation helper is deliberately independent of the roll and game
+// state. It can be reused by a result screen without changing dice outcomes.
+function previewDiceEffect(skinKey, container = resultDiceShowcaseEl) {
+  if (!container || !resultDiceImageEl || !resultDiceParticlesEl) return () => {};
+  const effect = skinKey === "classic" ? "classic" : (DICE_SKIN_EFFECTS[getActiveSkinIndex()]?.type || "crystal");
+  const image = skinKey === "classic"
+    ? "dice/6_result.webp"
+    : `dice/skins/${skinKey}/6_result.webp`;
+  const effectClass = `result-dice-${effect}`;
+  container.className = `result-dice-showcase ${effectClass}`;
+  resultDiceImageEl.src = image;
+  resultDiceImageEl.onerror = () => { resultDiceImageEl.src = "dice/6_result.webp"; };
+  resultDiceParticlesEl.replaceChildren();
+
+  if (effect !== "classic") {
+    for (let i = 0; i < 10; i++) {
+      const particle = document.createElement("i");
+      particle.style.setProperty("--particle-angle", `${i * 36}deg`);
+      particle.style.setProperty("--particle-delay", `${i * 55}ms`);
+      resultDiceParticlesEl.appendChild(particle);
+    }
+  }
+  container.hidden = false;
+  container.classList.remove("result-dice-reveal");
+  void container.offsetWidth;
+  container.classList.add("result-dice-reveal");
+  return () => {
+    container.classList.remove("result-dice-reveal");
+    resultDiceParticlesEl.replaceChildren();
+  };
 }
 
 const activeDiceSkinKey = getActiveDiceSkin();
@@ -2981,7 +3023,15 @@ function presentResultReward(amount) {
     resultRewardEl?.setAttribute("hidden", "");
     return;
   }
-  resultRewardValueEl.textContent = `+${safeAmount}`;
+  const duration = 620;
+  const startedAt = performance.now();
+  const renderReward = now => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    resultRewardValueEl.textContent = `+${Math.round(safeAmount * eased)}`;
+    if (progress < 1) requestAnimationFrame(renderReward);
+  };
+  requestAnimationFrame(renderReward);
   resultRewardEl.removeAttribute("hidden");
   resultRewardEl.classList.remove("reward-reveal");
   void resultRewardEl.offsetWidth;
@@ -3023,7 +3073,7 @@ function checkAndShowWinner(playerIndex) {
   let matchCoinsAwarded = 0;
 
   if (matchMode === "vs-computer" && player.color === humanColor) {
-    let winCoins = 100 * (gameMode === "arena" ? ARENA_WIN_MULTIPLIER : 1);
+    let winCoins = getVictoryRewardForLevel(currentLevel);
     winCoins += activeSkinEffects.bonusWinCoins || 0;
     if (activeSkinEffects.winBonusPercent) {
       winCoins += Math.floor(winCoins * activeSkinEffects.winBonusPercent);
@@ -3067,6 +3117,9 @@ function checkAndShowWinner(playerIndex) {
   }
 
   presentResultReward(matchCoinsAwarded);
+  const clearVictoryDiceEffect = player.color === humanColor
+    ? previewDiceEffect(getActiveDiceSkin())
+    : () => {};
 
   showEventAnnouncement(
     gameMode === "arena" && player.color === humanColor
@@ -3118,20 +3171,18 @@ function checkAndShowWinner(playerIndex) {
       }
       if (resultSubtitleEl) {
         resultSubtitleEl.textContent = [
-          gameMode === "arena" ? "ARENA VICTORY" : gameMode === "chaos" ? "CHAOS VICTORY" : gameMode === "battle" ? "BATTLE VICTORY" : gameMode === "power" ? "POWER VICTORY" : "MATCH COMPLETE",
-          gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "VICTORY",
-          ...rewardSummary,
-          ...summaryLines
+          currentLevel === TOTAL_LEVELS ? "Every level is complete." : `Level ${String(currentLevel).padStart(2, "0")} complete.`,
+          newlyUnlockedLevel ? `Level ${String(newlyUnlockedLevel).padStart(2, "0")} is now available.` : "Keep building your winning streak."
         ].join("\n");
       }
       openResultModal({
         title: currentLevel === TOTAL_LEVELS ? "MASTER LEVEL COMPLETE" : gameMode === "arena" ? "ARENA COMPLETE" : gameMode === "chaos" ? "CHAOS COMPLETE" : gameMode === "battle" ? "BATTLE COMPLETE" : gameMode === "power" ? "POWER COMPLETE" : "YOU WON",
-        subtitle: resultSubtitleEl?.textContent || ["MATCH COMPLETE", "VICTORY", ...summaryLines].join("\n"),
+        subtitle: resultSubtitleEl?.textContent || "Match complete.",
         showNextLevel: canPlayNextLevel
       });
     } else {
       if (resultSubtitleEl) {
-        resultSubtitleEl.textContent = ["MATCH COMPLETE", ...rewardSummary, ...summaryLines].join("\n");
+        resultSubtitleEl.textContent = "The computer reached the center first. Try again and take the next match.";
       }
       openResultModal({
         title: "You lose",
@@ -3140,6 +3191,10 @@ function checkAndShowWinner(playerIndex) {
       });
     }
   }
+
+  resultModalEl?.addEventListener("transitionend", () => {
+    if (!resultModalEl.classList.contains("show")) clearVictoryDiceEffect();
+  }, { once: true });
 
   return true;
 }

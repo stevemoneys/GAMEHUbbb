@@ -409,6 +409,13 @@ body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity
 .skin-art { flex:0 0 auto; border:1px solid rgba(167,222,255,.14); border-radius:13px !important; background:radial-gradient(circle at 50% 36%,rgba(100,210,255,.24),rgba(11,33,76,.48) 58%,rgba(1,9,32,.65)) !important; }
 .skin-copy { display:flex; flex:1 1 auto; flex-direction:column; min-width:0 !important; gap:6px; }.skin-card h3,.skin-card .effect,.skin-card .price,.skin-card .btn { min-width:0 !important; overflow-wrap:anywhere; }.skin-card h3 { color:#f5fbff !important; line-height:1.14 !important; }.skin-card .effect { color:rgba(218,239,255,.78) !important; line-height:1.32 !important; }.skin-card .price { margin-top:auto; }.skin-card .btn { min-height:44px !important; margin-top:3px; border-radius:11px !important; }
 @media (max-width:560px) { .skin-card { width:100% !important; max-width:100% !important; min-height:0 !important; padding:12px !important; }.skin-art { width:min(100%,164px); min-height:132px; }.skin-card h3 { font-size:clamp(18px,5vw,22px) !important; }.skin-card .effect { font-size:clamp(12px,3.5vw,14px) !important; } }
+
+/* Shared internal collection scroll, so mobile landscape keeps its HUD while
+   every token skin, buy button, equip action, and back control stays reachable. */
+.shop-wrap { min-height:0; overflow:hidden; }
+.shop-scroll { min-height:0; flex:1 1 auto; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding:0 3px 18px; scrollbar-gutter:stable; }
+.shop-scroll > :first-child { margin-top:0; }
+@media (max-width:900px) and (orientation:landscape) { body { overflow:hidden; } .shop-wrap { height:calc(100dvh - 16px); max-height:none; } .shop-scroll { -webkit-overflow-scrolling:touch; } }
 /* Step 4 cascade corrections */
 .skin-card.affordable { border-color:rgba(255,212,90,.58); }
 .skin-card.affordable::before { content:"READY TO UNLOCK"; position:absolute; top:8px; left:8px; z-index:2; color:var(--gh-color-reward); font-size:8px; font-weight:900; letter-spacing:.08em; }
