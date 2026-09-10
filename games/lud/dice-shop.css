@@ -754,6 +754,7 @@ body.shop-modal-open { overflow: hidden; }
 .shop-scroll { min-height:0; flex:1 1 auto; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding:0 3px 18px; scrollbar-gutter:stable; }
 .shop-scroll > :first-child { margin-top:0; }
 .shop-scroll .skin-row { overflow-y:visible !important; }
+.btn.buy.insufficient { color:#ffe1db; background:rgba(173,55,57,.42); border-color:rgba(255,142,129,.52); }
 @media (max-width:900px) and (orientation:landscape) { body { overflow:hidden; } .shop-wrap { height:calc(100dvh - 16px); max-height:none; } .shop-scroll { -webkit-overflow-scrolling:touch; } }
 
 /* The collection itself—not the game page—scrolls on phone portrait sizes.

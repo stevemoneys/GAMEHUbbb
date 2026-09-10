@@ -184,11 +184,14 @@
     let owned = [];
     try {
       const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");
-      owned = Array.isArray(parsed) ? parsed : [];
+      owned = Array.isArray(parsed)
+        ? Array.from(new Set(parsed.filter(key => /^skin(?:[1-9]|10)$/.test(key))))
+        : [];
     } catch {
       owned = [];
     }
     let activeSkin = localStorage.getItem(ACTIVE_KEY) || "classic";
+    if (activeSkin !== "classic" && !owned.includes(activeSkin)) activeSkin = "classic";
     let currentPage = 0;
 
     function skinKey(id) {
@@ -232,6 +235,15 @@
         el.classList.add(el === collectionCountEl ? "collection-pulse" : "coin-pulse");
         setTimeout(() => el.classList.remove("coin-pulse", "collection-pulse"), 620);
       });
+    }
+
+    function showShopFeedback(message) {
+      if (!feedbackEl) return;
+      feedbackEl.textContent = message;
+      feedbackEl.classList.remove("show");
+      void feedbackEl.offsetWidth;
+      feedbackEl.classList.add("show");
+      setTimeout(() => feedbackEl.classList.remove("show"), 2200);
     }
 
     function tokenAsset(id, target) {
@@ -321,7 +333,8 @@
         buyBtn.disabled = true;
         buyBtn.classList.add("owned");
       } else if (coins < price) {
-        buyBtn.disabled = true;
+        buyBtn.textContent = `NEED ${price - coins}`;
+        buyBtn.classList.add("insufficient");
       }
 
       if (!ownedNow) {
@@ -334,7 +347,10 @@
 
       buyBtn.addEventListener("click", () => {
         if (owns(id)) return;
-        if (coins < price) return;
+        if (coins < price) {
+          showShopFeedback(`NEED ${price - coins} MORE COINS`);
+          return;
+        }
         coins -= price;
         owned.push(key);
         saveState();
@@ -393,6 +409,11 @@
     });
     previewAction.addEventListener("click", () => {
       if (previewId == null) return;
+      if (!owns(previewId) && coins < skinPrice(previewId)) {
+        showShopFeedback(`NEED ${skinPrice(previewId) - coins} MORE COINS`);
+        previewPrice.textContent = `NEED ${skinPrice(previewId) - coins} MORE COINS`;
+        return;
+      }
       const card = rowEl.querySelector(`[data-skin-key="${skinKey(previewId)}"]`);
       const action = card?.querySelector(owns(previewId) ? ".use" : ".buy");
       closePreview();
