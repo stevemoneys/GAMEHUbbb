@@ -616,3 +616,26 @@ body.home-page { background:#050b1f; }
   .hero-die-left { left:calc(18% - 21px); }
   .hero-die-right { right:calc(18% - 21px); }
 }
+
+/* Final Phase 3 + 4 refinement — exact foreground hierarchy. */
+.mode-switch-btn {
+  width:min(78vw, 500px);
+  height:clamp(82px, 22vw, 90px);
+  background:rgba(8,22,52,.94);
+  box-shadow:0 8px 22px rgba(0,0,0,.26), 0 0 12px rgba(var(--mode-accent-rgb),.10), inset 0 1px 0 rgba(255,255,255,.10), inset 0 -1px 0 rgba(0,0,0,.30);
+}
+.mode-switch-value { font-size:clamp(27px, 7.2vw, 29px); }
+.mode-selector-arrow { margin-right:2px; }
+.mode-selector-arrow svg { width:clamp(26px, 7.4vw, 30px); height:clamp(26px, 7.4vw, 30px); }
+
+.hero-atmosphere,.hero-arena-field { z-index:1; }
+.hero-stage::before { z-index:2; opacity:.92; }
+.hero-particles { z-index:1; }
+.hero-crown { z-index:3; width:clamp(100px, 28vw, 120px); height:clamp(56px, 15vw, 64px); }
+.hero-die { z-index:4; width:clamp(52px, 15vw, 64px); height:clamp(52px, 15vw, 64px); filter:drop-shadow(0 6px 7px rgba(0,0,0,.35)); }
+.ludo-brand { z-index:5; }
+.brand-letter { font-size:clamp(68px, 21vw, 82px); }
+@media (max-width:360px) {
+  .mode-switch-btn { width:min(78vw, 500px); }
+  .mode-switch-value { font-size:27px; }
+}

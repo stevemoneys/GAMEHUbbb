@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-09-11-v82";
+const CACHE_VERSION = "2026-09-11-v83";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 const PRELOAD_CACHE = "ludo-preload-assets-v1";
