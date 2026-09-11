@@ -872,3 +872,23 @@ body.home-page { background:#050b1f; }
 @media (prefers-reduced-motion:reduce) {
   .bottom-nav-item,.bottom-nav-item::after,.side-menu,.menu-backdrop,.menu-panel.active,.close-menu { animation:none!important; transition-duration:1ms!important; }
 }
+
+/* Phase 9 — final responsive QA and controlled global polish. */
+html,body { overflow-x:hidden; overflow-y:auto; }
+body.home-page { height:auto; min-height:100dvh; overflow-y:auto; }
+.home-shell { height:auto; min-height:100dvh; }
+.home-card { height:auto; min-height:100dvh; overflow:visible; }
+@media (min-height:721px) {
+  .home-card { padding-bottom:calc(126px + env(safe-area-inset-bottom)); }
+}
+.home-top-hud,.bottom-navigation-dock,.home-actions { box-sizing:border-box; }
+.hero-arena-ribbon { width:min(80%, 280px); min-height:34px; border-radius:17px; }
+.hero-arena-ribbon h1 { font-size:clamp(10px, 2.8vw, 11px); letter-spacing:.10em; }
+.mode-switch-btn,.mode-btn,.bottom-navigation-dock { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+.mode-switch-btn:focus-visible,.mode-btn:focus-visible,.bottom-nav-item:focus-visible,.close-menu:focus-visible { outline:2px solid #e7f5ff; outline-offset:3px; }
+.bottom-navigation-dock { isolation:isolate; }
+.bottom-nav-item.is-active .shortcut-icon { filter:drop-shadow(0 0 6px currentColor); }
+@media (max-width:360px) {
+  .home-card { padding-inline:0; }
+  .hero-arena-ribbon { width:min(82%, 260px); }
+}
