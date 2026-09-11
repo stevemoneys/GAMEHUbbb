@@ -19,6 +19,11 @@
   /* The generated pawn art has transparent space below its visible base.
      This board-relative shift aligns that visible base to the real cell centre. */
   --token-contact-shift: 52%;
+  /* Board-pawn artwork is visually lifted from its square by this amount.
+     The values below are rotated with the board so every player orientation
+     receives the same screen-space placement as the unrotated Yellow view. */
+  --token-board-art-x: 0%;
+  --token-board-art-y: -20.3%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -46,10 +51,10 @@ body {
 }
 
 /* Rotating the board changes seating only. It never changes DOM board cells. */
-body.orient-red { --board-rotation: 180deg; --token-upright-rotation: -180deg; }
-body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; }
-body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; }
-body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
+body.orient-red { --board-rotation: 180deg; --token-upright-rotation: -180deg; --token-board-art-x: 0%; --token-board-art-y: 20.3%; }
+body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; --token-board-art-x: -20.3%; --token-board-art-y: 0%; }
+body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; --token-board-art-x: 0%; --token-board-art-y: -20.3%; }
+body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --token-board-art-x: 20.3%; --token-board-art-y: 0%; }
 
 /* Background remains deliberately quiet behind the board. */
 .bg-slideshow {
@@ -360,40 +365,42 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; }
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35));
 }
 
-/* A moving board pawn uses a physical base anchor: the image bottom meets the
-   exact centre of the cell. This is independent of the board's rotation. */
+/* A moving board pawn is anchored to the same board-cell centre as every home
+   pawn.  Its visible art lift is mapped through the board orientation above,
+   so a rotated board cannot turn Yellow's vertical alignment into a sideward
+   offset for Red, Green, or Blue. */
 .cell > .token {
   top: 50%;
   left: 50%;
-  translate: -50% calc(-100% + var(--token-contact-shift));
+  translate: -50% -50%;
   --stack-scale: 1;
   scale: var(--stack-scale);
 }
 
 .cell > .token img {
   position: absolute;
-  top: 100%;
-  left: 50%;
+  top: calc(50% + var(--token-board-art-y));
+  left: calc(50% + var(--token-board-art-x));
   width: 145%;
   height: 145%;
   object-fit: contain;
   object-position: center bottom;
   pointer-events: none;
-  transform: translate(-50%, -100%) rotate(var(--token-upright-rotation));
-  transform-origin: center bottom;
+  transform: translate(-50%, -50%) rotate(var(--token-upright-rotation));
+  transform-origin: center;
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .36));
 }
 
 /* Compact formations are all centered around the same cell anchor. */
-.cell > .token:nth-child(1):nth-last-child(2) { --stack-scale: .72; translate: calc(-50% - 18%) calc(-100% + var(--token-contact-shift)); }
-.cell > .token:nth-child(2):nth-last-child(1) { --stack-scale: .72; translate: calc(-50% + 18%) calc(-100% + var(--token-contact-shift)); }
-.cell > .token:nth-child(1):nth-last-child(3) { --stack-scale: .65; translate: -50% calc(-100% + var(--token-contact-shift) - 20%); }
-.cell > .token:nth-child(2):nth-last-child(2) { --stack-scale: .65; translate: calc(-50% - 20%) calc(-100% + var(--token-contact-shift) + 14%); }
-.cell > .token:nth-child(3):nth-last-child(1) { --stack-scale: .65; translate: calc(-50% + 20%) calc(-100% + var(--token-contact-shift) + 14%); }
-.cell > .token:nth-child(1):nth-last-child(4) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% + var(--token-contact-shift) - 17%); }
-.cell > .token:nth-child(2):nth-last-child(3) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% + var(--token-contact-shift) - 17%); }
-.cell > .token:nth-child(3):nth-last-child(2) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-100% + var(--token-contact-shift) + 17%); }
-.cell > .token:nth-child(4):nth-last-child(1) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-100% + var(--token-contact-shift) + 17%); }
+.cell > .token:nth-child(1):nth-last-child(2) { --stack-scale: .72; translate: calc(-50% - 18%) -50%; }
+.cell > .token:nth-child(2):nth-last-child(1) { --stack-scale: .72; translate: calc(-50% + 18%) -50%; }
+.cell > .token:nth-child(1):nth-last-child(3) { --stack-scale: .65; translate: -50% calc(-50% - 20%); }
+.cell > .token:nth-child(2):nth-last-child(2) { --stack-scale: .65; translate: calc(-50% - 20%) calc(-50% + 14%); }
+.cell > .token:nth-child(3):nth-last-child(1) { --stack-scale: .65; translate: calc(-50% + 20%) calc(-50% + 14%); }
+.cell > .token:nth-child(1):nth-last-child(4) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-50% - 17%); }
+.cell > .token:nth-child(2):nth-last-child(3) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-50% - 17%); }
+.cell > .token:nth-child(3):nth-last-child(2) { --stack-scale: .57; translate: calc(-50% - 19%) calc(-50% + 17%); }
+.cell > .token:nth-child(4):nth-last-child(1) { --stack-scale: .57; translate: calc(-50% + 19%) calc(-50% + 17%); }
 
 .goal-slot {
   position: absolute;

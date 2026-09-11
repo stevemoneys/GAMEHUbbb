@@ -515,6 +515,10 @@ body.shop-modal-open { overflow: hidden; }
 @media (prefers-reduced-motion:reduce) {
   .preview-modal,.unlock-modal,.preview-modal .preview-backdrop,.unlock-modal .preview-backdrop,.preview-sheet,.unlock-sheet { transition-duration: 1ms !important; }
 }
+/* The dialog layout uses display:grid!important.  Make the native hidden state
+   win so closed dialogs cannot create an invisible full-screen click shield. */
+.preview-modal[hidden],.unlock-modal[hidden] { display:none !important; pointer-events:none !important; }
+.preview-modal.is-closing,.unlock-modal.is-closing { pointer-events:none; }
 @media (max-width:560px) {
   .skin-row { grid-template-columns:repeat(2, minmax(0, 1fr)) !important; gap:8px !important; overflow-y:auto !important; }
   .skin-card { display:flex !important; min-width:0 !important; padding:9px !important; }
