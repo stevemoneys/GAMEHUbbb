@@ -528,3 +528,9 @@ body.shop-modal-open { overflow: hidden; }
   .skin-card .btn { min-height:38px !important; font-size:10px !important; }
   .skin-card .price { font-size:10px !important; }
 }
+
+/* Phase 8: visual entry only. The document and collection keep native scrolling. */
+@media (prefers-reduced-motion:no-preference) {
+  .shop-wrap { animation:shop-section-enter 280ms cubic-bezier(.22,1,.36,1) both; }
+}
+@keyframes shop-section-enter { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }

@@ -792,3 +792,83 @@ body.home-page { background:#050b1f; }
   .mode-action-arrow { width:34px; height:34px; font-size:20px; }
   .mode-play-cta { min-height:38px; border-radius:13px; font-size:12px; }
 }
+
+/* Phase 7 — a fixed, glass-like four-item game dock. */
+.bottom-navigation-dock {
+  z-index:60;
+  bottom:max(14px, env(safe-area-inset-bottom));
+  width:min(calc(100vw - 32px), 520px);
+  height:90px;
+  padding:7px 6px;
+  border:1.5px solid rgba(128,184,255,.34);
+  border-radius:26px;
+  background:linear-gradient(155deg, rgba(14,36,78,.96), rgba(5,15,40,.97));
+  box-shadow:0 12px 26px rgba(0,2,18,.42), 0 0 16px rgba(64,146,255,.08), inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+}
+.bottom-nav-item {
+  position:relative;
+  grid-template-rows:30px minmax(18px, auto);
+  gap:3px;
+  min-width:0;
+  padding:5px 1px;
+  border-radius:17px;
+  transition:transform 140ms ease, background-color 140ms ease, color 140ms ease, filter 140ms ease;
+}
+.shortcut-icon { width:27px; height:27px; stroke-width:1.9; filter:drop-shadow(0 2px 4px rgba(0,0,0,.28)); }
+.bottom-nav-item strong { overflow:hidden; max-width:100%; color:currentColor; font-size:clamp(11px, 3.2vw, 13px); font-weight:800; line-height:1; text-overflow:ellipsis; white-space:nowrap; }
+.shortcut-dice { color:#bca8ff; }.shortcut-token { color:#ffb06d; }.shortcut-rules { color:#ffdb7b; }.shortcut-settings { color:#91d0ff; }
+.bottom-nav-item::after { content:""; position:absolute; inset:4px; z-index:-1; border-radius:14px; background:transparent; transition:background-color 140ms ease, box-shadow 140ms ease; }
+.bottom-nav-item.is-active { color:#f7fbff; background:transparent; }
+.bottom-nav-item.is-active::before { top:5px; width:25px; height:2px; background:currentColor; box-shadow:0 0 7px currentColor; }
+.bottom-nav-item.is-active::after { background:rgba(176,211,255,.11); box-shadow:inset 0 1px 0 rgba(255,255,255,.09), 0 0 10px rgba(112,186,255,.07); }
+.bottom-nav-item:active { transform:scale(.96); filter:brightness(1.12); }
+
+/* Phase 8 — existing Rules and Settings bottom sheet, with no handler changes. */
+.menu-backdrop {
+  z-index:70;
+  background:rgba(1,7,25,.66);
+  backdrop-filter:blur(8px);
+  transition:opacity 260ms ease-out, visibility 0s linear 260ms;
+}
+.menu-backdrop.show { transition-delay:0s; }
+.side-menu {
+  z-index:71;
+  width:min(calc(100% - 24px), 500px);
+  max-height:min(80dvh, 700px);
+  padding:16px 16px max(18px, env(safe-area-inset-bottom));
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border:1px solid rgba(139,195,255,.38);
+  border-bottom:0;
+  border-radius:26px 26px 0 0;
+  background:radial-gradient(90% 38% at 50% 0%, rgba(58,129,255,.15), transparent 65%), linear-gradient(145deg, rgba(16,37,82,.985), rgba(5,13,38,.99));
+  box-shadow:0 -16px 42px rgba(0,0,0,.40), inset 0 1px 0 rgba(255,255,255,.12);
+  opacity:0;
+  pointer-events:none;
+  transform:translate(50%,calc(100% + 18px));
+  transition:transform 280ms cubic-bezier(.22,1,.36,1), opacity 240ms ease-out;
+}
+.side-menu.open { opacity:1; pointer-events:auto; transform:translate(50%,0); }
+.side-menu-head { min-height:48px; margin-bottom:14px; }
+.side-menu-head h2 { font-size:23px; }
+.close-menu { width:44px; height:44px; border-color:rgba(145,204,255,.42); border-radius:14px; background:rgba(97,169,255,.10); transition:transform 140ms ease, background-color 140ms ease, filter 140ms ease; }
+.close-menu:active { transform:scale(.96); filter:brightness(1.12); }
+.menu-tabs { border:1px solid rgba(127,181,255,.16); background:rgba(0,8,31,.46); }
+.menu-tab { min-height:42px; }
+.menu-panel.active { animation:home-panel-enter 240ms cubic-bezier(.22,1,.36,1) both; }
+.rules-intro,.rule-card { border-color:rgba(143,185,244,.23); background:linear-gradient(145deg, rgba(255,255,255,.065), rgba(255,255,255,.035)); box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+.rules-intro p,.rule-card p { font-size:15px; line-height:1.52; }
+.rule-card strong { color:#ffe69a; font-size:13px; }
+.setting-row { min-height:60px; border-color:rgba(143,185,244,.20); background:rgba(255,255,255,.045); }
+@keyframes home-panel-enter { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:360px) {
+  .bottom-navigation-dock { width:calc(100vw - 16px); height:86px; bottom:max(10px, env(safe-area-inset-bottom)); border-radius:24px; }
+  .bottom-nav-item strong { font-size:11px; }
+  .shortcut-icon { width:25px; height:25px; }
+  .side-menu { width:calc(100% - 16px); padding-inline:12px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .bottom-nav-item,.bottom-nav-item::after,.side-menu,.menu-backdrop,.menu-panel.active,.close-menu { animation:none!important; transition-duration:1ms!important; }
+}
