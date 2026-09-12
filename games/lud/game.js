@@ -202,6 +202,20 @@ const SOUND_FILES = {
   bgm: "sounds/bgm.mp3"
 };
 
+// Short effects share one suspended/resumed context and decoded-buffer cache.
+// The looping background track intentionally remains an HTMLAudioElement.
+const SFX_FILES = Object.freeze({
+  step: SOUND_FILES.step,
+  entry: SOUND_FILES.entry,
+  goal: SOUND_FILES.goal,
+  win: SOUND_FILES.win
+});
+const sfxBuffers = new Map();
+const sfxLoadJobs = new Map();
+let sfxContext = null;
+let sfxMasterGain = null;
+let sfxPreloadStarted = false;
+
 const bgMusic = new Audio(SOUND_FILES.bgm);
 bgMusic.loop = true;
 bgMusic.volume = 0.22;
@@ -213,6 +227,134 @@ const SFX_ENABLED_KEY = "ludo_sfx_enabled";
 // keeps that preference through the existing storage key.
 let isBgmEnabled = localStorage.getItem(BGM_ENABLED_KEY) === "1";
 let isSfxEnabled = localStorage.getItem(SFX_ENABLED_KEY) !== "0";
+
+function getSfxContext() {
+  if (sfxContext) return sfxContext;
+  const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+  try {
+    sfxContext = new AudioContextConstructor();
+    sfxMasterGain = sfxContext.createGain();
+    sfxMasterGain.gain.value = isSfxEnabled ? 1 : 0;
+    sfxMasterGain.connect(sfxContext.destination);
+    return sfxContext;
+  } catch (error) {
+    console.warn("[audio] Sound effects are unavailable.", error);
+    return null;
+  }
+}
+
+function setSfxMasterVolume() {
+  if (!sfxMasterGain) return;
+  sfxMasterGain.gain.setValueAtTime(isSfxEnabled ? 1 : 0, sfxContext?.currentTime || 0);
+}
+
+function preloadSfxBuffer(name) {
+  if (sfxBuffers.has(name)) return Promise.resolve(sfxBuffers.get(name));
+  if (sfxLoadJobs.has(name)) return sfxLoadJobs.get(name);
+  const context = getSfxContext();
+  const source = SFX_FILES[name];
+  if (!context || !source) return Promise.resolve(null);
+
+  const loadJob = fetch(source, { credentials: "same-origin" })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .then(data => context.decodeAudioData(data))
+    .then(buffer => {
+      sfxBuffers.set(name, buffer);
+      return buffer;
+    })
+    .catch(error => {
+      console.warn(`[audio] Could not preload ${name} sound effect.`, error);
+      return null;
+    });
+
+  sfxLoadJobs.set(name, loadJob);
+  return loadJob;
+}
+
+function preloadShortSoundEffects() {
+  if (sfxPreloadStarted) return;
+  sfxPreloadStarted = true;
+  Object.keys(SFX_FILES).forEach(name => { void preloadSfxBuffer(name); });
+}
+
+function resumeSfxContextFromGesture() {
+  const context = getSfxContext();
+  if (!context || context.state !== "suspended") return;
+  context.resume().catch(error => console.warn("[audio] Could not resume sound effects.", error));
+}
+
+function updateMediaSession(state) {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    if (state === "playing" && "MediaMetadata" in window) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "Premium Ludo",
+        artist: "GameHub",
+        album: "Ludo"
+      });
+    }
+    navigator.mediaSession.playbackState = state;
+  } catch (error) {
+    console.warn("[audio] Media Session update skipped.", error);
+  }
+}
+
+function startBackgroundMusic() {
+  if (!isBgmEnabled || isNavigatingAway) return;
+  bgMusic.play().then(() => {
+    bgMusicStarted = true;
+    updateMediaSession("playing");
+  }).catch(() => {
+    bgMusicStarted = false;
+    updateMediaSession("paused");
+  });
+}
+
+function pauseBackgroundMusic() {
+  bgMusic.pause();
+  updateMediaSession("paused");
+}
+
+function stopBackgroundMusic() {
+  bgMusic.pause();
+  try { bgMusic.currentTime = 0; } catch {}
+  bgMusicStarted = false;
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.playbackState = "none";
+    navigator.mediaSession.metadata = null;
+  } catch (error) {
+    console.warn("[audio] Media Session cleanup skipped.", error);
+  }
+}
+
+function setupMediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.setActionHandler("play", () => {
+      isBgmEnabled = true;
+      localStorage.setItem(BGM_ENABLED_KEY, "1");
+      startBackgroundMusic();
+    });
+    navigator.mediaSession.setActionHandler("pause", pauseBackgroundMusic);
+    navigator.mediaSession.setActionHandler("stop", () => {
+      isBgmEnabled = false;
+      localStorage.setItem(BGM_ENABLED_KEY, "0");
+      stopBackgroundMusic();
+    });
+  } catch (error) {
+    console.warn("[audio] Media Session actions are unavailable.", error);
+  }
+}
+
+bgMusic.addEventListener("play", () => updateMediaSession("playing"));
+bgMusic.addEventListener("pause", () => {
+  if (!isNavigatingAway) updateMediaSession("paused");
+});
 
 const EVENT_COIN_REWARDS = {
   rollSix: 2,
@@ -663,6 +805,7 @@ function prepareForNavigation() {
   // Save before invalidating motion. The snapshot contains logical state only.
   saveResumeSnapshot();
   isNavigatingAway = true;
+  stopBackgroundMusic();
   cancelPendingGameplayTasks();
   isMoving = false;
   waitingForTokenMove = false;
@@ -2564,9 +2707,9 @@ function setPaused(nextPaused) {
     rollGuidanceEl?.classList.remove("show");
     eventAnnouncementEl?.classList.remove("show");
     bgmWasPlayingBeforePause = !bgMusic.paused;
-    bgMusic.pause();
+    pauseBackgroundMusic();
   } else if (bgmWasPlayingBeforePause && isBgmEnabled && !gameOver) {
-    bgMusic.play().catch(() => {});
+    startBackgroundMusic();
   }
 
   resetDiceInteractivity();
@@ -2987,24 +3130,38 @@ function setupBackgroundSlideshow() {
 function playSfx(type, volume = 0.7) {
   if (isPaused) return;
   if (!isSfxEnabled) return;
-  const src = SOUND_FILES[type];
-  if (!src) return;
-  const sound = new Audio(src);
-  sound.volume = Math.min(1, Math.max(0, (Number(volume) || 0) * 1.35));
-  sound.play().catch(() => {});
+  const context = getSfxContext();
+  const buffer = sfxBuffers.get(type);
+  if (!context || !buffer || !sfxMasterGain) return;
+  if (context.state === "suspended" && navigator.userActivation?.isActive) {
+    resumeSfxContextFromGesture();
+  }
+  try {
+    const source = context.createBufferSource();
+    const effectGain = context.createGain();
+    effectGain.gain.value = Math.min(1, Math.max(0, (Number(volume) || 0) * 1.35));
+    source.buffer = buffer;
+    source.connect(effectGain);
+    effectGain.connect(sfxMasterGain);
+    source.start(0);
+  } catch (error) {
+    console.warn(`[audio] Could not play ${type} sound effect.`, error);
+  }
 }
 
 function setupSoundBootstrap() {
-  const startMusic = () => {
-    if (!isBgmEnabled) return;
-    if (bgMusicStarted) return;
-    bgMusicStarted = true;
-    bgMusic.play().catch(() => {});
+  // Decoding begins during startup, never during a dice or token event. The
+  // browser may keep this shared context suspended until the first real input.
+  preloadShortSoundEffects();
+  setupMediaSession();
+  const activateAudio = () => {
+    resumeSfxContextFromGesture();
+    startBackgroundMusic();
   };
 
-  window.addEventListener("click", startMusic, { once: true });
-  window.addEventListener("keydown", startMusic, { once: true });
-  window.addEventListener("touchstart", startMusic, { once: true });
+  window.addEventListener("pointerdown", activateAudio, { once: true, passive: true });
+  window.addEventListener("keydown", activateAudio, { once: true });
+  window.addEventListener("touchstart", activateAudio, { once: true, passive: true });
 }
 
 function openResultModal({ title, subtitle, showNextLevel }) {
