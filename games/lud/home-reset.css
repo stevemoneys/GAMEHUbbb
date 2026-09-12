@@ -878,6 +878,19 @@ html,body { overflow-x:hidden; overflow-y:auto; }
 body.home-page { height:auto; min-height:100dvh; overflow-y:auto; }
 .home-shell { height:auto; min-height:100dvh; }
 .home-card { height:auto; min-height:100dvh; overflow:visible; }
+
+/* The dice remain a symmetric pair; the wordmark is pinned to their shared
+   centre instead of inheriting any responsive side offset. */
+.hero-stage { --hero-dice-centre:50%; }
+.ludo-brand {
+  left:var(--hero-dice-centre) !important;
+  right:auto !important;
+  transform:translate(-50%,-50%);
+  transform-origin:center;
+}
+@media (prefers-reduced-motion:no-preference) {
+  .ludo-brand { animation:hero-logo-float 4.8s ease-in-out infinite; }
+}
 @media (min-height:721px) {
   .home-card { padding-bottom:calc(126px + env(safe-area-inset-bottom)); }
 }

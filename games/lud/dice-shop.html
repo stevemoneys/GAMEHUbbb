@@ -40,6 +40,7 @@
       <div class="skin-row" id="skin-row"></div>
       <button class="nav-btn" id="next-btn" type="button">&gt;</button>
     </section>
+    <p class="hint" id="hint-text" aria-live="polite"></p>
     </div>
   </main>
 
@@ -143,6 +144,7 @@
     const rowEl = document.getElementById("skin-row");
     const prevBtn = document.getElementById("prev-btn");
     const nextBtn = document.getElementById("next-btn");
+    const hintEl = document.getElementById("hint-text");
     const useDefaultBtn = document.getElementById("use-default");
     const feedbackEl = document.getElementById("shop-feedback");
     const collectionCountEl = document.getElementById("collection-count");
@@ -233,7 +235,7 @@
     }
 
     function canGoNext(pageIndex) {
-      return pageIndex < PAGE_COUNT - 1;
+      return pageIndex < PAGE_COUNT - 1 && owns((pageIndex + 1) * SKINS_PER_PAGE);
     }
 
     function renderCoins() {
@@ -242,7 +244,13 @@
 
     function renderCollectionSummary() {
       if (collectionCountEl) collectionCountEl.textContent = `${owned.length} / ${TOTAL_SKINS} COLLECTED`;
-      if (collectionPageLabelEl) collectionPageLabelEl.textContent = `PAGE ${currentPage + 1} / ${PAGE_COUNT}`;
+      const finalSkinOnPage = (currentPage + 1) * SKINS_PER_PAGE;
+      const pageUnlocked = canGoNext(currentPage);
+      if (collectionPageLabelEl) {
+        collectionPageLabelEl.textContent = currentPage === PAGE_COUNT - 1
+          ? `PAGE ${currentPage + 1} / ${PAGE_COUNT} • FINAL VAULT`
+          : `PAGE ${currentPage + 1} / ${PAGE_COUNT} • ${pageUnlocked ? "NEXT VAULT UNLOCKED" : `UNLOCK SKIN ${finalSkinOnPage}`}`;
+      }
       if (loadoutPreviewEl) {
         loadoutPreviewEl.src = activeSkin === "classic" ? "dice/5_result.webp" : `dice/skins/${activeSkin}/6_result.webp`;
         loadoutPreviewEl.onerror = () => { loadoutPreviewEl.src = "dice/5_result.webp"; };
@@ -342,6 +350,11 @@
     function renderNav() {
       prevBtn.disabled = currentPage === 0;
       nextBtn.disabled = !canGoNext(currentPage);
+      const finalSkinOnPage = (currentPage + 1) * SKINS_PER_PAGE;
+      const locked = currentPage < PAGE_COUNT - 1 && !canGoNext(currentPage);
+      nextBtn.title = locked ? `Unlock Skin ${finalSkinOnPage} to open the next vault` : "Next vault";
+      nextBtn.setAttribute("aria-label", locked ? `Next vault locked. Unlock Skin ${finalSkinOnPage} first` : "Next vault");
+      if (hintEl) hintEl.textContent = locked ? `NEXT VAULT LOCKED — UNLOCK SKIN ${finalSkinOnPage} TO CONTINUE` : "";
     }
 
     function announceUnlock(id) {

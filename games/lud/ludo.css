@@ -24,6 +24,8 @@
      receives the same screen-space placement as the unrotated Yellow view. */
   --token-board-art-x: 0%;
   --token-board-art-y: -20.3%;
+  --token-selection-x: 50%;
+  --token-selection-y: 84%;
   --board-rotation: 0deg;
   --token-upright-rotation: 0deg;
   --board-red: #d0352f;
@@ -51,10 +53,10 @@ body {
 }
 
 /* Rotating the board changes seating only. It never changes DOM board cells. */
-body.orient-red { --board-rotation: 180deg; --token-upright-rotation: -180deg; --token-board-art-x: 0%; --token-board-art-y: 20.3%; }
-body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; --token-board-art-x: -20.3%; --token-board-art-y: 0%; }
-body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; --token-board-art-x: 0%; --token-board-art-y: -20.3%; }
-body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --token-board-art-x: 20.3%; --token-board-art-y: 0%; }
+body.orient-red { --board-rotation: 180deg; --token-upright-rotation: -180deg; --token-board-art-x: 0%; --token-board-art-y: 20.3%; --token-selection-x: 50%; --token-selection-y: 16%; }
+body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; --token-board-art-x: -20.3%; --token-board-art-y: 0%; --token-selection-x: 16%; --token-selection-y: 50%; }
+body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; --token-board-art-x: 0%; --token-board-art-y: -20.3%; --token-selection-x: 50%; --token-selection-y: 84%; }
+body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --token-board-art-x: 20.3%; --token-board-art-y: 0%; --token-selection-x: 84%; --token-selection-y: 50%; }
 
 /* Background remains deliberately quiet behind the board. */
 .bg-slideshow {
@@ -522,11 +524,28 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
 .cell > .token.selectable-gold::before,
 .cell > .token.selectable-black::before,
 .cell > .token.selectable-single::before {
-  top:100%;
-  width:62%;
-  border-color:rgba(4,8,12,.98);
-  background:radial-gradient(circle,rgba(255,255,255,.12) 0 32%,rgba(5,9,14,.58) 35% 54%,rgba(5,9,14,0) 57%);
-  box-shadow:0 0 0 max(1px,.12vmin) rgba(255,255,255,.92),0 0 0 max(3px,.32vmin) rgba(4,8,12,.88),0 3px 8px rgba(0,0,0,.42);
+  left:var(--token-selection-x);
+  top:var(--token-selection-y);
+  width:72%;
+  aspect-ratio:2.2 / 1;
+  transform:rotate(var(--token-upright-rotation));
+  border-color:rgba(255,247,179,.98);
+  background:radial-gradient(ellipse,rgba(255,255,255,.92) 0 14%,rgba(255,215,75,.8) 28%,rgba(137,83,4,.72) 53%,rgba(5,9,14,0) 72%);
+  box-shadow:0 0 0 max(1px,.12vmin) rgba(41,25,2,.9),0 0 0 max(3px,.32vmin) rgba(255,241,139,.92),0 3px 9px rgba(0,0,0,.46),0 0 12px rgba(255,210,62,.86);
+}
+
+/* Home pawns use the same bottom-of-token eligibility marker as board pawns. */
+.token-slot > .token.selectable-gold::before,
+.token-slot > .token.selectable-black::before,
+.token-slot > .token.selectable-single::before {
+  left:var(--token-selection-x);
+  top:var(--token-selection-y);
+  width:72%;
+  aspect-ratio:2.2 / 1;
+  transform:rotate(var(--token-upright-rotation));
+  border-color:rgba(255,247,179,.98);
+  background:radial-gradient(ellipse,rgba(255,255,255,.92) 0 14%,rgba(255,215,75,.8) 28%,rgba(137,83,4,.72) 53%,rgba(5,9,14,0) 72%);
+  box-shadow:0 0 0 max(1px,.12vmin) rgba(41,25,2,.9),0 0 0 max(3px,.32vmin) rgba(255,241,139,.92),0 3px 9px rgba(0,0,0,.46),0 0 12px rgba(255,210,62,.86);
 }
 
 .token.selectable-gold img,
