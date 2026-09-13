@@ -6,6 +6,7 @@ let gameOver = false;
 let hasRolledThisTurn = false;
 let waitingForTokenMove = false;
 const LUDO_RESUME_KEY = "ludo_saved_match_v1";
+const LUDO_RESUME_SCHEMA_VERSION = 2;
 const GAME_RULES_SEEN_KEY = "ludo_game_rules_seen_v1";
 // This is deliberately session-only. It prevents pagehide from recreating a
 // snapshot after an intentional restart, next-level transition, or completed match.
@@ -378,7 +379,15 @@ const DAILY_LOGIN_COINS = 25;
 const DAILY_LOGIN_KEY = "ludo_last_login_date";
 const VICTORY_REWARD_BASE = 100;
 const VICTORY_REWARD_STEP = 25;
-let totalCoins = Math.max(0, Number(localStorage.getItem("ludo_coins") || "0"));
+function readStoredInteger(key, fallback, min = 0, max = Infinity) {
+  const value = Number(localStorage.getItem(key));
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
+    return fallback;
+  }
+  return value;
+}
+
+let totalCoins = readStoredInteger("ludo_coins", 0);
 let matchRewardGranted = false;
 let coinCounterAnimationId = 0;
 const matchRewardLedger = {
@@ -771,6 +780,7 @@ let isPaused = false;
 let bgmWasPlayingBeforePause = false;
 let isNavigatingAway = false;
 let gameplayEffectEpoch = 0;
+let turnGeneration = 0;
 const activeGameplayAnimations = new Set();
 const gameplayTimerIds = new Set();
 
@@ -820,6 +830,25 @@ function canRunTileEffect(reason, epoch) {
   return !isNavigatingAway && !gameOver && isRealMoveReason(reason) && epoch === gameplayEffectEpoch;
 }
 
+function isCurrentTurn(playerIndex, expectedTurnGeneration = turnGeneration) {
+  return (
+    !gameOver &&
+    !isNavigatingAway &&
+    expectedTurnGeneration === turnGeneration &&
+    Number.isInteger(playerIndex) &&
+    playerIndex >= 0 &&
+    playerIndex < state.players.length &&
+    state.currentPlayer === playerIndex
+  );
+}
+
+function scheduleTurnCompletion(extraTurn, playerIndex, expectedTurnGeneration, delay = 0) {
+  scheduleGameplayTask(() => {
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
+    nextTurn(extraTurn, expectedTurnGeneration);
+  }, delay);
+}
+
 function saveResumeSnapshot() {
   if (!shouldSaveResumeOnDeparture || gameOver) return;
   const resumableDiceValue = (
@@ -846,11 +875,13 @@ function saveResumeSnapshot() {
       shields: Array.isArray(player.shields) ? player.shields.slice(0, 4) : [0, 0, 0, 0],
       riskVulnerable: Array.isArray(player.riskVulnerable) ? player.riskVulnerable.slice(0, 4) : [0, 0, 0, 0],
       battleStreak: Number(player.battleStreak || 0),
+      battleCapturedThisTurn: Boolean(player.battleCapturedThisTurn),
       tokens
     };
   });
 
   const payload = {
+    schemaVersion: LUDO_RESUME_SCHEMA_VERSION,
     matchMode,
     ruleMode: gameMode,
     gameMode,
@@ -863,11 +894,231 @@ function saveResumeSnapshot() {
     // can be restored as if it were a legal board position.
     diceValue: resumableDiceValue,
     players,
+    turnState: {
+      pendingBonusTurn,
+      activeRollMultiplier,
+      matchEffects: { ...matchEffectState }
+    },
+    modeState: buildSavedModeState(),
     returnUrl: window.location.href,
     savedAt: Date.now()
   };
 
   localStorage.setItem(LUDO_RESUME_KEY, JSON.stringify(payload));
+}
+
+function buildSavedModeState() {
+  if (gameMode === "chaos") {
+    return { chaos: { rewardTile: chaosRewardTile } };
+  }
+  if (gameMode === "power") {
+    return {
+      power: {
+        speed: powerTileState.speed.slice(),
+        shield: powerTileState.shield.slice(),
+        teleport: powerTileState.teleport.slice()
+      }
+    };
+  }
+  if (gameMode === "battle") {
+    return {
+      battle: {
+        risk: battleTileState.risk.slice(),
+        block: battleTileState.block.slice(),
+        activeBlocks: Array.from(battleActiveBlocks.entries()).map(([index, block]) => ({
+          index,
+          ownerColor: block.ownerColor,
+          turnsLeft: block.turnsLeft
+        }))
+      }
+    };
+  }
+  if (gameMode === "arena") {
+    return {
+      arena: {
+        reward: arenaTileState.reward.slice(),
+        turns: arenaTurns,
+        nextEventAt: arenaNextEventAt,
+        doubleRollColor: arenaDoubleRollColor
+      }
+    };
+  }
+  return {};
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isIntegerInRange(value, min, max = Infinity) {
+  return Number.isSafeInteger(value) && value >= min && value <= max;
+}
+
+function validateIntegerArray(value, expectedLength, min, max, requireUnique = false) {
+  if (!Array.isArray(value) || value.length !== expectedLength) return null;
+  if (!value.every(item => isIntegerInRange(item, min, max))) return null;
+  if (requireUnique && new Set(value).size !== value.length) return null;
+  return value.slice();
+}
+
+function validateMatchEffects(value) {
+  if (!isPlainObject(value)) return null;
+  const booleanKeys = [
+    "shieldUsed", "plusOneUsed", "replayUsed", "replayPending",
+    "guaranteedSixUsed", "doubleMoveUsed", "guaranteedAfterTenUsed"
+  ];
+  if (!booleanKeys.every(key => typeof value[key] === "boolean")) return null;
+  if (!isIntegerInRange(value.homesCount, 0)) return null;
+  if (!isIntegerInRange(value.reentryTurnsLeft, 0, 2)) return null;
+  if (!isIntegerInRange(value.nextRollBoost, 0, 1)) return null;
+  if (!isIntegerInRange(value.totalRolls, 0)) return null;
+  if (value.capturedTokenPendingReentry !== null && !isIntegerInRange(value.capturedTokenPendingReentry, 0, 3)) return null;
+  if (value.capturedTokenPendingReentry === null && value.reentryTurnsLeft !== 0) return null;
+  return {
+    shieldUsed: value.shieldUsed,
+    plusOneUsed: value.plusOneUsed,
+    replayUsed: value.replayUsed,
+    replayPending: value.replayPending,
+    guaranteedSixUsed: value.guaranteedSixUsed,
+    doubleMoveUsed: value.doubleMoveUsed,
+    homesCount: value.homesCount,
+    capturedTokenPendingReentry: value.capturedTokenPendingReentry,
+    reentryTurnsLeft: value.reentryTurnsLeft,
+    nextRollBoost: value.nextRollBoost,
+    totalRolls: value.totalRolls,
+    guaranteedAfterTenUsed: value.guaranteedAfterTenUsed
+  };
+}
+
+function validateSavedToken(color, value) {
+  if (!isPlainObject(value) || typeof value.path !== "string" || typeof value.finished !== "boolean") return null;
+  const { path, pos, finished } = value;
+  if (!Number.isInteger(pos)) return null;
+  if (pos === -1 && path === "common" && !finished) return { pos, path, finished };
+  if (pos === -2 && path === "goal" && finished) return { pos, path, finished };
+  if (path === "common" && isIntegerInRange(pos, 0, PATHS.common.length - 1) && !finished) {
+    return { pos, path, finished };
+  }
+  const homePath = HOME_PATH_KEY_BY_COLOR[color];
+  if (path === homePath && isIntegerInRange(pos, 0, PATHS[homePath].length - 1) && !finished) {
+    return { pos, path, finished };
+  }
+  return null;
+}
+
+function validateSavedPlayers(value) {
+  if (!Array.isArray(value) || value.length !== state.players.length) return null;
+  const byColor = new Map();
+  for (const savedPlayer of value) {
+    if (!isPlainObject(savedPlayer) || !activeColors.includes(savedPlayer.color) || byColor.has(savedPlayer.color)) return null;
+    const expectedPlayer = state.players.find(player => player.color === savedPlayer.color);
+    if (!expectedPlayer || typeof savedPlayer.isAI !== "boolean" || savedPlayer.isAI !== expectedPlayer.isAI) return null;
+    if (!isIntegerInRange(savedPlayer.sixStreak, 0, 3)) return null;
+    if (!isIntegerInRange(savedPlayer.battleStreak, 0) || typeof savedPlayer.battleCapturedThisTurn !== "boolean") return null;
+    const shields = validateIntegerArray(savedPlayer.shields, 4, 0, 1);
+    const riskVulnerable = validateIntegerArray(savedPlayer.riskVulnerable, 4, 0, 2);
+    if (!shields || !riskVulnerable || !Array.isArray(savedPlayer.tokens) || savedPlayer.tokens.length !== 4) return null;
+    const tokens = savedPlayer.tokens.map(token => validateSavedToken(savedPlayer.color, token));
+    if (tokens.some(token => token === null)) return null;
+    byColor.set(savedPlayer.color, {
+      color: savedPlayer.color,
+      isAI: savedPlayer.isAI,
+      sixStreak: savedPlayer.sixStreak,
+      shields,
+      riskVulnerable,
+      battleStreak: savedPlayer.battleStreak,
+      battleCapturedThisTurn: savedPlayer.battleCapturedThisTurn,
+      tokens
+    });
+  }
+  if (byColor.size !== state.players.length) return null;
+  return state.players.map(player => byColor.get(player.color));
+}
+
+function validateSavedModeState(value) {
+  if (!isPlainObject(value)) return null;
+  const maxTile = PATHS.common.length;
+  if (gameMode === "classic") return {};
+  if (gameMode === "chaos") {
+    const rewardTile = value.chaos?.rewardTile;
+    return isIntegerInRange(rewardTile, 1, maxTile) && isChaosRewardCandidate(rewardTile)
+      ? { chaos: { rewardTile } }
+      : null;
+  }
+  if (gameMode === "power") {
+    const power = value.power;
+    if (!isPlainObject(power)) return null;
+    const speed = validateIntegerArray(power.speed, POWER_TILE_COUNTS.speed, 1, maxTile, true);
+    const shield = validateIntegerArray(power.shield, POWER_TILE_COUNTS.shield, 1, maxTile, true);
+    const teleport = validateIntegerArray(power.teleport, POWER_TILE_COUNTS.teleport, 1, maxTile, true);
+    const allTiles = [...(speed || []), ...(shield || []), ...(teleport || [])];
+    return speed && shield && teleport && new Set(allTiles).size === allTiles.length && allTiles.every(tile => isPowerTileCandidate(tile))
+      ? { power: { speed, shield, teleport } }
+      : null;
+  }
+  if (gameMode === "battle") {
+    const battle = value.battle;
+    if (!isPlainObject(battle)) return null;
+    const risk = validateIntegerArray(battle.risk, BATTLE_TILE_COUNTS.risk, 1, maxTile, true);
+    const block = validateIntegerArray(battle.block, BATTLE_TILE_COUNTS.block, 1, maxTile, true);
+    const allTiles = [...(risk || []), ...(block || [])];
+    if (!risk || !block || new Set(allTiles).size !== allTiles.length || !allTiles.every(tile => isBattleTileCandidate(tile)) || !Array.isArray(battle.activeBlocks) || battle.activeBlocks.length > block.length) return null;
+    const activeBlocks = [];
+    const activeIndices = new Set();
+    for (const activeBlock of battle.activeBlocks) {
+      if (!isPlainObject(activeBlock) || !isIntegerInRange(activeBlock.index, 0, maxTile - 1) || !block.includes(activeBlock.index + 1) || activeIndices.has(activeBlock.index) || !activeColors.includes(activeBlock.ownerColor) || !isIntegerInRange(activeBlock.turnsLeft, 1, 2)) return null;
+      activeIndices.add(activeBlock.index);
+      activeBlocks.push({ index: activeBlock.index, ownerColor: activeBlock.ownerColor, turnsLeft: activeBlock.turnsLeft });
+    }
+    return { battle: { risk, block, activeBlocks } };
+  }
+  if (gameMode === "arena") {
+    const arena = value.arena;
+    if (!isPlainObject(arena)) return null;
+    const reward = validateIntegerArray(arena.reward, ARENA_REWARD_TILE_COUNT, 1, maxTile, true);
+    if (!reward || !reward.every(tile => isArenaTileCandidate(tile)) || !isIntegerInRange(arena.nextEventAt, 3, 5) || !isIntegerInRange(arena.turns, 0, arena.nextEventAt - 1)) return null;
+    if (arena.doubleRollColor !== null && !activeColors.includes(arena.doubleRollColor)) return null;
+    return { arena: { reward, turns: arena.turns, nextEventAt: arena.nextEventAt, doubleRollColor: arena.doubleRollColor } };
+  }
+  return null;
+}
+
+function validateSavedMatch(value) {
+  if (!isPlainObject(value) || value.schemaVersion !== LUDO_RESUME_SCHEMA_VERSION) return { clear: true };
+  if (
+    value.matchMode !== matchMode ||
+    value.ruleMode !== gameMode ||
+    value.gameMode !== gameMode ||
+    value.playerCount !== playerCount ||
+    value.humanColor !== humanColor ||
+    value.currentLevel !== currentLevel
+  ) {
+    return { clear: false };
+  }
+  if (!isIntegerInRange(value.currentPlayer, 0, state.players.length - 1)) return { clear: true };
+  if (value.diceValue !== null && !isIntegerInRange(value.diceValue, 1, 6)) return { clear: true };
+  if (typeof value.returnUrl !== "string" || !value.returnUrl || !isIntegerInRange(value.savedAt, 0)) return { clear: true };
+  const players = validateSavedPlayers(value.players);
+  const turnState = value.turnState;
+  if (!players || !isPlainObject(turnState) || typeof turnState.pendingBonusTurn !== "boolean" || !isIntegerInRange(turnState.activeRollMultiplier, 1, 2)) return { clear: true };
+  const matchEffects = validateMatchEffects(turnState.matchEffects);
+  const modeState = validateSavedModeState(value.modeState);
+  if (!matchEffects || !modeState) return { clear: true };
+  if (value.diceValue === null && turnState.activeRollMultiplier !== 1) return { clear: true };
+  return {
+    clear: false,
+    data: {
+      currentPlayer: value.currentPlayer,
+      diceValue: value.diceValue,
+      players,
+      turnState: {
+        pendingBonusTurn: turnState.pendingBonusTurn,
+        activeRollMultiplier: turnState.activeRollMultiplier,
+        matchEffects
+      },
+      modeState
+    }
+  };
 }
 
 function placeTokenByState(color, tokenIndex, tokenState) {
@@ -908,74 +1159,63 @@ function placeTokenByState(color, tokenIndex, tokenState) {
 }
 
 function maybeRestoreSavedGame() {
-  let parsed = null;
+  let parsed;
   try {
     const raw = localStorage.getItem(LUDO_RESUME_KEY);
     if (!raw) return false;
     parsed = JSON.parse(raw);
   } catch {
+    localStorage.removeItem(LUDO_RESUME_KEY);
     return false;
   }
 
-  if (!parsed || typeof parsed !== "object") return false;
-  const savedRuleMode = Object.prototype.hasOwnProperty.call(MODES, parsed.ruleMode)
-    ? parsed.ruleMode
-    : (Object.prototype.hasOwnProperty.call(MODES, parsed.gameMode) ? parsed.gameMode : "classic");
-  if (
-    (parsed.matchMode || parsed.gameMode) !== matchMode ||
-    savedRuleMode !== gameMode ||
-    Number(parsed.playerCount) !== playerCount ||
-    parsed.humanColor !== humanColor ||
-    Number(parsed.currentLevel) !== currentLevel
-  ) {
+  const validated = validateSavedMatch(parsed);
+  if (!validated.data) {
+    if (validated.clear) localStorage.removeItem(LUDO_RESUME_KEY);
     return false;
   }
 
-  if (!Array.isArray(parsed.players)) return false;
-
+  const saved = validated.data;
   state.players.forEach((player, playerIndex) => {
-    const savedPlayer = parsed.players.find(p => p && p.color === player.color) || parsed.players[playerIndex];
-    if (!savedPlayer || !Array.isArray(savedPlayer.tokens)) return;
-
-    player.sixStreak = Number(savedPlayer.sixStreak || 0);
-    player.shields = Array.isArray(savedPlayer.shields)
-      ? savedPlayer.shields.map(v => Math.max(0, Number(v) || 0)).slice(0, 4)
-      : [0, 0, 0, 0];
-    while (player.shields.length < 4) player.shields.push(0);
-    player.riskVulnerable = Array.isArray(savedPlayer.riskVulnerable)
-      ? savedPlayer.riskVulnerable.map(v => Math.max(0, Number(v) || 0)).slice(0, 4)
-      : [0, 0, 0, 0];
-    while (player.riskVulnerable.length < 4) player.riskVulnerable.push(0);
-    player.battleStreak = Math.max(0, Number(savedPlayer.battleStreak || 0));
-    player.battleCapturedThisTurn = false;
-
+    const savedPlayer = saved.players[playerIndex];
+    player.sixStreak = savedPlayer.sixStreak;
+    player.shields = savedPlayer.shields;
+    player.riskVulnerable = savedPlayer.riskVulnerable;
+    player.battleStreak = savedPlayer.battleStreak;
+    player.battleCapturedThisTurn = savedPlayer.battleCapturedThisTurn;
     savedPlayer.tokens.forEach((tokenState, tokenIndex) => {
-      if (!tokenState) return;
-      const safePos = Number(tokenState.pos);
-      player.tokens[tokenIndex] = Number.isFinite(safePos) ? safePos : -1;
-      player.finished[tokenIndex] = Boolean(tokenState.finished);
+      player.tokens[tokenIndex] = tokenState.pos;
+      player.finished[tokenIndex] = tokenState.finished;
       placeTokenByState(player.color, tokenIndex, tokenState);
     });
   });
 
-  const savedCurrent = Number(parsed.currentPlayer);
-  if (Number.isInteger(savedCurrent) && savedCurrent >= 0 && savedCurrent < state.players.length) {
-    state.currentPlayer = savedCurrent;
+  state.currentPlayer = saved.currentPlayer;
+  state.diceValue = saved.diceValue;
+  pendingBonusTurn = saved.turnState.pendingBonusTurn;
+  activeRollMultiplier = saved.turnState.activeRollMultiplier;
+  Object.assign(matchEffectState, saved.turnState.matchEffects);
+  if (gameMode === "chaos") {
+    chaosRewardTile = saved.modeState.chaos.rewardTile;
+  } else if (gameMode === "power") {
+    powerTileState = saved.modeState.power;
+  } else if (gameMode === "battle") {
+    battleTileState = { risk: saved.modeState.battle.risk, block: saved.modeState.battle.block };
+    battleActiveBlocks.clear();
+    saved.modeState.battle.activeBlocks.forEach(block => {
+      battleActiveBlocks.set(block.index, { ownerColor: block.ownerColor, turnsLeft: block.turnsLeft });
+    });
+  } else if (gameMode === "arena") {
+    arenaTileState = { reward: saved.modeState.arena.reward };
+    arenaTurns = saved.modeState.arena.turns;
+    arenaNextEventAt = saved.modeState.arena.nextEventAt;
+    arenaDoubleRollColor = saved.modeState.arena.doubleRollColor;
   }
-
-  const savedDiceValue = Number(parsed.diceValue);
-  state.diceValue = Number.isInteger(savedDiceValue) && savedDiceValue >= 1 && savedDiceValue <= 6
-    ? savedDiceValue
-    : null;
   gameOver = false;
   isMoving = false;
   hasRolledThisTurn = state.diceValue !== null;
   waitingForTokenMove = false;
   clearHighlights();
-  activeRollMultiplier = 1;
-  arenaTurns = 0;
-  arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
-  arenaDoubleRollColor = null;
   refreshNearWinEffects();
   return true;
 }
@@ -1105,10 +1345,11 @@ setupTileGlowSeeds();
 setupSparkParticles();
 setupBackgroundSlideshow();
 setupSoundBootstrap();
-setupChaosMode();
-setupPowerMode();
-setupBattleMode();
-setupArenaMode();
+const restoredSavedMatch = maybeRestoreSavedGame();
+setupChaosMode({ restoring: restoredSavedMatch });
+setupPowerMode({ restoring: restoredSavedMatch });
+setupBattleMode({ restoring: restoredSavedMatch });
+setupArenaMode({ restoring: restoredSavedMatch });
 window.addEventListener("resize", scheduleChaosOverlayRender);
 window.addEventListener("orientationchange", scheduleChaosOverlayRender);
 
@@ -2122,13 +2363,13 @@ function scheduleChaosOverlayRender() {
   });
 }
 
-function setupChaosMode() {
+function setupChaosMode({ restoring = false } = {}) {
   if (gameMode !== "chaos") {
     chaosRewardTile = null;
     renderChaosOverlay();
     return;
   }
-  if (chaosRewardTile === null) pickChaosRewardTile();
+  if (!restoring && chaosRewardTile === null) pickChaosRewardTile();
   applyChaosRewardTileMarker();
   scheduleChaosOverlayRender();
 }
@@ -2397,13 +2638,13 @@ function applyPowerTileMarkers() {
   });
 }
 
-function setupPowerMode() {
+function setupPowerMode({ restoring = false } = {}) {
   if (gameMode !== "power") {
     powerTileState = { speed: [], shield: [], teleport: [] };
     clearPowerTileMarkers();
     return;
   }
-  randomizePowerTiles();
+  if (!restoring) randomizePowerTiles();
   applyPowerTileMarkers();
 }
 
@@ -2489,16 +2730,27 @@ function applyBattleTileMarkers() {
   });
 }
 
-function setupBattleMode() {
-  battleActiveBlocks.clear();
+function applyBattleActiveBlockMarkers() {
+  battleActiveBlocks.forEach((blockState, index) => {
+    const cell = PATHS.common[index]?.el;
+    if (!cell) return;
+    cell.classList.remove("battle-block-owner-red", "battle-block-owner-green", "battle-block-owner-yellow", "battle-block-owner-blue");
+    cell.classList.add("battle-block-active", `battle-block-owner-${blockState.ownerColor}`);
+    cell.dataset.blockOwner = blockState.ownerColor;
+  });
+}
+
+function setupBattleMode({ restoring = false } = {}) {
+  if (!restoring) battleActiveBlocks.clear();
   if (gameMode !== "battle") {
     battleTileState = { risk: [], block: [] };
     clearBattleTileMarkers();
     refreshRiskTokenVisuals();
     return;
   }
-  randomizeBattleTiles();
+  if (!restoring) randomizeBattleTiles();
   applyBattleTileMarkers();
+  if (restoring) applyBattleActiveBlockMarkers();
   refreshRiskTokenVisuals();
 }
 
@@ -2672,13 +2924,13 @@ function applyArenaTileMarkers() {
   });
 }
 
-function setupArenaMode() {
+function setupArenaMode({ restoring = false } = {}) {
   if (gameMode !== "arena") {
     arenaTileState = { reward: [] };
     clearArenaTileMarkers();
     return;
   }
-  randomizeArenaTiles();
+  if (!restoring) randomizeArenaTiles();
   applyArenaTileMarkers();
 }
 
@@ -3256,10 +3508,7 @@ function checkAndShowWinner(playerIndex) {
 
   if (matchMode === "vs-computer" && player.color === humanColor) {
     const storageKey = "ludo_unlocked_level";
-    unlockedBefore = Math.min(
-      TOTAL_LEVELS,
-      Math.max(1, Number(localStorage.getItem(storageKey) || "1"))
-    );
+    unlockedBefore = readStoredInteger(storageKey, 1, 1, TOTAL_LEVELS);
     unlockedAfter = Math.min(TOTAL_LEVELS, Math.max(unlockedBefore, currentLevel + 1));
     localStorage.setItem(storageKey, String(unlockedAfter));
     if (unlockedAfter > unlockedBefore) {
@@ -3842,8 +4091,6 @@ async function executeMove(move) {
     nextTurn(false);
   }
 }
-
-const restoredSavedMatch = maybeRestoreSavedGame();
 
 // The screenshot-style bottom action is intentionally the only human dice
 // control. Corner dice are live visual cards and never start a second roll.

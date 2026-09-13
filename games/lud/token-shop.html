@@ -180,7 +180,12 @@
       modalTimers.set(modal, timer);
     }
 
-    let coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
+    function readCoins() {
+      const value = Number(localStorage.getItem(COINS_KEY));
+      return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+    }
+
+    let coins = readCoins();
     let owned = [];
     try {
       const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");

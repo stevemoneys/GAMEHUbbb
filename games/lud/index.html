@@ -311,9 +311,17 @@
 
     let lastRenderedCoinValue = null;
 
+    function readStoredInteger(key, fallback, min = 0, max = Infinity) {
+      const value = Number(localStorage.getItem(key));
+      if (!Number.isSafeInteger(value) || value < min || value > max) {
+        return fallback;
+      }
+      return value;
+    }
+
     function renderLobbyStatus() {
-      const coins = Math.max(0, Number(localStorage.getItem(COINS_KEY) || "0"));
-      const unlocked = Math.min(TOTAL_LEVELS, Math.max(1, Number(localStorage.getItem(LEVEL_KEY) || "1")));
+      const coins = readStoredInteger(COINS_KEY, 0);
+      const unlocked = readStoredInteger(LEVEL_KEY, 1, 1, TOTAL_LEVELS);
       const formattedCoins = coins.toLocaleString();
       const coinsChanged = lastRenderedCoinValue !== null && lastRenderedCoinValue !== formattedCoins;
       if (homeCoinValueEl) {

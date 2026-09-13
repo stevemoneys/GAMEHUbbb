@@ -59,9 +59,8 @@
     const TOTAL_LEVELS = 60;
     const storageKey = "ludo_unlocked_level";
 
-    let unlocked = Number(localStorage.getItem(storageKey) || "1");
-    if (!Number.isFinite(unlocked) || unlocked < 1) unlocked = 1;
-    unlocked = Math.min(TOTAL_LEVELS, unlocked);
+    let unlocked = Number(localStorage.getItem(storageKey));
+    if (!Number.isSafeInteger(unlocked) || unlocked < 1 || unlocked > TOTAL_LEVELS) unlocked = 1;
     localStorage.setItem(storageKey, String(unlocked));
 
     const currentLevelEl = document.getElementById("current-level-value");

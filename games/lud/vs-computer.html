@@ -58,6 +58,7 @@
     if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
     localStorage.setItem("ludo_game_mode", selectedGameMode);
     const LUDO_RESUME_KEY = "ludo_saved_match_v1";
+    const LUDO_RESUME_SCHEMA_VERSION = 2;
     const titleEl = document.querySelector(".vs-head h1");
     if (titleEl) {
       titleEl.textContent = mode === "pass-play" ? "Pass And Play" : "VS Computer";
@@ -82,9 +83,13 @@
         const raw = localStorage.getItem(LUDO_RESUME_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object") return null;
+        if (!parsed || typeof parsed !== "object" || parsed.schemaVersion !== LUDO_RESUME_SCHEMA_VERSION) {
+          localStorage.removeItem(LUDO_RESUME_KEY);
+          return null;
+        }
         return parsed;
       } catch {
+        localStorage.removeItem(LUDO_RESUME_KEY);
         return null;
       }
     }
