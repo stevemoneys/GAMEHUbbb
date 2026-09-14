@@ -21,8 +21,11 @@ const params = new URLSearchParams(window.location.search);
 const matchMode = (params.get("mode") || "vs-computer").toLowerCase();
 const requestedPlayers = Number(params.get("players")) || 4;
 const requestedHumanColor = (params.get("human") || "red").toLowerCase();
-const currentLevel = Math.max(1, Number(params.get("level")) || 1);
 const TOTAL_LEVELS = 60;
+const requestedLevel = Number(params.get("level"));
+const currentLevel = Number.isSafeInteger(requestedLevel)
+  ? Math.min(TOTAL_LEVELS, Math.max(1, requestedLevel))
+  : 1;
 const playerCount = Math.min(4, Math.max(2, requestedPlayers));
 const humanColor = ALL_COLORS_CLOCKWISE.includes(requestedHumanColor) ? requestedHumanColor : "red";
 const aiDifficulty = Math.min(3, Math.floor((currentLevel - 1) / 5) + 1);
@@ -426,16 +429,18 @@ function applyDailyLoginReward() {
 applyDailyLoginReward();
 
 function addCoins(amount) {
-  const safeAmount = Math.floor(Number(amount) || 0);
-  if (safeAmount <= 0) return;
+  const safeAmount = Math.floor(Number(amount));
+  if (!Number.isSafeInteger(safeAmount) || safeAmount <= 0 || !Number.isSafeInteger(totalCoins)) return;
+  const creditedAmount = Math.min(safeAmount, Number.MAX_SAFE_INTEGER - totalCoins);
+  if (creditedAmount <= 0) return;
   const previousTotal = totalCoins;
-  totalCoins += safeAmount;
+  totalCoins += creditedAmount;
   localStorage.setItem("ludo_coins", String(totalCoins));
   if (!coinTotalEl) return;
 
   if (coinCounterAnimationId) cancelAnimationFrame(coinCounterAnimationId);
   const targetTotal = totalCoins;
-  const duration = safeAmount >= 100 ? 560 : 360;
+  const duration = creditedAmount >= 100 ? 560 : 360;
   const startedAt = performance.now();
   const updateCounter = now => {
     const progress = Math.min(1, (now - startedAt) / duration);
@@ -458,10 +463,12 @@ function pickReactionLine(type) {
 }
 
 function recordMatchReward(type, amount) {
-  const safeAmount = Math.floor(Number(amount) || 0);
-  if (safeAmount <= 0) return;
+  const safeAmount = Math.floor(Number(amount));
+  if (!Number.isSafeInteger(safeAmount) || safeAmount <= 0) return;
   const key = Object.prototype.hasOwnProperty.call(matchRewardLedger, type) ? type : "special";
-  matchRewardLedger[key] += safeAmount;
+  const currentAmount = Number(matchRewardLedger[key]);
+  if (!Number.isSafeInteger(currentAmount)) return;
+  matchRewardLedger[key] = Math.min(Number.MAX_SAFE_INTEGER, currentAmount + safeAmount);
 }
 
 function getElementCenter(el) {
@@ -781,6 +788,7 @@ let bgmWasPlayingBeforePause = false;
 let isNavigatingAway = false;
 let gameplayEffectEpoch = 0;
 let turnGeneration = 0;
+let pendingTurnCompletionGeneration = null;
 const activeGameplayAnimations = new Set();
 const gameplayTimerIds = new Set();
 
@@ -815,6 +823,8 @@ function prepareForNavigation() {
   // Save before invalidating motion. The snapshot contains logical state only.
   saveResumeSnapshot();
   isNavigatingAway = true;
+  turnGeneration += 1;
+  pendingTurnCompletionGeneration = null;
   stopBackgroundMusic();
   cancelPendingGameplayTasks();
   isMoving = false;
@@ -839,6 +849,37 @@ function isCurrentTurn(playerIndex, expectedTurnGeneration = turnGeneration) {
     playerIndex >= 0 &&
     playerIndex < state.players.length &&
     state.currentPlayer === playerIndex
+  );
+}
+
+function hasHumanTurnOwnership(playerIndex = state.currentPlayer) {
+  const player = state.players[playerIndex];
+  return Boolean(
+    player &&
+    !player.isAI &&
+    !isPaused &&
+    !isMoving &&
+    isCurrentTurn(playerIndex)
+  );
+}
+
+function canStartHumanRoll(playerIndex = state.currentPlayer) {
+  return (
+    hasHumanTurnOwnership(playerIndex) &&
+    state.diceValue === null &&
+    !hasRolledThisTurn &&
+    !waitingForTokenMove
+  );
+}
+
+function canSelectHumanToken(playerIndex = state.currentPlayer) {
+  return (
+    hasHumanTurnOwnership(playerIndex) &&
+    Number.isInteger(state.diceValue) &&
+    state.diceValue >= 1 &&
+    state.diceValue <= 6 &&
+    hasRolledThisTurn &&
+    waitingForTokenMove
   );
 }
 
@@ -1277,7 +1318,7 @@ state.players.forEach(player => {
     HOME_SLOTS[player.color][i].el.appendChild(token);
     tokenEls[player.color].push(token);
 
-    token.addEventListener("click", () => selectLegalToken(state.currentPlayer, i));
+    token.addEventListener("click", () => selectLegalToken(state.players.indexOf(player), i));
     token.addEventListener("keydown", event => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
@@ -1287,23 +1328,24 @@ state.players.forEach(player => {
 });
 
 function selectLegalToken(playerIndex, tokenIndex) {
-  if (isNavigatingAway || gameOver || isPaused) return false;
+  if (!canSelectHumanToken(playerIndex)) return false;
   const activePlayer = state.players[state.currentPlayer];
   const player = state.players[playerIndex];
   const token = player ? tokenEls[player.color]?.[tokenIndex] : null;
   if (!activePlayer || !player || !token || activePlayer.isAI) return false;
   if (playerIndex !== state.currentPlayer || player.color !== activePlayer.color) return false;
-  if (state.diceValue === null || !waitingForTokenMove) return false;
   if (!canTokenMove(state.currentPlayer, tokenIndex, getCurrentMoveSteps(state.currentPlayer))) return false;
   if (state.diceValue === 6 && !token.classList.contains("selectable-gold")) return false;
   if (state.diceValue !== 6 && !token.classList.contains("selectable-black")) return false;
 
   clearHighlights();
   triggerFeedback(token, "token-selected", 240);
-  executeMove({ playerIndex: state.currentPlayer, tokenIndex }).catch(() => {
-    if (isNavigatingAway) return;
+  const selectedTurnGeneration = turnGeneration;
+  waitingForTokenMove = false;
+  executeMove({ playerIndex: state.currentPlayer, tokenIndex }, selectedTurnGeneration).catch(() => {
+    if (!isCurrentTurn(playerIndex, selectedTurnGeneration)) return;
     isMoving = false;
-    nextTurn(false);
+    nextTurn(false, selectedTurnGeneration);
   });
   return true;
 }
@@ -1744,14 +1786,17 @@ function computeRollValue(color) {
 
 function canTokenMove(playerIndex, tokenIndex, dice, rawDice = state.diceValue) {
   const player = state.players[playerIndex];
+  if (!player || !Number.isInteger(tokenIndex) || tokenIndex < 0 || tokenIndex >= player.tokens.length) return false;
   const color = player.color;
   const pos = player.tokens[tokenIndex];
-  const token = tokenEls[color][tokenIndex];
+  const token = tokenEls[color]?.[tokenIndex];
+  if (!token || !Number.isInteger(pos)) return false;
   const pathKey = token.dataset.path || "common";
 
-  if (dice === null) return false;
-  if (player.finished[tokenIndex]) return false;
-  if (pathKey === "goal") return false;
+  if (!Number.isInteger(dice) || dice <= 0 || !Number.isInteger(rawDice)) return false;
+  if (player.finished[tokenIndex] || pathKey === "goal") return false;
+  const homePathKey = HOME_PATH_KEY_BY_COLOR[color];
+  if (pathKey !== "common" && pathKey !== homePathKey) return false;
   if (pos === -1) {
     if (rawDice !== 6) return false;
     const entryIndex = ENTRY_INDEX_BY_COLOR[color];
@@ -1760,15 +1805,17 @@ function canTokenMove(playerIndex, tokenIndex, dice, rawDice = state.diceValue) 
 
   if (pathKey !== "common") {
     const path = PATHS[pathKey];
-    if (!path) return false;
+    if (!path || pos < 0 || pos >= path.length) return false;
     const remainingToGoal = path.length - pos;
     return dice <= remainingToGoal;
   }
-  return canMoveOnCommonPath(playerIndex, tokenIndex, dice);
+  if (pos < 0 || pos >= PATHS.common.length) return false;
+  return canMoveOnCommonPath(playerIndex, tokenIndex, dice, rawDice);
 }
 
 function getValidMovesForPlayer(playerIndex, dice) {
   const player = state.players[playerIndex];
+  if (!player) return [];
   const moves = [];
 
   player.tokens.forEach((_, tokenIndex) => {
@@ -1838,15 +1885,27 @@ function simulateLanding(playerIndex, tokenIndex, dice) {
 }
 
 function getCaptureAt(index, movingColor) {
+  if (!Number.isInteger(index) || index < 0 || index >= PATHS.common.length) return false;
+  // Safe squares are an absolute capture boundary. Battle risk state changes
+  // token exposure elsewhere, but never changes the board's safe-square rule.
+  if (SAFE_INDICES.has(index)) return false;
   if (isBlockedByEnemyBlockade(index, movingColor)) return false;
   const cell = PATHS.common[index].el;
   const tokens = Array.from(cell.querySelectorAll(".token"));
-  if (tokens.length <= 1) return false;
-  return tokens.some(t => {
-    if (!t.dataset.color || t.dataset.color === movingColor) return false;
-    if (SAFE_INDICES.has(index) && !isTokenRiskVulnerable(t)) return false;
-    return true;
-  });
+  return tokens.some(token => isCapturableTokenAt(token, index, movingColor));
+}
+
+function isCapturableTokenAt(tokenEl, index, attackerColor) {
+  if (!tokenEl || tokenEl.classList.contains("capturing")) return false;
+  if (!Number.isInteger(index) || index < 0 || index >= PATHS.common.length) return false;
+  if (SAFE_INDICES.has(index)) return false;
+
+  const owner = findTokenOwner(tokenEl);
+  if (!owner || !owner.color || owner.color === attackerColor) return false;
+  const ownerPlayer = state.players[owner.playerIndex];
+  if (!ownerPlayer || ownerPlayer.finished[owner.tokenIndex]) return false;
+  if (ownerPlayer.tokens[owner.tokenIndex] !== index) return false;
+  return (tokenEl.dataset.path || "common") === "common";
 }
 
 function pickAiMove(playerIndex, moves, dice) {
@@ -1904,9 +1963,12 @@ function getFreeHomeSlotEl(color) {
   return HOME_SLOTS[color][0].el;
 }
 
-function sendTokenHome(tokenEl, color, attackerColor = "") {
+async function sendTokenHome(tokenEl, color, attackerColor = "", expectedIndex = null) {
+  if (!tokenEl || !color) return false;
   const owner = findTokenOwner(tokenEl);
-  if (!owner) return;
+  if (!owner || owner.color !== color) return false;
+  if (tokenEl.classList.contains("capturing")) return false;
+  if (Number.isInteger(expectedIndex) && !isCapturableTokenAt(tokenEl, expectedIndex, attackerColor)) return false;
   const ownerPlayer = state.players[owner.playerIndex];
   const riskyTarget = ownerPlayer && Array.isArray(ownerPlayer.riskVulnerable)
     ? (Number(ownerPlayer.riskVulnerable[owner.tokenIndex]) || 0) > 0
@@ -1914,7 +1976,7 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
   if (ownerPlayer && !riskyTarget && (ownerPlayer.shields?.[owner.tokenIndex] || 0) > 0) {
     ownerPlayer.shields[owner.tokenIndex] = Math.max(0, ownerPlayer.shields[owner.tokenIndex] - 1);
     if (color === humanColor) showToast("Shield Blocked Capture");
-    return;
+    return false;
   }
 
   if (
@@ -1924,7 +1986,7 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
     !matchEffectState.shieldUsed
   ) {
     matchEffectState.shieldUsed = true;
-    return;
+    return false;
   }
 
   if (
@@ -1941,9 +2003,11 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
   const homeEl = getFreeHomeSlotEl(color);
   tokenEl.classList.add("capturing");
   triggerFeedback(tokenEl, "token-captured", 260);
-  animateCapturedTokenHome(tokenEl, homeEl);
+  await animateCapturedTokenHome(tokenEl, homeEl);
+  if (isNavigatingAway) return false;
 
   const player = state.players[owner.playerIndex];
+  if (!player) return false;
   player.tokens[owner.tokenIndex] = -1;
   player.finished[owner.tokenIndex] = false;
   if (Array.isArray(player.riskVulnerable)) {
@@ -1957,27 +2021,41 @@ function sendTokenHome(tokenEl, color, attackerColor = "") {
     if (line) showToast(line);
   }
   refreshNearWinEffects();
+  return true;
 }
 
-function handleCaptureAt(index, movingToken) {
+async function handleCaptureAt(index, movingToken) {
+  if (!Number.isInteger(index) || index < 0 || index >= PATHS.common.length) return 0;
+  if (SAFE_INDICES.has(index)) return 0;
+  if (!movingToken) return 0;
+  const movingOwner = findTokenOwner(movingToken);
+  if (!movingOwner || (movingToken.dataset.path || "common") !== "common") return 0;
+  const movingPlayer = state.players[movingOwner.playerIndex];
+  if (!movingPlayer || movingPlayer.finished[movingOwner.tokenIndex] || movingPlayer.tokens[movingOwner.tokenIndex] !== index) return 0;
   if (isBlockedByEnemyBlockade(index, movingToken.dataset.color)) return 0;
   const cell = PATHS.common[index].el;
   const tokens = Array.from(cell.querySelectorAll(".token"));
   if (tokens.length <= 1) return 0;
 
   const movingColor = movingToken.dataset.color;
-  let captures = 0;
-  const capturedColors = [];
-  tokens.forEach(t => {
-    if (t === movingToken) return;
-    const color = t.dataset.color;
-    if (SAFE_INDICES.has(index) && !isTokenRiskVulnerable(t)) return;
-    if (color && color !== movingColor) {
-      captures += 1;
-      capturedColors.push(color);
-      sendTokenHome(t, color, movingColor);
-    }
-  });
+  const captureAttemptKey = `${turnGeneration}:${movingOwner.playerIndex}:${movingOwner.tokenIndex}:${index}`;
+  const captureTasks = tokens
+    .filter(token => (
+      token !== movingToken &&
+      token.dataset.captureAttemptKey !== captureAttemptKey &&
+      isCapturableTokenAt(token, index, movingColor)
+    ))
+    .map(async token => {
+      const color = token.dataset.color;
+      // A shield-blocked target is still resolved for this landing. Keeping
+      // this token-local key through the turn prevents a stale completion
+      // from trying the exact same capture again.
+      token.dataset.captureAttemptKey = captureAttemptKey;
+      const captured = await sendTokenHome(token, color, movingColor, index);
+      return captured ? color : "";
+    });
+  const capturedColors = (await Promise.all(captureTasks)).filter(Boolean);
+  const captures = capturedColors.length;
   if (captures > 0) {
     triggerFeedback(movingToken, "token-capture-impact", 300);
     createCaptureBurst(getElementCenter(cell), movingColor);
@@ -1989,18 +2067,12 @@ function handleCaptureAt(index, movingToken) {
 }
 
 function setActiveDieGlow(color) {
+  const activePlayerIndex = state.currentPlayer;
   Object.keys(diceEls).forEach(c => {
     const panel = diceEls[c].closest(".dice-panel");
     if (!panel) return;
     const isActiveColor = c === color;
-    const canGlow =
-      isActiveColor &&
-      !gameOver &&
-      !isPaused &&
-      !isMoving &&
-      state.diceValue === null &&
-      !hasRolledThisTurn &&
-      !waitingForTokenMove;
+    const canGlow = isActiveColor && canStartHumanRoll(activePlayerIndex);
     panel.classList.toggle("dice-active", canGlow);
   });
 }
@@ -2018,16 +2090,16 @@ function showToast(message) {
 
 function resetDiceInteractivity() {
   const activePlayer = state.players[state.currentPlayer];
-  if (!activePlayer) return;
+  if (!activePlayer) {
+    if (rollDiceBtnEl) {
+      rollDiceBtnEl.disabled = true;
+      rollDiceBtnEl.classList.remove("ready");
+      rollDiceBtnEl.setAttribute("aria-disabled", "true");
+    }
+    return;
+  }
   const activeColor = activePlayer.color;
-  const canUseRollAction =
-    !gameOver &&
-    !activePlayer.isAI &&
-    !isPaused &&
-    !isMoving &&
-    state.diceValue === null &&
-    !hasRolledThisTurn &&
-    !waitingForTokenMove;
+  const canUseRollAction = canStartHumanRoll(state.currentPlayer);
   Object.keys(diceEls).forEach(color => {
     const die = diceEls[color];
     const panel = dicePanelsByColor[color];
@@ -2106,9 +2178,9 @@ function moveTokenToCommonIndex(playerIndex, tokenIndex, index, toast = "") {
   if (!player) return false;
   const token = tokenEls[player.color]?.[tokenIndex];
   if (!token) return false;
-  if (index < 0 || index >= PATHS.common.length) return false;
+  if (!Number.isInteger(index) || index < 0 || index >= PATHS.common.length) return false;
   if ((token.dataset.path || "common") !== "common") return false;
-  if (player.tokens[tokenIndex] < 0) return false;
+  if (!Number.isInteger(player.tokens[tokenIndex]) || player.tokens[tokenIndex] < 0 || player.tokens[tokenIndex] >= PATHS.common.length || player.finished[tokenIndex]) return false;
 
   PATHS.common[index].el.appendChild(token);
   token.dataset.path = "common";
@@ -2968,8 +3040,9 @@ function setPaused(nextPaused) {
   if (!isPaused && !gameOver) {
     const current = state.players[state.currentPlayer];
     if (current) announceTurn(current);
-    if (current && current.isAI && !isMoving) {
-      scheduleGameplayTask(runAITurn, 140);
+    if (current && current.isAI && !isMoving && pendingTurnCompletionGeneration === null) {
+      const expectedTurnGeneration = turnGeneration;
+      scheduleGameplayTask(() => runAITurn(expectedTurnGeneration), 140);
     }
   }
 }
@@ -2990,7 +3063,7 @@ function getCurrentMoveSteps(playerIndex) {
   return state.diceValue * activeRollMultiplier;
 }
 
-function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
+async function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
   const { skipSafeBonus = false, reason = "restore", epoch = gameplayEffectEpoch } = options;
   if (!canRunTileEffect(reason, epoch)) return;
   const player = state.players[playerIndex];
@@ -3003,7 +3076,8 @@ function applyPostLandingEffects(playerIndex, tokenIndex, options = {}) {
   const finalPos = player.tokens[tokenIndex];
   if (finalPath !== "common" || finalPos < 0) return;
 
-  const captures = handleCaptureAt(finalPos, token);
+  const captures = await handleCaptureAt(finalPos, token);
+  if (!canRunTileEffect(reason, epoch)) return;
   if (color === humanColor && captures > 0) {
     rewardHumanEvent("capture", PATHS.common[finalPos].el, null, captures);
   }
@@ -3170,13 +3244,14 @@ async function handleTileEvent(playerIndex, tokenIndex, reason = "restore", epoc
   }
 }
 
-function triggerRandomEvent() {
+async function triggerRandomEvent() {
   if (gameMode !== "arena") return;
   if (isPaused || isNavigatingAway) return;
   const events = ["all_step_two", "double_next_roll"];
   const selected = events[Math.floor(Math.random() * events.length)];
 
   if (selected === "all_step_two") {
+    const affectedTokens = [];
     state.players.forEach((player, playerIndex) => {
       const tokenIndex = player.tokens.findIndex((pos, idx) => {
         if (pos < 0 || player.finished[idx]) return false;
@@ -3185,9 +3260,14 @@ function triggerRandomEvent() {
       });
       if (tokenIndex < 0) return;
       const target = (player.tokens[tokenIndex] + 2) % PATHS.common.length;
-      moveTokenToCommonIndex(playerIndex, tokenIndex, target);
-      applyPostLandingEffects(playerIndex, tokenIndex, { skipSafeBonus: true, reason: "arenaEvent" });
+      if (moveTokenToCommonIndex(playerIndex, tokenIndex, target)) {
+        affectedTokens.push({ playerIndex, tokenIndex });
+      }
     });
+    for (const affected of affectedTokens) {
+      await applyPostLandingEffects(affected.playerIndex, affected.tokenIndex, { skipSafeBonus: true, reason: "arenaEvent" });
+      if (gameOver || isNavigatingAway) return;
+    }
     showToast("Arena Event: All +2");
   }
 
@@ -3199,7 +3279,7 @@ function triggerRandomEvent() {
     }
   }
 
-  refreshNearWinEffects();
+  if (!gameOver && !isNavigatingAway) refreshNearWinEffects();
 }
 
 function clearNearWinEffects() {
@@ -3257,7 +3337,7 @@ function refreshNearWinEffects() {
   });
 }
 
-function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
+function canMoveOnCommonPath(playerIndex, tokenIndex, dice, rawDice = state.diceValue) {
   const player = state.players[playerIndex];
   const color = player.color;
   const token = tokenEls[color][tokenIndex];
@@ -3270,7 +3350,7 @@ function canMoveOnCommonPath(playerIndex, tokenIndex, dice) {
   const homePathKey = HOME_PATH_KEY_BY_COLOR[color];
   const homeLen = PATHS[homePathKey].length;
 
-  if (pos === turnIndex && dice === 6) return true;
+  if (pos === turnIndex && rawDice === 6) return true;
 
   let commonPos = pos;
   let enteredHome = false;
@@ -3429,7 +3509,8 @@ function openResultModal({ title, subtitle, showNextLevel }) {
 }
 
 function presentResultReward(amount) {
-  const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
+  const numericAmount = Math.floor(Number(amount));
+  const safeAmount = Number.isSafeInteger(numericAmount) ? Math.max(0, numericAmount) : 0;
   if (!resultRewardEl || !resultRewardValueEl || safeAmount <= 0) {
     resultRewardEl?.setAttribute("hidden", "");
     return;
@@ -3449,13 +3530,29 @@ function presentResultReward(amount) {
   resultRewardEl.classList.add("reward-reveal");
 }
 
+function hasCompletedAllTokens(player) {
+  return Boolean(
+    player &&
+    Array.isArray(player.tokens) &&
+    Array.isArray(player.finished) &&
+    player.tokens.length === 4 &&
+    player.finished.length === 4 &&
+    player.tokens.every((position, tokenIndex) => position === -2 && player.finished[tokenIndex] === true)
+  );
+}
+
 function checkAndShowWinner(playerIndex) {
   if (gameOver || matchRewardGranted) return false;
   const player = state.players[playerIndex];
-  if (!player.finished.every(Boolean)) return false;
+  // Victory is derived exclusively from finished logical token states. A pawn
+  // being visually inside the goal cannot complete a match by itself.
+  if (!hasCompletedAllTokens(player)) return false;
 
   gameOver = true;
+  turnGeneration += 1;
+  pendingTurnCompletionGeneration = null;
   matchRewardGranted = true;
+  cancelPendingGameplayTasks();
   turnAnnouncementEl?.classList.remove("show");
   rollGuidanceEl?.classList.remove("show");
   eventAnnouncementEl?.classList.remove("show");
@@ -3626,8 +3723,8 @@ function highlightMoves(playerIndex, dice, moveSteps = dice) {
   return moves.length;
 }
 
-function animateDiceRoll(color, onDone) {
-  if (isNavigatingAway) return;
+function animateDiceRoll(color, onDone, playerIndex = state.currentPlayer, expectedTurnGeneration = turnGeneration) {
+  if (!isCurrentTurn(playerIndex, expectedTurnGeneration) || state.players[playerIndex]?.color !== color) return;
   const diceEl = diceEls[color];
   const panel = dicePanelsByColor[color];
   if (!diceEl) {
@@ -3648,31 +3745,31 @@ function animateDiceRoll(color, onDone) {
   diceEl.classList.add("dice-press");
 
   const resumeWhenReady = callback => {
-    if (isNavigatingAway) return;
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
     if (!isPaused) {
       callback();
       return;
     }
-    setTimeout(() => resumeWhenReady(callback), 90);
+    scheduleGameplayTask(() => resumeWhenReady(callback), 90);
   };
 
   const finish = () => {
-    if (isNavigatingAway) return;
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
     diceEl.classList.remove("dice-cycling", "dice-press");
     setDiceVisibleFace(color, value);
     diceEl.classList.add("dice-settled");
     triggerFeedback(panel, "dice-landed", 260);
 
     if (value === 6) {
-      setTimeout(() => {
-        if (gameOver || isNavigatingAway) return;
+      scheduleGameplayTask(() => {
+        if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
         triggerFeedback(panel, "dice-six", 520);
         showSixFeedback(panel);
       }, 55);
     }
 
     state.diceValue = value;
-    const player = state.players[state.currentPlayer];
+    const player = state.players[playerIndex];
     if (player && color === humanColor && value === 6) {
       rewardHumanEvent("rollSix", diceEl);
     }
@@ -3691,7 +3788,7 @@ function animateDiceRoll(color, onDone) {
 
   const showFrame = frameIndex => {
     resumeWhenReady(() => {
-      if (isNavigatingAway) return;
+      if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
       if (frameIndex >= sequence.length) {
         finish();
         return;
@@ -3699,20 +3796,41 @@ function animateDiceRoll(color, onDone) {
       diceEl.classList.remove("dice-press");
       diceEl.classList.add("dice-cycling");
       setDiceVisibleFace(color, sequence[frameIndex]);
-      setTimeout(() => showFrame(frameIndex + 1), frameDelays[frameIndex] || 0);
+      scheduleGameplayTask(() => showFrame(frameIndex + 1), frameDelays[frameIndex] || 0);
     });
   };
 
-  setTimeout(() => showFrame(0), 100);
+  scheduleGameplayTask(() => showFrame(0), 100);
 }
 
-function nextTurn(extraTurn = false) {
-  if (gameOver || isNavigatingAway) return;
+function beginCurrentTurn(extraTurn, expectedTurnGeneration) {
+  if (!isCurrentTurn(state.currentPlayer, expectedTurnGeneration)) return;
+  resetDiceInteractivity();
+  const currentPlayer = state.players[state.currentPlayer];
+  if (!currentPlayer) return;
+  announceTurn(currentPlayer, extraTurn);
+  if (currentPlayer.isAI) {
+    scheduleGameplayTask(() => runAITurn(expectedTurnGeneration), 700);
+  }
+}
+
+function nextTurn(extraTurn = false, expectedTurnGeneration = turnGeneration) {
+  if (!isCurrentTurn(state.currentPlayer, expectedTurnGeneration)) return;
   if (isPaused) {
-    setTimeout(() => nextTurn(extraTurn), 120);
+    if (pendingTurnCompletionGeneration === expectedTurnGeneration) return;
+    pendingTurnCompletionGeneration = expectedTurnGeneration;
+    scheduleGameplayTask(() => {
+      if (pendingTurnCompletionGeneration !== expectedTurnGeneration) return;
+      pendingTurnCompletionGeneration = null;
+      nextTurn(extraTurn, expectedTurnGeneration);
+    }, 120);
     return;
   }
+  pendingTurnCompletionGeneration = null;
   const previousPlayerIndex = state.currentPlayer;
+  turnGeneration += 1;
+  const nextTurnGeneration = turnGeneration;
+  let arenaEventPending = false;
   if (!extraTurn) {
     const previous = state.players[previousPlayerIndex];
     if (previous) {
@@ -3755,28 +3873,35 @@ function nextTurn(extraTurn = false) {
       if (arenaTurns >= arenaNextEventAt) {
         arenaTurns = 0;
         arenaNextEventAt = 3 + Math.floor(Math.random() * 3);
-        triggerRandomEvent();
+        arenaEventPending = true;
       }
     }
   }
-  resetDiceInteractivity();
 
-  const currentPlayer = state.players[state.currentPlayer];
-  announceTurn(currentPlayer, extraTurn);
-  if (currentPlayer.isAI) {
-    setTimeout(runAITurn, 700);
+  if (arenaEventPending) {
+    isMoving = true;
+    resetDiceInteractivity();
+    triggerRandomEvent().catch(() => {}).finally(() => {
+      if (!isCurrentTurn(state.currentPlayer, nextTurnGeneration)) return;
+      isMoving = false;
+      refreshNearWinEffects();
+      beginCurrentTurn(extraTurn, nextTurnGeneration);
+    });
+    return;
   }
+
+  beginCurrentTurn(extraTurn, nextTurnGeneration);
 }
 
-function handleTurn() {
-  if (gameOver || isNavigatingAway) return;
+function handleTurn(expectedTurnGeneration = turnGeneration) {
+  if (!isCurrentTurn(state.currentPlayer, expectedTurnGeneration)) return;
   if (isPaused) return;
   const playerIndex = state.currentPlayer;
   if (state.players[playerIndex].isAI) return;
   if (state.diceValue === null) {
     waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
-    setTimeout(() => nextTurn(false), 250);
+    scheduleTurnCompletion(false, playerIndex, expectedTurnGeneration, 250);
     return;
   }
 
@@ -3792,7 +3917,7 @@ function handleTurn() {
     showEventAnnouncement("NO LEGAL MOVE — TURN ENDS", "event");
     waitingForTokenMove = false;
     state.players[playerIndex].sixStreak = 0;
-    setTimeout(() => nextTurn(false), 400);
+    scheduleTurnCompletion(false, playerIndex, expectedTurnGeneration, 400);
   } else if (turnAnnouncementDetailEl && turnAnnouncementEl?.classList.contains("show")) {
     turnAnnouncementDetailEl.textContent = "Choose a highlighted token";
     setRollGuidance("CHOOSE A HIGHLIGHTED TOKEN", "select");
@@ -3800,31 +3925,28 @@ function handleTurn() {
 }
 
 function rollDice() {
-  if (gameOver || isNavigatingAway) return;
-  if (isPaused) return;
-  if (isMoving) return;
-  if (state.players[state.currentPlayer].isAI) return;
-  if (state.diceValue !== null) return;
-  if (hasRolledThisTurn) return;
-  if (waitingForTokenMove) return;
+  const playerIndex = state.currentPlayer;
+  const expectedTurnGeneration = turnGeneration;
+  if (!canStartHumanRoll(playerIndex) || expectedTurnGeneration !== turnGeneration) return;
 
   hasRolledThisTurn = true;
   isMoving = true;
   setRollGuidance("ROLLING THE DICE", "rolling");
   resetDiceInteractivity();
-  const color = state.players[state.currentPlayer].color;
+  const color = state.players[playerIndex].color;
   animateDiceRoll(color, () => {
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
     isMoving = false;
-    handleTurn();
-  });
+    handleTurn(expectedTurnGeneration);
+  }, playerIndex, expectedTurnGeneration);
 }
 
-function runAITurn() {
-  if (gameOver || isNavigatingAway) return;
+function runAITurn(expectedTurnGeneration = turnGeneration) {
+  const playerIndex = state.currentPlayer;
+  if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
   if (isPaused) return;
   if (isMoving) return;
 
-  const playerIndex = state.currentPlayer;
   const player = state.players[playerIndex];
   if (!player || !player.isAI) return;
 
@@ -3833,23 +3955,14 @@ function runAITurn() {
   const anticipationDelay = 360 + Math.floor(Math.random() * 540);
   if (panel) panel.classList.add("ai-anticipation");
 
-  setTimeout(() => {
-    if (isNavigatingAway) {
-      if (panel) panel.classList.remove("ai-anticipation");
-      isMoving = false;
-      return;
-    }
+  scheduleGameplayTask(() => {
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
     if (isPaused) {
       if (panel) panel.classList.remove("ai-anticipation");
       isMoving = false;
       return;
     }
     if (panel) panel.classList.remove("ai-anticipation");
-    if (gameOver) {
-      isMoving = false;
-      return;
-    }
-
     const current = state.players[state.currentPlayer];
     if (!current || !current.isAI || current.color !== player.color) {
       isMoving = false;
@@ -3857,11 +3970,12 @@ function runAITurn() {
     }
 
     animateDiceRoll(player.color, () => {
+      if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
       resetDiceInteractivity();
       if (state.diceValue === null) {
         player.sixStreak = 0;
         isMoving = false;
-        nextTurn(false);
+        nextTurn(false, expectedTurnGeneration);
         return;
       }
       const moveSteps = getCurrentMoveSteps(playerIndex);
@@ -3869,21 +3983,47 @@ function runAITurn() {
       if (moves.length === 0) {
         player.sixStreak = 0;
         isMoving = false;
-        nextTurn(false);
+        nextTurn(false, expectedTurnGeneration);
         return;
       }
       const chosen = pickAiMove(playerIndex, moves, moveSteps);
-      executeMove(chosen || moves[0]).catch(() => {
+      executeMove(chosen || moves[0], expectedTurnGeneration).catch(() => {
+        if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
         isMoving = false;
-        nextTurn(false);
+        nextTurn(false, expectedTurnGeneration);
       });
-    });
+    }, playerIndex, expectedTurnGeneration);
   }, anticipationDelay);
 }
 
-async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
-  if (isNavigatingAway) return;
+function finishMoveTurn(playerIndex, expectedTurnGeneration, extraTurn) {
+  if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return false;
+  isMoving = false;
+  nextTurn(extraTurn, expectedTurnGeneration);
+  return true;
+}
+
+async function moveIntoGoal(player, tokenIndex, token, color, extraTurn, expectedTurnGeneration) {
+  const playerIndex = state.players.indexOf(player);
+  if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return false;
+  if (
+    !player ||
+    color !== player.color ||
+    !Number.isInteger(tokenIndex) ||
+    tokenIndex < 0 ||
+    tokenIndex >= player.tokens.length ||
+    token !== tokenEls[color]?.[tokenIndex] ||
+    player.finished[tokenIndex] ||
+    player.tokens[tokenIndex] === -2 ||
+    token.dataset.path === "goal" ||
+    !goalEls[color]
+  ) {
+    finishMoveTurn(playerIndex, expectedTurnGeneration, false);
+    return false;
+  }
   await moveTokenStep(token, goalEls[color], "token-finished");
+  if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return false;
+  if (player.finished[tokenIndex] || player.tokens[tokenIndex] === -2 || token.dataset.path === "goal") return false;
   playSfx("goal", 0.65);
   token.dataset.path = "goal";
   player.tokens[tokenIndex] = -2;
@@ -3907,39 +4047,32 @@ async function moveIntoGoal(player, tokenIndex, token, color, extraTurn) {
 
   refreshNearWinEffects();
   if (checkAndShowWinner(state.currentPlayer)) return;
-  isMoving = false;
-  nextTurn(consumeBonusTurn(extraTurn));
+  finishMoveTurn(playerIndex, expectedTurnGeneration, consumeBonusTurn(extraTurn));
+  return true;
 }
 
-async function executeMove(move) {
+async function executeMove(move, expectedTurnGeneration = turnGeneration) {
   try {
-    if (gameOver || isNavigatingAway) return;
-    if (isPaused) return;
+    if (!move || isPaused) return;
+    const { playerIndex, tokenIndex } = move;
+    if (!isCurrentTurn(playerIndex, expectedTurnGeneration)) return;
+    const player = state.players[playerIndex];
+    if (!player || !Number.isInteger(tokenIndex) || tokenIndex < 0 || tokenIndex >= player.tokens.length) return;
+    const token = tokenEls[player.color]?.[tokenIndex];
+    if (!token) return;
+
     isMoving = true;
     waitingForTokenMove = false;
-    if (!move) {
-      isMoving = false;
-      nextTurn(false);
-      return;
-    }
-
-    const { playerIndex, tokenIndex } = move;
-    const player = state.players[playerIndex];
-    if (!player) {
-      isMoving = false;
-      nextTurn(false);
-      return;
-    }
+    const finishTurn = extraTurn => finishMoveTurn(playerIndex, expectedTurnGeneration, extraTurn);
+    const isActiveMove = () => isCurrentTurn(playerIndex, expectedTurnGeneration);
 
     const color = player.color;
     const movementReason = player.isAI ? "aiMove" : "playerMove";
     const movementEpoch = gameplayEffectEpoch;
-    const token = tokenEls[color][tokenIndex];
     const dice = state.diceValue;
     const baseMoveSteps = getCurrentMoveSteps(playerIndex);
     if (!Number.isFinite(baseMoveSteps) || baseMoveSteps <= 0) {
-      isMoving = false;
-      nextTurn(false);
+      finishTurn(false);
       return;
     }
     let moveSteps = (
@@ -3958,6 +4091,10 @@ async function executeMove(move) {
         matchEffectState.doubleMoveUsed = false;
       }
     }
+    if (!canTokenMove(playerIndex, tokenIndex, moveSteps, dice)) {
+      finishTurn(false);
+      return;
+    }
     const pos = player.tokens[tokenIndex];
 
     let pathKey = "common";
@@ -3967,30 +4104,30 @@ async function executeMove(move) {
       path = PATHS[pathKey];
     }
     if (token.dataset.path === "goal") {
-      isMoving = false;
-      nextTurn(false);
+      finishTurn(false);
       return;
     }
 
     if (pos === -1) {
       if (dice !== 6) {
-        isMoving = false;
-        nextTurn(false);
+        finishTurn(false);
         return;
       }
 
       const entryCell = ENTRY_CELLS[color];
       await moveTokenStep(token, entryCell, "token-entered", { animate: false });
+      if (!isActiveMove()) return;
       token.dataset.path = "common";
       playSfx("entry", 0.75);
       player.tokens[tokenIndex] = PATHS.common.findIndex(p => p.el === entryCell);
       player.finished[tokenIndex] = false;
       showEventAnnouncement(`${color.toUpperCase()} ENTERED BOARD`, "event");
       await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
-      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
+      await applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
       refreshNearWinEffects();
-      isMoving = false;
-      nextTurn(consumeBonusTurn(true));
+      finishTurn(consumeBonusTurn(true));
       return;
     }
 
@@ -3999,29 +4136,32 @@ async function executeMove(move) {
       if (moveSteps === remainingToGoal) {
         for (let i = 1; i < moveSteps; i++) {
           await moveTokenStep(token, path[pos + i].el);
+          if (!isActiveMove()) return;
           playSfx("step", 0.35);
         }
-        await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
+        await moveIntoGoal(player, tokenIndex, token, color, dice === 6, expectedTurnGeneration);
         return;
       }
 
       for (let i = 1; i <= moveSteps; i++) {
         await moveTokenStep(token, path[pos + i].el);
+        if (!isActiveMove()) return;
         playSfx("step", 0.35);
       }
       player.tokens[tokenIndex] += moveSteps;
       await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
-      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
+      await applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
       triggerFeedback(token, "token-landed", 260);
       refreshNearWinEffects();
-      isMoving = false;
-      nextTurn(consumeBonusTurn(dice === 6));
+      finishTurn(consumeBonusTurn(dice === 6));
       return;
     }
 
     const turnIndex = TURN_INDEX_BY_COLOR[color];
     if (pos === turnIndex && dice === 6) {
-      await moveIntoGoal(player, tokenIndex, token, color, true);
+      await moveIntoGoal(player, tokenIndex, token, color, true, expectedTurnGeneration);
       return;
     }
 
@@ -4038,6 +4178,7 @@ async function executeMove(move) {
         homePos = 0;
         if (homePath[homePos]) {
           await moveTokenStep(token, homePath[homePos].el);
+          if (!isActiveMove()) return;
         }
         triggerFeedback(token, "token-home-lane", 120);
         if (gameMode === "classic" || gameMode === "arena" || gameMode === "chaos" || gameMode === "power") {
@@ -4052,23 +4193,24 @@ async function executeMove(move) {
       if (!enteredHome) {
         commonPos = (commonPos + 1) % commonLen;
         await moveTokenStep(token, PATHS.common[commonPos].el);
+        if (!isActiveMove()) return;
         playSfx("step", 0.35);
         continue;
       }
 
       homePos += 1;
       if (homePos === homePath.length) {
-        await moveIntoGoal(player, tokenIndex, token, color, dice === 6);
+        await moveIntoGoal(player, tokenIndex, token, color, dice === 6, expectedTurnGeneration);
         return;
       }
 
       if (!homePath[homePos]) {
-        isMoving = false;
-        nextTurn(false);
+        finishTurn(false);
         return;
       }
 
       await moveTokenStep(token, homePath[homePos].el);
+      if (!isActiveMove()) return;
       playSfx("step", 0.35);
     }
 
@@ -4079,16 +4221,18 @@ async function executeMove(move) {
     } else {
       player.tokens[tokenIndex] = commonPos;
       await handleTileEvent(playerIndex, tokenIndex, movementReason, movementEpoch);
-      applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
+      await applyPostLandingEffects(playerIndex, tokenIndex, { reason: movementReason, epoch: movementEpoch });
+      if (!isActiveMove()) return;
       triggerFeedback(token, "token-landed", 260);
     }
 
     refreshNearWinEffects();
-    isMoving = false;
-    nextTurn(consumeBonusTurn(dice === 6));
+    finishTurn(consumeBonusTurn(dice === 6));
   } catch (error) {
+    if (!move || !isCurrentTurn(move.playerIndex, expectedTurnGeneration)) return;
     isMoving = false;
-    nextTurn(false);
+    nextTurn(false, expectedTurnGeneration);
   }
 }
 
@@ -4112,9 +4256,11 @@ announceTurn(state.players[state.currentPlayer]);
 // leaving the match waiting for a human-only dice click.
 if (restoredSavedMatch && state.diceValue !== null && !state.players[state.currentPlayer]?.isAI) {
   // Resume an already-rolled human turn at the normal selectable-token step.
-  setTimeout(handleTurn, 0);
+  const expectedTurnGeneration = turnGeneration;
+  scheduleGameplayTask(() => handleTurn(expectedTurnGeneration), 0);
 } else if (state.players[state.currentPlayer]?.isAI) {
-  setTimeout(runAITurn, 140);
+  const expectedTurnGeneration = turnGeneration;
+  scheduleGameplayTask(() => runAITurn(expectedTurnGeneration), 140);
 }
 
 // A new player receives the complete rules once, inside the existing pause
