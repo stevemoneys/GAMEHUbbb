@@ -11,7 +11,7 @@
     rel="stylesheet"
   />
   <link rel="stylesheet" href="design-tokens.css" />
-  <link rel="stylesheet" href="home-reset.css?v=home-v10" />
+  <link rel="stylesheet" href="home-reset.css" />
 </head>
 <body class="home-page">
   <div class="home-background" aria-hidden="true">
@@ -232,8 +232,16 @@
     const homeLevelValueEl = document.getElementById("home-level-value");
     let menuTriggerEl = null;
 
+    function readStoredValue(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+
+    function writeStoredValue(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch { return false; }
+    }
+
     const pageParams = new URLSearchParams(window.location.search);
-    let selectedGameMode = (pageParams.get("gm") || localStorage.getItem(GAME_MODE_KEY) || "classic").toLowerCase();
+    let selectedGameMode = (pageParams.get("gm") || readStoredValue(GAME_MODE_KEY) || "classic").toLowerCase();
     if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
     const MODE_DESCRIPTIONS = {
       classic: "Traditional Ludo rules. Pure strategy.",
@@ -253,7 +261,7 @@
     function setGameMode(mode) {
       if (!MODE_LABELS[mode]) return;
       selectedGameMode = mode;
-      localStorage.setItem(GAME_MODE_KEY, mode);
+      writeStoredValue(GAME_MODE_KEY, mode);
       document.body.dataset.gameMode = mode;
       if (modeSwitchBtn) {
         modeSwitchBtn.dataset.gameMode = mode;
@@ -312,7 +320,7 @@
     let lastRenderedCoinValue = null;
 
     function readStoredInteger(key, fallback, min = 0, max = Infinity) {
-      const value = Number(localStorage.getItem(key));
+      const value = Number(readStoredValue(key));
       if (!Number.isSafeInteger(value) || value < min || value > max) {
         return fallback;
       }
@@ -341,13 +349,14 @@
     });
 
     function getEnabled(key, fallback = true) {
-      const raw = localStorage.getItem(key);
-      if (raw === null) return fallback;
-      return raw === "1";
+      const raw = readStoredValue(key);
+      if (raw === "1") return true;
+      if (raw === "0") return false;
+      return fallback;
     }
 
     function setEnabled(key, enabled) {
-      localStorage.setItem(key, enabled ? "1" : "0");
+      writeStoredValue(key, enabled ? "1" : "0");
     }
 
     function renderToggle(btn, enabled) {

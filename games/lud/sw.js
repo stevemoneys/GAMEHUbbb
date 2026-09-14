@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-09-12-v88";
+const CACHE_VERSION = "2026-09-14-v89";
 const STATIC_CACHE = `ludo-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ludo-runtime-${CACHE_VERSION}`;
 const PRELOAD_CACHE = "ludo-preload-assets-v1";
@@ -32,9 +32,7 @@ function buildAssetManifest() {
     "./ludo.css",
     "./dice-shop.css",
     "./token-shop.css",
-    "./ai.js",
     "./board.js",
-    "./movement.js",
     "./boot.js",
     "./game.js",
     "./backgrounds/bg1_result.webp",

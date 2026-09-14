@@ -47,6 +47,7 @@ body {
 body {
   min-height: 100dvh;
   overflow: hidden;
+  overscroll-behavior: none;
   color: var(--gh-color-text-on-dark, #f5fbff);
   background: var(--gh-color-bg-deep, #03101e);
   font-family: var(--gh-font-ui, Inter, system-ui, sans-serif);
@@ -111,6 +112,8 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   height: var(--play-board-size);
   isolation: isolate;
   pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .ludo-board {

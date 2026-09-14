@@ -169,6 +169,7 @@
     let skinVisibilityObserver = null;
     let previewFaceTimers = [];
     const modalTimers = new WeakMap();
+    let purchaseInFlight = false;
 
     function refreshModalLock() {
       document.body.classList.toggle("shop-modal-open", !previewModal.hidden || !unlockModal.hidden);
@@ -199,21 +200,32 @@
     }
 
     function readCoins() {
-      const value = Number(localStorage.getItem(COINS_KEY));
+      let raw = null;
+      try { raw = localStorage.getItem(COINS_KEY); } catch { return 0; }
+      const value = Number(raw);
       return Number.isSafeInteger(value) && value >= 0 ? value : 0;
     }
 
-    let coins = readCoins();
-    let owned = [];
-    try {
-      const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");
-      owned = Array.isArray(parsed)
-        ? Array.from(new Set(parsed.filter(key => /^skin(?:[1-9]|1\d|20)$/.test(key))))
-        : [];
-    } catch {
-      owned = [];
+    function isValidSkinKey(key) {
+      return typeof key === "string" && /^skin(?:[1-9]|1\d|20)$/.test(key);
     }
-    let activeSkin = localStorage.getItem(ACTIVE_KEY) || "classic";
+
+    function readOwnedSkins() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]");
+        return Array.isArray(parsed)
+          ? Array.from(new Set(parsed.filter(isValidSkinKey)))
+          : [];
+      } catch {
+        return [];
+      }
+    }
+
+    let coins = readCoins();
+    let owned = readOwnedSkins();
+    let activeSkin = (() => {
+      try { return localStorage.getItem(ACTIVE_KEY) || "classic"; } catch { return "classic"; }
+    })();
     if (activeSkin !== "classic" && !owned.includes(activeSkin)) activeSkin = "classic";
     let currentPage = 0;
 
@@ -229,10 +241,34 @@
       return SKIN_META[id]?.price || 0;
     }
 
-    function saveState() {
-      localStorage.setItem(COINS_KEY, String(coins));
-      localStorage.setItem(OWNED_KEY, JSON.stringify(owned));
-      localStorage.setItem(ACTIVE_KEY, activeSkin);
+    function saveState(nextCoins = coins, nextOwned = owned, nextActiveSkin = activeSkin) {
+      if (!Number.isSafeInteger(nextCoins) || nextCoins < 0) return false;
+      const normalizedOwned = Array.from(new Set(nextOwned.filter(isValidSkinKey)));
+      const normalizedActive = nextActiveSkin === "classic" || normalizedOwned.includes(nextActiveSkin)
+        ? nextActiveSkin
+        : "classic";
+      let serializedOwned;
+      try {
+        serializedOwned = JSON.stringify(normalizedOwned);
+      } catch {
+        return false;
+      }
+      const previous = new Map();
+      try {
+        [COINS_KEY, OWNED_KEY, ACTIVE_KEY].forEach(key => previous.set(key, localStorage.getItem(key)));
+        localStorage.setItem(OWNED_KEY, serializedOwned);
+        localStorage.setItem(ACTIVE_KEY, normalizedActive);
+        localStorage.setItem(COINS_KEY, String(nextCoins));
+        return true;
+      } catch {
+        previous.forEach((value, key) => {
+          try {
+            if (value === null) localStorage.removeItem(key);
+            else localStorage.setItem(key, value);
+          } catch {}
+        });
+        return false;
+      }
     }
 
     function owns(id) {
@@ -431,14 +467,22 @@
       }
 
       buyBtn.addEventListener("click", () => {
-        if (owns(id)) return;
+        if (purchaseInFlight || owns(id)) return;
         if (coins < price) {
           showShopFeedback(`NEED ${price - coins} MORE COINS`);
           return;
         }
-        coins -= price;
-        owned.push(key);
-        saveState();
+        const nextCoins = coins - price;
+        const nextOwned = Array.from(new Set([...owned, key]));
+        purchaseInFlight = true;
+        const persisted = saveState(nextCoins, nextOwned, activeSkin);
+        purchaseInFlight = false;
+        if (!persisted) {
+          showShopFeedback("PURCHASE COULD NOT BE SAVED");
+          return;
+        }
+        coins = nextCoins;
+        owned = nextOwned;
         render();
         pulseRewards();
         rowEl.querySelector(`[data-skin-key="${key}"]`)?.classList.add("newly-unlocked");
@@ -447,8 +491,11 @@
 
       useBtn.addEventListener("click", () => {
         if (!owns(id)) return;
+        if (!saveState(coins, owned, key)) {
+          showShopFeedback("LOADOUT COULD NOT BE SAVED");
+          return;
+        }
         activeSkin = key;
-        saveState();
         render();
       });
 
@@ -503,8 +550,11 @@
     });
 
     useDefaultBtn.addEventListener("click", () => {
+      if (!saveState(coins, owned, "classic")) {
+        showShopFeedback("LOADOUT COULD NOT BE SAVED");
+        return;
+      }
       activeSkin = "classic";
-      saveState();
       render();
     });
 

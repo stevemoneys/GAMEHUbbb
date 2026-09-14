@@ -12,6 +12,32 @@ const GAME_RULES_SEEN_KEY = "ludo_game_rules_seen_v1";
 // snapshot after an intentional restart, next-level transition, or completed match.
 let shouldSaveResumeOnDeparture = true;
 
+function readStoredValue(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredValue(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeStoredValue(key) {
+  try {
+    localStorage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const stageEl = document.querySelector(".ludo-stage");
 const boardEl = document.querySelector(".ludo-board");
 generatePaths(boardEl);
@@ -30,7 +56,7 @@ const playerCount = Math.min(4, Math.max(2, requestedPlayers));
 const humanColor = ALL_COLORS_CLOCKWISE.includes(requestedHumanColor) ? requestedHumanColor : "red";
 const aiDifficulty = Math.min(3, Math.floor((currentLevel - 1) / 5) + 1);
 
-let gameMode = (params.get("gm") || localStorage.getItem("ludo_game_mode") || "classic").toLowerCase();
+let gameMode = (params.get("gm") || readStoredValue("ludo_game_mode") || "classic").toLowerCase();
 const MODES = {
   classic: {},
   chaos: { snakes: true, ladders: true },
@@ -83,7 +109,7 @@ const activeColors = playerCount === 2
 
 function clearResumeSnapshot() {
   shouldSaveResumeOnDeparture = false;
-  localStorage.removeItem(LUDO_RESUME_KEY);
+  removeStoredValue(LUDO_RESUME_KEY);
 }
 
 const TURN_COORD_BY_COLOR = {
@@ -216,11 +242,16 @@ const SFX_FILES = Object.freeze({
 });
 const sfxBuffers = new Map();
 const sfxLoadJobs = new Map();
+const pendingSfxPlayback = new Set();
 let sfxContext = null;
 let sfxMasterGain = null;
 let sfxPreloadStarted = false;
 
-const bgMusic = new Audio(SOUND_FILES.bgm);
+// Keep the large optional music track out of the initial critical path. The
+// same element loads normally when an opted-in player starts playback.
+const bgMusic = new Audio();
+bgMusic.preload = "none";
+bgMusic.src = SOUND_FILES.bgm;
 bgMusic.loop = true;
 bgMusic.volume = 0.22;
 
@@ -229,8 +260,8 @@ const BGM_ENABLED_KEY = "ludo_bgm_enabled";
 const SFX_ENABLED_KEY = "ludo_sfx_enabled";
 // Music is opt-in for a fresh install. A player who explicitly enabled it
 // keeps that preference through the existing storage key.
-let isBgmEnabled = localStorage.getItem(BGM_ENABLED_KEY) === "1";
-let isSfxEnabled = localStorage.getItem(SFX_ENABLED_KEY) !== "0";
+let isBgmEnabled = readStoredValue(BGM_ENABLED_KEY) === "1";
+let isSfxEnabled = readStoredValue(SFX_ENABLED_KEY) !== "0";
 
 function getSfxContext() {
   if (sfxContext) return sfxContext;
@@ -341,13 +372,13 @@ function setupMediaSession() {
   try {
     navigator.mediaSession.setActionHandler("play", () => {
       isBgmEnabled = true;
-      localStorage.setItem(BGM_ENABLED_KEY, "1");
+      writeStoredValue(BGM_ENABLED_KEY, "1");
       startBackgroundMusic();
     });
     navigator.mediaSession.setActionHandler("pause", pauseBackgroundMusic);
     navigator.mediaSession.setActionHandler("stop", () => {
       isBgmEnabled = false;
-      localStorage.setItem(BGM_ENABLED_KEY, "0");
+      writeStoredValue(BGM_ENABLED_KEY, "0");
       stopBackgroundMusic();
     });
   } catch (error) {
@@ -383,7 +414,7 @@ const DAILY_LOGIN_KEY = "ludo_last_login_date";
 const VICTORY_REWARD_BASE = 100;
 const VICTORY_REWARD_STEP = 25;
 function readStoredInteger(key, fallback, min = 0, max = Infinity) {
-  const value = Number(localStorage.getItem(key));
+  const value = Number(readStoredValue(key));
   if (!Number.isSafeInteger(value) || value < min || value > max) {
     return fallback;
   }
@@ -418,9 +449,9 @@ if (coinTotalEl) {
 function applyDailyLoginReward() {
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
-  const last = localStorage.getItem(DAILY_LOGIN_KEY);
+  const last = readStoredValue(DAILY_LOGIN_KEY);
   if (last === todayKey) return;
-  localStorage.setItem(DAILY_LOGIN_KEY, todayKey);
+  writeStoredValue(DAILY_LOGIN_KEY, todayKey);
   addCoins(DAILY_LOGIN_COINS);
   animateCoinGain(DAILY_LOGIN_COINS, coinHudEl);
   setTimeout(() => showToast(`DAILY REWARD +${DAILY_LOGIN_COINS} COINS`), 0);
@@ -435,7 +466,7 @@ function addCoins(amount) {
   if (creditedAmount <= 0) return;
   const previousTotal = totalCoins;
   totalCoins += creditedAmount;
-  localStorage.setItem("ludo_coins", String(totalCoins));
+  writeStoredValue("ludo_coins", String(totalCoins));
   if (!coinTotalEl) return;
 
   if (coinCounterAnimationId) cancelAnimationFrame(coinCounterAnimationId);
@@ -599,17 +630,35 @@ const SKIN_EFFECTS = {
   20: { price: 50000, guaranteedSixOnce: true, winBonusPercent: 0.15, shieldOnce: true }
 };
 
-function getActiveDiceSkin() {
-  const skin = (localStorage.getItem(ACTIVE_DICE_SKIN_KEY) || "classic").trim();
-  if (skin === "classic") return "classic";
-
+function readOwnedSkins(key, maxSkinIndex) {
+  const raw = readStoredValue(key);
+  if (!raw) return [];
   try {
-    const owned = JSON.parse(localStorage.getItem(OWNED_DICE_SKINS_KEY) || "[]");
-    if (!Array.isArray(owned)) return "classic";
-    return owned.includes(skin) ? skin : "classic";
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const validKey = new RegExp(`^skin([1-9]|[1-9]\\d*)$`);
+    return Array.from(new Set(parsed.filter(skin => {
+      if (typeof skin !== "string") return false;
+      const match = skin.match(validKey);
+      const index = match ? Number(match[1]) : 0;
+      return Number.isInteger(index) && index >= 1 && index <= maxSkinIndex;
+    })));
   } catch {
-    return "classic";
+    return [];
   }
+}
+
+function getActiveOwnedSkin(activeKey, ownedKey, maxSkinIndex) {
+  const skin = (readStoredValue(activeKey) || "classic").trim();
+  if (skin === "classic") return "classic";
+  const match = skin.match(/^skin(\d+)$/);
+  const index = match ? Number(match[1]) : 0;
+  if (!Number.isInteger(index) || index < 1 || index > maxSkinIndex) return "classic";
+  return readOwnedSkins(ownedKey, maxSkinIndex).includes(skin) ? skin : "classic";
+}
+
+function getActiveDiceSkin() {
+  return getActiveOwnedSkin(ACTIVE_DICE_SKIN_KEY, OWNED_DICE_SKINS_KEY, 20);
 }
 
 function getActiveSkinIndex() {
@@ -701,15 +750,7 @@ const matchEffectState = {
 };
 
 function getActiveTokenSkin() {
-  const skin = (localStorage.getItem(ACTIVE_TOKEN_SKIN_KEY) || "classic").trim();
-  if (skin === "classic") return "classic";
-  try {
-    const owned = JSON.parse(localStorage.getItem(OWNED_TOKEN_SKINS_KEY) || "[]");
-    if (!Array.isArray(owned)) return "classic";
-    return owned.includes(skin) ? skin : "classic";
-  } catch {
-    return "classic";
-  }
+  return getActiveOwnedSkin(ACTIVE_TOKEN_SKIN_KEY, OWNED_TOKEN_SKINS_KEY, 10);
 }
 
 function getTokenImageSrc(color) {
@@ -791,6 +832,22 @@ let turnGeneration = 0;
 let pendingTurnCompletionGeneration = null;
 const activeGameplayAnimations = new Set();
 const gameplayTimerIds = new Set();
+const gameplayIntervalIds = new Set();
+
+function setGameplayAnimationsPaused(paused) {
+  activeGameplayAnimations.forEach(animation => {
+    try {
+      if (paused) {
+        if (animation.playState === "running") animation.pause();
+      } else if (animation.playState === "paused") {
+        animation.play();
+      }
+    } catch {
+      // A cancelled or unsupported animation must not affect the existing
+      // turn-generation and navigation lifecycle guards.
+    }
+  });
+}
 
 function scheduleGameplayTask(callback, delay = 0) {
   const id = setTimeout(() => {
@@ -802,10 +859,21 @@ function scheduleGameplayTask(callback, delay = 0) {
   return id;
 }
 
+function scheduleGameplayInterval(callback, delay = 0) {
+  const id = setInterval(() => {
+    if (isNavigatingAway || gameOver) return;
+    callback();
+  }, Math.max(1, Number(delay) || 1));
+  gameplayIntervalIds.add(id);
+  return id;
+}
+
 function cancelPendingGameplayTasks() {
   gameplayEffectEpoch += 1;
   gameplayTimerIds.forEach(id => clearTimeout(id));
   gameplayTimerIds.clear();
+  gameplayIntervalIds.forEach(id => clearInterval(id));
+  gameplayIntervalIds.clear();
   activeGameplayAnimations.forEach(animation => {
     try { animation.cancel(); } catch {}
   });
@@ -820,9 +888,10 @@ function cancelPendingGameplayTasks() {
 
 function prepareForNavigation() {
   if (isNavigatingAway) return;
-  // Save before invalidating motion. The snapshot contains logical state only.
-  saveResumeSnapshot();
   isNavigatingAway = true;
+  // Snapshot serialization is synchronous. Marking departure first blocks
+  // concurrent gameplay callbacks without changing the logical save state.
+  saveResumeSnapshot();
   turnGeneration += 1;
   pendingTurnCompletionGeneration = null;
   stopBackgroundMusic();
@@ -830,6 +899,14 @@ function prepareForNavigation() {
   isMoving = false;
   waitingForTokenMove = false;
   clearHighlights();
+}
+
+function leaveGame(destination, { preserveMatch = true } = {}) {
+  if (isNavigatingAway) return false;
+  if (!preserveMatch) clearResumeSnapshot();
+  prepareForNavigation();
+  window.location.href = destination;
+  return true;
 }
 
 function isRealMoveReason(reason) {
@@ -945,7 +1022,11 @@ function saveResumeSnapshot() {
     savedAt: Date.now()
   };
 
-  localStorage.setItem(LUDO_RESUME_KEY, JSON.stringify(payload));
+  try {
+    writeStoredValue(LUDO_RESUME_KEY, JSON.stringify(payload));
+  } catch {
+    // A storage serialization failure must not invalidate the active match.
+  }
 }
 
 function buildSavedModeState() {
@@ -1202,17 +1283,17 @@ function placeTokenByState(color, tokenIndex, tokenState) {
 function maybeRestoreSavedGame() {
   let parsed;
   try {
-    const raw = localStorage.getItem(LUDO_RESUME_KEY);
+    const raw = readStoredValue(LUDO_RESUME_KEY);
     if (!raw) return false;
     parsed = JSON.parse(raw);
   } catch {
-    localStorage.removeItem(LUDO_RESUME_KEY);
+    removeStoredValue(LUDO_RESUME_KEY);
     return false;
   }
 
   const validated = validateSavedMatch(parsed);
   if (!validated.data) {
-    if (validated.clear) localStorage.removeItem(LUDO_RESUME_KEY);
+    if (validated.clear) removeStoredValue(LUDO_RESUME_KEY);
     return false;
   }
 
@@ -1264,7 +1345,7 @@ function maybeRestoreSavedGame() {
 document.body.classList.add(`orient-${humanColor}`);
 document.body.classList.add(`mode-${gameMode}`);
 document.body.classList.add(matchMode === "vs-computer" ? "vs-computer-match" : "pass-play-match");
-localStorage.setItem("ludo_game_mode", gameMode);
+writeStoredValue("ludo_game_mode", gameMode);
 
 const DICE_SLOTS = ["top-left", "top-right", "bottom-right", "bottom-left"];
 ALL_COLORS_CLOCKWISE.forEach((_, offset) => {
@@ -1394,6 +1475,7 @@ setupBattleMode({ restoring: restoredSavedMatch });
 setupArenaMode({ restoring: restoredSavedMatch });
 window.addEventListener("resize", scheduleChaosOverlayRender);
 window.addEventListener("orientationchange", scheduleChaosOverlayRender);
+window.visualViewport?.addEventListener("resize", scheduleChaosOverlayRender);
 
 if (pauseBtnEl) {
   pauseBtnEl.addEventListener("click", () => {
@@ -1405,8 +1487,7 @@ pauseResumeBtnEl?.addEventListener("click", () => {
 });
 pauseRestartBtnEl?.addEventListener("click", () => {
   setPaused(false);
-  clearResumeSnapshot();
-  window.location.reload();
+  leaveGame(window.location.href, { preserveMatch: false });
 });
 pauseExitBtnEl?.addEventListener("click", () => {
   exitPausedMatch();
@@ -1415,6 +1496,14 @@ window.addEventListener("pagehide", () => {
   // localStorage is synchronous; this is the final safety net for Back,
   // browser navigation, refreshes, and tab/page lifecycle departure.
   prepareForNavigation();
+});
+document.addEventListener("visibilitychange", () => {
+  // Mobile browsers can throttle timers or suspend Web Animations while the
+  // app is backgrounded. Pause the existing session rather than allowing a
+  // delayed AI, dice, or movement callback to progress unseen. Deliberately
+  // remain paused on return so the player explicitly resumes the same state.
+  if (document.visibilityState !== "hidden" || gameOver || isNavigatingAway || isPaused) return;
+  setPaused(true);
 });
 window.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
@@ -1425,17 +1514,15 @@ window.addEventListener("keydown", event => {
 if (restartBtnEl) {
   restartBtnEl.addEventListener("click", () => {
     setPaused(false);
-    clearResumeSnapshot();
-    window.location.reload();
+    leaveGame(window.location.href, { preserveMatch: false });
   });
 }
 
 if (backLevelsBtnEl) {
   backLevelsBtnEl.addEventListener("click", () => {
-    prepareForNavigation();
     if (matchMode === "pass-play") {
       const query = new URLSearchParams({ mode: "pass-play", gm: gameMode });
-      window.location.href = `vs-computer.html?${query.toString()}`;
+      leaveGame(`vs-computer.html?${query.toString()}`);
       return;
     }
     const query = new URLSearchParams({
@@ -1444,23 +1531,21 @@ if (backLevelsBtnEl) {
       human: humanColor,
       gm: gameMode
     });
-    window.location.href = `level-select.html?${query.toString()}`;
+    leaveGame(`level-select.html?${query.toString()}`);
   });
 }
 
 if (btnPlayAgainEl) {
   btnPlayAgainEl.addEventListener("click", () => {
     setPaused(false);
-    clearResumeSnapshot();
-    window.location.reload();
+    leaveGame(window.location.href, { preserveMatch: false });
   });
 }
 
 if (btnCancelEl) {
   btnCancelEl.addEventListener("click", () => {
-    prepareForNavigation();
     const query = new URLSearchParams({ gm: gameMode });
-    window.location.href = `index.html?${query.toString()}`;
+    leaveGame(`index.html?${query.toString()}`);
   });
 }
 
@@ -1468,7 +1553,6 @@ if (btnNextLevelEl) {
   btnNextLevelEl.addEventListener("click", () => {
     if (currentLevel >= TOTAL_LEVELS) return;
     setPaused(false);
-    clearResumeSnapshot();
     const query = new URLSearchParams({
       mode: "vs-computer",
       players: String(playerCount),
@@ -1476,7 +1560,7 @@ if (btnNextLevelEl) {
       gm: gameMode,
       level: String(Math.min(TOTAL_LEVELS, currentLevel + 1))
     });
-    window.location.href = `ludo.html?${query.toString()}`;
+    leaveGame(`ludo.html?${query.toString()}`, { preserveMatch: false });
   });
 }
 
@@ -1542,6 +1626,9 @@ async function moveTokenStep(token, destinationEl, feedbackClass = "token-step",
         { duration, easing: "cubic-bezier(.2,.82,.24,1)", fill: "none" }
       );
       activeGameplayAnimations.add(animation);
+      if (isPaused) {
+        try { animation.pause(); } catch {}
+      }
       try {
         await animation.finished;
       } finally {
@@ -1678,7 +1765,7 @@ function showEventAnnouncement(message, tone = "event") {
   if (gameMode === "chaos") eventAnnouncementEl.classList.add("chaos");
   if (gameMode === "battle") eventAnnouncementEl.classList.add("battle");
   if (gameMode === "power") eventAnnouncementEl.classList.add("power");
-  setTimeout(() => {
+  scheduleGameplayTask(() => {
     if (eventAnnouncementEl.dataset.stamp === stamp) {
       eventAnnouncementEl.classList.remove("show");
       eventAnnouncementEl.dataset.priority = "0";
@@ -2913,17 +3000,17 @@ function handleBattleCaptureBonus(playerIndex, captures, sourceEl = null) {
   }
 
   const eventStamp = eventAnnouncementEl?.dataset.stamp;
-  setTimeout(() => {
+  scheduleGameplayTask(() => {
     if (gameOver || gameMode !== "battle" || eventAnnouncementEl?.dataset.stamp !== eventStamp) return;
     if (player.color === humanColor) {
       showEventAnnouncement(`BATTLE CAPTURE +${captureReward} COINS`, "capture");
     }
     if (player.battleStreak >= 2) {
-      setTimeout(() => {
+      scheduleGameplayTask(() => {
         if (gameOver || gameMode !== "battle") return;
         showEventAnnouncement(`CAPTURE STREAK x${player.battleStreak}`, "event");
         if (player.color === humanColor && streakBonus > 0) {
-          setTimeout(() => {
+          scheduleGameplayTask(() => {
             if (gameOver || gameMode !== "battle") return;
             showEventAnnouncement(`STREAK BONUS +${streakBonus} COINS`, "event");
           }, 620);
@@ -3011,6 +3098,10 @@ function setPaused(nextPaused) {
   if (paused === isPaused) return;
   if (gameOver && paused) return;
   isPaused = paused;
+  // FLIP animations are part of the authoritative movement promise. Native
+  // Web Animation pause/play keeps that promise pending while the pause modal
+  // is open, so no post-move work can progress until the same animation resumes.
+  setGameplayAnimationsPaused(isPaused);
   document.body.classList.toggle("game-paused", isPaused);
 
   if (pauseModalEl) {
@@ -3053,9 +3144,8 @@ function togglePause() {
 
 function exitPausedMatch() {
   // Preserve the existing match before leaving; Continue remains available.
-  prepareForNavigation();
   const query = new URLSearchParams({ gm: gameMode });
-  window.location.href = `index.html?${query.toString()}`;
+  leaveGame(`index.html?${query.toString()}`);
 }
 
 function getCurrentMoveSteps(playerIndex) {
@@ -3246,7 +3336,8 @@ async function handleTileEvent(playerIndex, tokenIndex, reason = "restore", epoc
 
 async function triggerRandomEvent() {
   if (gameMode !== "arena") return;
-  if (isPaused || isNavigatingAway) return;
+  if (gameOver || isPaused || isNavigatingAway) return;
+  const arenaEventEpoch = gameplayEffectEpoch;
   const events = ["all_step_two", "double_next_roll"];
   const selected = events[Math.floor(Math.random() * events.length)];
 
@@ -3265,8 +3356,17 @@ async function triggerRandomEvent() {
       }
     });
     for (const affected of affectedTokens) {
-      await applyPostLandingEffects(affected.playerIndex, affected.tokenIndex, { skipSafeBonus: true, reason: "arenaEvent" });
-      if (gameOver || isNavigatingAway) return;
+      await applyPostLandingEffects(affected.playerIndex, affected.tokenIndex, {
+        skipSafeBonus: true,
+        reason: "arenaEvent",
+        epoch: arenaEventEpoch
+      });
+      if (!canRunTileEffect("arenaEvent", arenaEventEpoch)) return;
+      // Arena movement uses the same authoritative tile-event path as a
+      // normal landing. handleTileEvent never schedules another Arena global
+      // event, so this resolves reward tiles without event re-entry.
+      await handleTileEvent(affected.playerIndex, affected.tokenIndex, "arenaEvent", arenaEventEpoch);
+      if (!canRunTileEffect("arenaEvent", arenaEventEpoch)) return;
     }
     showToast("Arena Event: All +2");
   }
@@ -3433,7 +3533,7 @@ function setupSparkParticles() {
     sparkLayerEl.appendChild(spark);
   }
 
-  setInterval(spawnSpark, 220);
+  scheduleGameplayInterval(spawnSpark, 220);
 }
 
 function setupBackgroundSlideshow() {
@@ -3447,7 +3547,7 @@ function setupBackgroundSlideshow() {
 
   active.style.backgroundImage = `url("${BACKGROUND_IMAGES[index]}")`;
 
-  setInterval(() => {
+  scheduleGameplayInterval(() => {
     if (isPaused) return;
     index = (index + 1) % BACKGROUND_IMAGES.length;
     inactive.style.backgroundImage = `url("${BACKGROUND_IMAGES[index]}")`;
@@ -3464,7 +3564,20 @@ function playSfx(type, volume = 0.7) {
   if (!isSfxEnabled) return;
   const context = getSfxContext();
   const buffer = sfxBuffers.get(type);
-  if (!context || !buffer || !sfxMasterGain) return;
+  if (!context || !sfxMasterGain) return;
+  if (!buffer) {
+    // Decoding begins at startup. If the first gameplay event wins that race,
+    // defer one playback until the existing shared load job is ready instead
+    // of silently dropping the effect or creating a second audio path.
+    if (pendingSfxPlayback.has(type)) return;
+    pendingSfxPlayback.add(type);
+    void preloadSfxBuffer(type).then(loadedBuffer => {
+      pendingSfxPlayback.delete(type);
+      if (!loadedBuffer || !isSfxEnabled || isPaused || isNavigatingAway) return;
+      playSfx(type, volume);
+    });
+    return;
+  }
   if (context.state === "suspended" && navigator.userActivation?.isActive) {
     resumeSfxContextFromGesture();
   }
@@ -3491,9 +3604,14 @@ function setupSoundBootstrap() {
     startBackgroundMusic();
   };
 
-  window.addEventListener("pointerdown", activateAudio, { once: true, passive: true });
+  if (window.PointerEvent) {
+    window.addEventListener("pointerdown", activateAudio, { once: true, passive: true });
+  } else {
+    // Older touch-only WebViews do not emit Pointer Events. Keep exactly one
+    // mobile gesture route so a single tap cannot activate audio twice.
+    window.addEventListener("touchstart", activateAudio, { once: true, passive: true });
+  }
   window.addEventListener("keydown", activateAudio, { once: true });
-  window.addEventListener("touchstart", activateAudio, { once: true, passive: true });
 }
 
 function openResultModal({ title, subtitle, showNextLevel }) {
@@ -3607,7 +3725,7 @@ function checkAndShowWinner(playerIndex) {
     const storageKey = "ludo_unlocked_level";
     unlockedBefore = readStoredInteger(storageKey, 1, 1, TOTAL_LEVELS);
     unlockedAfter = Math.min(TOTAL_LEVELS, Math.max(unlockedBefore, currentLevel + 1));
-    localStorage.setItem(storageKey, String(unlockedAfter));
+    writeStoredValue(storageKey, String(unlockedAfter));
     if (unlockedAfter > unlockedBefore) {
       newlyUnlockedLevel = unlockedAfter;
       rewardSummary.push(`LEVEL ${unlockedAfter} UNLOCKED`);
@@ -4265,11 +4383,11 @@ if (restoredSavedMatch && state.diceValue !== null && !state.players[state.curre
 
 // A new player receives the complete rules once, inside the existing pause
 // interface. Returning players keep their uninterrupted match flow.
-if (!localStorage.getItem(GAME_RULES_SEEN_KEY) && !restoredSavedMatch) {
+if (!readStoredValue(GAME_RULES_SEEN_KEY) && !restoredSavedMatch) {
   scheduleGameplayTask(() => {
     if (gameOver || isNavigatingAway) return;
     pauseModalEl?.querySelector(".pause-rules")?.setAttribute("open", "");
     setPaused(true);
-    localStorage.setItem(GAME_RULES_SEEN_KEY, "1");
+    writeStoredValue(GAME_RULES_SEEN_KEY, "1");
   }, 360);
 }

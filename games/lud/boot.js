@@ -1,9 +1,26 @@
 const PRELOAD_CACHE_NAME = "ludo-preload-assets-v1";
-const PRELOAD_VERSION = "2026-08-28-v47";
+const PRELOAD_VERSION = "2026-09-14-v48";
 const PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
 const PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
 const MAX_CONCURRENCY = 6;
 const ARRIVAL_TRANSITION_KEY = "ludo_teleport_arrival_v1";
+
+function readStoredValue(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredValue(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 let shouldPlayArrivalTransition = false;
 try {
@@ -23,21 +40,6 @@ function getDiceFaces() {
   return ["1_result.webp", "2_result.webp", "3_result.webp", "4_result.webp", "5_result.webp", "6_result.webp"];
 }
 
-function getOwnedSkin(key, prefix, max) {
-  const active = (localStorage.getItem(key) || "classic").trim();
-  if (active === "classic") return "classic";
-  const match = active.match(new RegExp(`^${prefix}(\\d+)$`));
-  if (!match) return "classic";
-  const index = Number(match[1]);
-  if (!Number.isInteger(index) || index < 1 || index > max) return "classic";
-  try {
-    const owned = JSON.parse(localStorage.getItem(key === "ludo_active_dice_skin" ? "ludo_owned_dice_skins" : "ludo_owned_token_skins") || "[]");
-    return Array.isArray(owned) && owned.includes(active) ? active : "classic";
-  } catch {
-    return "classic";
-  }
-}
-
 function getGameplayConfig() {
   const params = new URLSearchParams(window.location.search);
   const colors = getColors();
@@ -50,16 +52,8 @@ function getGameplayConfig() {
     : Array.from({ length: playerCount }, (_, index) => colors[(humanIndex + index) % colors.length]);
   return {
     activeColors,
-    activeDiceSkin: getOwnedSkin("ludo_active_dice_skin", "skin", 20),
-    activeTokenSkin: getOwnedSkin("ludo_active_token_skin", "skin", 10),
     background: "./backgrounds/bg1_result.webp"
   };
-}
-
-function getSkinDiceFaces(skin) {
-  if (skin === "classic") return getDiceFaces().map(face => `./dice/${face}`);
-  return ["1_result.webp", "4_result.webp", "6_result.webp", "3_result.webp", "2_result.webp", "5_result.webp"]
-    .map(face => `./dice/skins/${skin}/${face}`);
 }
 
 function getSkinTokenAssets(skin, colors) {
@@ -69,25 +63,16 @@ function getSkinTokenAssets(skin, colors) {
 }
 
 function buildAssetManifest(config = getGameplayConfig()) {
+  // game.js and board.js are loaded by the module graph after this manifest
+  // is ready. Keep the blocking set to artwork required for the first usable
+  // board; selected cosmetic artwork already has a classic in-game fallback.
   const critical = new Set([
-    "./ludo.html",
-    "./ludo.css",
-    "./design-tokens.css",
-    "./game.js",
-    "./board.js",
-    "./movement.js",
-    "./ai.js",
     config.background,
     ...getDiceFaces().map(face => `./dice/${face}`),
-    ...getSkinDiceFaces(config.activeDiceSkin),
-    ...getSkinTokenAssets(config.activeTokenSkin, config.activeColors),
     ...getSkinTokenAssets("classic", config.activeColors)
   ]);
 
-  return {
-    critical: Array.from(critical),
-    optional: ["./sounds/step.wav", "./sounds/entry.mp3", "./sounds/goal.mp3", "./sounds/win.mp3", "./sounds/bgm.mp3"]
-  };
+  return { critical: Array.from(critical) };
 }
 
 function shortAssetLabel(path) {
@@ -128,7 +113,7 @@ async function openPreloadCache() {
 }
 
 async function resetPreloadCacheIfVersionChanged() {
-  const existing = localStorage.getItem(PRELOAD_VERSION_KEY);
+  const existing = readStoredValue(PRELOAD_VERSION_KEY);
   if (existing === PRELOAD_VERSION) return;
   if (!("caches" in window)) return;
   try {
@@ -141,9 +126,11 @@ async function resetPreloadCacheIfVersionChanged() {
 async function warmSingleAsset(assetPath, cache) {
   const request = new Request(assetPath, { method: "GET", credentials: "same-origin" });
   const cached = cache ? await cache.match(request) : null;
+  // The manifest version invalidates this dedicated cache on deployments.
+  // Reusing a warmed response avoids revalidating every critical image on
+  // every match entry while preserving a fresh fetch after a version change.
+  if (cached) return;
   try {
-    // Revalidate critical assets on every online boot. If offline, retain the
-    // previously warmed response instead of blocking the match indefinitely.
     const response = await fetch(request, { cache: "no-cache" });
     if (!response.ok) throw new Error(`Failed to fetch ${assetPath}`);
     if (cache) {
@@ -221,8 +208,8 @@ async function bootGame() {
   const manifest = buildAssetManifest(getGameplayConfig());
   const result = await preloadManifest(manifest.critical, preloadCache);
 
-  localStorage.setItem(PRELOAD_VERSION_KEY, PRELOAD_VERSION);
-  localStorage.setItem(PRELOAD_UPDATED_AT_KEY, String(Date.now()));
+  writeStoredValue(PRELOAD_VERSION_KEY, PRELOAD_VERSION);
+  writeStoredValue(PRELOAD_UPDATED_AT_KEY, String(Date.now()));
 
   if (result.failed > 0) {
     showCriticalFailure(result.failures || []);

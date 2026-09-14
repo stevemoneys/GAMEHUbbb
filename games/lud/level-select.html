@@ -46,8 +46,16 @@
     const params = new URLSearchParams(window.location.search);
     const players = params.get("players") || "4";
     const human = (params.get("human") || "red").toLowerCase();
-    const gm = (params.get("gm") || localStorage.getItem("ludo_game_mode") || "classic").toLowerCase();
-    localStorage.setItem("ludo_game_mode", gm);
+    const VALID_MODES = new Set(["classic", "chaos", "power", "battle", "arena"]);
+    function readStoredValue(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+    function writeStoredValue(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch { return false; }
+    }
+    const requestedMode = (params.get("gm") || readStoredValue("ludo_game_mode") || "classic").toLowerCase();
+    const gm = VALID_MODES.has(requestedMode) ? requestedMode : "classic";
+    writeStoredValue("ludo_game_mode", gm);
     const closeBtn = document.querySelector(".close-btn");
     if (closeBtn) {
       const backQuery = new URLSearchParams({
@@ -59,9 +67,9 @@
     const TOTAL_LEVELS = 60;
     const storageKey = "ludo_unlocked_level";
 
-    let unlocked = Number(localStorage.getItem(storageKey));
+    let unlocked = Number(readStoredValue(storageKey));
     if (!Number.isSafeInteger(unlocked) || unlocked < 1 || unlocked > TOTAL_LEVELS) unlocked = 1;
-    localStorage.setItem(storageKey, String(unlocked));
+    writeStoredValue(storageKey, String(unlocked));
 
     const currentLevelEl = document.getElementById("current-level-value");
     const nextLevelEl = document.getElementById("next-level-value");
@@ -101,31 +109,14 @@
 
     let teleportStarted = false;
 
-    // Match boot uses this same cache/version.  Preparing this exact critical
-    // set here means the visual teleport only starts after the selected match
-    // can render with its board, dice, and token artwork already available.
+    // Prepare only first-screen visual assets here. The destination module
+    // graph remains responsible for loading gameplay code under its own boot
+    // overlay, so the level transition never prefetches unused runtime files.
     const MATCH_PRELOAD_CACHE = "ludo-preload-assets-v1";
-    const MATCH_PRELOAD_VERSION = "2026-08-28-v47";
+    const MATCH_PRELOAD_VERSION = "2026-09-14-v48";
     const MATCH_PRELOAD_VERSION_KEY = "ludo_preload_manifest_version";
     const MATCH_PRELOAD_UPDATED_AT_KEY = "ludo_preload_updated_at";
-
-    function getOwnedSkin(key, prefix, max) {
-      const active = (localStorage.getItem(key) || "classic").trim();
-      if (active === "classic") return "classic";
-      const match = active.match(new RegExp(`^${prefix}(\\d+)$`));
-      if (!match) return "classic";
-      const index = Number(match[1]);
-      if (!Number.isInteger(index) || index < 1 || index > max) return "classic";
-      try {
-        const ownershipKey = key === "ludo_active_dice_skin"
-          ? "ludo_owned_dice_skins"
-          : "ludo_owned_token_skins";
-        const owned = JSON.parse(localStorage.getItem(ownershipKey) || "[]");
-        return Array.isArray(owned) && owned.includes(active) ? active : "classic";
-      } catch {
-        return "classic";
-      }
-    }
+    const MATCH_PRELOAD_CONCURRENCY = 6;
 
     function getMatchAssetList(url) {
       const target = new URL(url, window.location.href);
@@ -136,49 +127,47 @@
       const activeColors = targetPlayers === 2
         ? [colors[humanIndex], colors[(humanIndex + 2) % colors.length]]
         : Array.from({ length: targetPlayers }, (_, index) => colors[(humanIndex + index) % colors.length]);
-      const diceSkin = getOwnedSkin("ludo_active_dice_skin", "skin", 20);
-      const tokenSkin = getOwnedSkin("ludo_active_token_skin", "skin", 10);
       const diceFaces = ["1_result.webp", "2_result.webp", "3_result.webp", "4_result.webp", "5_result.webp", "6_result.webp"];
-      const skinDiceFaces = ["1_result.webp", "4_result.webp", "6_result.webp", "3_result.webp", "2_result.webp", "5_result.webp"];
-      const tokenAssets = (skin) => activeColors.map(color => skin === "classic"
-        ? `./tokens/${color}_result.webp`
-        : `./tokens/skins/${skin}/${color}_result.webp`);
 
       return Array.from(new Set([
-        "./ludo.html", "./ludo.css", "./design-tokens.css", "./boot.js",
-        "./game.js", "./board.js", "./movement.js", "./ai.js",
         "./backgrounds/bg1_result.webp",
         ...diceFaces.map(face => `./dice/${face}`),
-        ...(diceSkin === "classic" ? diceFaces : skinDiceFaces).map(face => diceSkin === "classic" ? `./dice/${face}` : `./dice/skins/${diceSkin}/${face}`),
-        ...tokenAssets(tokenSkin),
-        ...tokenAssets("classic")
+        ...activeColors.map(color => `./tokens/${color}_result.webp`)
       ]));
     }
 
     async function prepareMatchAssets(url) {
       const assets = getMatchAssetList(url);
       let cache = null;
-      if ("caches" in window) cache = await caches.open(MATCH_PRELOAD_CACHE);
+      if ("caches" in window) {
+        if (readStoredValue(MATCH_PRELOAD_VERSION_KEY) !== MATCH_PRELOAD_VERSION) {
+          try { await caches.delete(MATCH_PRELOAD_CACHE); } catch {}
+        }
+        cache = await caches.open(MATCH_PRELOAD_CACHE);
+      }
 
-      const results = await Promise.allSettled(assets.map(async asset => {
+      const queue = assets.slice();
+      let failed = false;
+      const warmAsset = async asset => {
         const request = new Request(asset, { method: "GET", credentials: "same-origin" });
         const cached = cache ? await cache.match(request) : null;
-        try {
-          // Stable filenames may contain new deployment content. Revalidate
-          // while online, but retain the warmed response when offline.
-          const response = await fetch(request, { cache: "no-cache" });
-          if (!response.ok) throw new Error(`Unable to load ${asset}`);
-          if (cache) await cache.put(request, response.clone());
-        } catch (error) {
-          if (cached) return;
-          throw error;
+        if (cached) return;
+        const response = await fetch(request, { cache: "no-cache" });
+        if (!response.ok) throw new Error(`Unable to load ${asset}`);
+        if (cache) await cache.put(request, response.clone());
+      };
+      const workers = Array.from({ length: Math.min(MATCH_PRELOAD_CONCURRENCY, queue.length) }, async () => {
+        while (queue.length > 0) {
+          const asset = queue.shift();
+          if (!asset) return;
+          try { await warmAsset(asset); } catch { failed = true; }
         }
-      }));
-      const failures = results.filter(result => result.status === "rejected");
-      if (failures.length) throw new Error("Critical match assets could not be prepared.");
+      });
+      await Promise.all(workers);
+      if (failed) throw new Error("Critical match assets could not be prepared.");
 
-      localStorage.setItem(MATCH_PRELOAD_VERSION_KEY, MATCH_PRELOAD_VERSION);
-      localStorage.setItem(MATCH_PRELOAD_UPDATED_AT_KEY, String(Date.now()));
+      writeStoredValue(MATCH_PRELOAD_VERSION_KEY, MATCH_PRELOAD_VERSION);
+      writeStoredValue(MATCH_PRELOAD_UPDATED_AT_KEY, String(Date.now()));
     }
 
     function setLevelControlsBusy(isBusy) {

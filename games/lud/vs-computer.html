@@ -54,9 +54,30 @@
       battle: "battle",
       arena: "arena"
     };
-    let selectedGameMode = (params.get("gm") || localStorage.getItem("ludo_game_mode") || "classic").toLowerCase();
-    if (!MODE_LABELS[selectedGameMode]) selectedGameMode = "classic";
-    localStorage.setItem("ludo_game_mode", selectedGameMode);
+    function readStoredValue(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+    function writeStoredValue(key, value) {
+      try { localStorage.setItem(key, value); return true; } catch { return false; }
+    }
+    function removeStoredValue(key) {
+      try { localStorage.removeItem(key); return true; } catch { return false; }
+    }
+    function normalizeMode(value) {
+      const normalized = typeof value === "string" ? value.toLowerCase() : "";
+      return MODE_LABELS[normalized] ? normalized : "classic";
+    }
+    function isSafeSavedReturnUrl(value) {
+      if (typeof value !== "string" || !value) return false;
+      try {
+        const url = new URL(value, window.location.href);
+        return url.origin === window.location.origin && /\/ludo\.html$/.test(url.pathname);
+      } catch {
+        return false;
+      }
+    }
+    let selectedGameMode = normalizeMode(params.get("gm") || readStoredValue("ludo_game_mode"));
+    writeStoredValue("ludo_game_mode", selectedGameMode);
     const LUDO_RESUME_KEY = "ludo_saved_match_v1";
     const LUDO_RESUME_SCHEMA_VERSION = 2;
     const titleEl = document.querySelector(".vs-head h1");
@@ -80,16 +101,16 @@
 
     function getSavedMatch() {
       try {
-        const raw = localStorage.getItem(LUDO_RESUME_KEY);
+        const raw = readStoredValue(LUDO_RESUME_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object" || parsed.schemaVersion !== LUDO_RESUME_SCHEMA_VERSION) {
-          localStorage.removeItem(LUDO_RESUME_KEY);
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== "object" || parsed.schemaVersion !== LUDO_RESUME_SCHEMA_VERSION) {
+          removeStoredValue(LUDO_RESUME_KEY);
           return null;
         }
         return parsed;
       } catch {
-        localStorage.removeItem(LUDO_RESUME_KEY);
+        removeStoredValue(LUDO_RESUME_KEY);
         return null;
       }
     }
@@ -120,7 +141,7 @@
 
       resumeNew.onclick = () => {
         resumeModal.classList.add("hidden");
-        localStorage.removeItem(LUDO_RESUME_KEY);
+        removeStoredValue(LUDO_RESUME_KEY);
         window.location.href = startUrl;
       };
     }
@@ -142,20 +163,20 @@
     document.getElementById("play-btn").addEventListener("click", () => {
       const startUrl = buildStartUrl();
       const saved = getSavedMatch();
-      const savedRuleMode = saved && MODE_LABELS[(saved.ruleMode || saved.gameMode || "").toLowerCase()]
-        ? (saved.ruleMode || saved.gameMode || "").toLowerCase()
-        : "classic";
+      const savedRuleMode = normalizeMode(saved?.ruleMode || saved?.gameMode);
       if (
         saved &&
         (saved.matchMode || saved.gameMode) === mode &&
         savedRuleMode === selectedGameMode &&
         Number(saved.playerCount) === selectedPlayers &&
-        typeof saved.returnUrl === "string" &&
-        saved.returnUrl
+        isSafeSavedReturnUrl(saved.returnUrl)
       ) {
         openResumeModal(saved, startUrl);
         return;
       }
+      // Starting a different match intentionally supersedes any incompatible
+      // active snapshot; profile data is never touched.
+      if (saved) removeStoredValue(LUDO_RESUME_KEY);
       window.location.href = startUrl;
     });
   </script>
