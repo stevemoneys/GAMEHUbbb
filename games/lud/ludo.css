@@ -59,8 +59,8 @@ body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; -
 body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; --token-board-art-x: 0%; --token-board-art-y: -20.3%; --token-selection-x: 50%; --token-selection-y: 84%; }
 body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --token-board-art-x: 20.3%; --token-board-art-y: 0%; --token-selection-x: 84%; --token-selection-y: 50%; }
 
-/* Keep the vertical artwork whole: portrait and landscape fit it without
-   stretching, while the stage remains above it and owns all input. */
+/* Fill the display with the vertical artwork without stretching; the stage
+   remains above it and owns all input. */
 .bg-slideshow {
   position: fixed;
   inset: 0;
@@ -83,7 +83,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   opacity: 0;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain;
+  background-size: cover;
   transition: opacity 1600ms ease-in-out;
 }
 
@@ -125,7 +125,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   width: 100%;
   height: 100%;
   overflow: visible;
-  background: rgba(238, 248, 255, .34);
+  background: rgba(238, 248, 255, .21);
   border: 1px solid rgba(255, 255, 255, .48);
   border-radius: clamp(10px, 2.5vw, 18px);
   box-shadow: 0 18px 42px rgba(0, 5, 14, .48), 0 0 0 5px rgba(3, 22, 38, .42);
@@ -143,16 +143,16 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   overflow: visible;
 }
 
-.home.red { grid-area: 1 / 1 / 7 / 7; background: rgba(208, 53, 47, .72); }
-.home.green { grid-area: 1 / 10 / 7 / 16; background: rgba(82, 184, 79, .72); }
-.home.yellow { grid-area: 10 / 10 / 16 / 16; background: rgba(239, 189, 32, .72); }
-.home.blue { grid-area: 10 / 1 / 16 / 7; background: rgba(25, 142, 219, .72); }
+.home.red { grid-area: 1 / 1 / 7 / 7; background: rgba(208, 53, 47, .59); }
+.home.green { grid-area: 1 / 10 / 7 / 16; background: rgba(82, 184, 79, .59); }
+.home.yellow { grid-area: 10 / 10 / 16 / 16; background: rgba(239, 189, 32, .59); }
+.home.blue { grid-area: 10 / 1 / 16 / 7; background: rgba(25, 142, 219, .59); }
 
 .home-inner {
   width: 72%;
   height: 72%;
   border-radius: 13%;
-  background: rgba(255, 255, 255, .72);
+  background: rgba(255, 255, 255, .61);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 3px 8px rgba(0, 0, 0, .12);
   -webkit-backdrop-filter: blur(1.5px) saturate(112%);
   backdrop-filter: blur(1.5px) saturate(112%);
@@ -172,13 +172,13 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   width: 100%;
   height: 100%;
   border: 1px solid var(--board-line);
-  background: rgba(250, 253, 255, .76);
+  background: rgba(250, 253, 255, .65);
 }
 
-.path.red { background: rgba(208, 53, 47, .78); }
-.path.green { background: rgba(82, 184, 79, .78); }
-.path.yellow { background: rgba(239, 189, 32, .78); }
-.path.blue { background: rgba(25, 142, 219, .78); }
+.path.red { background: rgba(208, 53, 47, .66); }
+.path.green { background: rgba(82, 184, 79, .66); }
+.path.yellow { background: rgba(239, 189, 32, .66); }
+.path.blue { background: rgba(25, 142, 219, .66); }
 
 .center-triangle {
   position: absolute;
@@ -189,10 +189,10 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   pointer-events: none;
 }
 
-.center-red { background: rgba(82, 184, 79, .84); clip-path: polygon(0 0, 100% 0, 50% 50%); }
-.center-green { background: rgba(239, 189, 32, .84); clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
-.center-yellow { background: rgba(25, 142, 219, .84); clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
-.center-blue { background: rgba(208, 53, 47, .84); clip-path: polygon(0 0, 50% 50%, 0 100%); }
+.center-red { background: rgba(82, 184, 79, .74); clip-path: polygon(0 0, 100% 0, 50% 50%); }
+.center-green { background: rgba(239, 189, 32, .74); clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
+.center-yellow { background: rgba(25, 142, 219, .74); clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
+.center-blue { background: rgba(208, 53, 47, .74); clip-path: polygon(0 0, 50% 50%, 0 100%); }
 
 .cell[style*="grid-row: 7"][style*="grid-column: 8"],
 .cell[style*="grid-row: 8"][style*="grid-column: 7"],
@@ -693,9 +693,9 @@ body[data-dice-effect="eternity"] .dice { --dice-aura:radial-gradient(circle at 
   border: 1px solid rgba(255, 211, 92, .55);
   border-radius: 10px;
   color: #f8fbff;
-  background: linear-gradient(145deg, rgba(9, 36, 61, .96), rgba(4, 18, 34, .95));
+  background: linear-gradient(145deg, rgba(9, 36, 61, .68), rgba(4, 18, 34, .65));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 4px 10px rgba(0,0,0,.28);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(4px);
 }
 
 .match-hud .level-badge {
