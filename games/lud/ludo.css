@@ -59,7 +59,8 @@ body.orient-green { --board-rotation: 90deg; --token-upright-rotation: -90deg; -
 body.orient-yellow { --board-rotation: 0deg; --token-upright-rotation: 0deg; --token-board-art-x: 0%; --token-board-art-y: -20.3%; --token-selection-x: 50%; --token-selection-y: 84%; }
 body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --token-board-art-x: 20.3%; --token-board-art-y: 0%; --token-selection-x: 84%; --token-selection-y: 50%; }
 
-/* Background remains deliberately quiet behind the board. */
+/* Keep the vertical artwork whole: portrait and landscape fit it without
+   stretching, while the stage remains above it and owns all input. */
 .bg-slideshow {
   position: fixed;
   inset: 0;
@@ -73,7 +74,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(2, 13, 27, .28), rgba(2, 13, 27, .04) 45%, rgba(2, 13, 27, .52));
+  display: none;
 }
 
 .bg-layer {
@@ -82,7 +83,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   opacity: 0;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: cover;
+  background-size: contain;
   transition: opacity 1600ms ease-in-out;
 }
 
@@ -124,7 +125,7 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   width: 100%;
   height: 100%;
   overflow: visible;
-  background: #fff;
+  background: rgba(238, 248, 255, .34);
   border: 1px solid rgba(255, 255, 255, .48);
   border-radius: clamp(10px, 2.5vw, 18px);
   box-shadow: 0 18px 42px rgba(0, 5, 14, .48), 0 0 0 5px rgba(3, 22, 38, .42);
@@ -142,17 +143,19 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   overflow: visible;
 }
 
-.home.red { grid-area: 1 / 1 / 7 / 7; background: var(--board-red); }
-.home.green { grid-area: 1 / 10 / 7 / 16; background: var(--board-green); }
-.home.yellow { grid-area: 10 / 10 / 16 / 16; background: var(--board-yellow); }
-.home.blue { grid-area: 10 / 1 / 16 / 7; background: var(--board-blue); }
+.home.red { grid-area: 1 / 1 / 7 / 7; background: rgba(208, 53, 47, .72); }
+.home.green { grid-area: 1 / 10 / 7 / 16; background: rgba(82, 184, 79, .72); }
+.home.yellow { grid-area: 10 / 10 / 16 / 16; background: rgba(239, 189, 32, .72); }
+.home.blue { grid-area: 10 / 1 / 16 / 7; background: rgba(25, 142, 219, .72); }
 
 .home-inner {
   width: 72%;
   height: 72%;
   border-radius: 13%;
-  background: rgba(255, 255, 255, .93);
+  background: rgba(255, 255, 255, .72);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 3px 8px rgba(0, 0, 0, .12);
+  -webkit-backdrop-filter: blur(1.5px) saturate(112%);
+  backdrop-filter: blur(1.5px) saturate(112%);
 }
 
 .home.disabled-home { filter: saturate(.74) brightness(.88); }
@@ -169,13 +172,13 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   width: 100%;
   height: 100%;
   border: 1px solid var(--board-line);
-  background: #fff;
+  background: rgba(250, 253, 255, .76);
 }
 
-.path.red { background: var(--board-red); }
-.path.green { background: var(--board-green); }
-.path.yellow { background: var(--board-yellow); }
-.path.blue { background: var(--board-blue); }
+.path.red { background: rgba(208, 53, 47, .78); }
+.path.green { background: rgba(82, 184, 79, .78); }
+.path.yellow { background: rgba(239, 189, 32, .78); }
+.path.blue { background: rgba(25, 142, 219, .78); }
 
 .center-triangle {
   position: absolute;
@@ -186,10 +189,10 @@ body.orient-blue { --board-rotation: -90deg; --token-upright-rotation: 90deg; --
   pointer-events: none;
 }
 
-.center-red { background: var(--board-green); clip-path: polygon(0 0, 100% 0, 50% 50%); }
-.center-green { background: var(--board-yellow); clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
-.center-yellow { background: var(--board-blue); clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
-.center-blue { background: var(--board-red); clip-path: polygon(0 0, 50% 50%, 0 100%); }
+.center-red { background: rgba(82, 184, 79, .84); clip-path: polygon(0 0, 100% 0, 50% 50%); }
+.center-green { background: rgba(239, 189, 32, .84); clip-path: polygon(100% 0, 100% 100%, 50% 50%); }
+.center-yellow { background: rgba(25, 142, 219, .84); clip-path: polygon(0 100%, 100% 100%, 50% 50%); }
+.center-blue { background: rgba(208, 53, 47, .84); clip-path: polygon(0 0, 50% 50%, 0 100%); }
 
 .cell[style*="grid-row: 7"][style*="grid-column: 8"],
 .cell[style*="grid-row: 8"][style*="grid-column: 7"],
@@ -735,8 +738,9 @@ body[data-dice-effect="eternity"] .dice { --dice-aura:radial-gradient(circle at 
 
 .match-hud .pause-btn {
   display: inline-grid;
-  width: 40px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
   padding: 2px;
   place-items: center;
   cursor: pointer;
@@ -1167,11 +1171,11 @@ body.mode-arena .ludo-board { box-shadow: 0 18px 42px rgba(0,5,14,.48), 0 0 0 3p
     --dice-card-h: 66px;
   }
   .match-hud .level-badge,
-  .match-hud .coin-hud,
-  .match-hud .pause-btn { min-height: 33px; height: 33px; }
+  .match-hud .coin-hud { min-height: 33px; height: 33px; }
+  .match-hud .pause-btn { min-height:44px; height:44px; }
   .event-announcement { top: calc(40px + var(--play-safe-top)); min-height: 27px; padding-block: 5px; }
   .game-wrapper { padding-top: calc(82px + var(--play-safe-top)); padding-bottom: calc(80px + var(--play-safe-bottom)); }
-  .roll-dice-action { min-height: 42px; bottom: calc(6px + var(--play-safe-bottom)); font-size: clamp(14px, 4.5vw, 19px); }
+  .roll-dice-action { min-height: 44px; bottom: calc(6px + var(--play-safe-bottom)); font-size: clamp(14px, 4.5vw, 19px); }
 }
 
 @media (orientation: landscape) and (max-height: 560px) {
@@ -1184,7 +1188,7 @@ body.mode-arena .ludo-board { box-shadow: 0 18px 42px rgba(0,5,14,.48), 0 0 0 3p
   }
   .game-wrapper { padding-top: calc(44px + var(--play-safe-top)); padding-bottom: calc(52px + var(--play-safe-bottom)); }
   .event-announcement { top: calc(5px + var(--play-safe-top)); }
-  .roll-dice-action { min-height: 39px; bottom: calc(5px + var(--play-safe-bottom)); }
+  .roll-dice-action { min-height: 44px; bottom: calc(5px + var(--play-safe-bottom)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
