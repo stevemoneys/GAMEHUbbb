@@ -17,7 +17,7 @@
         <span class="brand-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
         <span>Game<span>Hub</span></span>
       </div>
-      <button class="icon-button settings-button" type="button" aria-label="Board options" title="Board options"><span aria-hidden="true">⚙</span></button>
+      <button class="icon-button settings-button" id="audioSettingsButton" type="button" aria-label="Audio settings" title="Audio settings"><span aria-hidden="true">⚙</span></button>
     </header>
 
     <section class="screen home-screen active" id="menu" aria-label="Game mode">
@@ -97,9 +97,7 @@
     </section>
   </main>
 
-  <audio id="tapSound" src="sounds/tap.mp3"></audio>
-  <audio id="winSound" src="sounds/win.mp3"></audio>
-  <audio id="drawSound" src="sounds/draw.mp3"></audio>
+  <audio id="bgMusic" src="Puzzle_Serenity_Loop_FULL_SONG_MusicGPT.mp3" loop preload="metadata"></audio>
 
   <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="modal-card">
@@ -109,6 +107,16 @@
       <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
     </div>
   </div>
+
+  <div class="game-toast" id="gameToast" role="status" aria-live="polite"><span id="toastIcon" aria-hidden="true">✦</span><div><strong id="toastTitle">Progress updated</strong><small id="toastDetail"></small></div></div>
+
+  <aside class="audio-panel" id="audioPanel" aria-label="Audio settings" hidden>
+    <header><strong>Audio</strong><button id="closeAudioPanel" type="button" aria-label="Close audio settings">×</button></header>
+    <label><span>Master</span><input id="masterVolume" type="range" min="0" max="100" value="100"></label>
+    <label><span>Music</span><input id="musicVolume" type="range" min="0" max="100" value="30"></label>
+    <label><span>Sound effects</span><input id="sfxVolume" type="range" min="0" max="100" value="65"></label>
+    <div class="audio-toggles"><button id="musicToggle" type="button">Music On</button><button id="sfxToggle" type="button">SFX On</button></div>
+  </aside>
 
   <div class="loading-screen" id="loadingScreen" aria-hidden="true"><div class="loading-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>GameHub</span></div>
   <script src="tic-tac-toe.js"></script>

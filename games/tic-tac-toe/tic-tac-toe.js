@@ -4,9 +4,7 @@ const timerTextEl = document.getElementById("timerText");
 const hubBackBtn = document.querySelector(".hub-back-btn");
 const RESUME_KEY = "tictactoe_saved_match_v1";
 
-const tapSound = document.getElementById("tapSound");
-const winSound = document.getElementById("winSound");
-const drawSound = document.getElementById("drawSound");
+const bgMusic = document.getElementById("bgMusic");
 
 let gameMode = "";
 let selectedLevel = 1;
@@ -266,6 +264,182 @@ metaProgress.mastery = { percentage: calculateMastery(metaProgress), updatedAt: 
 saveMetaProgress();
 let matchResultRecorded = false;
 let matchContext = null;
+let gameFeelTimeout;
+
+function emitGameFeelEvent(type, detail = {}) {
+  window.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type, ...detail } }));
+}
+
+function haptic(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function restartAnimation(element, className) {
+  if (!element) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+}
+
+function showGameToast(title, detail = "", tone = "progress") {
+  const toast = document.getElementById("gameToast");
+  if (!toast) return;
+  clearTimeout(gameFeelTimeout);
+  toast.className = `game-toast ${tone}`;
+  document.getElementById("toastTitle").textContent = title;
+  document.getElementById("toastDetail").textContent = detail;
+  requestAnimationFrame(() => toast.classList.add("active"));
+  gameFeelTimeout = setTimeout(() => toast.classList.remove("active"), 2200);
+}
+
+function setThinkingState(isThinking) {
+  document.getElementById("thinkingCard")?.classList.toggle("is-thinking", isThinking);
+  document.getElementById("turnPill")?.classList.toggle("is-thinking", isThinking);
+}
+
+const AUDIO_SETTINGS_KEY = "tictactoe_audio_settings_v1";
+const DEFAULT_AUDIO_SETTINGS = { master: 1, music: 0.3, sfx: 0.65, musicEnabled: true, sfxEnabled: true };
+let audioSettings = loadAudioSettings();
+let audioContext;
+let sfxGain;
+let audioReady = false;
+let musicFadeFrame;
+let pageWasMusicPlaying = false;
+let activeAudioPriority = 0;
+let activeAudioUntil = 0;
+const audioCooldowns = new Map();
+
+function loadAudioSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AUDIO_SETTINGS_KEY));
+    if (!saved || typeof saved !== "object") return { ...DEFAULT_AUDIO_SETTINGS };
+    const volume = (value, fallback) => Number.isFinite(Number(value)) ? Math.min(1, Math.max(0, Number(value))) : fallback;
+    return {
+      master: volume(saved.master, DEFAULT_AUDIO_SETTINGS.master),
+      music: volume(saved.music, DEFAULT_AUDIO_SETTINGS.music),
+      sfx: volume(saved.sfx, DEFAULT_AUDIO_SETTINGS.sfx),
+      musicEnabled: saved.musicEnabled !== false,
+      sfxEnabled: saved.sfxEnabled !== false
+    };
+  } catch {
+    return { ...DEFAULT_AUDIO_SETTINGS };
+  }
+}
+
+function saveAudioSettings() {
+  try { localStorage.setItem(AUDIO_SETTINGS_KEY, JSON.stringify(audioSettings)); } catch {}
+}
+
+function musicTargetVolume() {
+  return audioSettings.musicEnabled ? audioSettings.master * audioSettings.music : 0;
+}
+
+function fadeMusic(target, duration = 220) {
+  if (!bgMusic) return;
+  cancelAnimationFrame(musicFadeFrame);
+  const start = bgMusic.volume;
+  const startedAt = performance.now();
+  const tick = (now) => {
+    const progress = Math.min(1, (now - startedAt) / duration);
+    bgMusic.volume = start + (target - start) * progress;
+    if (progress < 1) musicFadeFrame = requestAnimationFrame(tick);
+    else if (target === 0 && !audioSettings.musicEnabled) bgMusic.pause();
+  };
+  musicFadeFrame = requestAnimationFrame(tick);
+}
+
+function ensureAudio() {
+  if (!audioContext) {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return false;
+    try {
+      audioContext = new AudioCtor();
+      sfxGain = audioContext.createGain();
+      sfxGain.gain.value = audioSettings.master * audioSettings.sfx;
+      sfxGain.connect(audioContext.destination);
+    } catch { return false; }
+  }
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  audioReady = true;
+  if (audioSettings.musicEnabled && bgMusic?.paused && !document.hidden) {
+    bgMusic.volume = 0;
+    bgMusic.play().then(() => fadeMusic(musicTargetVolume(), 420)).catch(() => {});
+  }
+  return true;
+}
+
+function setAudioSettings(patch) {
+  audioSettings = { ...audioSettings, ...patch };
+  saveAudioSettings();
+  if (sfxGain && audioContext) sfxGain.gain.setTargetAtTime(audioSettings.master * audioSettings.sfx, audioContext.currentTime, 0.025);
+  if (audioSettings.musicEnabled) {
+    ensureAudio();
+    fadeMusic(musicTargetVolume());
+  } else {
+    fadeMusic(0);
+  }
+  syncAudioSettingsUI();
+}
+
+function playTone({ frequency, endFrequency = frequency, duration = 0.09, type = "sine", gain = 0.15, delay = 0, priority = 3, cooldown = "tone" }) {
+  if (!audioSettings.sfxEnabled || !ensureAudio() || document.hidden) return;
+  const now = audioContext.currentTime;
+  const realNow = performance.now();
+  if (audioCooldowns.get(cooldown) > realNow || (priority < activeAudioPriority && realNow < activeAudioUntil)) return;
+  audioCooldowns.set(cooldown, realNow + 38);
+  if (priority >= activeAudioPriority) {
+    activeAudioPriority = priority;
+    activeAudioUntil = realNow + (duration + delay) * 1000;
+  }
+  const oscillator = audioContext.createOscillator();
+  const envelope = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, now + delay);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), now + delay + duration);
+  envelope.gain.setValueAtTime(0.0001, now + delay);
+  envelope.gain.exponentialRampToValueAtTime(Math.max(0.0001, gain * audioSettings.master * audioSettings.sfx), now + delay + 0.012);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, now + delay + duration);
+  oscillator.connect(envelope).connect(sfxGain);
+  oscillator.start(now + delay);
+  oscillator.stop(now + delay + duration + 0.03);
+}
+
+function playAudioEffect(type, detail = {}) {
+  const personalityPitch = { human: 0, aggressive: 32, defensive: -18, trickster: 18 }[selectedAvatar] || 0;
+  const pieceOffset = detail.symbol === "X" ? 32 : -10;
+  const effects = {
+    button_press: () => playTone({ frequency: 310, endFrequency: 365, duration: 0.055, type: "triangle", gain: 0.07, priority: 1, cooldown: "button" }),
+    level_select: () => { playTone({ frequency: 420, endFrequency: 590, duration: 0.09, type: "sine", gain: 0.09, priority: 2, cooldown: "level" }); },
+    locked: () => playTone({ frequency: 205, endFrequency: 170, duration: 0.09, type: "triangle", gain: 0.075, priority: 2, cooldown: "locked" }),
+    invalid_move: () => playTone({ frequency: 250, endFrequency: 205, duration: 0.07, type: "triangle", gain: 0.065, priority: 2, cooldown: "invalid" }),
+    piece_place: () => playTone({ frequency: 480 + pieceOffset + personalityPitch, endFrequency: 405 + pieceOffset + personalityPitch, duration: 0.075, type: detail.symbol === "X" ? "triangle" : "sine", gain: detail.actor === "ai" ? 0.09 : 0.11, priority: 3, cooldown: "piece" }),
+    player_turn: () => playTone({ frequency: 520, endFrequency: 590, duration: 0.055, type: "sine", gain: 0.045, priority: 2, cooldown: "turn" }),
+    ai_turn: () => playTone({ frequency: 350 + personalityPitch, endFrequency: 320 + personalityPitch, duration: 0.055, type: "triangle", gain: 0.04, priority: 2, cooldown: "turn" }),
+    timer_warning: () => playTone({ frequency: 500 + (detail.seconds * 42), endFrequency: 520 + (detail.seconds * 42), duration: 0.045, type: "sine", gain: 0.05, priority: 3, cooldown: `timer-${detail.seconds}` }),
+    win_line: () => { playTone({ frequency: 520, endFrequency: 760, duration: 0.2, type: "sine", gain: 0.12, priority: 5, cooldown: "win" }); },
+    victory: () => { playTone({ frequency: 520, endFrequency: 660, duration: 0.16, type: "sine", gain: 0.1, priority: 6, cooldown: "result" }); playTone({ frequency: 660, endFrequency: 880, duration: 0.22, type: "triangle", gain: 0.09, delay: 0.14, priority: 6, cooldown: "result-2" }); },
+    defeat: () => { playTone({ frequency: 390, endFrequency: 280, duration: 0.24, type: "sine", gain: 0.085, priority: 6, cooldown: "result" }); },
+    draw: () => { playTone({ frequency: 420, endFrequency: 420, duration: 0.15, type: "sine", gain: 0.075, priority: 6, cooldown: "result" }); playTone({ frequency: 525, endFrequency: 525, duration: 0.15, type: "sine", gain: 0.06, delay: 0.09, priority: 6, cooldown: "result-2" }); },
+    level_unlock: () => { playTone({ frequency: 480, endFrequency: 720, duration: 0.16, type: "triangle", gain: 0.095, priority: 5, cooldown: "unlock" }); playTone({ frequency: 720, endFrequency: 920, duration: 0.18, type: "sine", gain: 0.07, delay: 0.14, priority: 5, cooldown: "unlock-2" }); },
+    achievement_unlock: () => { playTone({ frequency: 600, endFrequency: 810, duration: 0.13, type: "sine", gain: 0.095, priority: 5, cooldown: "achievement" }); playTone({ frequency: 810, endFrequency: 960, duration: 0.15, type: "triangle", gain: 0.075, delay: 0.12, priority: 5, cooldown: "achievement-2" }); }
+  };
+  effects[type]?.();
+}
+
+function duckMusic() {
+  if (!bgMusic || !audioSettings.musicEnabled) return;
+  fadeMusic(musicTargetVolume() * 0.68, 120);
+  setTimeout(() => fadeMusic(musicTargetVolume(), 340), 620);
+}
+
+function syncAudioSettingsUI() {
+  const values = [["masterVolume", audioSettings.master], ["musicVolume", audioSettings.music], ["sfxVolume", audioSettings.sfx]];
+  values.forEach(([id, value]) => { const control = document.getElementById(id); if (control) control.value = String(Math.round(value * 100)); });
+  const musicToggle = document.getElementById("musicToggle");
+  const sfxToggle = document.getElementById("sfxToggle");
+  if (musicToggle) musicToggle.textContent = audioSettings.musicEnabled ? "Music On" : "Music Off";
+  if (sfxToggle) sfxToggle.textContent = audioSettings.sfxEnabled ? "SFX On" : "SFX Off";
+}
 
 function beginMatchContext() {
   matchResultRecorded = false;
@@ -280,6 +454,8 @@ function beginMatchContext() {
 function finalizeMatch(outcome) {
   if (matchResultRecorded) return;
   matchResultRecorded = true;
+  const previousAchievementIds = new Set(Object.keys(metaProgress.achievements));
+  const previouslyUnlocked = metaProgress.levels.highestUnlocked;
 
   const context = matchContext || {
     mode: gameMode,
@@ -332,6 +508,19 @@ function finalizeMatch(outcome) {
   metaProgress.mastery = { percentage: calculateMastery(metaProgress), updatedAt: Date.now() };
   saveMetaProgress();
   updateHomeDashboard();
+  const unlockedAchievement = ACHIEVEMENTS.find((achievement) => !previousAchievementIds.has(achievement.id) && metaProgress.achievements[achievement.id]);
+  if (unlockedAchievement) {
+    showGameToast("Achievement unlocked", unlockedAchievement.name, "achievement");
+    emitGameFeelEvent("achievement_unlock", { id: unlockedAchievement.id });
+    haptic(16);
+  } else if (context.mode === "ai" && outcome === "win" && metaProgress.levels.highestUnlocked > previouslyUnlocked) {
+    const next = getLevelDefinition(metaProgress.levels.highestUnlocked);
+    showGameToast(`Level ${next.number} unlocked`, next.name, "unlock");
+    emitGameFeelEvent("level_unlock", { level: next.number });
+    haptic([12, 45, 18]);
+  } else {
+    emitGameFeelEvent("progression_update", { outcome });
+  }
 }
 
 let matchObjectives = createMatchObjectives();
@@ -374,11 +563,14 @@ function clearPendingAIWork() {
   clearTimeout(resultTimeout);
   resultTimeout = undefined;
   matchGeneration += 1;
+  setThinkingState(false);
 }
 
 function scheduleAIMove(delay = 350) {
   clearTimeout(aiTimeout);
   const generation = matchGeneration;
+  setThinkingState(true);
+  emitGameFeelEvent("ai_thinking_start");
   aiTimeout = setTimeout(() => {
     aiTimeout = undefined;
     if (generation !== matchGeneration) return;
@@ -597,6 +789,7 @@ function updateTurnPresentation() {
   turnLabel.textContent = gameActive ? localLabel : statusEl.textContent;
   turnMark.textContent = currentPlayer;
   playerTurn.textContent = gameActive ? (isAI ? (aiTurn ? "AI thinking" : "Your turn") : `Player ${currentPlayer}`) : statusEl.textContent;
+  emitGameFeelEvent(aiTurn ? "ai_turn" : "player_turn", { currentPlayer });
 }
 
 function startTwoPlayer() {
@@ -641,11 +834,21 @@ function showLevels() {
     btn.querySelector(".level-state").textContent = completed ? "Complete" : "Play";
 
     if (i > unlockedLevel) {
-      btn.disabled = true;
       btn.classList.add("locked");
+      btn.setAttribute("aria-disabled", "true");
       btn.querySelector(".level-state").textContent = `Lock · ${i - 1}`;
+      btn.addEventListener("click", () => {
+        restartAnimation(btn, "locked-feedback");
+        showGameToast("Challenge locked", `Complete Level ${i - 1} to continue.`, "locked");
+        emitGameFeelEvent("locked", { level: i });
+        haptic(10);
+      });
     } else {
-      btn.addEventListener("click", () => selectLevel(i));
+      btn.addEventListener("click", () => {
+        restartAnimation(btn, "selected-feedback");
+        emitGameFeelEvent("level_select", { level: i });
+        setTimeout(() => selectLevel(i), 130);
+      });
     }
 
     levelButtons.appendChild(btn);
@@ -701,6 +904,7 @@ function resetBoard() {
   gameActive = true;
   currentPlayer = "X";
   boardEl.innerHTML = "";
+  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
 
   setStatus(`Player ${currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
@@ -712,17 +916,18 @@ function resetBoard() {
 }
 
 function makeMove(index) {
-  if (!gameActive) return;
-  if (board[index]) return;
-  if (gameMode === "ai" && currentPlayer === aiSymbol) return;
+  if (!gameActive || board[index] || (gameMode === "ai" && currentPlayer === aiSymbol)) {
+    const cell = boardEl.children[index];
+    if (cell) restartAnimation(cell, "invalid-move");
+    emitGameFeelEvent("invalid_move", { index });
+    haptic(8);
+    return;
+  }
 
   const tracksObjectives = gameMode === "ai" && currentPlayer === playerSymbol;
   const blocksImmediateThreat = tracksObjectives && getWinningMoves(board, aiSymbol).includes(index);
   const preventsFork = tracksObjectives && getForkMoves(board, aiSymbol).includes(index);
   const createsFork = tracksObjectives && getForkMoves(board, playerSymbol).includes(index);
-
-  tapSound.currentTime = 0;
-  tapSound.play().catch(() => {});
 
   board[index] = currentPlayer;
   if (tracksObjectives) {
@@ -734,6 +939,9 @@ function makeMove(index) {
   cell.textContent = currentPlayer;
   cell.classList.add(currentPlayer);
   cell.setAttribute("aria-label", `Cell ${index + 1}: ${currentPlayer}`);
+  restartAnimation(cell, currentPlayer === "X" ? "piece-in-x" : "piece-in-o");
+  emitGameFeelEvent("piece_place", { symbol: currentPlayer, actor: "player" });
+  haptic(10);
 
   if (checkWin()) return;
 
@@ -761,6 +969,8 @@ function startTurnTimer() {
     timeLeft -= 1;
     timerTextEl.textContent = `${timeLeft}s`;
 
+    if (timeLeft > 0 && timeLeft <= 3) emitGameFeelEvent("timer_warning", { seconds: timeLeft });
+
     if (timeLeft > 0 || !gameActive) {
       return;
     }
@@ -784,6 +994,7 @@ function startTurnTimer() {
 }
 
 function aiMove() {
+  setThinkingState(false);
   if (!gameActive) return;
   if (currentPlayer !== aiSymbol) return;
 
@@ -812,6 +1023,8 @@ function makeMoveFromSymbol(index, symbol) {
   cell.textContent = symbol;
   cell.classList.add(symbol);
   cell.setAttribute("aria-label", `Cell ${index + 1}: ${symbol}`);
+  restartAnimation(cell, symbol === "X" ? "piece-in-x" : "piece-in-o");
+  emitGameFeelEvent("piece_place", { symbol, actor: "ai" });
 
   if (checkWin()) return;
 
@@ -837,6 +1050,11 @@ function getWinner(state) {
     if (state[a] && state[a] === state[b] && state[b] === state[c]) return state[a];
   }
   return null;
+}
+
+function getWinLineClass(pattern) {
+  const lines = { "012": "win-row-top", "345": "win-row-middle", "678": "win-row-bottom", "036": "win-col-left", "147": "win-col-middle", "258": "win-col-right", "048": "win-diagonal-main", "246": "win-diagonal-cross" };
+  return lines[pattern.join("")] || "";
 }
 
 function playOnBoard(state, index, symbol) {
@@ -995,15 +1213,18 @@ function checkWin() {
 
     if (board[a] && board[a] === board[b] && board[b] === board[c]) {
       [a, b, c].forEach((idx) => boardEl.children[idx].classList.add("win"));
+      const boardShell = document.querySelector(".board-shell");
+      boardShell?.classList.add("has-win", getWinLineClass(pattern));
+      restartAnimation(boardShell, "win-impact");
 
-      winSound.currentTime = 0;
-      winSound.play().catch(() => {});
+      emitGameFeelEvent("win_line", { winner: currentPlayer, pattern });
+      haptic([14, 45, 24]);
 
-      setStatus(`Player ${currentPlayer} Wins`);
       matchObjectives.completed = true;
       matchObjectives.won = gameMode !== "ai" ? true : currentPlayer === playerSymbol;
-      updateScore();
       gameActive = false;
+      setStatus(`Player ${currentPlayer} Wins`);
+      updateScore();
 
       const playerWon = gameMode !== "ai" ? true : currentPlayer === playerSymbol;
       finalizeMatch(playerWon ? "win" : "loss");
@@ -1023,8 +1244,7 @@ function draw() {
   matchObjectives.draw = true;
   finalizeMatch("draw");
 
-  drawSound.currentTime = 0;
-  drawSound.play().catch(() => {});
+  document.querySelector(".board-shell")?.classList.add("draw-complete");
 
   setStatus("Draw");
   scheduleResult(false, true, 500);
@@ -1063,6 +1283,7 @@ function resetScores() {
 }
 
 function restartGame() {
+  emitGameFeelEvent("reset");
   clearSavedMatch();
   clearPendingAIWork();
   document.getElementById("resultModal").classList.remove("active");
@@ -1100,6 +1321,8 @@ function showResult(won, isDraw = false) {
     title.textContent = "Draw";
     detail.textContent = gameMode === "ai" && level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
     nextBtn.style.display = "none";
+    emitGameFeelEvent("draw");
+    duckMusic();
     return;
   }
 
@@ -1109,6 +1332,8 @@ function showResult(won, isDraw = false) {
     title.textContent = `Player ${currentPlayer} Wins`;
     detail.textContent = "A clear tactical line decided the match.";
     nextBtn.style.display = "none";
+    emitGameFeelEvent("victory");
+    duckMusic();
     return;
   }
 
@@ -1119,16 +1344,21 @@ function showResult(won, isDraw = false) {
     const next = level < maxLevel ? getLevelDefinition(level + 1) : null;
     detail.textContent = next ? `Level ${next.number} unlocked: ${next.name}.` : "You completed the full tactical mastery path.";
     nextBtn.style.display = level < maxLevel ? "inline-block" : "none";
+    emitGameFeelEvent("victory");
+    duckMusic();
   } else {
     modal.classList.add("defeat");
     kicker.textContent = "The Opponent Found The Answer";
     title.textContent = "You Lost";
     detail.textContent = "Read the final line, adjust your plan, and try again.";
     nextBtn.style.display = "none";
+    emitGameFeelEvent("defeat");
+    duckMusic();
   }
 }
 
 function nextLevel() {
+  emitGameFeelEvent("next_level");
   document.getElementById("resultModal").classList.remove("active");
   clearSavedMatch();
   clearPendingAIWork();
@@ -1183,3 +1413,38 @@ if (savedMatch) {
 window.addEventListener("load", () => {
   document.getElementById("loadingScreen")?.classList.add("loaded");
 });
+
+window.addEventListener("tictactoe:feel", (event) => playAudioEffect(event.detail.type, event.detail));
+
+document.addEventListener("pointerdown", (event) => {
+  if (event.isTrusted) ensureAudio();
+  const button = event.target.closest("button");
+  if (button && !button.closest("#levelButtons")) emitGameFeelEvent("button_press");
+}, { passive: true });
+
+document.addEventListener("keydown", (event) => {
+  if (event.isTrusted && (event.key === "Enter" || event.key === " ")) ensureAudio();
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (!bgMusic) return;
+  if (document.hidden) {
+    pageWasMusicPlaying = !bgMusic.paused;
+    if (pageWasMusicPlaying) bgMusic.pause();
+  } else if (pageWasMusicPlaying && audioSettings.musicEnabled) {
+    bgMusic.play().then(() => fadeMusic(musicTargetVolume(), 180)).catch(() => {});
+  }
+});
+
+document.getElementById("audioSettingsButton")?.addEventListener("click", () => {
+  const panel = document.getElementById("audioPanel");
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) syncAudioSettingsUI();
+});
+document.getElementById("closeAudioPanel")?.addEventListener("click", () => { document.getElementById("audioPanel").hidden = true; });
+[["masterVolume", "master"], ["musicVolume", "music"], ["sfxVolume", "sfx"]].forEach(([id, key]) => {
+  document.getElementById(id)?.addEventListener("input", (event) => setAudioSettings({ [key]: Number(event.target.value) / 100 }));
+});
+document.getElementById("musicToggle")?.addEventListener("click", () => setAudioSettings({ musicEnabled: !audioSettings.musicEnabled }));
+document.getElementById("sfxToggle")?.addEventListener("click", () => setAudioSettings({ sfxEnabled: !audioSettings.sfxEnabled }));
+syncAudioSettingsUI();
