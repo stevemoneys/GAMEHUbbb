@@ -2,69 +2,98 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#080d1c">
   <title>Tic Tac Toe | GameHub</title>
   <link rel="stylesheet" href="tic-tac-toe.css">
 </head>
 <body>
-  <a class="hub-back-btn" href="../../index.html" aria-label="Back to GameHub">Back to GameHub</a>
+  <div class="ambient" aria-hidden="true"></div>
+  <a class="hub-back-btn icon-button" href="../../index.html" aria-label="Back to GameHub"><span>‹</span></a>
 
   <main class="app" aria-live="polite">
-    <header class="hero">
-      <p class="eyebrow">Classic Arcade</p>
-      <h1>Tic Tac Toe</h1>
-      <p class="subtitle">Play solo with progressive AI levels or challenge a friend.</p>
+    <header class="app-bar">
+      <div class="brand" aria-label="GameHub">
+        <span class="brand-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Game<span>Hub</span></span>
+      </div>
+      <button class="icon-button settings-button" type="button" aria-label="Board options" title="Board options"><span aria-hidden="true">⚙</span></button>
     </header>
 
-    <section class="menu active" id="menu" aria-label="Game mode">
-      <button onclick="startVsAI()">Play vs Computer</button>
-      <button onclick="startTwoPlayer()">Two Players</button>
+    <section class="screen home-screen active" id="menu" aria-label="Game mode">
+      <header class="hero">
+        <p class="eyebrow">Think <span>•</span> Plan <span>•</span> Win</p>
+        <h1>Tic-T<span aria-hidden="true">✕</span>c-T<span class="warm">O</span>e</h1>
+        <div class="hero-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </header>
+
+      <div class="home-actions">
+        <button class="action-card primary-action" onclick="startVsAI()">
+          <span class="action-icon bot-icon" aria-hidden="true"></span>
+          <span><strong>AI Challenge</strong><small>Play against smart opponents</small></span>
+          <b aria-hidden="true">›</b>
+        </button>
+        <button class="action-card" onclick="startTwoPlayer()">
+          <span class="action-icon players-icon" aria-hidden="true"></span>
+          <span><strong>Two Players</strong><small>Play with a friend</small></span>
+          <b aria-hidden="true">›</b>
+        </button>
+      </div>
+
+      <div class="home-meta">
+        <article class="glass-card mastery-card">
+          <div class="mastery-ring"><span id="homeMastery">0%</span></div>
+          <div><p>Tic-Tac-Toe Mastery</p><strong id="homeGoals">0 / 44 goals</strong><div class="progress-track"><i id="homeMasteryBar"></i></div></div>
+        </article>
+        <article class="glass-card next-card" id="nextChallengeCard">
+          <p>Next Challenge</p><strong id="nextLevelNumber">Level 1</strong><span id="nextLevelName">First Steps</span><small id="nextLevelMeta">Human-like · Very Easy</small>
+        </article>
+      </div>
+      <p class="home-footnote"><span>Profile ready</span><i></i><span id="homeStats">0 wins · 0 streak</span></p>
     </section>
 
-    <section class="menu" id="levels" aria-label="Level selection">
-      <h2>Select Level</h2>
+    <section class="screen level-screen" id="levels" aria-label="Level selection">
+      <header class="screen-heading"><p class="eyebrow">AI Challenge</p><h2>Choose your tactic</h2><p>Each challenge builds a real Tic-Tac-Toe skill.</p></header>
       <div id="levelButtons" class="level-grid"></div>
-      <button class="ghost" onclick="backToHome()">Back</button>
+      <button class="text-button" onclick="backToHome()">‹ Back to home</button>
     </section>
 
-    <section class="menu" id="avatars" aria-label="AI avatar selection">
-      <h2>Select AI Style</h2>
-      <div id="avatarButtons" class="avatar-grid">
-        <button onclick="selectAvatar('human')">Human-like</button>
-        <button onclick="selectAvatar('aggressive')">Aggressive</button>
-        <button onclick="selectAvatar('defensive')">Defensive</button>
-        <button onclick="selectAvatar('trickster')">Trickster</button>
-      </div>
-      <button class="ghost" onclick="showLevels()">Back</button>
+    <section class="screen legacy-avatar-screen" id="avatars" aria-label="AI avatar selection">
+      <h2>Opponent set by challenge</h2>
+      <p>Your selected level determines the AI style.</p>
+      <button class="text-button" onclick="showLevels()">‹ Back to levels</button>
     </section>
 
-    <section class="menu" id="symbolSelect" aria-label="Symbol selection">
-      <h2>Choose Your Symbol</h2>
+    <section class="screen symbol-screen" id="symbolSelect" aria-label="Symbol selection">
+      <header class="screen-heading"><p class="eyebrow" id="symbolLevelLabel">Level 1</p><h2 id="symbolTitle">Choose your mark</h2><p id="symbolLesson">A tactical challenge awaits.</p></header>
       <div class="symbol-grid">
-        <button onclick="chooseSymbol('X')">X</button>
-        <button onclick="chooseSymbol('O')">O</button>
+        <button class="symbol-choice symbol-x" onclick="chooseSymbol('X')" aria-label="Play as X"><span>×</span><strong>Play as X</strong><small>You move first</small></button>
+        <button class="symbol-choice symbol-o" onclick="chooseSymbol('O')" aria-label="Play as O"><span>O</span><strong>Play as O</strong><small>AI moves first</small></button>
       </div>
-      <button class="ghost" onclick="backToLevelsFromSymbol()">Back</button>
+      <button class="text-button" onclick="backToLevelsFromSymbol()">‹ Change challenge</button>
     </section>
 
-    <section class="game" id="game" aria-label="Game board">
-      <div class="meta-bar">
-        <p class="status" id="status">Player X Turn</p>
-        <p class="timer">Turn timer <span id="timerText">10s</span></p>
+    <section class="screen game-screen" id="game" aria-label="Game board">
+      <section class="opponent-card glass-card" id="opponentCard">
+        <span class="opponent-emblem" id="opponentEmblem" aria-hidden="true">◉</span>
+        <div><p id="opponentKicker">Tactical Opponent</p><h2 id="opponentName">Human-like</h2><span id="opponentLesson">Level 1 · First Steps</span></div>
+        <div class="strength"><b>AI</b><span id="strengthDots" aria-label="AI strength"></span><small id="strengthLabel">Level 1</small></div>
+      </section>
+
+      <div class="turn-pill" id="turnPill"><span class="turn-mark" id="turnMark">X</span><strong id="turnLabel">Your Turn</strong></div>
+      <p class="status sr-only" id="status">Player X Turn</p>
+      <p class="timer"><span>Turn timer</span> <b id="timerText">10s</b></p>
+
+      <div class="board-shell"><div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board"></div></div>
+      <div class="thinking-card glass-card" id="thinkingCard"><span class="opponent-emblem small" id="thinkingEmblem" aria-hidden="true">◉</span><div><strong id="thinkingTitle">Read the board</strong><small id="thinkingText">Every move creates a new decision.</small></div><i class="thinking-dots" aria-hidden="true"><b></b><b></b><b></b></i></div>
+
+      <div class="match-cards">
+        <article class="glass-card player-card"><span class="player-icon" aria-hidden="true">●</span><div><p>You</p><strong id="playerSymbolDisplay">X</strong><small id="playerTurnDisplay">Your turn</small></div></article>
+        <article class="glass-card lesson-card"><span aria-hidden="true">◎</span><div><p id="gameLevelNumber">Level 1</p><strong>Tactical Lesson</strong><small id="gameLesson">First Steps</small></div></article>
       </div>
 
-      <div class="board" id="board"></div>
-
-      <div class="score">
-        <span>X <strong id="scoreX">0</strong></span>
-        <span>O <strong id="scoreO">0</strong></span>
-      </div>
-
-      <div class="controls">
-        <button onclick="resetScores()">Reset Scores</button>
-        <button onclick="restartGame()">Restart</button>
-        <button onclick="backToMenu()">Menu</button>
-      </div>
+      <div class="score score-strip" aria-label="Score"><span>X <strong id="scoreX">0</strong></span><span>O <strong id="scoreO">0</strong></span></div>
+      <div class="controls"><button class="control-button" onclick="resetScores()">Scores</button><button class="control-button primary-control" onclick="restartGame()">↻ Reset</button><button class="control-button" onclick="backToMenu()">⌂ Menu</button></div>
     </section>
   </main>
 
@@ -72,17 +101,16 @@
   <audio id="winSound" src="sounds/win.mp3"></audio>
   <audio id="drawSound" src="sounds/draw.mp3"></audio>
 
-  <div class="modal" id="resultModal">
+  <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
     <div class="modal-card">
+      <p class="eyebrow" id="resultKicker">Match Complete</p>
       <h2 id="resultTitle"></h2>
-      <div class="modal-buttons">
-        <button onclick="restartGame()">Play Again</button>
-        <button onclick="goHome()">Cancel</button>
-        <button id="nextBtn" onclick="nextLevel()">Next</button>
-      </div>
+      <p id="resultDetail">Choose your next move.</p>
+      <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
     </div>
   </div>
 
+  <div class="loading-screen" id="loadingScreen" aria-hidden="true"><div class="loading-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>GameHub</span></div>
   <script src="tic-tac-toe.js"></script>
 </body>
 </html>
