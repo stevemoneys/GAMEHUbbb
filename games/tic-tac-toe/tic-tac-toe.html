@@ -81,7 +81,7 @@
       </section>
 
       <div class="turn-pill" id="turnPill"><span class="turn-mark" id="turnMark">X</span><strong id="turnLabel">Your Turn</strong></div>
-      <p class="status sr-only" id="status">Player X Turn</p>
+      <p class="status sr-only" id="status" role="status" aria-live="polite">Player X Turn</p>
       <p class="timer"><span>Turn timer</span> <b id="timerText">10s</b></p>
 
       <div class="board-shell"><div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board"></div></div>
@@ -116,9 +116,11 @@
     <label><span>Music</span><input id="musicVolume" type="range" min="0" max="100" value="30"></label>
     <label><span>Sound effects</span><input id="sfxVolume" type="range" min="0" max="100" value="65"></label>
     <div class="audio-toggles"><button id="musicToggle" type="button">Music On</button><button id="sfxToggle" type="button">SFX On</button></div>
+    <button class="data-reset" id="resetPlayerData" type="button">Reset player data</button>
   </aside>
 
   <div class="loading-screen" id="loadingScreen" aria-hidden="true"><div class="loading-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>GameHub</span></div>
+  <script src="tic-tac-toe-save.js"></script>
   <script src="tic-tac-toe.js"></script>
 </body>
 </html>
