@@ -1399,10 +1399,6 @@ featureCore.attachEngine({
 
 showHomeScreen();
 
-window.addEventListener("load", () => {
-  document.getElementById("loadingScreen")?.classList.add("loaded");
-});
-
 window.addEventListener("tictactoe:feel", (event) => {
   const { type, ...detail } = event.detail;
   playAudioEffect(type, detail);
