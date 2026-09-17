@@ -1,8 +1,9 @@
-const boardEl = document.getElementById("gameState.board");
+const boardEl = document.getElementById("board");
 const statusEl = document.getElementById("status");
 const timerTextEl = document.getElementById("timerText");
 const hubBackBtn = document.querySelector(".hub-back-btn");
 const saveManager = window.TicTacToeSave;
+const featureCore = window.TicTacToeFeatureCore;
 let playerSave = saveManager.load();
 
 const bgMusic = document.getElementById("bgMusic");
@@ -17,11 +18,11 @@ const GAME_PHASES = Object.freeze({ HOME: "HOME", LEVEL_SELECT: "LEVEL_SELECT", 
 const gameState = {
   phase: GAME_PHASES.HOME,
   mode: "",
-  gameState.board: Array(9).fill(""),
-  gameState.currentPlayer: "X",
-  gameState.playerSymbol: "X",
-  gameState.aiSymbol: "O",
-  gameState.selectedLevel: 1,
+  board: Array(9).fill(""),
+  currentPlayer: "X",
+  playerSymbol: "X",
+  aiSymbol: "O",
+  selectedLevel: 1,
   level: 1,
   aiPersonality: "human",
   active: false,
@@ -29,7 +30,7 @@ const gameState = {
   ai: { thinking: false, timeout: undefined },
   timer: { handle: undefined, active: false, remaining: turnTime },
   result: { timeout: undefined, recorded: false, data: null },
-  match: { generation: 0, context: null, objectives: null }
+  match: { generation: 0, context: null, objectives: null, config: featureCore.createDefaultMatchConfig(), moves: [] }
 };
 
 const winPatterns = [
@@ -59,7 +60,7 @@ const AI_STRENGTH_BANDS = [
 // Phase 4's single source of truth: levels define the tactical curriculum;
 // personality defines style and strength defines the AI's capability.
 const LEVELS = [
-  ["First Steps", "Foundations", "human", "Learn the gameState.board, turns, and three-in-a-row.", "Complete a match.", "Win the match.", "First level completion", "Very Easy", false, "completeMatch"],
+  ["First Steps", "Foundations", "human", "Learn the board, turns, and three-in-a-row.", "Complete a match.", "Win the match.", "First level completion", "Very Easy", false, "completeMatch"],
   ["See the Threat", "Foundations", "human", "Recognize immediate winning threats.", "Check whether either side can win next.", "Win without allowing an obvious immediate threat.", "Level progression recognition", "Easy", false, null],
   ["The Block", "Foundations", "defensive", "Answer immediate threats with defense.", "Prevent an immediate opponent win.", "Win while answering every immediate threat.", "Progression recognition", "Easy", true, "blockThreat"],
   ["Center Control", "Foundations", "aggressive", "Use central control to create future options.", "Learn why the center creates possibilities.", "Win after establishing strong central control.", "Progression recognition", "Easy â€“ Moderate", false, null],
@@ -71,7 +72,7 @@ const LEVELS = [
   ["Two Threats", "Pressure", "defensive", "Use multi-threat positions deliberately.", "Create or exploit a double-threat position.", "Win by creating a genuine double threat.", "Midpoint mastery recognition", "Challenging", true, "createFork"],
   ["Don't Chase Bait", "Pressure", "trickster", "Choose tactically sound moves over tempting ones.", "Avoid the opponent's strongest legitimate bait.", "Win without falling for bait.", "Tactical awareness recognition", "Challenging", true, null],
   ["Hold the Line", "Pressure", "defensive", "Preserve strong defensive outcomes.", "Recognize when a draw is the correct result.", "Force or preserve a draw from a difficult position.", "Defensive mastery recognition", "Challenging", true, "draw"],
-  ["Change the Plan", "Tactical Mastery", "human", "Adapt when the first plan no longer works.", "Change tactical approach as the gameState.board develops.", "Win after changing strategy.", "Adaptation milestone", "Hard", false, null],
+  ["Change the Plan", "Tactical Mastery", "human", "Adapt when the first plan no longer works.", "Change tactical approach as the board develops.", "Win after changing strategy.", "Adaptation milestone", "Hard", false, null],
   ["Pressure vs Defense", "Tactical Mastery", "aggressive", "Balance attack with defensive responsibility.", "Create threats without abandoning defense.", "Win after surviving a serious counter-threat.", "Tactical balance recognition", "Hard", true, null],
   ["No Easy Forks", "Tactical Mastery", "defensive", "Find advantage when obvious forks are denied.", "Find an alternative route to advantage.", "Win without relying on a direct fork.", "Advanced tactical milestone", "Hard", true, null],
   ["Read the Trickster", "Tactical Mastery", "trickster", "Read the opponent's purpose before committing.", "Identify the actual tactical purpose of a move.", "Win without falling into a major trap.", "Trickster mastery recognition", "Very Hard", true, null],
@@ -192,8 +193,6 @@ let metaProgress = createMetaProgressView();
 unlockedLevel = metaProgress.levels.highestUnlocked;
 evaluateAchievements();
 saveMetaProgress();
-let gameState.result.recorded = false;
-let gameState.match.context = null;
 let gameFeelTimeout;
 
 function emitGameFeelEvent(type, detail = {}) {
@@ -223,6 +222,7 @@ function showGameToast(title, detail = "", tone = "progress") {
 }
 
 function setThinkingState(isThinking) {
+  gameState.ai.thinking = Boolean(isThinking);
   document.getElementById("thinkingCard")?.classList.toggle("is-thinking", isThinking);
   document.getElementById("turnPill")?.classList.toggle("is-thinking", isThinking);
 }
@@ -357,13 +357,16 @@ function beginMatchContext() {
     mode: gameState.mode,
     level: gameState.mode === "ai" ? gameState.selectedLevel : null,
     personality: gameState.mode === "ai" ? gameState.aiPersonality : null,
-    gameState.playerSymbol
+    playerSymbol: gameState.playerSymbol,
+    matchType: gameState.match.config.type,
+    permissions: gameState.match.config.permissions
   };
 }
 
 function finalizeMatch(outcome) {
   if (gameState.result.recorded) return;
   gameState.result.recorded = true;
+  const permissions = gameState.match.config.permissions;
   const previousAchievementIds = new Set(Object.keys(metaProgress.achievements));
   const previouslyUnlocked = metaProgress.levels.highestUnlocked;
 
@@ -371,9 +374,13 @@ function finalizeMatch(outcome) {
     mode: gameState.mode,
     level: gameState.mode === "ai" ? gameState.selectedLevel : null,
     personality: gameState.mode === "ai" ? gameState.aiPersonality : null,
-    gameState.playerSymbol
+    playerSymbol: gameState.playerSymbol
   };
   const result = { ...context, outcome, objectives: { ...gameState.match.objectives } };
+  if (!permissions.statistics) {
+    if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome });
+    return;
+  }
   const stats = metaProgress.statistics;
   stats.matches += 1;
   if (outcome === "win") {
@@ -404,25 +411,26 @@ function finalizeMatch(outcome) {
       mastery.defeated = true;
       mastery.highestLevelDefeated = Math.max(mastery.highestLevelDefeated, context.level);
       stats.winsByLevel[context.level] = asNonNegativeNumber(stats.winsByLevel[context.level]) + 1;
-      if (!metaProgress.levels.completed.includes(context.level)) {
+      if (permissions.progression && !metaProgress.levels.completed.includes(context.level)) {
         metaProgress.levels.completed.push(context.level);
         metaProgress.levels.completed.sort((a, b) => a - b);
         stats.completionsByLevel[context.level] = 1;
       }
-      metaProgress.levels.highestCompleted = Math.max(metaProgress.levels.highestCompleted, context.level);
+      if (permissions.progression) metaProgress.levels.highestCompleted = Math.max(metaProgress.levels.highestCompleted, context.level);
     }
-    metaProgress.levels.highestUnlocked = Math.max(metaProgress.levels.highestUnlocked, unlockedLevel);
+    if (permissions.progression) metaProgress.levels.highestUnlocked = Math.max(metaProgress.levels.highestUnlocked, unlockedLevel);
   }
 
-  evaluateAchievements(result);
+  if (permissions.achievements) evaluateAchievements(result);
   saveMetaProgress();
+  if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome });
   updateHomeDashboard();
   const unlockedAchievement = ACHIEVEMENTS.find((achievement) => !previousAchievementIds.has(achievement.id) && metaProgress.achievements[achievement.id]);
-  if (unlockedAchievement) {
+  if (unlockedAchievement && permissions.achievements) {
     showGameToast("Achievement unlocked", unlockedAchievement.name, "achievement");
     emitGameFeelEvent("achievement_unlock", { id: unlockedAchievement.id });
     haptic(16);
-  } else if (context.mode === "ai" && outcome === "win" && metaProgress.levels.highestUnlocked > previouslyUnlocked) {
+  } else if (permissions.progression && context.mode === "ai" && outcome === "win" && metaProgress.levels.highestUnlocked > previouslyUnlocked) {
     const next = getLevelDefinition(metaProgress.levels.highestUnlocked);
     showGameToast(`Level ${next.number} unlocked`, next.name, "unlock");
     emitGameFeelEvent("level_unlock", { level: next.number });
@@ -432,7 +440,7 @@ function finalizeMatch(outcome) {
   }
 }
 
-let gameState.match.objectives = createMatchObjectives();
+gameState.match.objectives = createMatchObjectives();
 
 function createMatchObjectives() {
   return { completed: false, won: false, draw: false, blockedThreat: false, createdFork: false, preventedFork: false };
@@ -442,10 +450,41 @@ function getLevelDefinition(levelNumber = gameState.selectedLevel) {
   return LEVELS[Math.max(1, Math.min(maxLevel, Number(levelNumber) || 1)) - 1];
 }
 
+function snapshotMatchConfig(overrides = {}) {
+  const normalized = featureCore.normalizeMatchConfig({
+    ...gameState.match.config,
+    mode: gameState.mode || "ai",
+    level: gameState.selectedLevel,
+    personality: gameState.aiPersonality,
+    playerSymbol: gameState.playerSymbol,
+    aiSymbol: gameState.aiSymbol,
+    ...overrides
+  });
+  if (!normalized.valid) return false;
+  gameState.match.config = normalized.value;
+  return true;
+}
+
+function prepareMatchConfiguration(config) {
+  if (gameState.active || gameState.phase === GAME_PHASES.AI_THINKING) return { valid: false, reason: "A match is already active." };
+  const normalized = featureCore.normalizeMatchConfig(config);
+  if (!normalized.valid) return normalized;
+  const next = normalized.value;
+  gameState.mode = next.mode;
+  gameState.playerSymbol = next.playerSymbol;
+  gameState.aiSymbol = next.aiSymbol;
+  applyLevelDefinition(next.level);
+  // Curriculum data remains authoritative for standard level matches. Future
+  // non-standard experiences can explicitly use their own configuration later.
+  if (next.type !== "standard") gameState.aiPersonality = next.personality;
+  gameState.match.config = next;
+  return { valid: true, value: next };
+}
+
 function applyLevelDefinition(levelNumber) {
   const definition = getLevelDefinition(levelNumber);
   gameState.selectedLevel = definition.number;
-  level = definition.strength;
+  gameState.level = definition.strength;
   gameState.aiPersonality = definition.personality;
   return definition;
 }
@@ -472,17 +511,39 @@ function clearPendingAIWork() {
   clearTimeout(gameState.result.timeout);
   gameState.result.timeout = undefined;
   gameState.match.generation += 1;
+  gameState.ai.thinking = false;
   setThinkingState(false);
 }
 
+function stopTurnTimer() {
+  clearInterval(gameState.timer.handle);
+  gameState.timer.handle = undefined;
+  gameState.timer.active = false;
+  const seconds = gameState.match.config?.timer?.secondsPerTurn || turnTime;
+  gameState.timer.remaining = seconds;
+  timerTextEl.textContent = `${seconds}s`;
+  timerTextEl.classList.remove("urgent");
+  timerTextEl.parentElement?.classList.remove("urgent");
+}
+
+function transitionTo(phase) {
+  if (!Object.values(GAME_PHASES).includes(phase)) return false;
+  gameState.phase = phase;
+  gameState.inputLocked = phase !== GAME_PHASES.PLAYING;
+  return true;
+}
+
 function scheduleAIMove(delay = 350) {
+  if (!gameState.active || gameState.mode !== "ai" || gameState.currentPlayer !== gameState.aiSymbol) return;
   clearTimeout(gameState.ai.timeout);
   const generation = gameState.match.generation;
+  transitionTo(GAME_PHASES.AI_THINKING);
+  gameState.ai.thinking = true;
   setThinkingState(true);
   emitGameFeelEvent("ai_thinking_start");
   gameState.ai.timeout = setTimeout(() => {
     gameState.ai.timeout = undefined;
-    if (generation !== gameState.match.generation) return;
+    if (generation !== gameState.match.generation || gameState.phase !== GAME_PHASES.AI_THINKING) return;
     aiMove();
   }, delay);
 }
@@ -492,7 +553,7 @@ function scheduleResult(won, isDraw, delay) {
   const generation = gameState.match.generation;
   gameState.result.timeout = setTimeout(() => {
     gameState.result.timeout = undefined;
-    if (generation === gameState.match.generation) showResult(won, isDraw);
+    if (generation === gameState.match.generation && gameState.phase === GAME_PHASES.RESULT) showResult(won, isDraw);
   }, delay);
 }
 
@@ -506,6 +567,10 @@ function hideAllScreens() {
 }
 
 function showHomeScreen() {
+  stopTurnTimer();
+  clearPendingAIWork();
+  gameState.active = false;
+  transitionTo(GAME_PHASES.HOME);
   hideAllScreens();
   document.getElementById("menu").classList.add("active");
   updateHomeDashboard();
@@ -587,7 +652,7 @@ function updateMatchPresentation() {
   document.getElementById("thinkingEmblem").textContent = isAI ? personality.symbol : "â—«";
   document.getElementById("opponentKicker").textContent = isAI ? "Tactical Opponent" : "Local Duel";
   document.getElementById("opponentName").textContent = isAI ? personality.name : "Two Players";
-  document.getElementById("opponentLesson").textContent = isAI ? `Level ${definition.number} Â· ${definition.name}` : "Pass the gameState.board and play face to face.";
+  document.getElementById("opponentLesson").textContent = isAI ? `Level ${definition.number} Â· ${definition.name}` : "Pass the board and play face to face.";
   document.getElementById("strengthLabel").textContent = isAI ? `Level ${definition.strength}` : "Classic match";
   const strengthDots = document.getElementById("strengthDots");
   strengthDots.innerHTML = "";
@@ -618,7 +683,7 @@ function updateTurnPresentation() {
   turnLabel.textContent = gameState.active ? localLabel : statusEl.textContent;
   turnMark.textContent = gameState.currentPlayer;
   playerTurn.textContent = gameState.active ? (isAI ? (aiTurn ? "AI thinking" : "Your turn") : `Player ${gameState.currentPlayer}`) : statusEl.textContent;
-  emitGameFeelEvent(aiTurn ? "ai_turn" : "player_turn", { gameState.currentPlayer });
+  emitGameFeelEvent(aiTurn ? "ai_turn" : "player_turn", { currentPlayer: gameState.currentPlayer });
 }
 
 function startTwoPlayer() {
@@ -626,6 +691,8 @@ function startTwoPlayer() {
   gameState.mode = "two";
   gameState.playerSymbol = "X";
   gameState.aiSymbol = "O";
+  gameState.selectedLevel = 1;
+  snapshotMatchConfig({ mode: "two", type: "standard" });
   hideAllScreens();
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
@@ -638,6 +705,7 @@ function startVsAI() {
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
+  snapshotMatchConfig({ mode: "ai", type: "standard" });
   updateHomeDashboard();
 
   document.getElementById("menu").classList.remove("active");
@@ -646,6 +714,7 @@ function startVsAI() {
 }
 
 function showLevels() {
+  transitionTo(GAME_PHASES.LEVEL_SELECT);
   hideAllScreens();
   hideHubBackBtn();
   const levelBox = document.getElementById("levels");
@@ -705,6 +774,7 @@ function selectLevel(lvl) {
   clearSavedMatch();
   applyLevelDefinition(lvl);
   savePlayerData();
+  transitionTo(GAME_PHASES.SYMBOL_SELECT);
 
   document.getElementById("levels").classList.remove("active");
   document.getElementById("symbolSelect").classList.add("active");
@@ -719,10 +789,12 @@ function selectAvatar() {
 }
 
 function chooseSymbol(symbol) {
+  if (gameState.phase !== GAME_PHASES.SYMBOL_SELECT || (symbol !== "X" && symbol !== "O")) return;
   clearSavedMatch();
   applyLevelDefinition(gameState.selectedLevel);
   gameState.playerSymbol = symbol;
   gameState.aiSymbol = symbol === "X" ? "O" : "X";
+  if (!snapshotMatchConfig({ playerSymbol: symbol, aiSymbol: gameState.aiSymbol })) return;
 
   hideAllScreens();
   hideHubBackBtn();
@@ -742,14 +814,18 @@ function backToLevelsFromSymbol() {
 }
 
 function resetBoard() {
+  stopTurnTimer();
   clearPendingAIWork();
   gameState.match.objectives = createMatchObjectives();
+  gameState.match.moves = [];
   beginMatchContext();
   gameState.board = Array(9).fill("");
   gameState.active = true;
   gameState.currentPlayer = "X";
+  gameState.result.data = null;
+  transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
-  document.querySelector(".gameState.board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
+  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
 
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
@@ -761,7 +837,7 @@ function resetBoard() {
 }
 
 function makeMove(index) {
-  if (!gameState.active || gameState.board[index] || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
+  if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
     const cell = boardEl.children[index];
     if (cell) restartAnimation(cell, "invalid-move");
     emitGameFeelEvent("invalid_move", { index });
@@ -775,6 +851,7 @@ function makeMove(index) {
   const createsFork = tracksObjectives && getForkMoves(gameState.board, gameState.playerSymbol).includes(index);
 
   gameState.board[index] = gameState.currentPlayer;
+  gameState.match.moves.push(index);
   if (tracksObjectives) {
     gameState.match.objectives.blockedThreat ||= blocksImmediateThreat;
     gameState.match.objectives.preventedFork ||= preventsFork;
@@ -805,15 +882,24 @@ function makeMove(index) {
 }
 
 function startTurnTimer() {
-  clearInterval(gameState.timer.handle);
+  stopTurnTimer();
+  if (!gameState.active || gameState.phase === GAME_PHASES.RESULT || gameState.match.config?.timer?.enabled === false) return;
 
-  let timeLeft = turnTime;
+  let timeLeft = gameState.match.config?.timer?.secondsPerTurn || turnTime;
+  const generation = gameState.match.generation;
+  gameState.timer.active = true;
+  gameState.timer.remaining = timeLeft;
   timerTextEl.textContent = `${timeLeft}s`;
   timerTextEl.classList.remove("urgent");
   timerTextEl.parentElement?.classList.remove("urgent");
 
   gameState.timer.handle = setInterval(() => {
+    if (generation !== gameState.match.generation || !gameState.active || gameState.phase === GAME_PHASES.RESULT) {
+      stopTurnTimer();
+      return;
+    }
     timeLeft -= 1;
+    gameState.timer.remaining = timeLeft;
     timerTextEl.textContent = `${timeLeft}s`;
     const isUrgent = timeLeft > 0 && timeLeft <= 3;
     timerTextEl.classList.toggle("urgent", isUrgent);
@@ -821,11 +907,11 @@ function startTurnTimer() {
 
     if (isUrgent) emitGameFeelEvent("timer_warning", { seconds: timeLeft });
 
-    if (timeLeft > 0 || !gameState.active) {
+    if (timeLeft > 0) {
       return;
     }
 
-    clearInterval(gameState.timer.handle);
+    stopTurnTimer();
 
     if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) {
       aiMove();
@@ -845,7 +931,8 @@ function startTurnTimer() {
 
 function aiMove() {
   setThinkingState(false);
-  if (!gameState.active) return;
+  gameState.ai.thinking = false;
+  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING) return;
   if (gameState.currentPlayer !== gameState.aiSymbol) return;
 
   const move = getAIMoveByLevel();
@@ -866,9 +953,10 @@ function playMoveFromAI(index) {
 }
 
 function makeMoveFromSymbol(index, symbol) {
-  if (!gameState.active || gameState.board[index]) return;
+  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index]) return;
 
   gameState.board[index] = symbol;
+  gameState.match.moves.push(index);
   const cell = boardEl.children[index];
   cell.textContent = symbol;
   cell.classList.add(symbol);
@@ -884,6 +972,7 @@ function makeMoveFromSymbol(index, symbol) {
   }
 
   gameState.currentPlayer = symbol === "X" ? "O" : "X";
+  transitionTo(GAME_PHASES.PLAYING);
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   startTurnTimer();
 }
@@ -1028,7 +1117,7 @@ function chooseRankedCandidate(ranked, profile, personality) {
 }
 
 function getAIMoveByLevel() {
-  const profile = getStrengthProfile(level);
+  const profile = getStrengthProfile(gameState.level);
   const personality = AI_PERSONALITIES[gameState.aiPersonality] ? gameState.aiPersonality : "human";
   const legal = getLegalMoves(gameState.board);
   if (legal.length === 0) return null;
@@ -1055,30 +1144,47 @@ function getAIMoveByLevel() {
   return chooseRankedCandidate(ranked, profile, personality);
 }
 
+function finishMatch({ outcome, isDraw = false, winner = null }) {
+  if (!gameState.active || gameState.result.recorded) return false;
+  stopTurnTimer();
+  clearPendingAIWork();
+  gameState.active = false;
+  gameState.ai.thinking = false;
+  gameState.result.data = { outcome, isDraw, winner };
+  transitionTo(GAME_PHASES.RESULT);
+
+  if (isDraw) {
+    gameState.match.objectives.completed = true;
+    gameState.match.objectives.draw = true;
+    setStatus("Draw");
+  } else {
+    gameState.match.objectives.completed = true;
+    gameState.match.objectives.won = gameState.mode !== "ai" || winner === gameState.playerSymbol;
+    setStatus(`Player ${winner} Wins`);
+    updateScore();
+  }
+
+  finalizeMatch(outcome);
+  scheduleResult(outcome === "win", isDraw, isDraw ? 500 : 600);
+  return true;
+}
+
 function checkWin() {
-  clearInterval(gameState.timer.handle);
 
   for (const pattern of winPatterns) {
     const [a, b, c] = pattern;
 
     if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[b] === gameState.board[c]) {
       [a, b, c].forEach((idx) => boardEl.children[idx].classList.add("win"));
-      const boardShell = document.querySelector(".gameState.board-shell");
+      const boardShell = document.querySelector(".board-shell");
       boardShell?.classList.add("has-win", getWinLineClass(pattern));
       restartAnimation(boardShell, "win-impact");
 
       emitGameFeelEvent("win_line", { winner: gameState.currentPlayer, pattern });
       haptic([14, 45, 24]);
 
-      gameState.match.objectives.completed = true;
-      gameState.match.objectives.won = gameState.mode !== "ai" ? true : gameState.currentPlayer === gameState.playerSymbol;
-      gameState.active = false;
-      setStatus(`Player ${gameState.currentPlayer} Wins`);
-      updateScore();
-
       const playerWon = gameState.mode !== "ai" ? true : gameState.currentPlayer === gameState.playerSymbol;
-      finalizeMatch(playerWon ? "win" : "loss");
-      scheduleResult(playerWon, false, 600);
+      finishMatch({ outcome: playerWon ? "win" : "loss", winner: gameState.currentPlayer });
 
       return true;
     }
@@ -1088,16 +1194,8 @@ function checkWin() {
 }
 
 function draw() {
-  clearInterval(gameState.timer.handle);
-  gameState.active = false;
-  gameState.match.objectives.completed = true;
-  gameState.match.objectives.draw = true;
-  finalizeMatch("draw");
-
-  document.querySelector(".gameState.board-shell")?.classList.add("draw-complete");
-
-  setStatus("Draw");
-  scheduleResult(false, true, 500);
+  document.querySelector(".board-shell")?.classList.add("draw-complete");
+  finishMatch({ outcome: "draw", isDraw: true });
 }
 
 function updateScore() {
@@ -1110,12 +1208,12 @@ function updateScore() {
   document.getElementById("scoreX").textContent = String(scoreX);
   document.getElementById("scoreO").textContent = String(scoreO);
 
-  if (gameState.mode === "ai" && gameState.currentPlayer === gameState.playerSymbol) {
-    if (level >= unlockedLevel && unlockedLevel < maxLevel) {
+  if (gameState.match.config.permissions.progression && gameState.mode === "ai" && gameState.currentPlayer === gameState.playerSymbol) {
+    if (gameState.level >= unlockedLevel && unlockedLevel < maxLevel) {
       unlockedLevel += 1;
     }
   }
-  savePlayerData();
+  if (gameState.match.config.permissions.statistics) savePlayerData();
 }
 
 function resetScores() {
@@ -1131,7 +1229,7 @@ function resetPlayerData() {
   const confirmed = window.confirm("Reset all Tic-Tac-Toe progress, statistics, achievements, scores, and audio settings? This cannot be undone.");
   if (!confirmed) return;
 
-  clearInterval(gameState.timer.handle);
+  stopTurnTimer();
   clearPendingAIWork();
   playerSave = saveManager.reset();
   metaProgress = createMetaProgressView(playerSave);
@@ -1146,10 +1244,11 @@ function resetPlayerData() {
   gameState.aiSymbol = "O";
   gameState.board = Array(9).fill("");
   gameState.currentPlayer = "X";
-  gameState.active = true;
+  gameState.active = false;
   gameState.match.objectives = createMatchObjectives();
   gameState.result.recorded = false;
   gameState.match.context = null;
+  gameState.result.data = null;
   applyLevelDefinition(1);
 
   document.getElementById("scoreX").textContent = "0";
@@ -1167,6 +1266,7 @@ function resetPlayerData() {
 }
 
 function restartGame() {
+  if (!gameState.mode || ![GAME_PHASES.PLAYING, GAME_PHASES.AI_THINKING, GAME_PHASES.RESULT].includes(gameState.phase)) return;
   emitGameFeelEvent("reset");
   clearSavedMatch();
   clearPendingAIWork();
@@ -1180,13 +1280,14 @@ function restartGame() {
 }
 
 function backToMenu() {
-  clearInterval(gameState.timer.handle);
+  stopTurnTimer();
   clearPendingAIWork();
   document.getElementById("resultModal").classList.remove("active");
   showHomeScreen();
 }
 
 function showResult(won, isDraw = false) {
+  if (gameState.phase !== GAME_PHASES.RESULT) return;
   const modal = document.getElementById("resultModal");
   const title = document.getElementById("resultTitle");
   const nextBtn = document.getElementById("nextBtn");
@@ -1200,7 +1301,7 @@ function showResult(won, isDraw = false) {
     modal.classList.add("draw");
     kicker.textContent = "Balanced Position";
     title.textContent = "Draw";
-    detail.textContent = gameState.mode === "ai" && level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
+    detail.textContent = gameState.mode === "ai" && gameState.level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
     nextBtn.style.display = "none";
     emitGameFeelEvent("draw");
     return;
@@ -1218,11 +1319,11 @@ function showResult(won, isDraw = false) {
 
   if (won) {
     modal.classList.add("victory");
-    kicker.textContent = level < maxLevel ? "Challenge Complete" : "Master Tactician";
+    kicker.textContent = gameState.level < maxLevel ? "Challenge Complete" : "Master Tactician";
     title.textContent = "You Win";
-    const next = level < maxLevel ? getLevelDefinition(level + 1) : null;
+    const next = gameState.level < maxLevel ? getLevelDefinition(gameState.level + 1) : null;
     detail.textContent = next ? `Level ${next.number} unlocked: ${next.name}.` : "You completed the full tactical mastery path.";
-    nextBtn.style.display = level < maxLevel ? "inline-block" : "none";
+    nextBtn.style.display = gameState.level < maxLevel ? "inline-block" : "none";
     emitGameFeelEvent("victory");
   } else {
     modal.classList.add("defeat");
@@ -1235,14 +1336,14 @@ function showResult(won, isDraw = false) {
 }
 
 function nextLevel() {
+  if (gameState.phase !== GAME_PHASES.RESULT || gameState.mode !== "ai" || gameState.selectedLevel >= maxLevel) return;
   emitGameFeelEvent("next_level");
   document.getElementById("resultModal").classList.remove("active");
   clearSavedMatch();
   clearPendingAIWork();
-  if (gameState.selectedLevel < maxLevel) {
-    applyLevelDefinition(gameState.selectedLevel + 1);
-    savePlayerData();
-  }
+  applyLevelDefinition(gameState.selectedLevel + 1);
+  snapshotMatchConfig({ level: gameState.selectedLevel });
+  savePlayerData();
   resetBoard();
   startTurnTimer();
 
@@ -1276,6 +1377,25 @@ window.backToMenu = backToMenu;
 window.nextLevel = nextLevel;
 window.goHome = goHome;
 window.backToHome = backToHome;
+
+// Phase 11.5B adapter: feature systems can query the same tactical helpers as
+// the AI without receiving authority to mutate the live match state.
+featureCore.attachEngine({
+  analysis: {
+    legalMoves: (board) => getLegalMoves(board),
+    winningMoves: (board, mark) => getWinningMoves(board, mark),
+    forkMoves: (board, mark) => getForkMoves(board, mark)
+  },
+  getRuntimeSnapshot: () => ({
+    phase: gameState.phase,
+    board: [...gameState.board],
+    currentPlayer: gameState.currentPlayer,
+    config: gameState.match.config,
+    moves: [...gameState.match.moves]
+  }),
+  validateConfiguration: (config) => featureCore.normalizeMatchConfig(config),
+  prepareMatchConfiguration
+});
 
 showHomeScreen();
 

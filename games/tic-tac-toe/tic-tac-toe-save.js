@@ -4,7 +4,7 @@
   "use strict";
 
   const STORAGE_KEY = "tictactoe_player_save_v1";
-  const CURRENT_VERSION = 1;
+  const CURRENT_VERSION = 2;
   const MAX_LEVEL = 20;
   const PERSONALITIES = ["human", "aggressive", "defensive", "trickster"];
   const ACHIEVEMENT_IDS = new Set([
@@ -71,7 +71,15 @@
       achievements: {},
       settings: { selectedTheme: "default", selectedAIPersonality: "human", preferences: {}, audio: { ...DEFAULT_AUDIO } },
       cosmetics: { unlocked: [], selected: {} },
-      scores: { x: 0, o: 0 }
+      scores: { x: 0, o: 0 },
+      features: {
+        challenges: { solved: {}, trials: {} },
+        daily: { history: {} },
+        rivals: { human: { wins: 0, losses: 0, rematchWins: 0 }, aggressive: { wins: 0, losses: 0, rematchWins: 0 }, defensive: { wins: 0, losses: 0, rematchWins: 0 }, trickster: { wins: 0, losses: 0, rematchWins: 0 } },
+        predictions: { made: 0, correct: 0 },
+        records: {},
+        replays: []
+      }
     };
   }
 
@@ -127,9 +135,12 @@
     }, {});
     const sourceSettings = isRecord(source.settings) ? source.settings : {};
     const sourceCosmetics = isRecord(source.cosmetics) ? source.cosmetics : {};
+    const now = Date.now();
+    const sourceFeatures = isRecord(source.features) ? source.features : {};
+    const normalizeRival = (source) => ({ wins: count(source?.wins), losses: count(source?.losses), rematchWins: count(source?.rematchWins) });
+    const replayRecords = Array.isArray(sourceFeatures.replays) ? sourceFeatures.replays.filter((replay) => isRecord(replay) && Array.isArray(replay.moves) && replay.moves.length <= 9 && replay.moves.every((move) => Number.isInteger(move) && move >= 0 && move < 9)).slice(0, 12).map((replay) => ({ id: typeof replay.id === "string" ? replay.id.slice(0, 80) : "", matchType: typeof replay.matchType === "string" ? replay.matchType : "standard", level: level(replay.level, 1), personality: PERSONALITIES.includes(replay.personality) ? replay.personality : "human", playerSymbol: replay.playerSymbol === "O" ? "O" : "X", aiSymbol: replay.aiSymbol === "X" ? "X" : "O", rules: isRecord(replay.rules) ? clone(replay.rules) : {}, moves: replay.moves, result: typeof replay.result === "string" ? replay.result : "draw", createdAt: timestamp(replay.createdAt, now) })) : [];
     const highestUnlocked = Math.max(completed.length ? Math.max(...completed) : 1, level(sourceLevels.highestUnlocked, 1));
     const currentStreak = count(progress.streaks?.current);
-    const now = Date.now();
 
     return {
       version: CURRENT_VERSION,
@@ -150,7 +161,15 @@
         audio: normalizeAudio(sourceSettings.audio)
       },
       cosmetics: { unlocked: Array.isArray(sourceCosmetics.unlocked) ? [...new Set(sourceCosmetics.unlocked.filter((entry) => typeof entry === "string"))] : [], selected: isRecord(sourceCosmetics.selected) ? clone(sourceCosmetics.selected) : {} },
-      scores: { x: count(source.scores?.x), o: count(source.scores?.o) }
+      scores: { x: count(source.scores?.x), o: count(source.scores?.o) },
+      features: {
+        challenges: { solved: isRecord(sourceFeatures.challenges?.solved) ? clone(sourceFeatures.challenges.solved) : {}, trials: isRecord(sourceFeatures.challenges?.trials) ? clone(sourceFeatures.challenges.trials) : {} },
+        daily: { history: isRecord(sourceFeatures.daily?.history) ? clone(sourceFeatures.daily.history) : {} },
+        rivals: Object.fromEntries(PERSONALITIES.map((personality) => [personality, normalizeRival(sourceFeatures.rivals?.[personality])])),
+        predictions: { made: count(sourceFeatures.predictions?.made), correct: Math.min(count(sourceFeatures.predictions?.correct), count(sourceFeatures.predictions?.made)) },
+        records: isRecord(sourceFeatures.records) ? clone(sourceFeatures.records) : {},
+        replays: replayRecords
+      }
     };
   }
 
@@ -180,9 +199,11 @@
     };
   }
 
-  // Current production schema is v1. Future migrations belong in this map as
+  // Current production schema is v2. Future migrations belong in this map as
   // functions keyed by the version they migrate *from*.
-  const migrations = {};
+  const migrations = {
+    1: (save) => ({ ...save, version: 2, features: createDefaultSave().features })
+  };
   function migrate(raw) {
     if (!isRecord(raw)) return null;
     const version = Number(raw.version);
