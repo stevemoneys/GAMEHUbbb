@@ -8,10 +8,10 @@
   const OBJECTIVE_TYPES = Object.freeze(["WIN", "DRAW", "BLOCK", "FORK", "PREVENT_FORK", "FORCE_DRAW", "WIN_IN_1", "WIN_IN_2", "PREDICT", "SURVIVE_SEQUENCE", "TIME_LIMIT"]);
   const PERSONALITIES = Object.freeze(["human", "aggressive", "defensive", "trickster"]);
   const FEATURE_REGISTRY = Object.freeze({
-    tactical_challenges: { category: "master", enabled: false, progression: false, statistics: false, replay: true },
+    tactical_challenges: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
     quick_duel: { category: "play", enabled: false, progression: false, statistics: true, replay: true },
-    daily_challenge: { category: "master", enabled: false, progression: false, statistics: false, replay: true },
-    mastery_trials: { category: "master", enabled: false, progression: false, statistics: false, replay: true },
+    daily_challenge: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
+    mastery_trials: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
     rivals: { category: "play", enabled: false, progression: false, statistics: true, replay: true },
     modifiers: { category: "lab", enabled: false, progression: false, statistics: false, replay: true },
     replay: { category: "review", enabled: false, progression: false, statistics: false, replay: false },

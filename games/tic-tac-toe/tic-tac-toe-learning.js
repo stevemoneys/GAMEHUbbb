@@ -1,11 +1,227 @@
-(function(){"use strict";const core=window.TicTacToeFeatureCore,save=window.TicTacToeSave;let session=null;const $=id=>document.getElementById(id);const types=["WIN_IN_1","BLOCK","FORK","PREVENT_FORK"];const lessons={WIN_IN_1:"Find the immediate winning line.",BLOCK:"Stop the opponent's immediate threat.",FORK:"Create two winning threats at once.",PREVENT_FORK:"Remove the opponent's fork opportunity."};
-function show(){["menu","levels","avatars","symbolSelect","game"].forEach(id=>$(id).classList.remove("active"));$("learning").classList.add("active")}function home(){session=null;$("learning").classList.remove("active");$("menu").classList.add("active")}function store(path,patch){save.update(s=>{const target=path.reduce((o,k)=>(o[k]??={}),s);Object.assign(target,patch)})}
-function cards(){show();$("learningIntro").textContent="Play, understand, practice, and return sharper.";const replay=save.get().features.replays[0];$("learningContent").innerHTML=`<article class="glass-card learning-card"><h3>Tactical Challenges</h3><p>Short, validated tactical decisions.</p><button class="primary-control" onclick="learningStart('challenge')">Practice</button></article><article class="glass-card learning-card"><h3>Mastery Trials</h3><p>Chain three focused tactical decisions.</p><button class="control-button" onclick="learningStart('trial')">Start trial</button></article><article class="glass-card learning-card"><h3>Daily Challenge</h3><p>A deterministic tactical test for today.</p><button class="control-button" onclick="learningStart('daily')">Play today</button></article>${replay?`<article class="glass-card learning-card"><h3>Last Match</h3><p>Review factual turning points from your latest completed game.</p><button class="control-button" onclick="learningAnalysis()">Match analysis</button>${replay.result==='loss'?'<button class="control-button" onclick="learningWhy()">Why did I lose?</button>':''}</article>`:'<article class="glass-card learning-card"><h3>Last Match</h3><p>Finish a match to unlock a factual review.</p></article>`}`}
-function dailyKey(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function make(kind){const key=kind==='daily'?`tic-tac-toe-daily-v1-${dailyKey()}`:`${kind}-${Date.now()}`;for(const type of types){const r=core.generatePosition({seed:key,objective:type,difficulty:1});if(r.valid)return {...r,kind,type};}return null}
-function start(kind){const challenge=make(kind);if(!challenge){$("learningContent").textContent="A valid tactical position was unavailable. Please try again.";return}session={kind,challenge,step:0,correct:0,attempts:0};renderChallenge()}
-function renderChallenge(){const c=session.challenge;const a=core.analyzePosition({board:c.board,playerSymbol:c.playerSymbol,opponentSymbol:c.opponentSymbol});const allowed=c.type==='FORK'?a.forks:c.type==='PREVENT_FORK'?a.counterForks:c.type==='BLOCK'?a.opponentImmediateWins:a.immediateWins;session.allowed=allowed;$("learningIntro").textContent=session.kind==='trial'?`Trial decision ${session.step+1} of 3`:`${c.type.replaceAll('_',' ')} · ${lessons[c.type]}`;$("learningContent").innerHTML=`<div class="learning-board" role="grid" aria-label="Tactical position">${c.board.map((v,i)=>`<button class="learning-cell" data-cell="${i}" ${v?'disabled':''} aria-label="Cell ${i+1} ${v||'empty'}">${v}</button>`).join('')}</div><p class="learning-feedback" id="learningFeedback">${lessons[c.type]}</p><div class="learning-actions"><button class="control-button" onclick="learningHint()">Hint</button><button class="control-button" onclick="learningBack()">Back</button></div>`;document.querySelectorAll('[data-cell]').forEach(b=>b.addEventListener('click',()=>answer(Number(b.dataset.cell))));}
-function answer(move){if(!session)return;session.attempts++;const ok=session.allowed.includes(move);const f=$("learningFeedback");if(!ok){f.textContent=`Not this time. ${session.challenge.type==='BLOCK'?'The immediate threat remains.':'This move does not satisfy the tactical objective.'}`;store(["features","challenges","solved"],{[session.challenge.type]:{attempts:session.attempts}});return}session.correct++;f.textContent=`Success — ${session.challenge.type==='FORK'?'two threats were created.':'the tactical idea is confirmed.'}`;window.dispatchEvent(new CustomEvent('tictactoe:feel',{detail:{type:'level_unlock'}}));if(session.kind==='trial'&&session.step<2){session.step++;session.challenge=make('trial');setTimeout(renderChallenge,350);return}const bucket=session.kind==='trial'?'trials':'solved';store(["features","challenges",bucket],{[session.kind==='daily'?dailyKey():session.challenge.type]:{completed:true,attempts:session.attempts,best:session.correct}});if(session.kind==='daily')store(["features","daily","history"],{[dailyKey()]:{completed:true,attempts:session.attempts,objective:session.challenge.type}});f.textContent+=session.kind==='trial'?' Trial complete.':' Practice complete.';}
-function hint(){if(session)$("learningFeedback").textContent=session.allowed.length===1?"Look for the line that changes the position immediately.":"More than one tactical response may preserve the position."}
-function analysis(){const r=save.get().features.replays[0];if(!r)return;const timeline=[];let board=Array(9).fill('');for(let i=0;i<r.moves.length;i++){const mark=i%2?'O':'X',before=core.analyzePosition({board,playerSymbol:mark,opponentSymbol:mark==='X'?'O':'X'}),move=r.moves[i];let note='Solid move';if(before.immediateWins.length&&!before.immediateWins.includes(move))note='Missed immediate win';else if(before.opponentImmediateWins.length&&!before.opponentImmediateWins.includes(move))note='Missed immediate block';else if(before.forks.includes(move))note='Created fork';board[move]=mark;timeline.push(`Move ${i+1}: ${note}`)}show();$("learningIntro").textContent=`${r.result.toUpperCase()} · ${r.moves.length} moves · ${r.personality} opponent`;$("learningContent").innerHTML=`<article class="glass-card learning-card"><h3>Match Analysis</h3><p>Factual tactical moments from the recorded move sequence.</p><ul class="learning-timeline">${timeline.slice(0,6).map(x=>`<li>${x}</li>`).join('')}</ul><button class="control-button" onclick="learningBack()">Back</button></article>`;session={analysis:{timeline,replay:r}}}
-function why(){analysis();const item=session.analysis.timeline.find(x=>x.includes('Missed'));$("learningContent").insertAdjacentHTML('afterbegin',`<article class="glass-card learning-card"><h3>Why did I lose?</h3><p>${item?`${item} was the earliest provable tactical turning point.`:'No single turning point was proven. The result developed through several smaller decisions.'}</p></article>`)}
-window.openLearningHub=cards;window.closeLearningHub=home;window.learningStart=start;window.learningHint=hint;window.learningBack=cards;window.learningAnalysis=analysis;window.learningWhy=why;}());
+/* Phase 11.5C — playable learning and review experiences. */
+(function createLearningLoop(global) {
+  "use strict";
+
+  const core = global.TicTacToeFeatureCore;
+  const save = global.TicTacToeSave;
+  const $ = (id) => document.getElementById(id);
+  const emptyBoard = () => Array(9).fill("");
+  const other = (mark) => mark === "X" ? "O" : "X";
+  const WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,4,6]];
+  let active = null;
+  let generation = 0;
+
+  const CATEGORIES = {
+    WIN_IN_1: { title: "Win in 1", lesson: "Spot the line that ends the game now." },
+    BLOCK: { title: "Block", lesson: "Stop the opponent's immediate threat." },
+    FORK: { title: "Create Fork", lesson: "Create two winning threats with one move." },
+    PREVENT_FORK: { title: "Prevent Fork", lesson: "Remove the opponent's double-threat opportunity." },
+    WIN_IN_2: { title: "Win in 2", lesson: "Create a forced pair of threats." }
+  };
+  const TRIALS = {
+    threat: { title: "Threat Recognition", steps: ["WIN_IN_1", "BLOCK", "WIN_IN_1"] },
+    blocking: { title: "Blocking Fundamentals", steps: ["BLOCK", "BLOCK", "PREVENT_FORK"] },
+    fork: { title: "Fork Creation", steps: ["FORK", "WIN_IN_2", "FORK"] },
+    prevention: { title: "Fork Prevention", steps: ["PREVENT_FORK", "BLOCK", "PREVENT_FORK"] },
+    conversion: { title: "Tactical Conversion", steps: ["WIN_IN_1", "WIN_IN_2", "WIN_IN_1"] }
+  };
+  // These are legal, non-terminal positions. Their tactical result is checked at
+  // play time; the listed board is never treated as an answer key.
+  const POSITIONS = {
+    WIN_IN_1: [
+      { board: ["X","X","","O","O","","","", ""], player: "X" },
+      { board: ["X","O","","X","O","","","", ""], player: "X" }
+    ],
+    BLOCK: [
+      { board: ["O","O","","X","","","","X", ""], player: "X" },
+      { board: ["X","O","X","","O","","","", ""], player: "X" }
+    ],
+    FORK: [
+      { board: ["X","O","","","O","","","X"], player: "X" }
+    ],
+    PREVENT_FORK: [
+      { board: ["X","","","","O","","","X"], player: "O" }
+    ],
+    WIN_IN_2: [
+      { board: ["X","O","","","O","","","X"], player: "X" }
+    ]
+  };
+
+  function winner(board, mark) { return WIN_LINES.some((line) => line.every((cell) => board[cell] === mark)); }
+  function count(board, mark) { return board.filter((cell) => cell === mark).length; }
+  function legalPosition(board, player) {
+    if (!Array.isArray(board) || board.length !== 9 || board.some((cell) => !["", "X", "O"].includes(cell))) return false;
+    const x = count(board, "X"), o = count(board, "O");
+    return (x === o || x === o + 1) && player === (x === o ? "X" : "O") && !winner(board, "X") && !winner(board, "O");
+  }
+  function analysis(board, player) { return core.analyzePosition({ board, playerSymbol: player, opponentSymbol: other(player) }); }
+  function immediateWins(board, player) { return analysis(board, player).immediateWins; }
+  function forcedWinInTwo(board, player, move) {
+    const first = [...board]; first[move] = player;
+    if (winner(first, player)) return false;
+    const opponent = other(player);
+    const replies = analysis(first, opponent).legalMoves;
+    return replies.length > 0 && replies.every((reply) => {
+      const afterReply = [...first]; afterReply[reply] = opponent;
+      return immediateWins(afterReply, player).length > 0;
+    });
+  }
+  function solutions(position) {
+    const before = analysis(position.board, position.player);
+    const opponent = other(position.player);
+    return before.legalMoves.filter((move) => {
+      const after = [...position.board]; after[move] = position.player;
+      if (position.type === "WIN_IN_1") return winner(after, position.player);
+      if (position.type === "BLOCK") return before.opponentImmediateWins.includes(move) && immediateWins(after, opponent).length === 0;
+      if (position.type === "FORK") return immediateWins(after, position.player).length >= 2;
+      if (position.type === "PREVENT_FORK") return before.counterForks.length > 0 && analysis(after, opponent).forks.length === 0;
+      if (position.type === "WIN_IN_2") return forcedWinInTwo(position.board, position.player, move);
+      return false;
+    });
+  }
+  function validatedPosition(type, seed) {
+    const pool = POSITIONS[type] || [];
+    const offset = [...String(seed)].reduce((sum, char) => sum + char.charCodeAt(0), 0) % Math.max(pool.length, 1);
+    for (let index = 0; index < pool.length; index += 1) {
+      const source = pool[(offset + index) % pool.length];
+      const position = { id: `${type}-${(offset + index) % pool.length + 1}`, type, board: [...source.board], player: source.player, opponent: other(source.player) };
+      if (legalPosition(position.board, position.player) && solutions(position).length) return position;
+    }
+    return null;
+  }
+  function dailyKey() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+  function emit(type) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type } })); }
+  function current() { return active && active.generation === generation ? active : null; }
+  function endSession() { generation += 1; active = null; }
+  function screens(showId) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning"].forEach((id) => $(id)?.classList.toggle("active", id === showId)); }
+  function updateFeature(mutator) { save.update((data) => { mutator(data.features); }); }
+  function escape(text) { return String(text).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[char])); }
+
+  function openHub() { endSession(); screens("learning"); renderHub(); }
+  function closeHub() { endSession(); screens("menu"); }
+  function renderHub() {
+    const replay = save.get().features.replays[0];
+    $("learningIntro").textContent = "Focused tactics, connected trials, and factual match review.";
+    $("learningContent").innerHTML = `
+      <article class="glass-card learning-card"><h3>Tactical Challenges</h3><p>Practice one provable pattern at a time.</p><button class="primary-control" type="button" onclick="learningTacticalMenu()">Choose tactic</button></article>
+      <article class="glass-card learning-card"><h3>Mastery Trials</h3><p>Complete three connected tactical decisions.</p><button class="control-button" type="button" onclick="learningTrialsMenu()">Choose trial</button></article>
+      <article class="glass-card learning-card"><h3>Daily Challenge</h3><p>One stable, replayable puzzle for ${dailyKey()}.</p><button class="control-button" type="button" onclick="learningDaily()">Play today</button></article>
+      <article class="glass-card learning-card"><h3>Last Match</h3><p>${replay ? "Inspect the actual completed move sequence." : "Finish a normal match to unlock factual review."}</p>${replay ? `<button class="control-button" type="button" onclick="learningAnalysis()">Match analysis</button>${replay.result === "loss" && replay.matchType === "standard" ? '<button class="control-button" type="button" onclick="learningWhy()">Why did I lose?</button>' : ""}` : ""}</article>`;
+  }
+  function tacticalMenu() {
+    endSession(); $("learningIntro").textContent = "Choose the tactical idea you want to train.";
+    $("learningContent").innerHTML = Object.entries(CATEGORIES).map(([type, item]) => `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.lesson}</p><button class="control-button" type="button" onclick="learningStartChallenge('${type}')">Start</button></article>`).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
+  }
+  function trialsMenu() {
+    endSession(); $("learningIntro").textContent = "Each trial is a connected three-step tactical exercise.";
+    $("learningContent").innerHTML = Object.entries(TRIALS).map(([id, item]) => `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.steps.map((type) => CATEGORIES[type].title).join(" → ")}</p><button class="control-button" type="button" onclick="learningStartTrial('${id}')">Start trial</button></article>`).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
+  }
+  function startSession(kind, type, options = {}) {
+    endSession();
+    const token = generation;
+    const position = validatedPosition(type, options.seed || `${kind}-${Date.now()}`);
+    if (!position) { $("learningContent").textContent = "This challenge could not be validated. Please choose another exercise."; return; }
+    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: 0, completed: false, locked: false, seed: options.seed || null };
+    renderBoard();
+  }
+  function startChallenge(type) { startSession("TACTICAL_CHALLENGE", type); }
+  function startTrial(id) { const trial = TRIALS[id]; if (trial) startSession("MASTERY_TRIAL", trial.steps[0], { trial: id, step: 0 }); }
+  function startDaily() {
+    const date = dailyKey();
+    const types = Object.keys(CATEGORIES); const type = types[[...`TIC_TAC_TOE_DAILY_V1:${date}`].reduce((sum, char) => sum + char.charCodeAt(0), 0) % types.length];
+    startSession("DAILY_CHALLENGE", type, { seed: `TIC_TAC_TOE_DAILY_V1:${date}` });
+  }
+  function renderBoard() {
+    const session = current(); if (!session) return;
+    const category = CATEGORIES[session.type];
+    const heading = session.kind === "MASTERY_TRIAL" ? `${TRIALS[session.trial].title} · Step ${session.step + 1} of 3` : session.kind === "DAILY_CHALLENGE" ? `Daily Challenge · ${dailyKey()}` : category.title;
+    $("learningIntro").textContent = `${heading} — ${category.lesson}`;
+    $("learningContent").innerHTML = `<article class="glass-card learning-card learning-play"><p><strong>You are ${session.position.player}.</strong> Select the move that fulfills the objective.</p><div class="learning-board" role="grid" aria-label="${escape(category.title)} tactical board">${session.position.board.map((mark, index) => `<button class="learning-cell" type="button" data-learning-cell="${index}" ${mark ? "disabled" : ""} aria-label="Cell ${index + 1}: ${mark || "empty"}">${mark || ""}</button>`).join("")}</div><p class="learning-feedback" id="learningFeedback">Attempt ${session.attempts + 1}. ${category.lesson}</p><div class="learning-actions"><button class="control-button" type="button" onclick="learningHint()">Hint</button><button class="control-button" type="button" onclick="learningExit()">Exit</button></div></article>`;
+    document.querySelectorAll("[data-learning-cell]").forEach((button) => button.addEventListener("click", () => answer(Number(button.dataset.learningCell), session.generation), { once: true }));
+  }
+  function answer(move, token) {
+    const session = current(); if (!session || session.generation !== token || session.locked || session.completed) return;
+    session.locked = true; session.attempts += 1;
+    const correct = solutions(session.position).includes(move);
+    const feedback = $("learningFeedback");
+    if (!correct) {
+      feedback.textContent = session.type === "BLOCK" ? "Not quite — the immediate threat is still available." : `Not quite — that move does not ${CATEGORIES[session.type].lesson.toLowerCase()}`;
+      emit("incorrect_answer");
+      feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningRetry()">Retry</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
+      return;
+    }
+    session.completed = true;
+    feedback.textContent = session.type === "FORK" || session.type === "WIN_IN_2" ? "Correct — that move creates two genuine winning threats." : `Correct — ${CATEGORIES[session.type].lesson.toLowerCase()}`;
+    emit("level_unlock");
+    if (session.kind === "MASTERY_TRIAL" && session.step < 2) {
+      feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningNextTrialStep()">Next decision</button><button class="control-button" type="button" onclick="learningExit()">Exit</button></div>`);
+    } else {
+      persistCompletion(session);
+      feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningNextChallenge()">Next challenge</button><button class="control-button" type="button" onclick="learningRetry()">Retry</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
+    }
+  }
+  function persistCompletion(session) {
+    if (session.saved) return; session.saved = true;
+    updateFeature((features) => {
+      features.challenges ??= { solved: {}, trials: {} };
+      if (session.kind === "MASTERY_TRIAL") features.challenges.trials[session.trial] = { completed: true, steps: 3, attempts: session.attempts };
+      else if (session.kind === "DAILY_CHALLENGE") { features.daily ??= { history: {} }; features.daily.history[dailyKey()] = { id: `TIC_TAC_TOE_DAILY_V1:${dailyKey()}`, type: session.type, completed: true, attempts: session.attempts }; const keys = Object.keys(features.daily.history).sort().slice(-14); features.daily.history = Object.fromEntries(keys.map((key) => [key, features.daily.history[key]])); }
+      else features.challenges.solved[session.type] = { completed: true, attempts: session.attempts };
+    });
+  }
+  function nextTrialStep() { const session = current(); if (!session || !session.completed || session.kind !== "MASTERY_TRIAL") return; const trial = TRIALS[session.trial]; startSession("MASTERY_TRIAL", trial.steps[session.step + 1], { trial: session.trial, step: session.step + 1 }); }
+  function nextChallenge() { const session = current(); if (!session) return; if (session.kind === "MASTERY_TRIAL") { persistCompletion(session); trialsMenu(); } else if (session.kind === "DAILY_CHALLENGE") startDaily(); else startChallenge(session.type); }
+  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step }; startSession(session.kind, session.type, options); }
+  function hint() { const session = current(); if (!session) return; const move = solutions(session.position)[0]; const feedback = $("learningFeedback"); if (feedback) feedback.textContent = `Hint: examine cell ${move + 1}; verify the resulting threats before playing it.`; }
+  function exit() { endSession(); renderHub(); }
+
+  function replay() { return save.get().features.replays[0] || null; }
+  function moveMark(record, index) { return index % 2 === 0 ? "X" : "O"; }
+  function analyzeReplay(record) {
+    const items = []; let board = emptyBoard();
+    record.moves.forEach((move, index) => {
+      const mark = moveMark(record, index), opponent = other(mark), before = analysis(board, mark);
+      let finding = "No provable tactical event.";
+      if (before.immediateWins.length && !before.immediateWins.includes(move)) finding = `Missed an immediate win at cell ${before.immediateWins[0] + 1}.`;
+      else if (before.opponentImmediateWins.length && !before.opponentImmediateWins.includes(move)) finding = `Did not block the immediate threat at cell ${before.opponentImmediateWins[0] + 1}.`;
+      else if (before.forks.includes(move)) finding = "Created a fork.";
+      else if (before.counterForks.length && !afterPreventsFork(board, mark, move, opponent)) finding = "Allowed an opponent fork opportunity.";
+      board[move] = mark;
+      items.push({ index, move, mark, finding, board: [...board] });
+    });
+    return items;
+  }
+  function afterPreventsFork(board, mark, move, opponent) { const after = [...board]; after[move] = mark; return analysis(after, opponent).forks.length === 0; }
+  function renderReview(record, focus = 0, title = "Match Analysis", explanation = "Select a move to reconstruct the recorded board.") {
+    const timeline = analyzeReplay(record); const item = timeline[Math.min(Math.max(focus, 0), Math.max(timeline.length - 1, 0))];
+    screens("learning"); $("learningIntro").textContent = `${record.result.toUpperCase()} · ${record.moves.length} moves · ${record.personality || "local"} opponent`;
+    if (!item) { $("learningContent").textContent = "This completed match has no moves to review."; return; }
+    $("learningContent").innerHTML = `<article class="glass-card learning-card"><h3>${title}</h3><p>${escape(explanation)}</p><div class="learning-board read-only" aria-label="Recorded board after move ${item.index + 1}">${item.board.map((mark) => `<span class="learning-cell" aria-hidden="true">${mark}</span>`).join("")}</div><p class="learning-feedback">Move ${item.index + 1}: ${item.mark} → cell ${item.move + 1}. ${escape(item.finding)}</p><div class="learning-timeline">${timeline.map((entry) => `<button class="control-button" type="button" onclick="learningReviewMove(${entry.index}, '${title === "Why did I lose?" ? "why" : "analysis"}')">${entry.index + 1}. ${entry.mark} → ${entry.move + 1} · ${escape(entry.finding)}</button>`).join("")}</div><div class="learning-actions"><button class="control-button" type="button" onclick="learningBack()">Back</button></div></article>`;
+    active = { kind: title === "Why did I lose?" ? "WHY_DID_I_LOSE" : "MATCH_ANALYSIS", generation, record, focus: item.index, title, explanation };
+  }
+  function openAnalysis() { const record = replay(); if (record) { endSession(); renderReview(record); } }
+  function openWhy() {
+    const record = replay(); if (!record || record.result !== "loss" || record.matchType !== "standard") return;
+    endSession(); const first = analyzeReplay(record).find((item) => /Missed|Did not block|Allowed/.test(item.finding));
+    const explanation = first ? `Earliest provable turning point: after move ${first.index + 1}, ${first.finding}` : "No single tactical turning point can be proven from this recorded match.";
+    renderReview(record, first?.index || 0, "Why did I lose?", explanation);
+  }
+  function reviewMove(index, mode) { const session = current(); if (!session?.record) return; renderReview(session.record, index, mode === "why" ? "Why did I lose?" : "Match Analysis", session.explanation); }
+
+  global.openLearningHub = openHub;
+  global.closeLearningHub = closeHub;
+  global.learningTacticalMenu = tacticalMenu;
+  global.learningTrialsMenu = trialsMenu;
+  global.learningStartChallenge = startChallenge;
+  global.learningStartTrial = startTrial;
+  global.learningDaily = startDaily;
+  global.learningHint = hint;
+  global.learningRetry = retry;
+  global.learningNextTrialStep = nextTrialStep;
+  global.learningNextChallenge = nextChallenge;
+  global.learningExit = exit;
+  global.learningBack = () => { endSession(); renderHub(); };
+  global.learningAnalysis = openAnalysis;
+  global.learningWhy = openWhy;
+  global.learningReviewMove = reviewMove;
+}(window));

@@ -164,7 +164,7 @@
       scores: { x: count(source.scores?.x), o: count(source.scores?.o) },
       features: {
         challenges: { solved: isRecord(sourceFeatures.challenges?.solved) ? clone(sourceFeatures.challenges.solved) : {}, trials: isRecord(sourceFeatures.challenges?.trials) ? clone(sourceFeatures.challenges.trials) : {} },
-        daily: { history: isRecord(sourceFeatures.daily?.history) ? clone(sourceFeatures.daily.history) : {} },
+        daily: { history: isRecord(sourceFeatures.daily?.history) ? Object.fromEntries(Object.keys(sourceFeatures.daily.history).sort().slice(-14).map((key) => [key, clone(sourceFeatures.daily.history[key])])) : {} },
         rivals: Object.fromEntries(PERSONALITIES.map((personality) => [personality, normalizeRival(sourceFeatures.rivals?.[personality])])),
         predictions: { made: count(sourceFeatures.predictions?.made), correct: Math.min(count(sourceFeatures.predictions?.correct), count(sourceFeatures.predictions?.made)) },
         records: isRecord(sourceFeatures.records) ? clone(sourceFeatures.records) : {},
