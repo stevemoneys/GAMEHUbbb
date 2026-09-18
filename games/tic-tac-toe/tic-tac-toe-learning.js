@@ -37,13 +37,13 @@
       { board: ["X","O","X","","O","","","", ""], player: "X" }
     ],
     FORK: [
-      { board: ["X","O","","","O","","","X"], player: "X" }
+      { board: ["X","O","","","O","","","","X"], player: "X" }
     ],
     PREVENT_FORK: [
-      { board: ["X","","","","O","","","X"], player: "O" }
+      { board: ["O","X","X","","","","","",""], player: "O" }
     ],
     WIN_IN_2: [
-      { board: ["X","O","","","O","","","X"], player: "X" }
+      { board: ["O","O","X","X","","","","", ""], player: "X" }
     ]
   };
 
@@ -63,7 +63,7 @@
     const replies = analysis(first, opponent).legalMoves;
     return replies.length > 0 && replies.every((reply) => {
       const afterReply = [...first]; afterReply[reply] = opponent;
-      return immediateWins(afterReply, player).length > 0;
+      return !winner(afterReply, opponent) && immediateWins(afterReply, player).length > 0;
     });
   }
   function solutions(position) {
@@ -106,22 +106,25 @@
       <article class="glass-card learning-card"><h3>Tactical Challenges</h3><p>Practice one provable pattern at a time.</p><button class="primary-control" type="button" onclick="learningTacticalMenu()">Choose tactic</button></article>
       <article class="glass-card learning-card"><h3>Mastery Trials</h3><p>Complete three connected tactical decisions.</p><button class="control-button" type="button" onclick="learningTrialsMenu()">Choose trial</button></article>
       <article class="glass-card learning-card"><h3>Daily Challenge</h3><p>One stable, replayable puzzle for ${dailyKey()}.</p><button class="control-button" type="button" onclick="learningDaily()">Play today</button></article>
-      <article class="glass-card learning-card"><h3>Last Match</h3><p>${replay ? "Inspect the actual completed move sequence." : "Finish a normal match to unlock factual review."}</p>${replay ? `<button class="control-button" type="button" onclick="learningAnalysis()">Match analysis</button>${replay.result === "loss" && replay.matchType === "standard" ? '<button class="control-button" type="button" onclick="learningWhy()">Why did I lose?</button>' : ""}` : ""}</article>`;
+      <article class="glass-card learning-card"><h3>Last Match</h3><p>${replay ? "Inspect the actual completed move sequence." : "Finish a normal match to unlock factual review."}</p>${replay ? `<button class="control-button" type="button" onclick="learningAnalysis()">Match analysis</button>${replay.result === "loss" && replay.matchType === "standard" && replay.mode === "ai" ? '<button class="control-button" type="button" onclick="learningWhy()">Why did I lose?</button>' : ""}` : ""}</article>`;
   }
   function tacticalMenu() {
     endSession(); $("learningIntro").textContent = "Choose the tactical idea you want to train.";
-    $("learningContent").innerHTML = Object.entries(CATEGORIES).map(([type, item]) => `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.lesson}</p><button class="control-button" type="button" onclick="learningStartChallenge('${type}')">Start</button></article>`).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
+    const progress = save.get().features.challenges?.solved || {};
+    $("learningContent").innerHTML = Object.entries(CATEGORIES).map(([type, item]) => { const entry = progress[type]; return `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.lesson}</p><small>${entry?.completed ? `Completed · ${entry.attempts} attempt${entry.attempts === 1 ? "" : "s"}` : "Ready to practice"}</small><button class="control-button" type="button" onclick="learningStartChallenge('${type}')">${entry?.completed ? "Play again" : "Start"}</button></article>`; }).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
   }
   function trialsMenu() {
     endSession(); $("learningIntro").textContent = "Each trial is a connected three-step tactical exercise.";
-    $("learningContent").innerHTML = Object.entries(TRIALS).map(([id, item]) => `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.steps.map((type) => CATEGORIES[type].title).join(" → ")}</p><button class="control-button" type="button" onclick="learningStartTrial('${id}')">Start trial</button></article>`).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
+    const progress = save.get().features.challenges?.trials || {};
+    $("learningContent").innerHTML = Object.entries(TRIALS).map(([id, item]) => { const entry = progress[id]; return `<article class="glass-card learning-card"><h3>${item.title}</h3><p>${item.steps.map((type) => CATEGORIES[type].title).join(" → ")}</p><small>${entry?.completed ? "Completed" : "3 connected decisions"}</small><button class="control-button" type="button" onclick="learningStartTrial('${id}')">${entry?.completed ? "Retry trial" : "Start trial"}</button></article>`; }).join("") + `<button class="text-button" type="button" onclick="learningBack()">‹ Learning home</button>`;
   }
   function startSession(kind, type, options = {}) {
     endSession();
     const token = generation;
-    const position = validatedPosition(type, options.seed || `${kind}-${Date.now()}`);
+    const seed = options.seed || `${kind}-${Date.now()}`;
+    const position = validatedPosition(type, seed);
     if (!position) { $("learningContent").textContent = "This challenge could not be validated. Please choose another exercise."; return; }
-    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: 0, completed: false, locked: false, seed: options.seed || null };
+    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: options.attempts || 0, totalAttempts: options.totalAttempts || 0, completed: false, locked: false, seed };
     renderBoard();
   }
   function startChallenge(type) { startSession("TACTICAL_CHALLENGE", type); }
@@ -141,8 +144,12 @@
   }
   function answer(move, token) {
     const session = current(); if (!session || session.generation !== token || session.locked || session.completed) return;
-    session.locked = true; session.attempts += 1;
+    session.locked = true; session.attempts += 1; session.totalAttempts += 1;
     const correct = solutions(session.position).includes(move);
+    session.position.board[move] = session.position.player;
+    const selectedCell = document.querySelector(`[data-learning-cell="${move}"]`);
+    if (selectedCell) { selectedCell.textContent = session.position.player; selectedCell.disabled = true; }
+    document.querySelectorAll("[data-learning-cell]").forEach((cell) => { cell.disabled = true; });
     const feedback = $("learningFeedback");
     if (!correct) {
       feedback.textContent = session.type === "BLOCK" ? "Not quite — the immediate threat is still available." : `Not quite — that move does not ${CATEGORIES[session.type].lesson.toLowerCase()}`;
@@ -164,14 +171,14 @@
     if (session.saved) return; session.saved = true;
     updateFeature((features) => {
       features.challenges ??= { solved: {}, trials: {} };
-      if (session.kind === "MASTERY_TRIAL") features.challenges.trials[session.trial] = { completed: true, steps: 3, attempts: session.attempts };
-      else if (session.kind === "DAILY_CHALLENGE") { features.daily ??= { history: {} }; features.daily.history[dailyKey()] = { id: `TIC_TAC_TOE_DAILY_V1:${dailyKey()}`, type: session.type, completed: true, attempts: session.attempts }; const keys = Object.keys(features.daily.history).sort().slice(-14); features.daily.history = Object.fromEntries(keys.map((key) => [key, features.daily.history[key]])); }
-      else features.challenges.solved[session.type] = { completed: true, attempts: session.attempts };
+      if (session.kind === "MASTERY_TRIAL") features.challenges.trials[session.trial] = { completed: true, steps: 3, attempts: session.totalAttempts };
+      else if (session.kind === "DAILY_CHALLENGE") { features.daily ??= { history: {} }; features.daily.history[dailyKey()] = { id: `TIC_TAC_TOE_DAILY_V1:${dailyKey()}`, seed: session.seed, positionId: session.position.id, type: session.type, completed: true, result: "completed", attempts: session.totalAttempts }; const keys = Object.keys(features.daily.history).sort().slice(-14); features.daily.history = Object.fromEntries(keys.map((key) => [key, features.daily.history[key]])); }
+      else features.challenges.solved[session.type] = { completed: true, attempts: session.totalAttempts };
     });
   }
-  function nextTrialStep() { const session = current(); if (!session || !session.completed || session.kind !== "MASTERY_TRIAL") return; const trial = TRIALS[session.trial]; startSession("MASTERY_TRIAL", trial.steps[session.step + 1], { trial: session.trial, step: session.step + 1 }); }
+  function nextTrialStep() { const session = current(); if (!session || !session.completed || session.kind !== "MASTERY_TRIAL") return; const trial = TRIALS[session.trial]; startSession("MASTERY_TRIAL", trial.steps[session.step + 1], { trial: session.trial, step: session.step + 1, totalAttempts: session.totalAttempts }); }
   function nextChallenge() { const session = current(); if (!session) return; if (session.kind === "MASTERY_TRIAL") { persistCompletion(session); trialsMenu(); } else if (session.kind === "DAILY_CHALLENGE") startDaily(); else startChallenge(session.type); }
-  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step }; startSession(session.kind, session.type, options); }
+  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step, attempts: session.attempts, totalAttempts: session.totalAttempts }; startSession(session.kind, session.type, options); }
   function hint() { const session = current(); if (!session) return; const move = solutions(session.position)[0]; const feedback = $("learningFeedback"); if (feedback) feedback.textContent = `Hint: examine cell ${move + 1}; verify the resulting threats before playing it.`; }
   function exit() { endSession(); renderHub(); }
 
@@ -194,15 +201,15 @@
   function afterPreventsFork(board, mark, move, opponent) { const after = [...board]; after[move] = mark; return analysis(after, opponent).forks.length === 0; }
   function renderReview(record, focus = 0, title = "Match Analysis", explanation = "Select a move to reconstruct the recorded board.") {
     const timeline = analyzeReplay(record); const item = timeline[Math.min(Math.max(focus, 0), Math.max(timeline.length - 1, 0))];
-    screens("learning"); $("learningIntro").textContent = `${record.result.toUpperCase()} · ${record.moves.length} moves · ${record.personality || "local"} opponent`;
+    screens("learning"); $("learningIntro").textContent = `${record.result.toUpperCase()} · You: ${record.playerSymbol} · Opponent: ${record.mode === "ai" ? `${record.aiSymbol} (${record.personality}, Level ${record.level})` : other(record.playerSymbol)} · ${record.moves.length} moves`;
     if (!item) { $("learningContent").textContent = "This completed match has no moves to review."; return; }
     $("learningContent").innerHTML = `<article class="glass-card learning-card"><h3>${title}</h3><p>${escape(explanation)}</p><div class="learning-board read-only" aria-label="Recorded board after move ${item.index + 1}">${item.board.map((mark) => `<span class="learning-cell" aria-hidden="true">${mark}</span>`).join("")}</div><p class="learning-feedback">Move ${item.index + 1}: ${item.mark} → cell ${item.move + 1}. ${escape(item.finding)}</p><div class="learning-timeline">${timeline.map((entry) => `<button class="control-button" type="button" onclick="learningReviewMove(${entry.index}, '${title === "Why did I lose?" ? "why" : "analysis"}')">${entry.index + 1}. ${entry.mark} → ${entry.move + 1} · ${escape(entry.finding)}</button>`).join("")}</div><div class="learning-actions"><button class="control-button" type="button" onclick="learningBack()">Back</button></div></article>`;
     active = { kind: title === "Why did I lose?" ? "WHY_DID_I_LOSE" : "MATCH_ANALYSIS", generation, record, focus: item.index, title, explanation };
   }
   function openAnalysis() { const record = replay(); if (record) { endSession(); renderReview(record); } }
   function openWhy() {
-    const record = replay(); if (!record || record.result !== "loss" || record.matchType !== "standard") return;
-    endSession(); const first = analyzeReplay(record).find((item) => /Missed|Did not block|Allowed/.test(item.finding));
+    const record = replay(); if (!record || record.result !== "loss" || record.matchType !== "standard" || record.mode !== "ai") return;
+    endSession(); const first = analyzeReplay(record).find((item) => item.mark === record.playerSymbol && /Missed|Did not block|Allowed/.test(item.finding));
     const explanation = first ? `Earliest provable turning point: after move ${first.index + 1}, ${first.finding}` : "No single tactical turning point can be proven from this recorded match.";
     renderReview(record, first?.index || 0, "Why did I lose?", explanation);
   }

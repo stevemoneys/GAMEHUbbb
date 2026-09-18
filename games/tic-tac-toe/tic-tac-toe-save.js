@@ -78,7 +78,8 @@
         rivals: { human: { wins: 0, losses: 0, rematchWins: 0 }, aggressive: { wins: 0, losses: 0, rematchWins: 0 }, defensive: { wins: 0, losses: 0, rematchWins: 0 }, trickster: { wins: 0, losses: 0, rematchWins: 0 } },
         predictions: { made: 0, correct: 0 },
         records: {},
-        replays: []
+        replays: [],
+        competition: { rivals: {}, prediction: { attempts: 0, correct: 0, recent: [] }, speed: { wins: 0, losses: 0, draws: 0, timeouts: 0, fastestWinMs: null }, quickDuel: { matches: 0, wins: 0, losses: 0, draws: 0 }, readOpponent: { attempts: 0, correct: 0 } }
       }
     };
   }
@@ -138,7 +139,8 @@
     const now = Date.now();
     const sourceFeatures = isRecord(source.features) ? source.features : {};
     const normalizeRival = (source) => ({ wins: count(source?.wins), losses: count(source?.losses), rematchWins: count(source?.rematchWins) });
-    const replayRecords = Array.isArray(sourceFeatures.replays) ? sourceFeatures.replays.filter((replay) => isRecord(replay) && Array.isArray(replay.moves) && replay.moves.length <= 9 && replay.moves.every((move) => Number.isInteger(move) && move >= 0 && move < 9)).slice(0, 12).map((replay) => ({ id: typeof replay.id === "string" ? replay.id.slice(0, 80) : "", matchType: typeof replay.matchType === "string" ? replay.matchType : "standard", level: level(replay.level, 1), personality: PERSONALITIES.includes(replay.personality) ? replay.personality : "human", playerSymbol: replay.playerSymbol === "O" ? "O" : "X", aiSymbol: replay.aiSymbol === "X" ? "X" : "O", rules: isRecord(replay.rules) ? clone(replay.rules) : {}, moves: replay.moves, result: typeof replay.result === "string" ? replay.result : "draw", createdAt: timestamp(replay.createdAt, now) })) : [];
+    const competitionRivals = isRecord(sourceFeatures.competition?.rivals) ? Object.fromEntries(Object.entries(sourceFeatures.competition.rivals).filter(([id, value]) => typeof id === "string" && id.length <= 32 && isRecord(value)).slice(0, 6).map(([id, value]) => [id, { matches: count(value.matches), wins: count(value.wins), losses: count(value.losses), draws: count(value.draws), currentStreak: count(value.currentStreak), bestStreak: Math.max(count(value.bestStreak), count(value.currentStreak)), lastResult: ["win", "loss", "draw", "timeout", "No matches yet", "Timed out"].includes(value.lastResult) ? value.lastResult : "No matches yet" }])) : {};
+    const replayRecords = Array.isArray(sourceFeatures.replays) ? sourceFeatures.replays.filter((replay) => isRecord(replay) && replay.completed !== false && Array.isArray(replay.moves) && replay.moves.length <= 9 && replay.moves.every((move) => Number.isInteger(move) && move >= 0 && move < 9)).slice(0, 12).map((replay) => ({ id: typeof replay.id === "string" ? replay.id.slice(0, 80) : "", matchType: typeof replay.matchType === "string" ? replay.matchType : "standard", mode: replay.mode === "two" ? "two" : "ai", level: level(replay.level, 1), personality: PERSONALITIES.includes(replay.personality) ? replay.personality : "human", playerSymbol: replay.playerSymbol === "O" ? "O" : "X", aiSymbol: replay.aiSymbol === "X" ? "X" : "O", rules: isRecord(replay.rules) ? clone(replay.rules) : {}, moves: replay.moves, result: typeof replay.result === "string" ? replay.result : "draw", completed: true, createdAt: timestamp(replay.createdAt, now) })) : [];
     const highestUnlocked = Math.max(completed.length ? Math.max(...completed) : 1, level(sourceLevels.highestUnlocked, 1));
     const currentStreak = count(progress.streaks?.current);
 
@@ -168,7 +170,14 @@
         rivals: Object.fromEntries(PERSONALITIES.map((personality) => [personality, normalizeRival(sourceFeatures.rivals?.[personality])])),
         predictions: { made: count(sourceFeatures.predictions?.made), correct: Math.min(count(sourceFeatures.predictions?.correct), count(sourceFeatures.predictions?.made)) },
         records: isRecord(sourceFeatures.records) ? clone(sourceFeatures.records) : {},
-        replays: replayRecords
+        replays: replayRecords,
+        competition: {
+          rivals: competitionRivals,
+          prediction: { attempts: count(sourceFeatures.competition?.prediction?.attempts), correct: Math.min(count(sourceFeatures.competition?.prediction?.correct), count(sourceFeatures.competition?.prediction?.attempts)), recent: Array.isArray(sourceFeatures.competition?.prediction?.recent) ? sourceFeatures.competition.prediction.recent.filter((entry) => isRecord(entry)).slice(-12).map(clone) : [] },
+          speed: { wins: count(sourceFeatures.competition?.speed?.wins), losses: count(sourceFeatures.competition?.speed?.losses), draws: count(sourceFeatures.competition?.speed?.draws), timeouts: count(sourceFeatures.competition?.speed?.timeouts), fastestWinMs: Number.isFinite(Number(sourceFeatures.competition?.speed?.fastestWinMs)) && Number(sourceFeatures.competition.speed.fastestWinMs) > 0 ? Number(sourceFeatures.competition.speed.fastestWinMs) : null },
+          quickDuel: { matches: count(sourceFeatures.competition?.quickDuel?.matches), wins: count(sourceFeatures.competition?.quickDuel?.wins), losses: count(sourceFeatures.competition?.quickDuel?.losses), draws: count(sourceFeatures.competition?.quickDuel?.draws) },
+          readOpponent: { attempts: count(sourceFeatures.competition?.readOpponent?.attempts), correct: Math.min(count(sourceFeatures.competition?.readOpponent?.correct), count(sourceFeatures.competition?.readOpponent?.attempts)) }
+        }
       }
     };
   }

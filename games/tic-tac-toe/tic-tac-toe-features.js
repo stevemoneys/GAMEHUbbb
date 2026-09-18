@@ -4,15 +4,18 @@
 
   const BOARD_SIZE = 3;
   const CELL_COUNT = BOARD_SIZE ** 2;
-  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "modifier", "speed_duel", "prediction", "two_player_series", "experimental", "replay", "what_if"]);
+  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
   const OBJECTIVE_TYPES = Object.freeze(["WIN", "DRAW", "BLOCK", "FORK", "PREVENT_FORK", "FORCE_DRAW", "WIN_IN_1", "WIN_IN_2", "PREDICT", "SURVIVE_SEQUENCE", "TIME_LIMIT"]);
   const PERSONALITIES = Object.freeze(["human", "aggressive", "defensive", "trickster"]);
   const FEATURE_REGISTRY = Object.freeze({
     tactical_challenges: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
-    quick_duel: { category: "play", enabled: false, progression: false, statistics: true, replay: true },
+    quick_duel: { category: "play", enabled: true, progression: false, statistics: false, replay: true },
     daily_challenge: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
     mastery_trials: { category: "master", enabled: true, progression: false, statistics: false, replay: true },
-    rivals: { category: "play", enabled: false, progression: false, statistics: true, replay: true },
+    rivals: { category: "play", enabled: true, progression: false, statistics: false, replay: true },
+    prediction: { category: "compete", enabled: true, progression: false, statistics: false, replay: true },
+    read_opponent: { category: "compete", enabled: true, progression: false, statistics: false, replay: true },
+    speed_duel: { category: "compete", enabled: true, progression: false, statistics: false, replay: true },
     modifiers: { category: "lab", enabled: false, progression: false, statistics: false, replay: true },
     replay: { category: "review", enabled: false, progression: false, statistics: false, replay: false },
     what_if: { category: "review", enabled: false, progression: false, statistics: false, replay: false }
@@ -70,7 +73,7 @@
     if (!OBJECTIVE_TYPES.includes(objectiveType)) return { valid: false, reason: "Unknown objective." };
     const permissionSource = isRecord(source.permissions) ? source.permissions : {};
     const permissions = { progression: permissionSource.progression !== false, statistics: permissionSource.statistics !== false, achievements: permissionSource.achievements !== false, replay: permissionSource.replay !== false };
-    if (["replay", "what_if", "tactical_challenge", "daily_challenge", "mastery_trial", "experimental"].includes(type)) permissions.progression = false;
+    if (["replay", "what_if", "tactical_challenge", "daily_challenge", "mastery_trial", "quick_duel", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "experimental"].includes(type)) permissions.progression = false;
     if (["replay", "what_if"].includes(type)) { permissions.statistics = false; permissions.achievements = false; }
     return { valid: true, value: Object.freeze({ type, mode, level, personality, playerSymbol, aiSymbol, rules: Object.freeze(rules.value), timer: Object.freeze(timer), objective: Object.freeze({ type: objectiveType }), permissions: Object.freeze(permissions) }) };
   }
@@ -139,7 +142,7 @@
   function createReplay({ config, moves, result, createdAt = Date.now() } = {}) {
     const normalized = normalizeMatchConfig(config);
     if (!normalized.valid || !Array.isArray(moves) || moves.length > CELL_COUNT || moves.some((move) => !Number.isInteger(move) || move < 0 || move >= CELL_COUNT)) return { valid: false, reason: "Replay record is invalid." };
-    return { valid: true, value: { version: 1, id: `${createdAt}-${moves.join("")}`, matchType: normalized.value.type, level: normalized.value.level, personality: normalized.value.personality, playerSymbol: normalized.value.playerSymbol, aiSymbol: normalized.value.aiSymbol, rules: clone(normalized.value.rules), moves: [...moves], result: typeof result === "string" ? result : "draw", createdAt } };
+    return { valid: true, value: { version: 1, id: `${createdAt}-${moves.join("")}`, matchType: normalized.value.type, mode: normalized.value.mode, level: normalized.value.level, personality: normalized.value.personality, playerSymbol: normalized.value.playerSymbol, aiSymbol: normalized.value.aiSymbol, rules: clone(normalized.value.rules), moves: [...moves], result: typeof result === "string" ? result : "draw", completed: true, createdAt } };
   }
 
   function recordReplay(record) {

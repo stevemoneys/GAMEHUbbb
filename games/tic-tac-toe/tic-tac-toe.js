@@ -359,7 +359,8 @@ function beginMatchContext() {
     personality: gameState.mode === "ai" ? gameState.aiPersonality : null,
     playerSymbol: gameState.playerSymbol,
     matchType: gameState.match.config.type,
-    permissions: gameState.match.config.permissions
+    permissions: gameState.match.config.permissions,
+    startedAt: Date.now()
   };
 }
 
@@ -537,6 +538,13 @@ function scheduleAIMove(delay = 350) {
   if (!gameState.active || gameState.mode !== "ai" || gameState.currentPlayer !== gameState.aiSymbol) return;
   clearTimeout(gameState.ai.timeout);
   const generation = gameState.match.generation;
+  const beforeMove = new CustomEvent("tictactoe:before-ai-move", { cancelable: true, detail: { generation, legalMoves: getLegalMoves(gameState.board), board: [...gameState.board], config: gameState.match.config, moves: [...gameState.match.moves] } });
+  if (window.dispatchEvent(beforeMove) === false) {
+    transitionTo(GAME_PHASES.AI_THINKING);
+    setThinkingState(false);
+    return;
+  }
+  if (gameState.match.config?.type === "speed_duel") stopTurnTimer();
   transitionTo(GAME_PHASES.AI_THINKING);
   gameState.ai.thinking = true;
   setThinkingState(true);
@@ -699,6 +707,34 @@ function startTwoPlayer() {
   resetBoard();
   updateMatchPresentation();
   startTurnTimer();
+}
+
+// Competition modes configure this same authoritative match lifecycle. They
+// receive no direct board mutation API, so normal play and competition play
+// cannot diverge into separate engines.
+function startConfiguredMatch(config, featureContext = {}) {
+  if (gameState.active || gameState.phase === GAME_PHASES.AI_THINKING) return { valid: false, reason: "A match is already active." };
+  document.getElementById("resultModal").classList.remove("active");
+  clearPendingAIWork();
+  const prepared = prepareMatchConfiguration(config);
+  if (!prepared.valid) return prepared;
+  hideAllScreens();
+  document.getElementById("learning")?.classList.remove("active");
+  document.getElementById("competition")?.classList.remove("active");
+  hideHubBackBtn();
+  document.getElementById("game").classList.add("active");
+  resetBoard();
+  Object.assign(gameState.match.context, featureContext, { featureType: featureContext.featureType || prepared.value.type, startedAt: Date.now() });
+  updateMatchPresentation();
+  if (featureContext.rivalName) {
+    document.getElementById("opponentKicker").textContent = featureContext.featureType === "RIVAL_REMATCH" ? "Rival Rematch" : "Rival";
+    document.getElementById("opponentName").textContent = featureContext.rivalName;
+    document.getElementById("opponentLesson").textContent = `${gameState.aiPersonality} · Strength ${gameState.level}`;
+  }
+  startTurnTimer();
+  if (gameState.currentPlayer === gameState.aiSymbol) scheduleAIMove();
+  window.dispatchEvent(new CustomEvent("tictactoe:competition-start", { detail: { config: prepared.value, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
+  return { valid: true, value: prepared.value };
 }
 
 function startVsAI() {
@@ -913,6 +949,12 @@ function startTurnTimer() {
 
     stopTurnTimer();
 
+    if (gameState.match.config?.type === "speed_duel") {
+      const timedOutPlayer = gameState.currentPlayer;
+      finishMatch({ outcome: "timeout", winner: timedOutPlayer === gameState.playerSymbol ? gameState.aiSymbol : gameState.playerSymbol });
+      return;
+    }
+
     if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) {
       aiMove();
       return;
@@ -963,6 +1005,7 @@ function makeMoveFromSymbol(index, symbol) {
   cell.setAttribute("aria-label", `Cell ${index + 1}: ${symbol}`);
   restartAnimation(cell, symbol === "X" ? "piece-in-x" : "piece-in-o");
   emitGameFeelEvent("piece_place", { symbol, actor: "ai" });
+  window.dispatchEvent(new CustomEvent("tictactoe:ai-move", { detail: { index, symbol, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation } }));
 
   if (checkWin()) return;
 
@@ -1165,6 +1208,7 @@ function finishMatch({ outcome, isDraw = false, winner = null }) {
   }
 
   finalizeMatch(outcome);
+  window.dispatchEvent(new CustomEvent("tictactoe:match-complete", { detail: { outcome, isDraw, winner, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], durationMs: Date.now() - (gameState.match.context?.startedAt || Date.now()), generation: gameState.match.generation } }));
   scheduleResult(outcome === "win", isDraw, isDraw ? 500 : 600);
   return true;
 }
@@ -1282,6 +1326,7 @@ function restartGame() {
 function backToMenu() {
   stopTurnTimer();
   clearPendingAIWork();
+  window.dispatchEvent(new CustomEvent("tictactoe:match-exit", { detail: { generation: gameState.match.generation } }));
   document.getElementById("resultModal").classList.remove("active");
   showHomeScreen();
 }
@@ -1293,9 +1338,22 @@ function showResult(won, isDraw = false) {
   const nextBtn = document.getElementById("nextBtn");
   const kicker = document.getElementById("resultKicker");
   const detail = document.getElementById("resultDetail");
+  const isCompetitionMatch = gameState.match.config?.type !== "standard";
+  const playAgainButton = modal.querySelector('button[onclick="restartGame()"]');
 
   modal.classList.add("active");
   modal.classList.remove("victory", "defeat", "draw");
+  if (playAgainButton) playAgainButton.style.display = isCompetitionMatch ? "none" : "";
+
+  if (gameState.result.data?.outcome === "timeout") {
+    modal.classList.add("defeat");
+    kicker.textContent = "Speed Duel";
+    title.textContent = "Time Out";
+    detail.textContent = "The clock expired before your tactical decision. Start a fresh run when you are ready.";
+    nextBtn.style.display = "none";
+    emitGameFeelEvent("defeat");
+    return;
+  }
 
   if (isDraw) {
     modal.classList.add("draw");
@@ -1319,11 +1377,11 @@ function showResult(won, isDraw = false) {
 
   if (won) {
     modal.classList.add("victory");
-    kicker.textContent = gameState.level < maxLevel ? "Challenge Complete" : "Master Tactician";
+    kicker.textContent = isCompetitionMatch ? "Competition Complete" : gameState.level < maxLevel ? "Challenge Complete" : "Master Tactician";
     title.textContent = "You Win";
-    const next = gameState.level < maxLevel ? getLevelDefinition(gameState.level + 1) : null;
-    detail.textContent = next ? `Level ${next.number} unlocked: ${next.name}.` : "You completed the full tactical mastery path.";
-    nextBtn.style.display = gameState.level < maxLevel ? "inline-block" : "none";
+    const next = !isCompetitionMatch && gameState.level < maxLevel ? getLevelDefinition(gameState.level + 1) : null;
+    detail.textContent = isCompetitionMatch ? "A fresh match is ready whenever you want another tactical test." : next ? `Level ${next.number} unlocked: ${next.name}.` : "You completed the full tactical mastery path.";
+    nextBtn.style.display = next ? "inline-block" : "none";
     emitGameFeelEvent("victory");
   } else {
     modal.classList.add("defeat");
@@ -1377,6 +1435,12 @@ window.backToMenu = backToMenu;
 window.nextLevel = nextLevel;
 window.goHome = goHome;
 window.backToHome = backToHome;
+window.TicTacToeCompetitionEngine = Object.freeze({
+  start: startConfiguredMatch,
+  resumeAI: () => scheduleAIMove(280),
+  snapshot: () => ({ phase: gameState.phase, active: gameState.active, board: [...gameState.board], currentPlayer: gameState.currentPlayer, playerSymbol: gameState.playerSymbol, aiSymbol: gameState.aiSymbol, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], generation: gameState.match.generation }),
+  exit: backToMenu
+});
 
 // Phase 11.5B adapter: feature systems can query the same tactical helpers as
 // the AI without receiving authority to mutate the live match state.
