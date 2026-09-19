@@ -79,7 +79,8 @@
         predictions: { made: 0, correct: 0 },
         records: {},
         replays: [],
-        competition: { rivals: {}, prediction: { attempts: 0, correct: 0, recent: [] }, speed: { wins: 0, losses: 0, draws: 0, timeouts: 0, fastestWinMs: null }, quickDuel: { matches: 0, wins: 0, losses: 0, draws: 0 }, readOpponent: { attempts: 0, correct: 0 } }
+        competition: { rivals: {}, prediction: { attempts: 0, correct: 0, recent: [] }, speed: { wins: 0, losses: 0, draws: 0, timeouts: 0, fastestWinMs: null }, quickDuel: { matches: 0, wins: 0, losses: 0, draws: 0 }, readOpponent: { attempts: 0, correct: 0 } },
+        experimentation: { modifiers: {}, procedural: { completed: {}, recent: [] }, lab: { lastPreset: "empty" }, twoPlayer: {}, journey: { completed: [] }, records: {}, moments: {} }
       }
     };
   }
@@ -177,6 +178,15 @@
           speed: { wins: count(sourceFeatures.competition?.speed?.wins), losses: count(sourceFeatures.competition?.speed?.losses), draws: count(sourceFeatures.competition?.speed?.draws), timeouts: count(sourceFeatures.competition?.speed?.timeouts), fastestWinMs: Number.isFinite(Number(sourceFeatures.competition?.speed?.fastestWinMs)) && Number(sourceFeatures.competition.speed.fastestWinMs) > 0 ? Number(sourceFeatures.competition.speed.fastestWinMs) : null },
           quickDuel: { matches: count(sourceFeatures.competition?.quickDuel?.matches), wins: count(sourceFeatures.competition?.quickDuel?.wins), losses: count(sourceFeatures.competition?.quickDuel?.losses), draws: count(sourceFeatures.competition?.quickDuel?.draws) },
           readOpponent: { attempts: count(sourceFeatures.competition?.readOpponent?.attempts), correct: Math.min(count(sourceFeatures.competition?.readOpponent?.correct), count(sourceFeatures.competition?.readOpponent?.attempts)) }
+        },
+        experimentation: {
+          modifiers: isRecord(sourceFeatures.experimentation?.modifiers) ? clone(sourceFeatures.experimentation.modifiers) : {},
+          procedural: { completed: isRecord(sourceFeatures.experimentation?.procedural?.completed) ? clone(sourceFeatures.experimentation.procedural.completed) : {}, recent: Array.isArray(sourceFeatures.experimentation?.procedural?.recent) ? sourceFeatures.experimentation.procedural.recent.filter((entry) => isRecord(entry)).slice(-12).map(clone) : [] },
+          lab: { lastPreset: typeof sourceFeatures.experimentation?.lab?.lastPreset === "string" ? sourceFeatures.experimentation.lab.lastPreset.slice(0, 32) : "empty" },
+          twoPlayer: isRecord(sourceFeatures.experimentation?.twoPlayer) ? clone(sourceFeatures.experimentation.twoPlayer) : {},
+          journey: { completed: Array.isArray(sourceFeatures.experimentation?.journey?.completed) ? [...new Set(sourceFeatures.experimentation.journey.completed.filter((id) => typeof id === "string"))].slice(0, 20) : [] },
+          records: isRecord(sourceFeatures.experimentation?.records) ? clone(sourceFeatures.experimentation.records) : {},
+          moments: isRecord(sourceFeatures.experimentation?.moments) ? clone(sourceFeatures.experimentation.moments) : {}
         }
       }
     };

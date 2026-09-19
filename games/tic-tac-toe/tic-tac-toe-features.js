@@ -4,7 +4,7 @@
 
   const BOARD_SIZE = 3;
   const CELL_COUNT = BOARD_SIZE ** 2;
-  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
+  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "modifier_challenge", "procedural_position", "experimental_lab", "two_player_challenge", "personal_record", "tactical_journey", "mastery_moment", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
   const OBJECTIVE_TYPES = Object.freeze(["WIN", "DRAW", "BLOCK", "FORK", "PREVENT_FORK", "FORCE_DRAW", "WIN_IN_1", "WIN_IN_2", "PREDICT", "SURVIVE_SEQUENCE", "TIME_LIMIT"]);
   const PERSONALITIES = Object.freeze(["human", "aggressive", "defensive", "trickster"]);
   const FEATURE_REGISTRY = Object.freeze({
@@ -41,10 +41,10 @@
     const blocked = Array.isArray(raw.blockedCells) ? raw.blockedCells : [];
     const cells = [...new Set(blocked.map(integer))];
     if (cells.length !== blocked.length || cells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= CELL_COUNT)) return { valid: false, reason: "Blocked cells must be unique board indices." };
-    if (cells.length || raw.centerLocked === true) return { valid: false, reason: "Blocked-cell rules are defined but not enabled until the engine enforces them for every actor." };
+    if (cells.length > 2 || raw.centerLocked === true) return { valid: false, reason: "Only up to two explicit blocked cells are supported." };
     const forcedOpening = raw.forcedOpening === null || raw.forcedOpening === undefined ? null : integer(raw.forcedOpening);
-    if (forcedOpening !== null) return { valid: false, reason: "Forced openings are defined but not enabled until the engine applies them atomically." };
-    return { valid: true, value: createDefaultRules() };
+    if (forcedOpening !== null && (forcedOpening < 0 || forcedOpening >= CELL_COUNT || cells.includes(forcedOpening))) return { valid: false, reason: "Forced opening must be an available board cell." };
+    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening } };
   }
 
   function createDefaultMatchConfig() {
@@ -92,10 +92,10 @@
     const player = symbol(playerSymbol);
     const opponent = symbol(opponentSymbol, other(player));
     const legal = engine?.analysis?.legalMoves ? engine.analysis.legalMoves(board, resolved) : legalMoves(board, resolved);
-    const wins = engine?.analysis?.winningMoves ? engine.analysis.winningMoves(board, player) : immediateWins(board, player, resolved);
-    const opponentWins = engine?.analysis?.winningMoves ? engine.analysis.winningMoves(board, opponent) : immediateWins(board, opponent, resolved);
-    const forks = engine?.analysis?.forkMoves ? engine.analysis.forkMoves(board, player) : forkMoves(board, player, resolved);
-    const counterForks = engine?.analysis?.forkMoves ? engine.analysis.forkMoves(board, opponent) : forkMoves(board, opponent, resolved);
+    const wins = engine?.analysis?.winningMoves ? engine.analysis.winningMoves(board, player, resolved) : immediateWins(board, player, resolved);
+    const opponentWins = engine?.analysis?.winningMoves ? engine.analysis.winningMoves(board, opponent, resolved) : immediateWins(board, opponent, resolved);
+    const forks = engine?.analysis?.forkMoves ? engine.analysis.forkMoves(board, player, resolved) : forkMoves(board, player, resolved);
+    const counterForks = engine?.analysis?.forkMoves ? engine.analysis.forkMoves(board, opponent, resolved) : forkMoves(board, opponent, resolved);
     const bestMoves = wins.length ? wins : opponentWins.length ? opponentWins : forks.length ? forks : legal;
     return { valid: true, board: [...board], legalMoves: legal, immediateWins: wins, opponentImmediateWins: opponentWins, forks, counterForks, bestMoves, outcome: wins.length ? "WIN" : opponentWins.length ? "THREAT" : legal.length ? "UNKNOWN" : "DRAW", criticalMoves: [...new Set([...wins, ...opponentWins, ...forks, ...counterForks])] };
   }

@@ -40,6 +40,7 @@
         </button>
         <button class="action-card learn-action" onclick="openLearningHub()"><span class="action-icon" aria-hidden="true">✦</span><span><strong>Learn & Master</strong><small>Practice tactics and review matches</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card compete-action" onclick="openCompetitionHub()"><span class="action-icon" aria-hidden="true">◆</span><span><strong>Compete</strong><small>Rivals, quick duels, and speed tests</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card experiment-action" onclick="openExperimentHub()"><span class="action-icon" aria-hidden="true">◇</span><span><strong>Experiment</strong><small>Change rules, explore positions, build tactics</small></span><b aria-hidden="true">›</b></button>
       </div>
 
       <div class="home-meta">
@@ -57,6 +58,7 @@
     <section class="screen learning-screen" id="learning" aria-label="Learning center"><header class="screen-heading"><p class="eyebrow">Learning loop</p><h2>Practice the pattern</h2><p id="learningIntro">Choose a focused tactical exercise.</p></header><div id="learningContent" class="learning-content"></div><button class="text-button" onclick="closeLearningHub()">‹ Back to home</button></section>
 
     <section class="screen competition-screen" id="competition" aria-label="Competition center"><header class="screen-heading"><p class="eyebrow">Competition loop</p><h2>Find your next match</h2><p id="competitionIntro">Choose a fast reason to play again.</p></header><div id="competitionContent" class="competition-content"></div><button class="text-button" type="button" onclick="closeCompetitionHub()">‹ Back to home</button></section>
+    <section class="screen experiment-screen" id="experiment" aria-label="Experiment center"><header class="screen-heading"><p class="eyebrow">Experimentation loop</p><h2>Change the position</h2><p id="experimentIntro">Explore real tactical variations without risking your normal path.</p></header><div id="experimentContent" class="experiment-content"></div><button class="text-button" type="button" onclick="closeExperimentHub()">‹ Back to home</button></section>
 
     <section class="screen level-screen" id="levels" aria-label="Level selection">
       <header class="screen-heading"><p class="eyebrow">AI Challenge</p><h2>Choose your tactic</h2><p>Each challenge builds a real Tic-Tac-Toe skill.</p></header>
@@ -130,5 +132,6 @@
   <script src="tic-tac-toe.js"></script>
   <script src="tic-tac-toe-learning.js"></script>
   <script src="tic-tac-toe-competition.js"></script>
+  <script src="tic-tac-toe-experimentation.js"></script>
 </body>
 </html>

@@ -602,6 +602,11 @@ function createBoardCell(index, value = "") {
     cell.textContent = value;
     cell.classList.add(value);
   }
+  if (!value && gameState.match.config?.rules?.blockedCells?.includes(index)) {
+    cell.disabled = true;
+    cell.classList.add("blocked");
+    cell.textContent = "•";
+  }
   cell.setAttribute("aria-label", value ? `Cell ${index + 1}: ${value}` : `Cell ${index + 1}: empty`);
   cell.setAttribute("aria-rowindex", String(Math.floor(index / 3) + 1));
   cell.setAttribute("aria-colindex", String((index % 3) + 1));
@@ -715,6 +720,7 @@ function startTwoPlayer() {
 function startConfiguredMatch(config, featureContext = {}) {
   if (gameState.active || gameState.phase === GAME_PHASES.AI_THINKING) return { valid: false, reason: "A match is already active." };
   document.getElementById("resultModal").classList.remove("active");
+  document.querySelectorAll(".competition-result-action").forEach((button) => button.remove());
   clearPendingAIWork();
   const prepared = prepareMatchConfiguration(config);
   if (!prepared.valid) return prepared;
@@ -723,7 +729,7 @@ function startConfiguredMatch(config, featureContext = {}) {
   document.getElementById("competition")?.classList.remove("active");
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
-  resetBoard();
+  resetBoard(featureContext.initialBoard, featureContext.currentPlayer);
   Object.assign(gameState.match.context, featureContext, { featureType: featureContext.featureType || prepared.value.type, startedAt: Date.now() });
   updateMatchPresentation();
   if (featureContext.rivalName) {
@@ -849,15 +855,15 @@ function backToLevelsFromSymbol() {
   showLevels();
 }
 
-function resetBoard() {
+function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   stopTurnTimer();
   clearPendingAIWork();
   gameState.match.objectives = createMatchObjectives();
   gameState.match.moves = [];
   beginMatchContext();
-  gameState.board = Array(9).fill("");
+  gameState.board = Array.isArray(initialBoard) && initialBoard.length === 9 ? [...initialBoard] : Array(9).fill("");
   gameState.active = true;
-  gameState.currentPlayer = "X";
+  gameState.currentPlayer = initialPlayer === "O" ? "O" : "X";
   gameState.result.data = null;
   transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
@@ -866,14 +872,16 @@ function resetBoard() {
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
 
-  gameState.board.forEach((_, index) => {
-    boardEl.appendChild(createBoardCell(index));
+  gameState.board.forEach((value, index) => {
+    boardEl.appendChild(createBoardCell(index, value));
   });
   updateMatchPresentation();
 }
 
 function makeMove(index) {
-  if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
+  const rules = gameState.match.config?.rules || {};
+  const openingForced = gameState.match.moves.length === 0 && Number.isInteger(rules.forcedOpening) && index !== rules.forcedOpening;
+  if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || rules.blockedCells?.includes(index) || openingForced || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
     const cell = boardEl.children[index];
     if (cell) restartAnimation(cell, "invalid-move");
     emitGameFeelEvent("invalid_move", { index });
@@ -899,11 +907,12 @@ function makeMove(index) {
   cell.setAttribute("aria-label", `Cell ${index + 1}: ${gameState.currentPlayer}`);
   restartAnimation(cell, gameState.currentPlayer === "X" ? "piece-in-x" : "piece-in-o");
   emitGameFeelEvent("piece_place", { symbol: gameState.currentPlayer, actor: "player" });
+  window.dispatchEvent(new CustomEvent("tictactoe:player-move", { detail: { index, symbol: gameState.currentPlayer, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation, blocksImmediateThreat, preventsFork, createsFork } }));
   haptic(10);
 
   if (checkWin()) return;
 
-  if (gameState.board.every((value) => value !== "")) {
+  if (getLegalMoves(gameState.board).length === 0) {
     draw();
     return;
   }
@@ -1009,7 +1018,7 @@ function makeMoveFromSymbol(index, symbol) {
 
   if (checkWin()) return;
 
-  if (gameState.board.every((value) => value !== "")) {
+  if (getLegalMoves(gameState.board).length === 0) {
     draw();
     return;
   }
@@ -1020,9 +1029,9 @@ function makeMoveFromSymbol(index, symbol) {
   startTurnTimer();
 }
 
-function getLegalMoves(state) {
+function getLegalMoves(state, rules = gameState.match.config?.rules || {}) {
   return state.reduce((moves, value, index) => {
-    if (value === "") moves.push(index);
+    if (value === "" && !rules.blockedCells?.includes(index)) moves.push(index);
     return moves;
   }, []);
 }
@@ -1045,14 +1054,14 @@ function playOnBoard(state, index, symbol) {
   return next;
 }
 
-function getWinningMoves(state, symbol) {
-  return getLegalMoves(state).filter((move) => getWinner(playOnBoard(state, move, symbol)) === symbol);
+function getWinningMoves(state, symbol, rules) {
+  return getLegalMoves(state, rules).filter((move) => getWinner(playOnBoard(state, move, symbol)) === symbol);
 }
 
-function getForkMoves(state, symbol) {
-  return getLegalMoves(state).filter((move) => {
+function getForkMoves(state, symbol, rules) {
+  return getLegalMoves(state, rules).filter((move) => {
     const next = playOnBoard(state, move, symbol);
-    return getWinner(next) !== symbol && getWinningMoves(next, symbol).length >= 2;
+    return getWinner(next) !== symbol && getWinningMoves(next, symbol, rules).length >= 2;
   });
 }
 
@@ -1343,6 +1352,7 @@ function showResult(won, isDraw = false) {
 
   modal.classList.add("active");
   modal.classList.remove("victory", "defeat", "draw");
+  modal.querySelectorAll(".competition-result-action").forEach((button) => button.remove());
   if (playAgainButton) playAgainButton.style.display = isCompetitionMatch ? "none" : "";
 
   if (gameState.result.data?.outcome === "timeout") {
@@ -1438,6 +1448,7 @@ window.backToHome = backToHome;
 window.TicTacToeCompetitionEngine = Object.freeze({
   start: startConfiguredMatch,
   resumeAI: () => scheduleAIMove(280),
+  completeObjective: (won = true, winner = won ? gameState.playerSymbol : gameState.aiSymbol) => finishMatch({ outcome: won ? "win" : "loss", winner }),
   snapshot: () => ({ phase: gameState.phase, active: gameState.active, board: [...gameState.board], currentPlayer: gameState.currentPlayer, playerSymbol: gameState.playerSymbol, aiSymbol: gameState.aiSymbol, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], generation: gameState.match.generation }),
   exit: backToMenu
 });
@@ -1446,9 +1457,9 @@ window.TicTacToeCompetitionEngine = Object.freeze({
 // the AI without receiving authority to mutate the live match state.
 featureCore.attachEngine({
   analysis: {
-    legalMoves: (board) => getLegalMoves(board),
-    winningMoves: (board, mark) => getWinningMoves(board, mark),
-    forkMoves: (board, mark) => getForkMoves(board, mark)
+    legalMoves: (board, rules) => getLegalMoves(board, rules),
+    winningMoves: (board, mark, rules) => getWinningMoves(board, mark, rules),
+    forkMoves: (board, mark, rules) => getForkMoves(board, mark, rules)
   },
   getRuntimeSnapshot: () => ({
     phase: gameState.phase,
