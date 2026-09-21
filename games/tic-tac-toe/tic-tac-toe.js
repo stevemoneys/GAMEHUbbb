@@ -574,6 +574,30 @@ function hideAllScreens() {
   });
 }
 
+function getMatchReturnDestination() {
+  const screen = gameState.match.context?.returnScreen;
+  const destinations = {
+    learning: { label: "Learn", open: "openLearningHub" },
+    competition: { label: "Compete", open: "openCompetitionHub" },
+    experiment: { label: "Experiment", open: "openExperimentHub" }
+  };
+  return destinations[screen] || null;
+}
+
+function updateMatchReturnControls() {
+  const destination = getMatchReturnDestination();
+  const exitButton = document.querySelector('.controls button[onclick="backToMenu()"]');
+  const resultButton = document.querySelector('.modal-buttons button[onclick="goHome()"]');
+  if (exitButton) {
+    exitButton.textContent = destination ? `‹ ${destination.label}` : "⌂ Menu";
+    exitButton.setAttribute("aria-label", destination ? `Leave match and return to ${destination.label}` : "Leave match and return to menu");
+  }
+  if (resultButton) {
+    resultButton.textContent = destination ? `Return to ${destination.label}` : "Home";
+    resultButton.setAttribute("aria-label", destination ? `Return to ${destination.label}` : "Return home");
+  }
+}
+
 function showHomeScreen() {
   stopTurnTimer();
   clearPendingAIWork();
@@ -681,6 +705,7 @@ function updateMatchPresentation() {
   document.getElementById("gameLevelNumber").textContent = isAI ? `Level ${definition.number}` : "Classic";
   document.getElementById("gameLesson").textContent = isAI ? definition.name : "Three in a row wins";
   updateTurnPresentation();
+  updateMatchReturnControls();
 }
 
 function updateTurnPresentation() {
@@ -1333,10 +1358,16 @@ function restartGame() {
 }
 
 function backToMenu() {
+  const destination = getMatchReturnDestination();
   stopTurnTimer();
   clearPendingAIWork();
   window.dispatchEvent(new CustomEvent("tictactoe:match-exit", { detail: { generation: gameState.match.generation } }));
   document.getElementById("resultModal").classList.remove("active");
+  const openDestination = destination && window[destination.open];
+  if (typeof openDestination === "function") {
+    openDestination();
+    return;
+  }
   showHomeScreen();
 }
 
@@ -1350,6 +1381,7 @@ function showResult(won, isDraw = false) {
   const isCompetitionMatch = gameState.match.config?.type !== "standard";
   const playAgainButton = modal.querySelector('button[onclick="restartGame()"]');
 
+  updateMatchReturnControls();
   modal.classList.add("active");
   modal.classList.remove("victory", "defeat", "draw");
   modal.querySelectorAll(".competition-result-action").forEach((button) => button.remove());

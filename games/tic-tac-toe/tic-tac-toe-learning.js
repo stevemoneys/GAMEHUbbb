@@ -93,7 +93,7 @@
   function emit(type) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type } })); }
   function current() { return active && active.generation === generation ? active : null; }
   function endSession() { generation += 1; active = null; }
-  function screens(showId) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning"].forEach((id) => $(id)?.classList.toggle("active", id === showId)); }
+  function screens(showId) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment"].forEach((id) => $(id)?.classList.toggle("active", id === showId)); }
   function updateFeature(mutator) { save.update((data) => { mutator(data.features); }); }
   function escape(text) { return String(text).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[char])); }
 

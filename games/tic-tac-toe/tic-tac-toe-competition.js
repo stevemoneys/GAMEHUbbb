@@ -22,7 +22,7 @@
 
   function clearAsync() { clearInterval(countdown); clearTimeout(resultTimer); countdown = null; resultTimer = null; }
   function endSession() { generation += 1; clearAsync(); removePrompt(); $("readOpponentButton")?.remove(); session = null; }
-  function screens(id) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition"].forEach((screen) => $(screen)?.classList.toggle("active", screen === id)); }
+  function screens(id) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment"].forEach((screen) => $(screen)?.classList.toggle("active", screen === id)); }
   function active() { return session && session.generation === generation ? session : null; }
   function emit(type, detail = {}) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type, ...detail } })); }
   function update(mutator) { save.update((data) => { data.features.competition ??= {}; mutator(data.features.competition); }); }
@@ -51,7 +51,7 @@
     endSession(); const token = generation;
     const config = featureConfig(rematch ? "rival_rematch" : "rival", rival.personality, rival.level);
     session = { generation: token, id: `rival-${id}-${Date.now()}`, type: rematch ? "RIVAL_REMATCH" : "RIVAL", config, playerSymbol: "X", opponentSymbol: "O", personality: rival.personality, level: rival.level, timer: config.timer, rival, predictionEnabled: prediction, predictionPending: false, read: [], start: Date.now() };
-    const started = engine.start(config, { featureType: session.type, rivalId: rival.id, rivalName: rival.name, predictionEnabled: prediction });
+    const started = engine.start(config, { featureType: session.type, rivalId: rival.id, rivalName: rival.name, predictionEnabled: prediction, returnScreen: "competition" });
     if (!started.valid) { session = null; openHub(); return; }
     emit("button_press", { feature: "rival" });
   }
@@ -59,7 +59,7 @@
     endSession(); const token = generation;
     const config = featureConfig(prediction ? "prediction" : "quick_duel", "human", 6);
     session = { generation: token, id: `quick-${Date.now()}`, type: "QUICK_DUEL", config, playerSymbol: "X", opponentSymbol: "O", personality: "human", level: 6, timer: config.timer, predictionEnabled: prediction, predictionPending: false, read: [], start: Date.now() };
-    const started = engine.start(config, { featureType: "QUICK_DUEL", predictionEnabled: prediction });
+    const started = engine.start(config, { featureType: "QUICK_DUEL", predictionEnabled: prediction, returnScreen: "competition" });
     if (!started.valid) { session = null; openHub(); return; }
   }
   function speedMenu() { $("competitionIntro").textContent = "The clock applies to your decisions; the AI does not consume your time."; $("competitionContent").innerHTML = Object.entries(SPEEDS).map(([id, item]) => `<article class="glass-card competition-card"><h3>${item.label}</h3><p>${item.seconds} seconds per player turn against a Level ${item.level} AI.</p><button class="control-button" type="button" onclick="competitionStartSpeed('${id}')">Start ${item.label}</button></article>`).join("") + `<button class="text-button" type="button" onclick="competitionBack()">‹ Compete</button>`; }
@@ -70,7 +70,7 @@
     session = { generation: token, id: `speed-${id}-${Date.now()}`, type: "SPEED_DUEL", config, playerSymbol: "X", opponentSymbol: "O", personality: "aggressive", level: speed.level, timer: config.timer, speed: id, predictionEnabled: false, read: [], start: 0 };
     showPrompt(`<strong>${speed.label} Speed Duel</strong><span>3</span>`, "competition-countdown");
     let remaining = 3;
-    countdown = setInterval(() => { const current = active(); if (!current || current.generation !== token) { clearAsync(); return; } remaining -= 1; const prompt = $("competitionPrompt"); if (prompt) prompt.querySelector("span").textContent = remaining > 0 ? String(remaining) : "GO"; if (remaining <= 0) { clearInterval(countdown); countdown = null; removePrompt(); current.start = Date.now(); const started = engine.start(config, { featureType: "SPEED_DUEL", speed: id }); if (!started.valid) { session = null; openHub(); } } }, 650);
+    countdown = setInterval(() => { const current = active(); if (!current || current.generation !== token) { clearAsync(); return; } remaining -= 1; const prompt = $("competitionPrompt"); if (prompt) prompt.querySelector("span").textContent = remaining > 0 ? String(remaining) : "GO"; if (remaining <= 0) { clearInterval(countdown); countdown = null; removePrompt(); current.start = Date.now(); const started = engine.start(config, { featureType: "SPEED_DUEL", speed: id, returnScreen: "competition" }); if (!started.valid) { session = null; openHub(); } } }, 650);
   }
   function showPrompt(content, className = "") { removePrompt(); const prompt = document.createElement("aside"); prompt.id = "competitionPrompt"; prompt.className = `competition-prompt ${className}`; prompt.setAttribute("role", "dialog"); prompt.setAttribute("aria-live", "assertive"); prompt.innerHTML = content; document.body.appendChild(prompt); }
   function removePrompt() { $("competitionPrompt")?.remove(); }

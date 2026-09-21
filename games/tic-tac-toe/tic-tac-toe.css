@@ -298,3 +298,24 @@ body {
   .primary-action { min-height: 80px; }
   .game-screen .board-shell { width: min(100%, 50dvh); }
 }
+
+/* Phase 02: one visual language for the existing experience journeys. */
+.experience-label { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 22px 0 -18px; color: #a8c9f7; font-size: .62rem; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+.experience-label span { width: 32px; height: 1px; background: linear-gradient(90deg, transparent, rgba(90, 217, 255, .75)); }.experience-label span:last-child { transform: scaleX(-1); }
+.home-actions { padding-top: 20px; }
+.local-action { border-color: rgba(84, 160, 255, .58); background: linear-gradient(135deg, rgba(24, 65, 119, .9), rgba(9, 25, 60, .92)); }
+.learn-action { border-color: rgba(155, 125, 255, .62); background: linear-gradient(135deg, rgba(61, 43, 118, .9), rgba(18, 22, 67, .92)); }
+.compete-action { border-color: rgba(255, 139, 102, .63); background: linear-gradient(135deg, rgba(113, 47, 69, .88), rgba(35, 20, 52, .93)); }
+.experiment-action { border-color: rgba(115, 155, 212, .36); background: linear-gradient(135deg, rgba(22, 47, 88, .66), rgba(9, 20, 46, .72)); opacity: .82; }
+.learn-action .action-icon, .compete-action .action-icon, .experiment-action .action-icon { border: 2px solid currentColor; border-radius: 11px; font-size: 0; }
+.learn-action .action-icon { color: #c2b4ff; transform: rotate(45deg); }.learn-action .action-icon::before { content: ""; width: 12px; height: 12px; border: 2px solid currentColor; border-radius: 50%; transform: rotate(-45deg); }.learn-action .action-icon::after { content: ""; position: absolute; width: 2px; height: 12px; background: currentColor; transform: rotate(-45deg); }
+.compete-action .action-icon { color: #ffad8b; border-radius: 50% 50% 9px 9px; }.compete-action .action-icon::before { content: ""; position: absolute; inset: 7px 9px 9px; border: 2px solid currentColor; border-radius: 50%; }.compete-action .action-icon::after { content: ""; position: absolute; top: 4px; width: 12px; height: 2px; background: currentColor; box-shadow: -8px 7px 0 -1px currentColor, 8px 7px 0 -1px currentColor; }
+.experiment-action .action-icon { color: #9ac9ff; border-style: dashed; border-radius: 50%; }.experiment-action .action-icon::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px currentColor; }
+.learn-action:hover { border-color: #b49cff; box-shadow: 0 16px 30px rgba(35, 12, 82, .42); }.compete-action:hover { border-color: #ffae8f; box-shadow: 0 16px 30px rgba(87, 17, 45, .4); }.experiment-action:hover { opacity: 1; border-color: rgba(136, 190, 255, .62); }
+.learning-screen .screen-heading::before { background: linear-gradient(90deg, #b89fff, transparent); }.competition-screen .screen-heading::before { background: linear-gradient(90deg, #ff9f7e, transparent); }.experiment-screen .screen-heading::before { background: linear-gradient(90deg, #83bbff, transparent); }
+.learning-screen .learning-card, .competition-screen .competition-card, .experiment-screen .experiment-card { position: relative; overflow: hidden; border-radius: 20px; }
+.learning-screen .learning-card::before, .competition-screen .competition-card::before, .experiment-screen .experiment-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; pointer-events: none; background: var(--cyan); }.learning-screen .learning-card::before { background: #b49cff; }.competition-screen .competition-card::before { background: #ff9f7e; }.experiment-screen .experiment-card::before { background: #83bbff; }
+.learning-screen .learning-card:first-child, .competition-screen .competition-card:first-child { background: linear-gradient(135deg, rgba(42, 31, 96, .88), rgba(10, 21, 53, .93)); }
+.controls button[onclick="backToMenu()"], .modal-buttons button[onclick="goHome()"] { white-space: nowrap; }
+.modal-buttons button[onclick="goHome()"] { background: rgba(17, 45, 89, .92); }
+@media (max-width: 410px) { .experience-label { margin-top: 17px; }.home-actions { padding-top: 17px; }.action-card:not(.primary-action) .action-icon { width: 29px; height: 29px; } }
