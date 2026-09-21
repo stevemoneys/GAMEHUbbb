@@ -569,7 +569,7 @@ document.getElementById("scoreX").textContent = String(scoreX);
 document.getElementById("scoreO").textContent = String(scoreO);
 
 function hideAllScreens() {
-  ["menu", "levels", "avatars", "symbolSelect", "game"].forEach((id) => {
+  ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment"].forEach((id) => {
     document.getElementById(id).classList.remove("active");
   });
 }

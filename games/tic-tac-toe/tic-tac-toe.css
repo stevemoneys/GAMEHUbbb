@@ -105,3 +105,196 @@ button, .hub-back-btn { touch-action: manipulation; }
 @media (orientation: landscape) and (max-height: 560px) { .app { width: min(100%, 920px); padding-top: 9px; }.game-screen.active { display: grid !important; grid-template-columns: minmax(210px, .8fr) minmax(250px, 1fr); column-gap: 18px; align-items: center; }.game-screen .opponent-card { grid-column: 1; grid-row: 1; }.game-screen .turn-pill, .game-screen .timer { grid-column: 1; }.game-screen .board-shell { grid-column: 2; grid-row: 1 / span 5; width: min(100%, 72dvh); }.game-screen .thinking-card, .game-screen .match-cards, .game-screen .score-strip { grid-column: 1; }.game-screen .controls { grid-column: 1; }.game-screen .match-cards { display: none; } }
 @media (min-width: 768px) { .app { width: min(100%, 900px); }.game-screen { max-width: 670px; }.game-screen .board-shell { width: min(100%, 520px, 64dvh); }.audio-panel { right: max(28px, env(safe-area-inset-right)); }.level-grid { gap: 13px; }.level-grid button { min-height: 108px; } }
 @media (min-width: 1024px) { .app { width: min(100%, 1040px); }.home-screen { max-width: 660px; }.game-screen { max-width: 700px; }.game-screen .board-shell { width: min(100%, 540px, 62dvh); } }
+
+/* Phase 01: premium mobile game presentation. Shared selectors preserve all
+   existing controls and feature flows while giving the experience a clearer
+   play-first hierarchy. */
+:root {
+  --arena-edge: rgba(108, 246, 255, .32);
+  --arena-shadow: 0 28px 68px rgba(0, 5, 22, .56);
+  --surface-hi: rgba(24, 57, 105, .84);
+  --motion-snap: 220ms cubic-bezier(.16, .88, .22, 1);
+}
+body {
+  background:
+    radial-gradient(ellipse 70% 34% at 50% -4%, rgba(47, 168, 255, .25), transparent 68%),
+    radial-gradient(circle at 5% 64%, rgba(36, 83, 214, .17), transparent 29rem),
+    radial-gradient(circle at 97% 39%, rgba(132, 88, 255, .16), transparent 26rem),
+    linear-gradient(160deg, #050917 0%, #0a1834 47%, #060a18 100%);
+}
+.app { isolation: isolate; }
+.app::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 84px 0 auto;
+  height: min(520px, 65vh);
+  pointer-events: none;
+  opacity: .72;
+  background: radial-gradient(ellipse at center, rgba(34, 130, 244, .16), transparent 68%);
+  filter: blur(18px);
+}
+.app-bar {
+  position: sticky;
+  z-index: 12;
+  top: 0;
+  margin: 0 -8px;
+  padding: 8px 8px 9px 70px;
+  background: linear-gradient(180deg, rgba(5, 10, 24, .82), rgba(5, 10, 24, 0));
+  backdrop-filter: blur(8px);
+}
+.brand { text-shadow: 0 2px 18px rgba(0, 0, 0, .3); }
+.hero { position: relative; padding-top: clamp(34px, 7vw, 64px); }
+.hero::after {
+  content: "";
+  position: absolute;
+  top: 75px;
+  left: 50%;
+  width: min(78vw, 410px);
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, rgba(91, 221, 255, .52), transparent);
+}
+.hero h1 { position: relative; z-index: 1; text-shadow: 0 3px 0 rgba(255,255,255,.04), 0 16px 38px rgba(0,0,0,.52); }
+.hero-grid {
+  position: relative;
+  margin-top: 28px;
+  box-shadow: 0 28px 46px rgba(0,0,0,.54), 0 0 0 1px rgba(197, 251, 255, .22), 0 0 42px rgba(31, 207, 252, .24);
+}
+.hero-grid::before {
+  content: "";
+  position: absolute;
+  inset: -22px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(29, 218, 229, .22), transparent 67%);
+  filter: blur(10px);
+}
+.home-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 30px; }
+.home-actions .primary-action,
+.home-actions .action-card:nth-child(2),
+.home-actions .experiment-action { grid-column: 1 / -1; }
+.action-card {
+  min-height: 76px;
+  padding: 12px 15px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(23, 52, 98, .78), rgba(8, 20, 46, .9));
+  box-shadow: inset 0 1px rgba(211, 242, 255, .1), 0 12px 24px rgba(0, 2, 17, .3);
+  transition: transform var(--motion-snap), border-color var(--motion-snap), filter var(--motion-snap), box-shadow var(--motion-snap);
+}
+.action-card:not(.primary-action) { grid-template-columns: 34px minmax(0, 1fr); gap: 9px; }
+.action-card:not(.primary-action) b { display: none; }
+.action-card:not(.primary-action) .action-icon { width: 32px; height: 32px; font-size: 1.25rem; }
+.action-card:not(.primary-action) .action-icon.bot-icon { border-width: 2px; border-radius: 10px; }
+.action-card:not(.primary-action) .action-icon.players-icon::before { font-size: 17px; }
+.action-card:not(.primary-action) .action-icon.players-icon::after { font-size: 27px; }
+.action-card:not(.primary-action) .action-icon.bot-icon::before { font-size: 11px; letter-spacing: 5px; }
+.action-card:not(.primary-action) .action-icon.bot-icon::after { top: -8px; height: 7px; }
+.action-card strong { font-size: clamp(.82rem, 3.2vw, 1.08rem); }
+.action-card small { font-size: .62rem; letter-spacing: .055em; }
+.primary-action {
+  min-height: 98px;
+  padding: 17px 19px;
+  border-color: rgba(111, 255, 247, .98);
+  border-radius: 26px;
+  background: linear-gradient(105deg, #075577, #0db7c2 57%, #08799d);
+  box-shadow: inset 0 1px rgba(255,255,255,.42), 0 14px 33px rgba(0, 222, 232, .23), 0 0 0 1px rgba(99, 246, 255, .17);
+}
+.primary-action::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, rgba(255,255,255,.18), transparent 35%);
+}
+.primary-action .action-icon { width: 48px; height: 48px; }
+.primary-action strong { font-size: clamp(1.08rem, 4vw, 1.35rem); }
+.primary-action:hover { box-shadow: inset 0 1px rgba(255,255,255,.46), 0 18px 40px rgba(0, 222, 232, .3), 0 0 0 1px rgba(99, 246, 255, .27); }
+.home-meta { gap: 10px; margin-top: 14px; }
+.mastery-card, .next-card { border-radius: 20px; box-shadow: inset 0 1px rgba(204, 235, 255, .09), 0 14px 30px rgba(0, 3, 17, .28); }
+.home-footnote { margin-top: 15px; }
+
+.screen-heading { position: relative; margin-top: 30px; padding: 14px 0 6px; }
+.screen-heading::before { content: ""; position: absolute; top: 0; width: 46px; height: 2px; background: linear-gradient(90deg, var(--cyan), transparent); }
+.level-grid button, .symbol-choice, .glass-card { box-shadow: inset 0 1px rgba(197, 233, 255, .09), 0 14px 32px rgba(0, 4, 21, .32); }
+.level-grid button { border-radius: 20px; background: linear-gradient(135deg, rgba(24, 55, 101, .78), rgba(9, 21, 48, .9)); }
+.level-grid button:hover:not(:disabled) { box-shadow: inset 0 1px rgba(226, 250, 255, .15), 0 18px 38px rgba(0, 4, 21, .38); }
+.symbol-choice { position: relative; overflow: hidden; background: linear-gradient(145deg, rgba(23, 52, 99, .88), rgba(9, 21, 49, .92)); }
+.symbol-choice::after { content: ""; position: absolute; inset: auto -10% -48%; height: 58%; pointer-events: none; background: radial-gradient(ellipse, rgba(98, 240, 246, .16), transparent 68%); }
+.symbol-choice:hover { box-shadow: 0 18px 36px rgba(0, 2, 16, .4), 0 0 0 1px rgba(83, 237, 239, .2); }
+
+.game-screen { position: relative; padding-bottom: 6px; }
+.opponent-card { margin-top: 12px; border-radius: 22px; background: linear-gradient(112deg, rgba(21, 53, 99, .86), rgba(8, 22, 49, .9)); }
+.turn-pill { position: relative; margin-top: 16px; background: linear-gradient(115deg, rgba(12, 58, 96, .88), rgba(14, 30, 68, .84)); box-shadow: 0 8px 20px rgba(0, 5, 24, .26), 0 0 18px rgba(39,219,229,.13); }
+.turn-pill::before { content: ""; position: absolute; left: 13px; width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); opacity: .75; }
+.turn-pill .turn-mark { margin-left: 8px; }
+.turn-pill.ai-turn::before { background: var(--personality, var(--violet)); box-shadow: 0 0 12px var(--personality, var(--violet)); }
+.timer { margin-bottom: 12px; }
+.board-shell {
+  padding: 10px;
+  border-radius: 31px;
+  background: linear-gradient(135deg, #5ef3ee 0%, #2378df 43%, #8e67f3 100%);
+  box-shadow: 0 0 0 1px rgba(220, 252, 255, .48), 0 0 0 5px rgba(52, 143, 255, .08), 0 28px 50px rgba(0, 1, 12, .58), 0 0 42px rgba(41, 203, 251, .24);
+}
+.board-shell::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  z-index: -1;
+  border-radius: 38px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(52, 219, 255, .26), transparent 68%);
+  filter: blur(12px);
+}
+.board { gap: 7px; padding: 8px; border-radius: 23px; background: linear-gradient(145deg, #0a1935, #142d59); box-shadow: inset 0 0 0 2px rgba(1, 10, 31, .82), inset 0 1px rgba(177, 220, 255, .13); }
+.cell { border-radius: 14px; background: linear-gradient(145deg, #fffefa 0%, #f0ece3 52%, #d8d7d2 100%); box-shadow: inset 0 2px 1px rgba(255,255,255,.96), inset 0 -7px 12px rgba(100, 111, 132, .22), 0 5px 7px rgba(0,0,0,.34); transition: transform 150ms var(--ease), filter 150ms var(--ease), box-shadow 150ms var(--ease); }
+.cell:hover:not(:disabled) { transform: translateY(-3px) scale(1.01); filter: brightness(1.035); box-shadow: inset 0 2px 1px rgba(255,255,255,.96), inset 0 -7px 12px rgba(100,111,132,.2), 0 9px 12px rgba(0,0,0,.34); }
+.cell:focus-visible { position: relative; z-index: 4; outline: 3px solid #0b3f74; outline-offset: -5px; }
+.cell.X { text-shadow: 0 5px 0 #05839a, 0 10px 15px rgba(0, 89, 108, .34), 0 0 17px rgba(39,219,229,.18); }
+.cell.O { text-shadow: 0 5px 0 #a23936, 0 10px 15px rgba(118, 35, 30, .28), 0 0 17px rgba(255,114,88,.15); }
+.thinking-card { border-radius: 20px; background: linear-gradient(120deg, rgba(18, 52, 96, .86), rgba(8, 22, 49, .89)); }
+.match-cards { gap: 10px; }
+.player-card, .lesson-card { min-height: 92px; border-radius: 20px; }
+.score-strip span { background: rgba(9, 30, 64, .7); box-shadow: inset 0 1px rgba(184, 223, 255, .06); }
+.controls { gap: 10px; }
+.control-button, .primary-control { border-radius: 17px; box-shadow: inset 0 1px rgba(201, 235, 255, .09), 0 7px 16px rgba(0, 4, 21, .24); }
+.primary-control { background: linear-gradient(135deg, #0682a8, #15cbd0); }
+
+.modal { background: rgba(2, 7, 20, .82); }
+.modal-card { position: relative; overflow: hidden; padding-top: 55px; border-radius: 30px; background: linear-gradient(145deg, #18366b, #0a1733 72%); }
+.modal-card::before { content: ""; position: absolute; top: 17px; left: 50%; width: 58px; height: 58px; transform: translateX(-50%); border: 2px solid var(--cyan); border-radius: 19px; background: radial-gradient(circle, rgba(87,241,239,.28), rgba(87,241,239,.05)); box-shadow: 0 0 24px rgba(39,219,229,.28); }
+.modal.victory .modal-card::after, .modal.defeat .modal-card::after, .modal.draw .modal-card::after { position: absolute; top: 24px; left: 50%; z-index: 1; transform: translateX(-50%); font-size: 1.65rem; font-weight: 950; line-height: 1; }
+.modal.victory .modal-card::after { content: "✦"; color: #c9ffff; text-shadow: 0 0 14px var(--cyan); }
+.modal.defeat .modal-card { background: linear-gradient(145deg, #4b273d, #160f25 72%); }
+.modal.defeat .modal-card::before { border-color: var(--coral); background: radial-gradient(circle, rgba(255,114,88,.24), rgba(255,114,88,.05)); box-shadow: 0 0 24px rgba(255,114,88,.2); }
+.modal.defeat .modal-card::after { content: "×"; color: #ffd3cc; text-shadow: 0 0 14px var(--coral); }
+.modal.draw .modal-card { background: linear-gradient(145deg, #253a63, #0c1932 72%); }
+.modal.draw .modal-card::before { border-color: #a8caed; background: radial-gradient(circle, rgba(168,202,237,.22), rgba(168,202,237,.05)); box-shadow: 0 0 24px rgba(168,202,237,.17); }
+.modal.draw .modal-card::after { content: "="; color: #e5f2ff; }
+.modal-buttons button { min-height: 54px; }
+
+@media (max-width: 410px) {
+  .app-bar { margin-inline: -4px; padding-left: 59px; }
+  .hero { padding-top: 29px; }
+  .hero-grid { width: min(58vw, 228px); margin-top: 22px; }
+  .home-actions { gap: 8px; margin-top: 24px; }
+  .action-card { min-height: 70px; padding: 10px 12px; }
+  .primary-action { min-height: 88px; }
+  .primary-action strong { font-size: 1rem; }
+  .primary-action small { font-size: .59rem; }
+  .board-shell { padding: 7px; border-radius: 25px; }
+  .board { gap: 5px; padding: 6px; }
+  .cell { border-radius: 10px; }
+}
+@media (min-width: 620px) {
+  .home-actions { grid-template-columns: 1fr 1fr 1fr; }
+  .home-actions .primary-action, .home-actions .action-card:nth-child(2) { grid-column: span 3; }
+  .home-actions .experiment-action { grid-column: 2 / span 1; }
+}
+@media (max-height: 760px) and (max-width: 767px) {
+  .hero-grid { width: min(46vw, 194px); margin-top: 17px; }
+  .home-actions { margin-top: 20px; }
+  .primary-action { min-height: 80px; }
+  .game-screen .board-shell { width: min(100%, 50dvh); }
+}
