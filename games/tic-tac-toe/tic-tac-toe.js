@@ -569,7 +569,7 @@ document.getElementById("scoreX").textContent = String(scoreX);
 document.getElementById("scoreO").textContent = String(scoreO);
 
 function hideAllScreens() {
-  ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment"].forEach((id) => {
+  ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
     document.getElementById(id).classList.remove("active");
   });
 }
@@ -579,7 +579,8 @@ function getMatchReturnDestination() {
   const destinations = {
     learning: { label: "Learn", open: "openLearningHub" },
     competition: { label: "Compete", open: "openCompetitionHub" },
-    experiment: { label: "Experiment", open: "openExperimentHub" }
+    experiment: { label: "Experiment", open: "openExperimentHub" },
+    gauntlet: { label: "Gauntlet", open: "openGauntletHub" }
   };
   return destinations[screen] || null;
 }

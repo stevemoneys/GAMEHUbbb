@@ -34,6 +34,7 @@
           <span><strong>AI Challenge</strong><small>Play against smart opponents</small></span>
           <b aria-hidden="true">›</b>
         </button>
+        <button class="action-card gauntlet-action" onclick="openGauntletHub()"><span class="action-icon" aria-hidden="true"></span><span><strong>Gauntlet</strong><small>Eight encounters. One run.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
           <span class="action-icon players-icon" aria-hidden="true"></span>
           <span><strong>Two Players</strong><small>Play with a friend</small></span>
@@ -61,6 +62,8 @@
     <section class="screen competition-screen" id="competition" aria-label="Competition center"><header class="screen-heading"><p class="eyebrow">Competition loop</p><h2>Find your next match</h2><p id="competitionIntro">Choose a fast reason to play again.</p></header><div id="competitionContent" class="competition-content"></div><button class="text-button" type="button" onclick="closeCompetitionHub()">‹ Back to home</button></section>
     <section class="screen experiment-screen" id="experiment" aria-label="Experiment center"><header class="screen-heading"><p class="eyebrow">Experimentation loop</p><h2>Change the position</h2><p id="experimentIntro">Explore real tactical variations without risking your normal path.</p></header><div id="experimentContent" class="experiment-content"></div><button class="text-button" type="button" onclick="closeExperimentHub()">‹ Back to home</button></section>
 
+    <section class="screen gauntlet-screen" id="gauntlet" aria-label="Gauntlet run"><div id="gauntletContent" class="gauntlet-content"></div></section>
+
     <section class="screen level-screen" id="levels" aria-label="Level selection">
       <header class="screen-heading"><p class="eyebrow">AI Challenge</p><h2>Choose your tactic</h2><p>Each challenge builds a real Tic-Tac-Toe skill.</p></header>
       <div id="levelButtons" class="level-grid"></div>
@@ -83,6 +86,7 @@
     </section>
 
     <section class="screen game-screen" id="game" aria-label="Game board">
+      <section class="gauntlet-hud" id="gauntletHud" aria-label="Gauntlet progress" hidden></section>
       <section class="opponent-card glass-card" id="opponentCard">
         <span class="opponent-emblem" id="opponentEmblem" aria-hidden="true">◉</span>
         <div><p id="opponentKicker">Tactical Opponent</p><h2 id="opponentName">Human-like</h2><span id="opponentLesson">Level 1 · First Steps</span></div>
@@ -134,5 +138,6 @@
   <script src="tic-tac-toe-learning.js"></script>
   <script src="tic-tac-toe-competition.js"></script>
   <script src="tic-tac-toe-experimentation.js"></script>
+  <script src="tic-tac-toe-gauntlet.js"></script>
 </body>
 </html>

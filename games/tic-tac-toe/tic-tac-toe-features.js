@@ -4,7 +4,7 @@
 
   const BOARD_SIZE = 3;
   const CELL_COUNT = BOARD_SIZE ** 2;
-  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "modifier_challenge", "procedural_position", "experimental_lab", "two_player_challenge", "personal_record", "tactical_journey", "mastery_moment", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
+  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "gauntlet", "modifier_challenge", "procedural_position", "experimental_lab", "two_player_challenge", "personal_record", "tactical_journey", "mastery_moment", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
   const OBJECTIVE_TYPES = Object.freeze(["WIN", "DRAW", "BLOCK", "FORK", "PREVENT_FORK", "FORCE_DRAW", "WIN_IN_1", "WIN_IN_2", "PREDICT", "SURVIVE_SEQUENCE", "TIME_LIMIT"]);
   const PERSONALITIES = Object.freeze(["human", "aggressive", "defensive", "trickster"]);
   const FEATURE_REGISTRY = Object.freeze({
@@ -73,7 +73,7 @@
     if (!OBJECTIVE_TYPES.includes(objectiveType)) return { valid: false, reason: "Unknown objective." };
     const permissionSource = isRecord(source.permissions) ? source.permissions : {};
     const permissions = { progression: permissionSource.progression !== false, statistics: permissionSource.statistics !== false, achievements: permissionSource.achievements !== false, replay: permissionSource.replay !== false };
-    if (["replay", "what_if", "tactical_challenge", "daily_challenge", "mastery_trial", "quick_duel", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "experimental"].includes(type)) permissions.progression = false;
+    if (["replay", "what_if", "tactical_challenge", "daily_challenge", "mastery_trial", "quick_duel", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "gauntlet", "experimental"].includes(type)) permissions.progression = false;
     if (["replay", "what_if"].includes(type)) { permissions.statistics = false; permissions.achievements = false; }
     return { valid: true, value: Object.freeze({ type, mode, level, personality, playerSymbol, aiSymbol, rules: Object.freeze(rules.value), timer: Object.freeze(timer), objective: Object.freeze({ type: objectiveType }), permissions: Object.freeze(permissions) }) };
   }

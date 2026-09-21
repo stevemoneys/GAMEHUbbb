@@ -22,7 +22,7 @@
 
   function clearAsync() { clearInterval(countdown); clearTimeout(resultTimer); countdown = null; resultTimer = null; }
   function endSession() { generation += 1; clearAsync(); removePrompt(); $("readOpponentButton")?.remove(); session = null; }
-  function screens(id) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment"].forEach((screen) => $(screen)?.classList.toggle("active", screen === id)); }
+  function screens(id) { ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((screen) => $(screen)?.classList.toggle("active", screen === id)); }
   function active() { return session && session.generation === generation ? session : null; }
   function emit(type, detail = {}) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type, ...detail } })); }
   function update(mutator) { save.update((data) => { data.features.competition ??= {}; mutator(data.features.competition); }); }
