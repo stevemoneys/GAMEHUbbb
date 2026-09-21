@@ -30,7 +30,7 @@ const gameState = {
   ai: { thinking: false, timeout: undefined },
   timer: { handle: undefined, active: false, remaining: turnTime },
   result: { timeout: undefined, recorded: false, data: null },
-  match: { generation: 0, context: null, objectives: null, config: featureCore.createDefaultMatchConfig(), moves: [] }
+  match: { generation: 0, context: null, objectives: null, config: featureCore.createDefaultMatchConfig(), moves: [], turnHistory: [] }
 };
 
 const winPatterns = [
@@ -886,6 +886,9 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   clearPendingAIWork();
   gameState.match.objectives = createMatchObjectives();
   gameState.match.moves = [];
+  // Compact runtime-only history. It keeps the authoritative move list intact
+  // while allowing Gauntlet's Rewind to safely restore one completed pair.
+  gameState.match.turnHistory = [];
   beginMatchContext();
   gameState.board = Array.isArray(initialBoard) && initialBoard.length === 9 ? [...initialBoard] : Array(9).fill("");
   gameState.active = true;
@@ -922,6 +925,7 @@ function makeMove(index) {
 
   gameState.board[index] = gameState.currentPlayer;
   gameState.match.moves.push(index);
+  gameState.match.turnHistory.push({ index, symbol: gameState.currentPlayer });
   if (tracksObjectives) {
     gameState.match.objectives.blockedThreat ||= blocksImmediateThreat;
     gameState.match.objectives.preventedFork ||= preventsFork;
@@ -940,6 +944,20 @@ function makeMove(index) {
 
   if (getLegalMoves(gameState.board).length === 0) {
     draw();
+    return;
+  }
+
+  const playerSymbol = gameState.currentPlayer;
+  const deferAIResponse = gameState.mode === "ai" && playerSymbol === gameState.playerSymbol && window.dispatchEvent(new CustomEvent("tictactoe:before-ai-response", {
+    cancelable: true,
+    detail: { board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation }
+  })) === false;
+
+  if (deferAIResponse) {
+    gameState.currentPlayer = playerSymbol;
+    transitionTo(GAME_PHASES.PLAYING);
+    setStatus(`Player ${gameState.currentPlayer} Turn`);
+    startTurnTimer();
     return;
   }
 
@@ -1034,6 +1052,7 @@ function makeMoveFromSymbol(index, symbol) {
 
   gameState.board[index] = symbol;
   gameState.match.moves.push(index);
+  gameState.match.turnHistory.push({ index, symbol });
   const cell = boardEl.children[index];
   cell.textContent = symbol;
   cell.classList.add(symbol);
@@ -1053,6 +1072,36 @@ function makeMoveFromSymbol(index, symbol) {
   transitionTo(GAME_PHASES.PLAYING);
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   startTurnTimer();
+}
+
+function rewindGauntletPair() {
+  const config = gameState.match.config;
+  const history = gameState.match.turnHistory;
+  if (config?.type !== "gauntlet" || !gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.currentPlayer !== gameState.playerSymbol || !Array.isArray(history) || history.length < 2) return false;
+
+  const playerMove = history[history.length - 2];
+  const aiMove = history[history.length - 1];
+  if (playerMove.symbol !== gameState.playerSymbol || aiMove.symbol !== gameState.aiSymbol || gameState.board[playerMove.index] !== playerMove.symbol || gameState.board[aiMove.index] !== aiMove.symbol) return false;
+
+  stopTurnTimer();
+  clearPendingAIWork();
+  [playerMove, aiMove].forEach(({ index }) => {
+    gameState.board[index] = "";
+    const cell = boardEl.children[index];
+    if (!cell) return;
+    cell.textContent = "";
+    cell.classList.remove("X", "O", "win", "piece-in-x", "piece-in-o");
+    cell.setAttribute("aria-label", `Cell ${index + 1}: empty`);
+    restartAnimation(cell, "gauntlet-rewind-cell");
+  });
+  gameState.match.moves.splice(-2, 2);
+  history.splice(-2, 2);
+  gameState.currentPlayer = gameState.playerSymbol;
+  transitionTo(GAME_PHASES.PLAYING);
+  setStatus(`Player ${gameState.currentPlayer} Turn`);
+  startTurnTimer();
+  window.dispatchEvent(new CustomEvent("tictactoe:gauntlet-rewind", { detail: { board: [...gameState.board], moves: [...gameState.match.moves], config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
+  return true;
 }
 
 function getLegalMoves(state, rules = gameState.match.config?.rules || {}) {
@@ -1482,7 +1531,8 @@ window.TicTacToeCompetitionEngine = Object.freeze({
   start: startConfiguredMatch,
   resumeAI: () => scheduleAIMove(280),
   completeObjective: (won = true, winner = won ? gameState.playerSymbol : gameState.aiSymbol) => finishMatch({ outcome: won ? "win" : "loss", winner }),
-  snapshot: () => ({ phase: gameState.phase, active: gameState.active, board: [...gameState.board], currentPlayer: gameState.currentPlayer, playerSymbol: gameState.playerSymbol, aiSymbol: gameState.aiSymbol, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], generation: gameState.match.generation }),
+  snapshot: () => ({ phase: gameState.phase, active: gameState.active, board: [...gameState.board], currentPlayer: gameState.currentPlayer, playerSymbol: gameState.playerSymbol, aiSymbol: gameState.aiSymbol, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], turnHistory: gameState.match.turnHistory.map((move) => ({ ...move })), generation: gameState.match.generation }),
+  rewindGauntletPair,
   exit: backToMenu
 });
 

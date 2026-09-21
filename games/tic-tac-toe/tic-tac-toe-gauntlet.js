@@ -35,6 +35,7 @@
   }
 
   function endRun() {
+    global.clearGauntletPowerEffects?.();
     generation += 1;
     clearResultActions();
     run = null;
@@ -65,6 +66,7 @@
     endRun();
     $("resultModal")?.classList.remove("active");
     renderBriefing();
+    global.renderGauntletLoadout?.();
   }
 
   function closeHub() {
@@ -95,13 +97,14 @@
     hud.hidden = false;
     hud.style.setProperty("--encounter", item.accent);
     hud.innerHTML = `<div><span class="gauntlet-hud-kicker">Gauntlet</span><strong>${item.glyph} ${item.name}</strong></div><div class="gauntlet-hud-progress" aria-label="Encounter ${state.encounterIndex + 1} of ${TOTAL_ENCOUNTERS}"><b>${state.encounterIndex + 1}</b><div class="gauntlet-hud-route">${routeNodes(state.encounterIndex, state.victories)}</div></div>`;
+    global.renderGauntletPowers?.(state, hud);
   }
 
   function startRun() {
     if (current()?.status === "starting" || current()?.status === "playing") return;
     endRun();
     const token = generation;
-    run = { id: `gauntlet-${Date.now()}`, generation: token, status: "starting", encounterIndex: 0, victories: 0, complete: false, failed: false, resultHandled: false, advancing: false };
+    run = { id: `gauntlet-${Date.now()}`, generation: token, status: "starting", encounterIndex: 0, victories: 0, complete: false, failed: false, resultHandled: false, advancing: false, powers: global.createGauntletPowerState?.() || null };
     startEncounter();
   }
 
@@ -112,6 +115,7 @@
     state.advancing = true;
     state.status = "starting";
     state.resultHandled = false;
+    global.resetGauntletPowersForEncounter?.(state);
     clearResultActions();
     $("resultModal")?.classList.remove("active");
     const started = engine.start(configFor(item), {
@@ -243,4 +247,8 @@
   global.gauntletContinue = continueRun;
   global.gauntletReplayEncounter = replayEncounter;
   global.gauntletExitRun = exitRun;
+  global.TicTacToeGauntlet = Object.freeze({
+    getActiveRun: () => current(),
+    refreshHud: updateHud
+  });
 }(window));
