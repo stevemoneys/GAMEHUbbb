@@ -74,7 +74,7 @@
       scores: { x: 0, o: 0 },
       features: {
         challenges: { solved: {}, trials: {} },
-        daily: { history: {} },
+        daily: { history: {}, summary: { completed: 0, currentStreak: 0, bestStreak: 0, lastCompletedDate: null } },
         rivals: { human: { wins: 0, losses: 0, rematchWins: 0 }, aggressive: { wins: 0, losses: 0, rematchWins: 0 }, defensive: { wins: 0, losses: 0, rematchWins: 0 }, trickster: { wins: 0, losses: 0, rematchWins: 0 } },
         predictions: { made: 0, correct: 0 },
         records: {},
@@ -167,7 +167,17 @@
       scores: { x: count(source.scores?.x), o: count(source.scores?.o) },
       features: {
         challenges: { solved: isRecord(sourceFeatures.challenges?.solved) ? clone(sourceFeatures.challenges.solved) : {}, trials: isRecord(sourceFeatures.challenges?.trials) ? clone(sourceFeatures.challenges.trials) : {} },
-        daily: { history: isRecord(sourceFeatures.daily?.history) ? Object.fromEntries(Object.keys(sourceFeatures.daily.history).sort().slice(-14).map((key) => [key, clone(sourceFeatures.daily.history[key])])) : {} },
+        daily: (() => {
+          const history = isRecord(sourceFeatures.daily?.history) ? Object.fromEntries(Object.keys(sourceFeatures.daily.history).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key)).sort().slice(-14).map((key) => [key, clone(sourceFeatures.daily.history[key])])) : {};
+          const sourceDaily = isRecord(sourceFeatures.daily) ? sourceFeatures.daily : {};
+          const completedDates = Object.keys(history).filter((key) => history[key]?.completed === true).sort();
+          const lastCompletedDate = typeof sourceDaily.summary?.lastCompletedDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sourceDaily.summary.lastCompletedDate) ? sourceDaily.summary.lastCompletedDate : completedDates.at(-1) || null;
+          const previousDate = (key) => { const date = new Date(`${key}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() - 1); return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`; };
+          let recoveredStreak = 0, cursor = lastCompletedDate;
+          while (cursor && history[cursor]?.completed === true) { recoveredStreak += 1; cursor = previousDate(cursor); }
+          const currentStreak = Math.max(count(sourceDaily.summary?.currentStreak), recoveredStreak);
+          return { history, summary: { completed: Math.max(count(sourceDaily.summary?.completed), completedDates.length), currentStreak, bestStreak: Math.max(count(sourceDaily.summary?.bestStreak), currentStreak), lastCompletedDate } };
+        })(),
         rivals: Object.fromEntries(PERSONALITIES.map((personality) => [personality, normalizeRival(sourceFeatures.rivals?.[personality])])),
         predictions: { made: count(sourceFeatures.predictions?.made), correct: Math.min(count(sourceFeatures.predictions?.correct), count(sourceFeatures.predictions?.made)) },
         records: isRecord(sourceFeatures.records) ? clone(sourceFeatures.records) : {},

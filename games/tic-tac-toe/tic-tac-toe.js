@@ -676,9 +676,10 @@ function updateHomeDashboard() {
 function updateSymbolScreen() {
   const definition = getLevelDefinition(gameState.selectedLevel);
   const personality = getPersonalityPresentation(definition.personality);
-  document.getElementById("symbolLevelLabel").textContent = `Level ${definition.number} Â· ${personality.name}`;
-  document.getElementById("symbolTitle").textContent = definition.name;
-  document.getElementById("symbolLesson").textContent = definition.strategicLesson;
+  const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
+  document.getElementById("symbolLevelLabel").textContent = isReverse ? `Reverse · Level ${definition.number} · ${personality.name}` : `Level ${definition.number} Â· ${personality.name}`;
+  document.getElementById("symbolTitle").textContent = isReverse ? "Choose your mark" : definition.name;
+  document.getElementById("symbolLesson").textContent = isReverse ? "Your own three-in-a-row loses. Force theirs instead." : definition.strategicLesson;
 }
 
 function updateMatchPresentation() {
@@ -799,7 +800,7 @@ function startReverseAI() {
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
-  if (!snapshotMatchConfig({ mode: "ai", type: "reverse", rules: { misere: true } })) return;
+  if (!snapshotMatchConfig({ mode: "ai", type: "reverse", rules: { misere: true }, permissions: { progression: false, statistics: false, achievements: false, replay: true } })) return;
   showLevels();
 }
 
@@ -809,7 +810,7 @@ function startReverseTwoPlayers() {
   gameState.playerSymbol = "X";
   gameState.aiSymbol = "O";
   gameState.selectedLevel = 1;
-  if (!snapshotMatchConfig({ mode: "two", type: "reverse", rules: { misere: true } })) return;
+  if (!snapshotMatchConfig({ mode: "two", type: "reverse", rules: { misere: true }, permissions: { progression: false, statistics: false, achievements: false, replay: true } })) return;
   hideAllScreens();
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
@@ -824,6 +825,14 @@ function showLevels() {
   hideHubBackBtn();
   const levelBox = document.getElementById("levels");
   const levelButtons = document.getElementById("levelButtons");
+  const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
+  const heading = levelBox.querySelector(".screen-heading");
+  if (heading) {
+    const [eyebrow, title, detail] = heading.children;
+    if (eyebrow) eyebrow.textContent = isReverse ? "Reverse AI" : "AI Challenge";
+    if (title) title.textContent = isReverse ? "Choose your trap" : "Choose your tactic";
+    if (detail) detail.textContent = isReverse ? "A three-in-a-row of your own mark loses." : "Each challenge builds a real Tic-Tac-Toe skill.";
+  }
 
   levelButtons.innerHTML = "";
   pendingLevelSelection = false;

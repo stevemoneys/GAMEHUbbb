@@ -89,7 +89,13 @@
     }
     return null;
   }
-  function dailyKey() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+  // Daily Puzzle 2.0 uses UTC midnight, so the seed is stable for every
+  // offline player on the same calendar day rather than device-local time.
+  function dailyKey(date = new Date()) { return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`; }
+  function previousDailyKey(key) { const date = new Date(`${key}T00:00:00.000Z`); date.setUTCDate(date.getUTCDate() - 1); return dailyKey(date); }
+  function dailyData() { const daily = save.get().features.daily || {}; return { history: daily.history || {}, summary: daily.summary || { completed: 0, currentStreak: 0, bestStreak: 0, lastCompletedDate: null } }; }
+  function visibleDailyStreak(summary, date = dailyKey()) { return summary.lastCompletedDate === date || summary.lastCompletedDate === previousDailyKey(date) ? Number(summary.currentStreak || 0) : 0; }
+  function dailyChallenge(date = dailyKey()) { const types = Object.keys(CATEGORIES); const seed = `TIC_TAC_TOE_DAILY_V1:${date}`; const type = types[[...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % types.length]; return { date, seed, type, twist: "PRECISION" }; }
   function emit(type) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type } })); }
   function current() { return active && active.generation === generation ? active : null; }
   function endSession() { generation += 1; active = null; }
@@ -101,11 +107,12 @@
   function closeHub() { endSession(); screens("menu"); }
   function renderHub() {
     const replay = save.get().features.replays[0];
+    const daily = dailyData(), today = dailyKey(), todayEntry = daily.history[today], summary = daily.summary, streak = visibleDailyStreak(daily.summary, today);
     $("learningIntro").textContent = "Focused tactics, connected trials, and factual match review.";
     $("learningContent").innerHTML = `
       <article class="glass-card learning-card"><h3>Tactical Challenges</h3><p>Practice one provable pattern at a time.</p><button class="primary-control" type="button" onclick="learningTacticalMenu()">Choose tactic</button></article>
       <article class="glass-card learning-card"><h3>Mastery Trials</h3><p>Complete three connected tactical decisions.</p><button class="control-button" type="button" onclick="learningTrialsMenu()">Choose trial</button></article>
-      <article class="glass-card learning-card"><h3>Daily Challenge</h3><p>One stable, replayable puzzle for ${dailyKey()}.</p><button class="control-button" type="button" onclick="learningDaily()">Play today</button></article>
+      <article class="glass-card learning-card daily-challenge-card ${todayEntry?.completed ? "daily-complete" : ""}"><div class="daily-card-top"><span class="daily-glyph" aria-hidden="true">◉</span><span><small>Daily Puzzle · UTC</small><h3>${todayEntry?.completed ? "Today cleared" : "Today’s precision"}</h3></span><b>${String(streak).padStart(2, "0")}</b></div><div class="daily-card-metrics"><span><strong>${streak}</strong> streak</span><span><strong>${summary.completed || 0}</strong> cleared</span><span>${today}</span></div><p>${todayEntry?.completed ? "Solved today. Replay without changing your streak." : "One tactical decision. No hints."}</p><button class="control-button" type="button" onclick="learningDaily()">${todayEntry?.completed ? "Replay today" : "Play today"}</button></article>
       <article class="glass-card learning-card"><h3>Last Match</h3><p>${replay ? "Inspect the actual completed move sequence." : "Finish a normal match to unlock factual review."}</p>${replay ? `<button class="control-button" type="button" onclick="learningAnalysis()">Match analysis</button>${replay.result === "loss" && replay.matchType === "standard" && replay.mode === "ai" ? '<button class="control-button" type="button" onclick="learningWhy()">Why did I lose?</button>' : ""}` : ""}</article>`;
   }
   function tacticalMenu() {
@@ -124,19 +131,25 @@
     const seed = options.seed || `${kind}-${Date.now()}`;
     const position = validatedPosition(type, seed);
     if (!position) { $("learningContent").textContent = "This challenge could not be validated. Please choose another exercise."; return; }
-    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: options.attempts || 0, totalAttempts: options.totalAttempts || 0, completed: false, locked: false, seed };
+    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: options.attempts || 0, totalAttempts: options.totalAttempts || 0, completed: false, locked: false, seed, date: options.date || null, twist: options.twist || null, alreadyCompleted: options.alreadyCompleted === true };
     renderBoard();
   }
   function startChallenge(type) { startSession("TACTICAL_CHALLENGE", type); }
   function startTrial(id) { const trial = TRIALS[id]; if (trial) startSession("MASTERY_TRIAL", trial.steps[0], { trial: id, step: 0 }); }
   function startDaily() {
-    const date = dailyKey();
-    const types = Object.keys(CATEGORIES); const type = types[[...`TIC_TAC_TOE_DAILY_V1:${date}`].reduce((sum, char) => sum + char.charCodeAt(0), 0) % types.length];
-    startSession("DAILY_CHALLENGE", type, { seed: `TIC_TAC_TOE_DAILY_V1:${date}` });
+    const challenge = dailyChallenge();
+    const existing = dailyData().history[challenge.date];
+    startSession("DAILY_CHALLENGE", challenge.type, { seed: challenge.seed, date: challenge.date, twist: challenge.twist, totalAttempts: existing?.attempts || 0, alreadyCompleted: existing?.completed === true });
   }
   function renderBoard() {
     const session = current(); if (!session) return;
     const category = CATEGORIES[session.type];
+    if (session.kind === "DAILY_CHALLENGE") {
+      $("learningIntro").textContent = `Daily Puzzle · ${session.date} — Daily Precision`;
+      $("learningContent").innerHTML = `<article class="glass-card learning-card learning-play daily-play"><div class="daily-play-status"><span class="daily-glyph" aria-hidden="true">◉</span><span><strong>Daily Precision</strong><small>One tactical decision · hints are off</small></span><b>${session.alreadyCompleted ? "Cleared" : "UTC"}</b></div><p><strong>You are ${session.position.player}.</strong> Find the one move that fulfills today’s tactical objective.</p><div class="learning-board" role="grid" aria-label="Daily ${escape(category.title)} tactical board">${session.position.board.map((mark, index) => `<button class="learning-cell" type="button" data-learning-cell="${index}" ${mark ? "disabled" : ""} aria-label="Cell ${index + 1}: ${mark || "empty"}">${mark || ""}</button>`).join("")}</div><p class="learning-feedback" id="learningFeedback">Attempt ${session.totalAttempts + 1} · ${category.title}</p><div class="learning-actions"><button class="control-button" type="button" onclick="learningExit()">Exit</button></div></article>`;
+      document.querySelectorAll("[data-learning-cell]").forEach((button) => button.addEventListener("click", () => answer(Number(button.dataset.learningCell), session.generation), { once: true }));
+      return;
+    }
     const heading = session.kind === "MASTERY_TRIAL" ? `${TRIALS[session.trial].title} · Step ${session.step + 1} of 3` : session.kind === "DAILY_CHALLENGE" ? `Daily Challenge · ${dailyKey()}` : category.title;
     $("learningIntro").textContent = `${heading} — ${category.lesson}`;
     $("learningContent").innerHTML = `<article class="glass-card learning-card learning-play"><p><strong>You are ${session.position.player}.</strong> Select the move that fulfills the objective.</p><div class="learning-board" role="grid" aria-label="${escape(category.title)} tactical board">${session.position.board.map((mark, index) => `<button class="learning-cell" type="button" data-learning-cell="${index}" ${mark ? "disabled" : ""} aria-label="Cell ${index + 1}: ${mark || "empty"}">${mark || ""}</button>`).join("")}</div><p class="learning-feedback" id="learningFeedback">Attempt ${session.attempts + 1}. ${category.lesson}</p><div class="learning-actions"><button class="control-button" type="button" onclick="learningHint()">Hint</button><button class="control-button" type="button" onclick="learningExit()">Exit</button></div></article>`;
@@ -154,12 +167,26 @@
     if (!correct) {
       feedback.textContent = session.type === "BLOCK" ? "Not quite — the immediate threat is still available." : `Not quite — that move does not ${CATEGORIES[session.type].lesson.toLowerCase()}`;
       emit("incorrect_answer");
+      if (session.kind === "DAILY_CHALLENGE") {
+        persistDailyAttempt(session);
+        feedback.textContent = "Today’s precision attempt is recorded. The puzzle remains available to practice.";
+        feedback.insertAdjacentHTML("afterend", `<div class="learning-actions daily-result-actions"><button class="primary-control" type="button" onclick="learningRetry()">Try again</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
+        return;
+      }
       feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningRetry()">Retry</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
       return;
     }
     session.completed = true;
     feedback.textContent = session.type === "FORK" || session.type === "WIN_IN_2" ? "Correct — that move creates two genuine winning threats." : `Correct — ${CATEGORIES[session.type].lesson.toLowerCase()}`;
     emit("level_unlock");
+    if (session.kind === "DAILY_CHALLENGE") {
+      const firstClear = !session.alreadyCompleted;
+      persistCompletion(session);
+      session.alreadyCompleted = true;
+      feedback.textContent = firstClear ? "Daily Puzzle cleared — your streak is updated." : "Solved again — today’s streak is already safely recorded.";
+      feedback.insertAdjacentHTML("afterend", `<div class="learning-actions daily-result-actions"><button class="primary-control" type="button" onclick="learningShareDaily()">Share result</button><button class="control-button" type="button" onclick="learningRetry()">Replay</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
+      return;
+    }
     if (session.kind === "MASTERY_TRIAL" && session.step < 2) {
       feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningNextTrialStep()">Next decision</button><button class="control-button" type="button" onclick="learningExit()">Exit</button></div>`);
     } else {
@@ -169,16 +196,56 @@
   }
   function persistCompletion(session) {
     if (session.saved) return; session.saved = true;
+    if (session.kind === "DAILY_CHALLENGE") {
+      updateFeature((features) => recordDailyCompletion(features, session));
+      return;
+    }
     updateFeature((features) => {
       features.challenges ??= { solved: {}, trials: {} };
       if (session.kind === "MASTERY_TRIAL") features.challenges.trials[session.trial] = { completed: true, steps: 3, attempts: session.totalAttempts };
-      else if (session.kind === "DAILY_CHALLENGE") { features.daily ??= { history: {} }; features.daily.history[dailyKey()] = { id: `TIC_TAC_TOE_DAILY_V1:${dailyKey()}`, seed: session.seed, positionId: session.position.id, type: session.type, completed: true, result: "completed", attempts: session.totalAttempts }; const keys = Object.keys(features.daily.history).sort().slice(-14); features.daily.history = Object.fromEntries(keys.map((key) => [key, features.daily.history[key]])); }
       else features.challenges.solved[session.type] = { completed: true, attempts: session.totalAttempts };
     });
   }
+  function persistDailyAttempt(session) {
+    updateFeature((features) => {
+      features.daily ??= { history: {}, summary: {} };
+      features.daily.history ??= {};
+      const prior = features.daily.history[session.date] || {};
+      features.daily.history[session.date] = { id: session.seed, seed: session.seed, positionId: session.position.id, type: session.type, twist: session.twist, completed: prior.completed === true, result: prior.completed ? "completed" : "attempted", attempts: session.totalAttempts };
+    });
+  }
+  function recordDailyCompletion(features, session) {
+    features.daily ??= { history: {}, summary: {} };
+    features.daily.history ??= {};
+    features.daily.summary ??= { completed: 0, currentStreak: 0, bestStreak: 0, lastCompletedDate: null };
+    const prior = features.daily.history[session.date] || {};
+    features.daily.history[session.date] = { id: session.seed, seed: session.seed, positionId: session.position.id, type: session.type, twist: session.twist, completed: true, result: "completed", attempts: session.totalAttempts };
+    if (!prior.completed) {
+      const summary = features.daily.summary;
+      summary.completed = Number(summary.completed || 0) + 1;
+      summary.currentStreak = summary.lastCompletedDate === previousDailyKey(session.date) ? Number(summary.currentStreak || 0) + 1 : 1;
+      summary.bestStreak = Math.max(Number(summary.bestStreak || 0), summary.currentStreak);
+      summary.lastCompletedDate = session.date;
+    }
+    const keys = Object.keys(features.daily.history).sort().slice(-14);
+    features.daily.history = Object.fromEntries(keys.map((key) => [key, features.daily.history[key]]));
+  }
   function nextTrialStep() { const session = current(); if (!session || !session.completed || session.kind !== "MASTERY_TRIAL") return; const trial = TRIALS[session.trial]; startSession("MASTERY_TRIAL", trial.steps[session.step + 1], { trial: session.trial, step: session.step + 1, totalAttempts: session.totalAttempts }); }
   function nextChallenge() { const session = current(); if (!session) return; if (session.kind === "MASTERY_TRIAL") { persistCompletion(session); trialsMenu(); } else if (session.kind === "DAILY_CHALLENGE") startDaily(); else startChallenge(session.type); }
-  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step, attempts: session.attempts, totalAttempts: session.totalAttempts }; startSession(session.kind, session.type, options); }
+  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step, attempts: session.attempts, totalAttempts: session.totalAttempts, date: session.date, twist: session.twist, alreadyCompleted: session.alreadyCompleted }; startSession(session.kind, session.type, options); }
+  async function shareDaily() {
+    const session = current(); if (!session || session.kind !== "DAILY_CHALLENGE" || !session.completed) return;
+    const summary = dailyData().summary;
+    const text = `GameHub Daily Puzzle · ${session.date}\nCleared · Daily Precision\nStreak ${summary.currentStreak || 0} · No spoilers`;
+    const feedback = $("learningFeedback");
+    try {
+      if (navigator.share) { await navigator.share({ title: "GameHub Daily Puzzle", text }); if (feedback) feedback.textContent = "Result shared — no solution details included."; return; }
+      if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); if (feedback) feedback.textContent = "Spoiler-free result copied."; return; }
+      if (feedback) feedback.textContent = "Sharing is unavailable in this browser.";
+    } catch (error) {
+      if (error?.name !== "AbortError" && feedback) feedback.textContent = "Sharing did not complete. Your result is still saved.";
+    }
+  }
   function hint() { const session = current(); if (!session) return; const move = solutions(session.position)[0]; const feedback = $("learningFeedback"); if (feedback) feedback.textContent = `Hint: examine cell ${move + 1}; verify the resulting threats before playing it.`; }
   function exit() { endSession(); renderHub(); }
 
@@ -222,6 +289,7 @@
   global.learningStartChallenge = startChallenge;
   global.learningStartTrial = startTrial;
   global.learningDaily = startDaily;
+  global.learningShareDaily = shareDaily;
   global.learningHint = hint;
   global.learningRetry = retry;
   global.learningNextTrialStep = nextTrialStep;
