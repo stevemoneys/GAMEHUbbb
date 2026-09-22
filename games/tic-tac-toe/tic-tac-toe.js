@@ -569,7 +569,7 @@ document.getElementById("scoreX").textContent = String(scoreX);
 document.getElementById("scoreO").textContent = String(scoreO);
 
 function hideAllScreens() {
-  ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
+  ["menu", "reverse", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
     document.getElementById(id).classList.remove("active");
   });
 }
@@ -621,18 +621,19 @@ function clearSavedMatch() {
 
 function createBoardCell(index, value = "") {
   const cell = document.createElement("button");
+  const isBlocked = !value && gameState.match.config?.rules?.blockedCells?.includes(index);
   cell.type = "button";
   cell.classList.add("cell");
   if (value) {
     cell.textContent = value;
     cell.classList.add(value);
   }
-  if (!value && gameState.match.config?.rules?.blockedCells?.includes(index)) {
+  if (isBlocked) {
     cell.disabled = true;
     cell.classList.add("blocked");
-    cell.textContent = "•";
+    cell.textContent = "⊘";
   }
-  cell.setAttribute("aria-label", value ? `Cell ${index + 1}: ${value}` : `Cell ${index + 1}: empty`);
+  cell.setAttribute("aria-label", isBlocked ? `Cell ${index + 1}: sealed and unavailable` : value ? `Cell ${index + 1}: ${value}` : `Cell ${index + 1}: empty`);
   cell.setAttribute("aria-rowindex", String(Math.floor(index / 3) + 1));
   cell.setAttribute("aria-colindex", String((index % 3) + 1));
   cell.addEventListener("click", () => makeMove(index));
@@ -683,14 +684,15 @@ function updateSymbolScreen() {
 function updateMatchPresentation() {
   const definition = getLevelDefinition(gameState.selectedLevel);
   const isAI = gameState.mode === "ai";
+  const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
   const personality = getPersonalityPresentation(isAI ? gameState.aiPersonality : "human");
   const opponentCard = document.getElementById("opponentCard");
   opponentCard.style.setProperty("--personality", personality.color);
   document.getElementById("opponentEmblem").textContent = isAI ? personality.symbol : "â—«";
   document.getElementById("thinkingEmblem").textContent = isAI ? personality.symbol : "â—«";
-  document.getElementById("opponentKicker").textContent = isAI ? "Tactical Opponent" : "Local Duel";
+  document.getElementById("opponentKicker").textContent = isReverse ? "Reverse · Complete a line, lose" : isAI ? "Tactical Opponent" : "Local Duel";
   document.getElementById("opponentName").textContent = isAI ? personality.name : "Two Players";
-  document.getElementById("opponentLesson").textContent = isAI ? `Level ${definition.number} Â· ${definition.name}` : "Pass the board and play face to face.";
+  document.getElementById("opponentLesson").textContent = isReverse ? (isAI ? `Level ${definition.number} · avoid your own lines` : "Pass the board · completing a line loses.") : isAI ? `Level ${definition.number} Â· ${definition.name}` : "Pass the board and play face to face.";
   document.getElementById("strengthLabel").textContent = isAI ? `Level ${definition.strength}` : "Classic match";
   const strengthDots = document.getElementById("strengthDots");
   strengthDots.innerHTML = "";
@@ -703,8 +705,8 @@ function updateMatchPresentation() {
   document.getElementById("thinkingTitle").textContent = isAI ? `${personality.name} is ready` : "Local tactical duel";
   document.getElementById("thinkingText").textContent = isAI ? personality.description : "Every move creates a new decision.";
   document.getElementById("playerSymbolDisplay").textContent = gameState.mode === "ai" ? gameState.playerSymbol : gameState.currentPlayer;
-  document.getElementById("gameLevelNumber").textContent = isAI ? `Level ${definition.number}` : "Classic";
-  document.getElementById("gameLesson").textContent = isAI ? definition.name : "Three in a row wins";
+  document.getElementById("gameLevelNumber").textContent = isReverse ? "Reverse" : isAI ? `Level ${definition.number}` : "Classic";
+  document.getElementById("gameLesson").textContent = isReverse ? "Complete a line, lose" : isAI ? definition.name : "Three in a row wins";
   updateTurnPresentation();
   updateMatchReturnControls();
 }
@@ -779,6 +781,41 @@ function startVsAI() {
   document.getElementById("menu").classList.remove("active");
   hideHubBackBtn();
   showLevels();
+}
+
+function openReverseMode() {
+  clearSavedMatch();
+  hideAllScreens();
+  hideHubBackBtn();
+  transitionTo(GAME_PHASES.HOME);
+  document.getElementById("reverse").classList.add("active");
+}
+
+function closeReverseMode() {
+  showHomeScreen();
+}
+
+function startReverseAI() {
+  clearSavedMatch();
+  gameState.mode = "ai";
+  applyLevelDefinition(unlockedLevel);
+  if (!snapshotMatchConfig({ mode: "ai", type: "reverse", rules: { misere: true } })) return;
+  showLevels();
+}
+
+function startReverseTwoPlayers() {
+  clearSavedMatch();
+  gameState.mode = "two";
+  gameState.playerSymbol = "X";
+  gameState.aiSymbol = "O";
+  gameState.selectedLevel = 1;
+  if (!snapshotMatchConfig({ mode: "two", type: "reverse", rules: { misere: true } })) return;
+  hideAllScreens();
+  hideHubBackBtn();
+  document.getElementById("game").classList.add("active");
+  resetBoard();
+  updateMatchPresentation();
+  startTurnTimer();
 }
 
 function showLevels() {
@@ -896,7 +933,7 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   gameState.result.data = null;
   transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
-  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
+  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "reverse-line", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
 
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
@@ -1048,7 +1085,7 @@ function playMoveFromAI(index) {
 }
 
 function makeMoveFromSymbol(index, symbol) {
-  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index]) return;
+  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
 
   gameState.board[index] = symbol;
   gameState.match.moves.push(index);
@@ -1072,6 +1109,7 @@ function makeMoveFromSymbol(index, symbol) {
   transitionTo(GAME_PHASES.PLAYING);
   setStatus(`Player ${gameState.currentPlayer} Turn`);
   startTurnTimer();
+  window.dispatchEvent(new CustomEvent("tictactoe:turn-ready", { detail: { currentPlayer: gameState.currentPlayer, board: [...gameState.board], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
 }
 
 function rewindGauntletPair() {
@@ -1243,7 +1281,45 @@ function chooseRankedCandidate(ranked, profile, personality) {
   return pool[0].move;
 }
 
+// Reverse Tic-Tac-Toe: a mark that completes its own line loses. This compact
+// evaluator deliberately avoids the Standard AI's win-seeking candidate path.
+function solveReversePosition(state, turnSymbol, memo = new Map()) {
+  const lineOwner = getWinner(state);
+  if (lineOwner === gameState.aiSymbol) return -10;
+  if (lineOwner === gameState.playerSymbol) return 10;
+  const legal = getLegalMoves(state);
+  if (!legal.length) return 0;
+  const key = `${state.join("")}:${turnSymbol}:reverse`;
+  if (memo.has(key)) return memo.get(key);
+  const maximizing = turnSymbol === gameState.aiSymbol;
+  const score = legal.map((move) => solveReversePosition(playOnBoard(state, move, turnSymbol), turnSymbol === "X" ? "O" : "X", memo));
+  const resolved = maximizing ? Math.max(...score) : Math.min(...score);
+  memo.set(key, resolved);
+  return resolved;
+}
+
+function getReverseAIMove() {
+  const profile = getStrengthProfile(gameState.level);
+  const legal = getLegalMoves(gameState.board);
+  if (!legal.length) return null;
+  const safe = legal.filter((move) => getWinner(playOnBoard(gameState.board, move, gameState.aiSymbol)) !== gameState.aiSymbol);
+  const candidates = safe.length ? safe : legal;
+  const ranked = candidates.map((move) => {
+    const next = playOnBoard(gameState.board, move, gameState.aiSymbol);
+    const opponentTrapMoves = getWinningMoves(next, gameState.playerSymbol).length;
+    return { move, score: opponentTrapMoves * 1000 + getPositionValue(move) };
+  });
+  if (profile.optimal) {
+    const memo = new Map();
+    const scored = ranked.map((candidate) => ({ ...candidate, outcome: solveReversePosition(playOnBoard(gameState.board, candidate.move, gameState.aiSymbol), gameState.playerSymbol, memo) }));
+    const best = Math.max(...scored.map((candidate) => candidate.outcome));
+    return chooseRankedCandidate(scored.filter((candidate) => candidate.outcome === best).sort((a, b) => b.score - a.score || a.move - b.move), { ...profile, choiceWindow: 2 }, gameState.aiPersonality);
+  }
+  return chooseRankedCandidate(ranked.sort((a, b) => b.score - a.score || a.move - b.move), profile, gameState.aiPersonality);
+}
+
 function getAIMoveByLevel() {
+  if (gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere) return getReverseAIMove();
   const profile = getStrengthProfile(gameState.level);
   const personality = AI_PERSONALITIES[gameState.aiPersonality] ? gameState.aiPersonality : "human";
   const legal = getLegalMoves(gameState.board);
@@ -1271,13 +1347,13 @@ function getAIMoveByLevel() {
   return chooseRankedCandidate(ranked, profile, personality);
 }
 
-function finishMatch({ outcome, isDraw = false, winner = null }) {
+function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) {
   if (!gameState.active || gameState.result.recorded) return false;
   stopTurnTimer();
   clearPendingAIWork();
   gameState.active = false;
   gameState.ai.thinking = false;
-  gameState.result.data = { outcome, isDraw, winner };
+  gameState.result.data = { outcome, isDraw, winner, reason };
   transitionTo(GAME_PHASES.RESULT);
 
   if (isDraw) {
@@ -1288,7 +1364,7 @@ function finishMatch({ outcome, isDraw = false, winner = null }) {
     gameState.match.objectives.completed = true;
     gameState.match.objectives.won = gameState.mode !== "ai" || winner === gameState.playerSymbol;
     setStatus(`Player ${winner} Wins`);
-    updateScore();
+    updateScore(winner);
   }
 
   finalizeMatch(outcome);
@@ -1303,16 +1379,19 @@ function checkWin() {
     const [a, b, c] = pattern;
 
     if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[b] === gameState.board[c]) {
-      [a, b, c].forEach((idx) => boardEl.children[idx].classList.add("win"));
+      const reverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
+      [a, b, c].forEach((idx) => boardEl.children[idx].classList.add("win", reverse ? "reverse-line" : ""));
       const boardShell = document.querySelector(".board-shell");
       boardShell?.classList.add("has-win", getWinLineClass(pattern));
+      if (reverse) boardShell?.classList.add("reverse-line");
       restartAnimation(boardShell, "win-impact");
 
       emitGameFeelEvent("win_line", { winner: gameState.currentPlayer, pattern });
       haptic([14, 45, 24]);
 
-      const playerWon = gameState.mode !== "ai" ? true : gameState.currentPlayer === gameState.playerSymbol;
-      finishMatch({ outcome: playerWon ? "win" : "loss", winner: gameState.currentPlayer });
+      const winner = reverse ? (gameState.currentPlayer === "X" ? "O" : "X") : gameState.currentPlayer;
+      const playerWon = gameState.mode !== "ai" ? true : winner === gameState.playerSymbol;
+      finishMatch({ outcome: playerWon ? "win" : "loss", winner, reason: reverse ? "completed_line" : null });
 
       return true;
     }
@@ -1326,8 +1405,8 @@ function draw() {
   finishMatch({ outcome: "draw", isDraw: true });
 }
 
-function updateScore() {
-  if (gameState.currentPlayer === "X") {
+function updateScore(winner = gameState.currentPlayer) {
+  if (winner === "X") {
     scoreX += 1;
   } else {
     scoreO += 1;
@@ -1428,8 +1507,9 @@ function showResult(won, isDraw = false) {
   const nextBtn = document.getElementById("nextBtn");
   const kicker = document.getElementById("resultKicker");
   const detail = document.getElementById("resultDetail");
-  const isCompetitionMatch = gameState.match.config?.type !== "standard";
+  const isCompetitionMatch = !["standard", "reverse"].includes(gameState.match.config?.type);
   const playAgainButton = modal.querySelector('button[onclick="restartGame()"]');
+  const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
 
   updateMatchReturnControls();
   modal.classList.add("active");
@@ -1454,6 +1534,18 @@ function showResult(won, isDraw = false) {
     detail.textContent = gameState.mode === "ai" && gameState.level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
     nextBtn.style.display = "none";
     emitGameFeelEvent("draw");
+    return;
+  }
+
+  if (isReverse) {
+    const completer = gameState.result.data?.reason === "completed_line" ? (gameState.result.data.winner === "X" ? "O" : "X") : null;
+    const reverseVictory = gameState.mode !== "ai" || gameState.result.data?.winner === gameState.playerSymbol;
+    modal.classList.add(reverseVictory ? "victory" : "defeat", "reverse-result");
+    kicker.textContent = "Reverse · Line Completed";
+    title.textContent = gameState.mode === "two" ? `Player ${gameState.result.data?.winner} Wins` : reverseVictory ? "You Win" : "You Lost";
+    detail.textContent = completer ? `Player ${completer} completed three in a row and loses under Reverse rules.` : "A completed line ends the Reverse match.";
+    nextBtn.style.display = "none";
+    emitGameFeelEvent(reverseVictory ? "victory" : "defeat");
     return;
   }
 
@@ -1514,6 +1606,10 @@ function backToHome() {
 }
 
 window.startVsAI = startVsAI;
+window.openReverseMode = openReverseMode;
+window.closeReverseMode = closeReverseMode;
+window.startReverseAI = startReverseAI;
+window.startReverseTwoPlayers = startReverseTwoPlayers;
 window.startTwoPlayer = startTwoPlayer;
 window.showLevels = showLevels;
 window.selectLevel = selectLevel;

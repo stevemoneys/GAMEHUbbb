@@ -250,6 +250,12 @@
     refreshHud();
   });
 
+  global.addEventListener("tictactoe:turn-ready", (event) => {
+    const state = activeRun();
+    if (!state?.powers || event.detail.config?.type !== "gauntlet" || event.detail.context?.gauntletRunId !== state.id) return;
+    refreshHud();
+  });
+
   global.addEventListener("tictactoe:match-complete", (event) => {
     const state = activeRun();
     if (!state?.powers || event.detail.config?.type !== "gauntlet" || event.detail.context?.gauntletRunId !== state.id) return;

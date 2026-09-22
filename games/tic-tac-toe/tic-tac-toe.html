@@ -34,6 +34,7 @@
           <span><strong>AI Challenge</strong><small>Play against smart opponents</small></span>
           <b aria-hidden="true">›</b>
         </button>
+        <button class="action-card reverse-action" onclick="openReverseMode()"><span class="action-icon" aria-hidden="true">↯</span><span><strong>Reverse</strong><small>Complete a line. Lose the game.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card gauntlet-action" onclick="openGauntletHub()"><span class="action-icon" aria-hidden="true"></span><span><strong>Gauntlet</strong><small>Eight encounters. One run.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
           <span class="action-icon players-icon" aria-hidden="true"></span>
@@ -55,6 +56,12 @@
         </article>
       </div>
       <p class="home-footnote"><span>Profile ready</span><i></i><span id="homeStats">0 wins · 0 streak</span></p>
+    </section>
+
+    <section class="screen reverse-screen" id="reverse" aria-label="Reverse Tic-Tac-Toe">
+      <header class="reverse-hero"><p class="eyebrow">Misère mode</p><span class="reverse-emblem" aria-hidden="true">↯</span><h2>Reverse</h2><p>Complete a line. Lose the game.</p></header>
+      <section class="reverse-intro glass-card"><div class="reverse-line-example" aria-hidden="true"><i>X</i><i>X</i><i>X</i><b>×</b></div><div><strong>Three in a row is the trap.</strong><small>Force your opponent to complete their own line.</small></div></section>
+      <div class="reverse-actions"><button class="primary-control" type="button" onclick="startReverseAI()">Challenge the AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startReverseTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeReverseMode()">‹ Back to home</button></div>
     </section>
 
     <section class="screen learning-screen" id="learning" aria-label="Learning center"><header class="screen-heading"><p class="eyebrow">Learning loop</p><h2>Practice the pattern</h2><p id="learningIntro">Choose a focused tactical exercise.</p></header><div id="learningContent" class="learning-content"></div><button class="text-button" onclick="closeLearningHub()">‹ Back to home</button></section>

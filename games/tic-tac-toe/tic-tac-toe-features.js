@@ -4,7 +4,7 @@
 
   const BOARD_SIZE = 3;
   const CELL_COUNT = BOARD_SIZE ** 2;
-  const MATCH_TYPES = Object.freeze(["standard", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "gauntlet", "modifier_challenge", "procedural_position", "experimental_lab", "two_player_challenge", "personal_record", "tactical_journey", "mastery_moment", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
+  const MATCH_TYPES = Object.freeze(["standard", "reverse", "quick_duel", "tactical_challenge", "daily_challenge", "mastery_trial", "rival", "rival_rematch", "speed_duel", "prediction", "read_opponent", "gauntlet", "modifier_challenge", "procedural_position", "experimental_lab", "two_player_challenge", "personal_record", "tactical_journey", "mastery_moment", "modifier", "two_player_series", "experimental", "replay", "what_if"]);
   const OBJECTIVE_TYPES = Object.freeze(["WIN", "DRAW", "BLOCK", "FORK", "PREVENT_FORK", "FORCE_DRAW", "WIN_IN_1", "WIN_IN_2", "PREDICT", "SURVIVE_SEQUENCE", "TIME_LIMIT"]);
   const PERSONALITIES = Object.freeze(["human", "aggressive", "defensive", "trickster"]);
   const FEATURE_REGISTRY = Object.freeze({
@@ -30,21 +30,27 @@
   const integer = (value) => Number.isInteger(value) ? value : Number.NaN;
 
   function createDefaultRules() {
-    return { boardSize: BOARD_SIZE, winLength: 3, blockedCells: [], centerLocked: false, forcedOpening: null, misere: false };
+    return { boardSize: BOARD_SIZE, winLength: 3, blockedCells: [], centerLocked: false, forcedOpening: null, misere: false, gauntletEncounterRule: null };
   }
 
   function normalizeRules(raw = {}) {
     if (!isRecord(raw)) return { valid: false, reason: "Rules must be an object." };
+    const misere = raw.misere === true;
+    if (misere) raw = { ...raw, misere: false };
     if (raw.boardSize !== undefined && raw.boardSize !== BOARD_SIZE) return { valid: false, reason: "Only the 3 × 3 board is supported." };
     if (raw.winLength !== undefined && raw.winLength !== 3) return { valid: false, reason: "Only three-in-a-row is supported." };
     if (raw.misere === true) return { valid: false, reason: "Misère is reserved until the engine supports it end-to-end." };
+    const gauntletRule = raw.gauntletEncounterRule === undefined || raw.gauntletEncounterRule === null ? null : raw.gauntletEncounterRule;
+    if (gauntletRule !== null && !["sealed_center", "sealed_corners"].includes(gauntletRule)) return { valid: false, reason: "Unknown Gauntlet encounter rule." };
     const blocked = Array.isArray(raw.blockedCells) ? raw.blockedCells : [];
     const cells = [...new Set(blocked.map(integer))];
     if (cells.length !== blocked.length || cells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= CELL_COUNT)) return { valid: false, reason: "Blocked cells must be unique board indices." };
-    if (cells.length > 2 || raw.centerLocked === true) return { valid: false, reason: "Only up to two explicit blocked cells are supported." };
+    const expectedBlocked = gauntletRule === "sealed_center" ? [4] : gauntletRule === "sealed_corners" ? [0, 2, 6, 8] : null;
+    if (expectedBlocked && (cells.length !== expectedBlocked.length || expectedBlocked.some((cell) => !cells.includes(cell)))) return { valid: false, reason: "Gauntlet encounter rule has an invalid sealed-cell pattern." };
+    if (cells.length > (gauntletRule ? 4 : 2) || raw.centerLocked === true) return { valid: false, reason: gauntletRule ? "Invalid Gauntlet sealed-cell count." : "Only up to two explicit blocked cells are supported." };
     const forcedOpening = raw.forcedOpening === null || raw.forcedOpening === undefined ? null : integer(raw.forcedOpening);
     if (forcedOpening !== null && (forcedOpening < 0 || forcedOpening >= CELL_COUNT || cells.includes(forcedOpening))) return { valid: false, reason: "Forced opening must be an available board cell." };
-    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening } };
+    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening, gauntletEncounterRule: gauntletRule, misere } };
   }
 
   function createDefaultMatchConfig() {
@@ -66,6 +72,9 @@
     if (!PERSONALITIES.includes(personality)) return { valid: false, reason: "Unknown AI personality." };
     const rules = normalizeRules(source.rules || {});
     if (!rules.valid) return rules;
+    if (rules.value.gauntletEncounterRule && type !== "gauntlet") return { valid: false, reason: "Gauntlet encounter rules are restricted to Gauntlet matches." };
+    if (rules.value.misere && type !== "reverse") return { valid: false, reason: "Reverse rules are restricted to Reverse matches." };
+    if (type === "reverse" && !rules.value.misere) return { valid: false, reason: "Reverse matches require the Reverse rule." };
     const timerSource = isRecord(source.timer) ? source.timer : {};
     const timer = { enabled: timerSource.enabled !== false, secondsPerTurn: Number(timerSource.secondsPerTurn ?? base.timer.secondsPerTurn) };
     if (!Number.isInteger(timer.secondsPerTurn) || timer.secondsPerTurn < 3 || timer.secondsPerTurn > 60) return { valid: false, reason: "Timer must be 3–60 seconds." };
@@ -113,12 +122,14 @@
 
   function isLegalPosition(board, currentPlayer, rules) {
     if (!Array.isArray(board) || board.length !== CELL_COUNT || board.some((cell) => cell !== "" && cell !== "X" && cell !== "O")) return false;
+    const normalizedRules = normalizeRules(rules);
+    if (!normalizedRules.valid || normalizedRules.value.blockedCells.some((cell) => board[cell] !== "")) return false;
     const x = board.filter((cell) => cell === "X").length;
     const o = board.filter((cell) => cell === "O").length;
     if (!(x === o || x === o + 1) || currentPlayer !== (x === o ? "X" : "O")) return false;
     const winner = getWinner(board);
     if (winner) return false;
-    return normalizeRules(rules).valid;
+    return true;
   }
 
   function seeded(seed) { let value = Math.abs([...String(seed)].reduce((hash, char) => ((hash << 5) - hash) + char.charCodeAt(0), 0)) || 1; return () => ((value = (value * 1664525 + 1013904223) >>> 0) / 4294967296); }
