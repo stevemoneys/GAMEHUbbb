@@ -39,6 +39,7 @@
           <span><strong>Daily Puzzle</strong><small>One precise tactical decision · resets UTC</small></span>
           <b aria-hidden="true">›</b>
         </button>
+        <button class="action-card wild-action" type="button" onclick="openWildMode()"><span class="action-icon wild-icon" aria-hidden="true">X/O</span><span><strong>Wild</strong><small>Choose your mark every turn</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card reverse-action" onclick="openReverseMode()"><span class="action-icon" aria-hidden="true">↯</span><span><strong>Reverse</strong><small>Complete a line. Lose the game.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card gauntlet-action" onclick="openGauntletHub()"><span class="action-icon" aria-hidden="true"></span><span><strong>Gauntlet</strong><small>Eight encounters. One run.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
@@ -64,6 +65,12 @@
       <header class="reverse-hero"><p class="eyebrow">Misère mode</p><span class="reverse-emblem" aria-hidden="true">↯</span><h2>Reverse</h2><p>Complete a line. Lose the game.</p></header>
       <section class="reverse-intro glass-card"><div class="reverse-line-example" aria-hidden="true"><i>X</i><i>X</i><i>X</i><b>×</b></div><div><strong>Three in a row is the trap.</strong><small>Force your opponent to complete their own line.</small></div></section>
       <div class="reverse-actions"><button class="primary-control" type="button" onclick="startReverseAI()">Challenge the AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startReverseTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeReverseMode()">‹ Back to home</button></div>
+    </section>
+
+    <section class="screen wild-screen" id="wild" aria-label="Wild Tic-Tac-Toe">
+      <header class="wild-hero"><p class="eyebrow">Choose Your Mark</p><span class="wild-emblem" aria-hidden="true">X/O</span><h2>Wild</h2><p>Choose X or O. Complete the first line.</p></header>
+      <section class="wild-intro glass-card"><div class="wild-mark-preview" aria-hidden="true"><i>X</i><i>O</i><i>X</i><i>O</i></div><div><strong>Every turn, either mark is yours.</strong><small>The player who completes any matching line wins.</small></div></section>
+      <div class="wild-actions"><button class="primary-control" type="button" onclick="startWildAI()">Challenge Wild AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startWildTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeWildMode()">‹ Back to home</button></div>
     </section>
 
     <section class="screen learning-screen" id="learning" aria-label="Learning center"><header class="screen-heading"><p class="eyebrow">Learning loop</p><h2>Practice the pattern</h2><p id="learningIntro">Choose a focused tactical exercise.</p></header><div id="learningContent" class="learning-content"></div><button class="text-button" onclick="closeLearningHub()">‹ Back to home</button></section>
@@ -105,6 +112,8 @@
       <div class="turn-pill" id="turnPill"><span class="turn-mark" id="turnMark">X</span><strong id="turnLabel">Your Turn</strong></div>
       <p class="status sr-only" id="status" role="status" aria-live="polite">Player X Turn</p>
       <p class="timer"><span>Turn timer</span> <b id="timerText">10s</b></p>
+
+      <div class="wild-mark-selector" id="wildMarkSelector" hidden aria-label="Choose a mark"><span>Choose mark</span><button type="button" data-wild-mark="X" onclick="chooseWildMark('X')" aria-label="Choose X">X</button><button type="button" data-wild-mark="O" onclick="chooseWildMark('O')" aria-label="Choose O">O</button></div>
 
       <div class="board-shell"><div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board"></div></div>
       <div class="thinking-card glass-card" id="thinkingCard"><span class="opponent-emblem small" id="thinkingEmblem" aria-hidden="true">◉</span><div><strong id="thinkingTitle">Read the board</strong><small id="thinkingText">Every move creates a new decision.</small></div><i class="thinking-dots" aria-hidden="true"><b></b><b></b><b></b></i></div>

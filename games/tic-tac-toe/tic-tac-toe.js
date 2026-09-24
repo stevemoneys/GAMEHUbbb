@@ -30,6 +30,7 @@ const gameState = {
   ai: { thinking: false, timeout: undefined },
   timer: { handle: undefined, active: false, remaining: turnTime },
   result: { timeout: undefined, recorded: false, data: null },
+  wild: { selectedMark: null },
   match: { generation: 0, context: null, objectives: null, config: featureCore.createDefaultMatchConfig(), moves: [], turnHistory: [] }
 };
 
@@ -569,7 +570,7 @@ document.getElementById("scoreX").textContent = String(scoreX);
 document.getElementById("scoreO").textContent = String(scoreO);
 
 function hideAllScreens() {
-  ["menu", "reverse", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
+  ["menu", "reverse", "wild", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
     document.getElementById(id).classList.remove("active");
   });
 }
@@ -686,6 +687,7 @@ function updateMatchPresentation() {
   const definition = getLevelDefinition(gameState.selectedLevel);
   const isAI = gameState.mode === "ai";
   const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
+  const isWild = isWildMatch();
   const personality = getPersonalityPresentation(isAI ? gameState.aiPersonality : "human");
   const opponentCard = document.getElementById("opponentCard");
   opponentCard.style.setProperty("--personality", personality.color);
@@ -708,6 +710,19 @@ function updateMatchPresentation() {
   document.getElementById("playerSymbolDisplay").textContent = gameState.mode === "ai" ? gameState.playerSymbol : gameState.currentPlayer;
   document.getElementById("gameLevelNumber").textContent = isReverse ? "Reverse" : isAI ? `Level ${definition.number}` : "Classic";
   document.getElementById("gameLesson").textContent = isReverse ? "Complete a line, lose" : isAI ? definition.name : "Three in a row wins";
+  document.getElementById("game").classList.toggle("wild-match", isWild);
+  if (isWild) {
+    document.getElementById("opponentKicker").textContent = "Wild · Choose Your Mark";
+    document.getElementById("opponentName").textContent = isAI ? "Wild AI" : "Two Players";
+    document.getElementById("opponentLesson").textContent = "Either mark is available every turn.";
+    document.getElementById("strengthLabel").textContent = "Both marks";
+    document.getElementById("thinkingTitle").textContent = isAI ? "Wild AI chooses freely" : "Choose either mark";
+    document.getElementById("thinkingText").textContent = "The move-maker wins the first matching line.";
+    document.getElementById("playerSymbolDisplay").textContent = "X / O";
+    document.getElementById("gameLevelNumber").textContent = "Wild";
+    document.getElementById("gameLesson").textContent = "Choose X or O each turn";
+  }
+  updateWildMarkSelector();
   updateTurnPresentation();
   updateMatchReturnControls();
 }
@@ -718,9 +733,17 @@ function updateTurnPresentation() {
   const turnMark = document.getElementById("turnMark");
   const playerTurn = document.getElementById("playerTurnDisplay");
   const isAI = gameState.mode === "ai";
+  const isWild = isWildMatch();
   const aiTurn = isAI && gameState.currentPlayer === gameState.aiSymbol;
   const localLabel = isAI ? (aiTurn ? "AI Turn" : "Your Turn") : `Player ${gameState.currentPlayer} Turn`;
   if (!turnPill || !turnLabel || !turnMark) return;
+  if (isWild) {
+    turnPill.classList.toggle("ai-turn", aiTurn);
+    turnLabel.textContent = gameState.active ? getWildTurnLabel() : statusEl.textContent;
+    turnMark.textContent = gameState.currentPlayer === "X" ? "1" : "2";
+    playerTurn.textContent = gameState.active ? `${wildPlayerName()} chooses` : statusEl.textContent;
+    return;
+  }
   turnPill.classList.toggle("ai-turn", aiTurn);
   turnLabel.textContent = gameState.active ? localLabel : statusEl.textContent;
   turnMark.textContent = gameState.currentPlayer;
@@ -795,6 +818,33 @@ function openReverseMode() {
 function closeReverseMode() {
   showHomeScreen();
 }
+
+function openWildMode() {
+  clearSavedMatch();
+  hideAllScreens();
+  hideHubBackBtn();
+  transitionTo(GAME_PHASES.HOME);
+  document.getElementById("wild").classList.add("active");
+}
+
+function closeWildMode() { showHomeScreen(); }
+
+function startWildMatch(mode) {
+  clearSavedMatch();
+  gameState.mode = mode;
+  gameState.playerSymbol = "X"; // Wild uses these as player identities, never permanent board marks.
+  gameState.aiSymbol = "O";
+  gameState.selectedLevel = 1;
+  applyLevelDefinition(1);
+  if (!snapshotMatchConfig({ mode, type: "wild", timer: { enabled: false, secondsPerTurn: turnTime }, permissions: { progression: false, statistics: false, achievements: false, replay: false } })) return;
+  hideAllScreens();
+  hideHubBackBtn();
+  document.getElementById("game").classList.add("active");
+  resetBoard();
+}
+
+function startWildAI() { startWildMatch("ai"); }
+function startWildTwoPlayers() { startWildMatch("two"); }
 
 function startReverseAI() {
   clearSavedMatch();
@@ -937,14 +987,15 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   gameState.match.turnHistory = [];
   beginMatchContext();
   gameState.board = Array.isArray(initialBoard) && initialBoard.length === 9 ? [...initialBoard] : Array(9).fill("");
+  gameState.wild.selectedMark = null;
   gameState.active = true;
   gameState.currentPlayer = initialPlayer === "O" ? "O" : "X";
   gameState.result.data = null;
   transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
-  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "reverse-line", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
+  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "reverse-line", "wild-line", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
 
-  setStatus(`Player ${gameState.currentPlayer} Turn`);
+  setStatus(isWildMatch() ? getWildTurnLabel() : `Player ${gameState.currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
 
   gameState.board.forEach((value, index) => {
@@ -954,6 +1005,7 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
 }
 
 function makeMove(index) {
+  if (isWildMatch()) { makeWildMove(index); return; }
   const rules = gameState.match.config?.rules || {};
   const openingForced = gameState.match.moves.length === 0 && Number.isInteger(rules.forcedOpening) && index !== rules.forcedOpening;
   if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || rules.blockedCells?.includes(index) || openingForced || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
@@ -1016,6 +1068,57 @@ function makeMove(index) {
   }
 }
 
+function isWildMatch() { return gameState.match.config?.type === "wild"; }
+function wildPlayerName(player = gameState.currentPlayer) { return gameState.mode === "ai" ? (player === gameState.playerSymbol ? "You" : "Wild AI") : `Player ${player === "X" ? "1" : "2"}`; }
+function getWildTurnLabel() { return `${wildPlayerName()} · choose X or O`; }
+function chooseWildMark(mark) {
+  if (!isWildMatch() || !gameState.active || gameState.phase !== GAME_PHASES.PLAYING || !["X", "O"].includes(mark) || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) return;
+  gameState.wild.selectedMark = mark;
+  updateWildMarkSelector();
+  setStatus(`${wildPlayerName()} chose ${mark}. Select an empty cell.`);
+  emitGameFeelEvent("selection");
+}
+function updateWildMarkSelector() {
+  const selector = document.getElementById("wildMarkSelector");
+  if (!selector) return;
+  const visible = isWildMatch() && gameState.active;
+  selector.hidden = !visible;
+  selector.querySelectorAll("[data-wild-mark]").forEach((button) => {
+    const mark = button.dataset.wildMark;
+    const disabled = gameState.phase !== GAME_PHASES.PLAYING || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol);
+    button.disabled = disabled;
+    button.classList.toggle("selected", mark === gameState.wild.selectedMark);
+  });
+}
+function finishWildTurn(actor, mark, index) {
+  const cell = boardEl.children[index];
+  cell.textContent = mark; cell.classList.add(mark); cell.setAttribute("aria-label", `Cell ${index + 1}: ${mark}`);
+  restartAnimation(cell, mark === "X" ? "piece-in-x" : "piece-in-o");
+  emitGameFeelEvent("piece_place", { symbol: mark, actor: actor === gameState.playerSymbol ? "player" : "ai" });
+  if (checkWildWin(actor)) return true;
+  if (getLegalMoves(gameState.board).length === 0) { draw(); return true; }
+  gameState.currentPlayer = actor === "X" ? "O" : "X";
+  gameState.wild.selectedMark = null;
+  transitionTo(GAME_PHASES.PLAYING);
+  setStatus(getWildTurnLabel());
+  updateWildMarkSelector();
+  if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) scheduleAIMove();
+  return false;
+}
+function makeWildMove(index) {
+  const mark = gameState.wild.selectedMark;
+  if (!Number.isInteger(index) || index < 0 || index >= 9 || !gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || gameState.board[index] || !["X", "O"].includes(mark) || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
+    const cell = boardEl.children[index]; if (cell) restartAnimation(cell, "invalid-move"); emitGameFeelEvent("invalid_move", { index }); return;
+  }
+  const actor = gameState.currentPlayer;
+  gameState.board[index] = mark;
+  gameState.match.moves.push(index);
+  gameState.match.turnHistory.push({ index, symbol: mark, actor });
+  window.dispatchEvent(new CustomEvent("tictactoe:player-move", { detail: { index, symbol: mark, actor, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation } }));
+  haptic(10);
+  finishWildTurn(actor, mark, index);
+}
+
 function startTurnTimer() {
   stopTurnTimer();
   if (!gameState.active || gameState.phase === GAME_PHASES.RESULT || gameState.match.config?.timer?.enabled === false) return;
@@ -1076,10 +1179,55 @@ function aiMove() {
   if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING) return;
   if (gameState.currentPlayer !== gameState.aiSymbol) return;
 
+  if (isWildMatch()) {
+    const choice = getWildAIMove();
+    if (choice) playWildMoveFromAI(choice.index, choice.mark);
+    return;
+  }
+
   const move = getAIMoveByLevel();
   if (move === null || move === undefined) return;
 
   playMoveFromAI(move);
+}
+
+function wildLineWinner(board) { return getWinner(board); }
+function solveWildPosition(state, actor, memo = new Map()) {
+  const legal = getLegalMoves(state);
+  if (!legal.length) return 0;
+  const key = `${state.join("")}:${actor}:wild`;
+  if (memo.has(key)) return memo.get(key);
+  const maximizing = actor === gameState.aiSymbol;
+  let best = maximizing ? -Infinity : Infinity;
+  for (const index of legal) for (const mark of ["X", "O"]) {
+    const next = playOnBoard(state, index, mark);
+    const score = wildLineWinner(next) ? (actor === gameState.aiSymbol ? 10 : -10) : solveWildPosition(next, actor === "X" ? "O" : "X", memo);
+    best = maximizing ? Math.max(best, score) : Math.min(best, score);
+  }
+  memo.set(key, best);
+  return best;
+}
+function getWildAIMove() {
+  const legal = getLegalMoves(gameState.board);
+  if (!legal.length) return null;
+  const memo = new Map();
+  const choices = [];
+  for (const index of legal) for (const mark of ["X", "O"]) {
+    const next = playOnBoard(gameState.board, index, mark);
+    const immediateWin = Boolean(wildLineWinner(next));
+    choices.push({ index, mark, immediateWin, score: immediateWin ? 10 : solveWildPosition(next, gameState.playerSymbol, memo), position: getPositionValue(index) });
+  }
+  choices.sort((a, b) => b.score - a.score || Number(b.immediateWin) - Number(a.immediateWin) || b.position - a.position || a.index - b.index || a.mark.localeCompare(b.mark));
+  return choices[0];
+}
+function playWildMoveFromAI(index, mark) {
+  if (!isWildMatch() || !gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.currentPlayer !== gameState.aiSymbol || gameState.board[index] || !["X", "O"].includes(mark)) return;
+  const actor = gameState.currentPlayer;
+  gameState.board[index] = mark;
+  gameState.match.moves.push(index);
+  gameState.match.turnHistory.push({ index, symbol: mark, actor });
+  window.dispatchEvent(new CustomEvent("tictactoe:ai-move", { detail: { index, symbol: mark, actor, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation } }));
+  finishWildTurn(actor, mark, index);
 }
 
 function playMoveFromAI(index) {
@@ -1373,7 +1521,7 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
     gameState.match.objectives.completed = true;
     gameState.match.objectives.won = gameState.mode !== "ai" || winner === gameState.playerSymbol;
     setStatus(`Player ${winner} Wins`);
-    updateScore(winner);
+    if (!isWildMatch()) updateScore(winner);
   }
 
   finalizeMatch(outcome);
@@ -1409,9 +1557,26 @@ function checkWin() {
   return false;
 }
 
+function checkWildWin(actor) {
+  for (const pattern of winPatterns) {
+    const [a, b, c] = pattern;
+    if (!gameState.board[a] || gameState.board[a] !== gameState.board[b] || gameState.board[b] !== gameState.board[c]) continue;
+    pattern.forEach((idx) => boardEl.children[idx].classList.add("win", "wild-line"));
+    const boardShell = document.querySelector(".board-shell");
+    boardShell?.classList.add("has-win", "wild-line", getWinLineClass(pattern));
+    restartAnimation(boardShell, "win-impact");
+    emitGameFeelEvent("win_line", { winner: actor, pattern }); haptic([14, 45, 24]);
+    finishMatch({ outcome: gameState.mode === "ai" && actor !== gameState.playerSymbol ? "loss" : "win", winner: actor, reason: "wild_completed_line" });
+    updateWildMarkSelector();
+    return true;
+  }
+  return false;
+}
+
 function draw() {
   document.querySelector(".board-shell")?.classList.add("draw-complete");
   finishMatch({ outcome: "draw", isDraw: true });
+  if (isWildMatch()) updateWildMarkSelector();
 }
 
 function updateScore(winner = gameState.currentPlayer) {
@@ -1516,13 +1681,14 @@ function showResult(won, isDraw = false) {
   const nextBtn = document.getElementById("nextBtn");
   const kicker = document.getElementById("resultKicker");
   const detail = document.getElementById("resultDetail");
-  const isCompetitionMatch = !["standard", "reverse"].includes(gameState.match.config?.type);
+  const isCompetitionMatch = !["standard", "reverse", "wild"].includes(gameState.match.config?.type);
   const playAgainButton = modal.querySelector('button[onclick="restartGame()"]');
   const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
+  const isWild = isWildMatch();
 
   updateMatchReturnControls();
   modal.classList.add("active");
-  modal.classList.remove("victory", "defeat", "draw");
+  modal.classList.remove("victory", "defeat", "draw", "reverse-result", "wild-result");
   modal.querySelectorAll(".competition-result-action").forEach((button) => button.remove());
   if (playAgainButton) playAgainButton.style.display = isCompetitionMatch ? "none" : "";
 
@@ -1538,9 +1704,9 @@ function showResult(won, isDraw = false) {
 
   if (isDraw) {
     modal.classList.add("draw");
-    kicker.textContent = "Balanced Position";
+    kicker.textContent = isWild ? "Wild · Board Full" : "Balanced Position";
     title.textContent = "Draw";
-    detail.textContent = gameState.mode === "ai" && gameState.level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
+    detail.textContent = isWild ? "The board filled before either player completed a matching line." : gameState.mode === "ai" && gameState.level >= 17 ? "Strong defense preserved the best available result." : "No winning line remained. Try a new tactical plan.";
     nextBtn.style.display = "none";
     emitGameFeelEvent("draw");
     return;
@@ -1555,6 +1721,18 @@ function showResult(won, isDraw = false) {
     detail.textContent = completer ? `Player ${completer} completed three in a row and loses under Reverse rules.` : "A completed line ends the Reverse match.";
     nextBtn.style.display = "none";
     emitGameFeelEvent(reverseVictory ? "victory" : "defeat");
+    return;
+  }
+
+  if (isWild) {
+    const winner = gameState.result.data?.winner;
+    const playerWon = gameState.mode !== "ai" || winner === gameState.playerSymbol;
+    modal.classList.add(playerWon ? "victory" : "defeat", "wild-result");
+    kicker.textContent = "Wild · Line Completed";
+    title.textContent = gameState.mode === "two" ? `${wildPlayerName(winner)} Wins` : playerWon ? "You Win" : "Wild AI Wins";
+    detail.textContent = `${wildPlayerName(winner)} chose the mark that completed the first matching line.`;
+    nextBtn.style.display = "none";
+    emitGameFeelEvent(playerWon ? "victory" : "defeat");
     return;
   }
 
@@ -1619,6 +1797,11 @@ window.openReverseMode = openReverseMode;
 window.closeReverseMode = closeReverseMode;
 window.startReverseAI = startReverseAI;
 window.startReverseTwoPlayers = startReverseTwoPlayers;
+window.openWildMode = openWildMode;
+window.closeWildMode = closeWildMode;
+window.startWildAI = startWildAI;
+window.startWildTwoPlayers = startWildTwoPlayers;
+window.chooseWildMark = chooseWildMark;
 window.startTwoPlayer = startTwoPlayer;
 window.showLevels = showLevels;
 window.selectLevel = selectLevel;
