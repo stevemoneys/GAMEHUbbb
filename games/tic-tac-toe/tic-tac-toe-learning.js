@@ -112,7 +112,7 @@
     $("learningContent").innerHTML = `
       <article class="glass-card learning-card"><h3>Tactical Challenges</h3><p>Practice one provable pattern at a time.</p><button class="primary-control" type="button" onclick="learningTacticalMenu()">Choose tactic</button></article>
       <article class="glass-card learning-card"><h3>Mastery Trials</h3><p>Complete three connected tactical decisions.</p><button class="control-button" type="button" onclick="learningTrialsMenu()">Choose trial</button></article>
-      <article class="glass-card learning-card daily-challenge-card ${todayEntry?.completed ? "daily-complete" : ""}"><div class="daily-card-top"><span class="daily-glyph" aria-hidden="true">◉</span><span><small>Daily Puzzle · UTC</small><h3>${todayEntry?.completed ? "Today cleared" : "Today’s precision"}</h3></span><b>${String(streak).padStart(2, "0")}</b></div><div class="daily-card-metrics"><span><strong>${streak}</strong> streak</span><span><strong>${summary.completed || 0}</strong> cleared</span><span>${today}</span></div><p>${todayEntry?.completed ? "Solved today. Replay without changing your streak." : "One tactical decision. No hints."}</p><button class="control-button" type="button" onclick="learningDaily()">${todayEntry?.completed ? "Replay today" : "Play today"}</button></article>
+      <article class="glass-card learning-card daily-challenge-card ${todayEntry?.completed ? "daily-complete" : ""}"><div class="daily-card-top"><span class="daily-glyph" aria-hidden="true">◉</span><span><small>Daily Puzzle · UTC</small><h3>${todayEntry?.completed ? "Today cleared" : "Today’s precision"}</h3></span><b>${String(streak).padStart(2, "0")}</b></div><div class="daily-card-metrics"><span><strong>${streak}</strong> streak</span><span><strong>${summary.completed || 0}</strong> cleared</span><span>${today}</span></div><p>${todayEntry?.completed ? "Solved today. Replay without changing your streak." : "One tactical decision. No hints. New puzzle at 00:00 UTC."}</p><button class="control-button" type="button" onclick="learningDaily()">${todayEntry?.completed ? "Replay today" : "Play today"}</button></article>
       <article class="glass-card learning-card"><h3>Last Match</h3><p>${replay ? "Inspect the actual completed move sequence." : "Finish a normal match to unlock factual review."}</p>${replay ? `<button class="control-button" type="button" onclick="learningAnalysis()">Match analysis</button>${replay.result === "loss" && replay.matchType === "standard" && replay.mode === "ai" ? '<button class="control-button" type="button" onclick="learningWhy()">Why did I lose?</button>' : ""}` : ""}</article>`;
   }
   function tacticalMenu() {
@@ -131,16 +131,17 @@
     const seed = options.seed || `${kind}-${Date.now()}`;
     const position = validatedPosition(type, seed);
     if (!position) { $("learningContent").textContent = "This challenge could not be validated. Please choose another exercise."; return; }
-    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: options.attempts || 0, totalAttempts: options.totalAttempts || 0, completed: false, locked: false, seed, date: options.date || null, twist: options.twist || null, alreadyCompleted: options.alreadyCompleted === true };
+    active = { kind, generation: token, type, position, step: options.step || 0, trial: options.trial || null, attempts: options.attempts || 0, totalAttempts: options.totalAttempts || 0, completed: false, locked: false, seed, date: options.date || null, twist: options.twist || null, alreadyCompleted: options.alreadyCompleted === true, returnScreen: options.returnScreen || "learning" };
     renderBoard();
   }
   function startChallenge(type) { startSession("TACTICAL_CHALLENGE", type); }
   function startTrial(id) { const trial = TRIALS[id]; if (trial) startSession("MASTERY_TRIAL", trial.steps[0], { trial: id, step: 0 }); }
-  function startDaily() {
+  function startDaily(options = {}) {
     const challenge = dailyChallenge();
     const existing = dailyData().history[challenge.date];
-    startSession("DAILY_CHALLENGE", challenge.type, { seed: challenge.seed, date: challenge.date, twist: challenge.twist, totalAttempts: existing?.attempts || 0, alreadyCompleted: existing?.completed === true });
+    startSession("DAILY_CHALLENGE", challenge.type, { seed: challenge.seed, date: challenge.date, twist: challenge.twist, totalAttempts: existing?.attempts || 0, alreadyCompleted: existing?.completed === true, returnScreen: options.returnScreen || "learning" });
   }
+  function openDailyFromHome() { endSession(); screens("learning"); startDaily({ returnScreen: "menu" }); }
   function renderBoard() {
     const session = current(); if (!session) return;
     const category = CATEGORIES[session.type];
@@ -232,7 +233,7 @@
   }
   function nextTrialStep() { const session = current(); if (!session || !session.completed || session.kind !== "MASTERY_TRIAL") return; const trial = TRIALS[session.trial]; startSession("MASTERY_TRIAL", trial.steps[session.step + 1], { trial: session.trial, step: session.step + 1, totalAttempts: session.totalAttempts }); }
   function nextChallenge() { const session = current(); if (!session) return; if (session.kind === "MASTERY_TRIAL") { persistCompletion(session); trialsMenu(); } else if (session.kind === "DAILY_CHALLENGE") startDaily(); else startChallenge(session.type); }
-  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step, attempts: session.attempts, totalAttempts: session.totalAttempts, date: session.date, twist: session.twist, alreadyCompleted: session.alreadyCompleted }; startSession(session.kind, session.type, options); }
+  function retry() { const session = current(); if (!session) return; const options = { seed: session.seed, trial: session.trial, step: session.step, attempts: session.attempts, totalAttempts: session.totalAttempts, date: session.date, twist: session.twist, alreadyCompleted: session.alreadyCompleted, returnScreen: session.returnScreen }; startSession(session.kind, session.type, options); }
   async function shareDaily() {
     const session = current(); if (!session || session.kind !== "DAILY_CHALLENGE" || !session.completed) return;
     const summary = dailyData().summary;
@@ -247,7 +248,7 @@
     }
   }
   function hint() { const session = current(); if (!session) return; const move = solutions(session.position)[0]; const feedback = $("learningFeedback"); if (feedback) feedback.textContent = `Hint: examine cell ${move + 1}; verify the resulting threats before playing it.`; }
-  function exit() { endSession(); renderHub(); }
+  function exit() { const returnScreen = current()?.returnScreen || "learning"; endSession(); if (returnScreen === "menu") screens("menu"); else renderHub(); }
 
   function replay() { return save.get().features.replays[0] || null; }
   function moveMark(record, index) { return index % 2 === 0 ? "X" : "O"; }
@@ -289,6 +290,7 @@
   global.learningStartChallenge = startChallenge;
   global.learningStartTrial = startTrial;
   global.learningDaily = startDaily;
+  global.openDailyPuzzleFromHome = openDailyFromHome;
   global.learningShareDaily = shareDaily;
   global.learningHint = hint;
   global.learningRetry = retry;
