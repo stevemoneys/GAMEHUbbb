@@ -42,6 +42,10 @@
         <button class="action-card wild-action" type="button" onclick="openWildMode()"><span class="action-icon wild-icon" aria-hidden="true">X/O</span><span><strong>Wild</strong><small>Choose your mark every turn</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card reverse-action" onclick="openReverseMode()"><span class="action-icon" aria-hidden="true">↯</span><span><strong>Reverse</strong><small>Complete a line. Lose the game.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card gauntlet-action" onclick="openGauntletHub()"><span class="action-icon" aria-hidden="true"></span><span><strong>Gauntlet</strong><small>Eight encounters. One run.</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card notakto-action" type="button" onclick="openNotaktoMode()"><span class="action-icon notakto-icon" aria-hidden="true">XXX</span><span><strong>Notakto</strong><small>Three boards · last board loses</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card ultimate-action" type="button" onclick="openUltimateMode()"><span class="action-icon ultimate-icon" aria-hidden="true">9×9</span><span><strong>Ultimate</strong><small>Win boards · route the next move</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card sizes-action" type="button" onclick="openBoardSizes()"><span class="action-icon sizes-icon" aria-hidden="true">4×4</span><span><strong>Board Sizes</strong><small>Classic, Expanded, Grand</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card size-wars-action" type="button" onclick="openSizeWars()"><span class="action-icon size-wars-icon" aria-hidden="true">3×5</span><span><strong>Size Wars</strong><small>Three boards · one series</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
           <span class="action-icon players-icon" aria-hidden="true"></span>
           <span><strong>Two Players</strong><small>Play with a friend</small></span>
@@ -65,6 +69,48 @@
       <header class="reverse-hero"><p class="eyebrow">Misère mode</p><span class="reverse-emblem" aria-hidden="true">↯</span><h2>Reverse</h2><p>Complete a line. Lose the game.</p></header>
       <section class="reverse-intro glass-card"><div class="reverse-line-example" aria-hidden="true"><i>X</i><i>X</i><i>X</i><b>×</b></div><div><strong>Three in a row is the trap.</strong><small>Force your opponent to complete their own line.</small></div></section>
       <div class="reverse-actions"><button class="primary-control" type="button" onclick="startReverseAI()">Challenge the AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startReverseTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeReverseMode()">‹ Back to home</button></div>
+    </section>
+
+    <section class="screen sizes-screen" id="sizeboards" aria-label="Board size selection">
+      <header class="sizes-hero"><p class="eyebrow">Choose your arena</p><span class="sizes-emblem" aria-hidden="true">4×4</span><h2>Board Sizes</h2><p>One classic rule set, scaled for a deeper board.</p></header>
+      <div class="size-choice-grid" id="sizeChoices"><button type="button" class="size-choice selected" data-size-choice="3"><span class="size-preview size-3" aria-hidden="true"></span><strong>3×3</strong><small>Classic · 3 in a row</small></button><button type="button" class="size-choice" data-size-choice="4"><span class="size-preview size-4" aria-hidden="true"></span><strong>4×4</strong><small>Expanded · 4 in a row</small></button><button type="button" class="size-choice" data-size-choice="5"><span class="size-preview size-5" aria-hidden="true"></span><strong>5×5</strong><small>Grand · 5 in a row</small></button></div>
+      <div class="win-target-picker" id="sizeWinTargets" hidden aria-label="Win target"><span>Target</span><div id="sizeWinOptions"></div></div>
+      <div class="size-ai-level" id="sizeAiLevel"><label for="sizeLevelRange">AI Level <b id="sizeLevelValue">1</b></label><input id="sizeLevelRange" type="range" min="1" max="1" value="1"><small id="sizeLevelHint">Uses your existing Challenge level strength.</small></div>
+      <div class="sizes-actions" id="sizesActions"><button class="primary-control" type="button" onclick="startBoardSizeAI()">Challenge AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startBoardSizeTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeBoardSizes()">‹ Back to home</button></div>
+      <div class="sizes-play" id="sizesPlay" hidden><div class="sizes-turn" id="sizesTurn" role="status" aria-live="polite"><span id="sizesTurnMark" aria-hidden="true">X</span><strong>Player X turn</strong><small id="sizesRuleDisplay">3×3 · 3 in a row</small></div><div class="sizes-board-shell"><div class="sizes-board" id="sizesBoard" role="grid" aria-label="Board-size Tic-Tac-Toe board"></div></div><div class="sizes-controls"><button class="control-button primary-control" type="button" onclick="restartBoardSizes()">↻ Restart</button><button class="control-button" type="button" onclick="exitBoardSizes()">⌂ Menu</button></div></div>
+      <div class="sizes-result modal" id="sizesResult" role="dialog" aria-modal="true" aria-labelledby="sizesResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="sizesResultKicker">Board complete</p><h2 id="sizesResultTitle"></h2><p id="sizesResultDetail"></p><div class="modal-buttons"><button class="primary-control" type="button" onclick="restartBoardSizes()">Play Again</button><button class="control-button" type="button" onclick="exitBoardSizes()">Home</button></div></div></div>
+    </section>
+
+    <section class="screen size-wars-screen" id="sizewars" aria-label="Size Wars">
+      <div id="sizeWarsSetup">
+        <header class="size-wars-hero"><p class="eyebrow">Three arenas · one winner</p><div class="size-wars-previews" aria-hidden="true"><i class="size-preview size-3"></i><i class="size-preview size-4"></i><i class="size-preview size-5"></i></div><h2>Size Wars</h2><p>3×3 · 4×4 · 5×5</p></header>
+        <div class="size-wars-mode" id="sizeWarsMode" aria-label="Choose opponent"><button class="selected" type="button" data-size-wars-mode="ai"><strong>Challenge AI</strong><small>Use your unlocked Challenge level</small></button><button type="button" data-size-wars-mode="two"><strong>Two Players</strong><small>Pass and play across all three rounds</small></button></div>
+        <div class="size-wars-level" id="sizeWarsLevel"><label for="sizeWarsLevelRange">AI level <b id="sizeWarsLevelValue">1</b></label><input id="sizeWarsLevelRange" type="range" min="1" max="1" value="1"><small>One level for the whole series.</small></div>
+        <div class="size-wars-actions"><button class="primary-control" type="button" onclick="startSizeWars()">Start Size Wars <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="closeSizeWars()">‹ Back to home</button></div>
+      </div>
+      <div id="sizeWarsPlay" hidden>
+        <header class="size-wars-hud"><span class="size-wars-round" id="sizeWarsRound">Round 1 / 3</span><strong id="sizeWarsArena">3×3 Classic</strong><span class="size-wars-target" id="sizeWarsTarget">3 in a row</span><div class="size-wars-score" aria-label="Series score"><b><span id="sizeWarsXScore">0</span><small>X</small></b><i>—</i><b><span id="sizeWarsOScore">0</span><small>O</small></b></div></header>
+        <div class="size-wars-turn" id="sizeWarsTurn" role="status" aria-live="polite"><span id="sizeWarsTurnMark" aria-hidden="true">X</span><strong>Player X turn</strong><small id="sizeWarsTurnDetail">Round 1 · 3 in a row</small></div>
+        <div class="size-wars-board-shell"><div class="size-wars-board" id="sizeWarsBoard" role="grid" aria-label="Size Wars board"></div></div>
+        <div class="size-wars-controls"><button class="control-button primary-control" type="button" onclick="restartSizeWars()">↻ New Series</button><button class="control-button" type="button" onclick="exitSizeWars()">⌂ Menu</button></div>
+      </div>
+      <div class="size-wars-result modal" id="sizeWarsResult" role="dialog" aria-modal="true" aria-labelledby="sizeWarsResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="sizeWarsResultKicker">Round complete</p><h2 id="sizeWarsResultTitle"></h2><p id="sizeWarsResultDetail"></p><div class="size-wars-result-score" id="sizeWarsResultScore">X 0 — 0 O</div><div class="modal-buttons"><button class="primary-control" id="sizeWarsContinue" type="button" onclick="continueSizeWars()">Continue to Round 2</button><button class="control-button" id="sizeWarsReplay" type="button" onclick="restartSizeWars()" hidden>Play Again</button><button class="control-button" type="button" onclick="exitSizeWars()">Home</button></div></div></div>
+    </section>
+
+    <section class="screen ultimate-screen" id="ultimate" aria-label="Ultimate Tic-Tac-Toe">
+      <header class="ultimate-hero"><p class="eyebrow">Nested board strategy</p><span class="ultimate-emblem" aria-hidden="true">9×9</span><h2>Ultimate</h2><p>Your cell sends your opponent to their next board.</p></header>
+      <section class="ultimate-intro glass-card"><div class="ultimate-preview" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div><strong>Win three mini-boards in a row.</strong><small>Pick X or O. Your move routes the next board.</small></div></section>
+      <div class="ultimate-actions" id="ultimateActions"><button class="primary-control" type="button" onclick="startUltimateAI('X')">Challenge AI as X</button><button class="control-button" type="button" onclick="startUltimateAI('O')">Challenge AI as O</button><button class="control-button" type="button" onclick="startUltimateTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeUltimateMode()">‹ Back to home</button></div>
+      <div class="ultimate-play" id="ultimatePlay" hidden><div class="ultimate-turn" id="ultimateTurn" role="status" aria-live="polite"><span id="ultimateTurnMark" aria-hidden="true">X</span><strong>Player X turn</strong><small>Choose any mini-board</small></div><div class="ultimate-board" id="ultimateBoard" aria-label="Ultimate Tic-Tac-Toe nine-board grid"></div><div class="ultimate-controls"><button class="control-button primary-control" type="button" onclick="restartUltimate()">↻ Restart</button><button class="control-button" type="button" onclick="exitUltimate()">⌂ Menu</button></div></div>
+      <div class="ultimate-result modal" id="ultimateResult" role="dialog" aria-modal="true" aria-labelledby="ultimateResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="ultimateResultKicker">Macro board complete</p><h2 id="ultimateResultTitle"></h2><p id="ultimateResultDetail"></p><div class="modal-buttons"><button class="primary-control" type="button" onclick="restartUltimate()">Play Again</button><button class="control-button" type="button" onclick="exitUltimate()">Home</button></div></div></div>
+    </section>
+
+    <section class="screen notakto-screen" id="notakto" aria-label="Notakto">
+      <header class="notakto-hero"><p class="eyebrow">Classic 3-board misère</p><span class="notakto-emblem" aria-hidden="true">XXX</span><h2>Notakto</h2><p>All moves are X. Kill the final board and lose.</p></header>
+      <section class="notakto-intro glass-card"><div class="notakto-preview" aria-hidden="true"><i></i><i></i><i></i></div><div><strong>Three boards. One shared mark.</strong><small>Any line seals that board; the final seal loses.</small></div></section>
+      <div class="notakto-actions" id="notaktoActions"><button class="primary-control" type="button" onclick="startNotaktoAI()">Challenge the AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startNotaktoTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeNotaktoMode()">‹ Back to home</button></div>
+      <div class="notakto-play" id="notaktoPlay" hidden><div class="notakto-turn" id="notaktoTurn" role="status" aria-live="polite"><span aria-hidden="true">X</span><strong>Player 1 turn</strong><small>Choose any active board</small></div><div class="notakto-boards" id="notaktoBoards" aria-label="Three Notakto boards"></div><div class="notakto-controls"><button class="control-button primary-control" type="button" onclick="restartNotakto()">↻ Restart</button><button class="control-button" type="button" onclick="exitNotakto()">⌂ Menu</button></div></div>
+      <div class="notakto-result modal" id="notaktoResult" role="dialog" aria-modal="true" aria-labelledby="notaktoResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="notaktoResultKicker">Final board sealed</p><h2 id="notaktoResultTitle"></h2><p id="notaktoResultDetail"></p><div class="modal-buttons"><button class="primary-control" type="button" onclick="restartNotakto()">Play Again</button><button class="control-button" type="button" onclick="exitNotakto()">Home</button></div></div></div>
     </section>
 
     <section class="screen wild-screen" id="wild" aria-label="Wild Tic-Tac-Toe">
@@ -158,5 +204,9 @@
   <script src="tic-tac-toe-experimentation.js"></script>
   <script src="tic-tac-toe-gauntlet.js"></script>
   <script src="tic-tac-toe-powers.js"></script>
+  <script src="tic-tac-toe-notakto.js"></script>
+  <script src="tic-tac-toe-ultimate.js"></script>
+  <script src="tic-tac-toe-sizes.js"></script>
+  <script src="tic-tac-toe-size-wars.js"></script>
 </body>
 </html>
