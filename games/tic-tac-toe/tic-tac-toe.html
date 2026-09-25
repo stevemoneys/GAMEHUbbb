@@ -46,6 +46,8 @@
         <button class="action-card ultimate-action" type="button" onclick="openUltimateMode()"><span class="action-icon ultimate-icon" aria-hidden="true">9×9</span><span><strong>Ultimate</strong><small>Win boards · route the next move</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card sizes-action" type="button" onclick="openBoardSizes()"><span class="action-icon sizes-icon" aria-hidden="true">4×4</span><span><strong>Board Sizes</strong><small>Classic, Expanded, Grand</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card size-wars-action" type="button" onclick="openSizeWars()"><span class="action-icon size-wars-icon" aria-hidden="true">3×5</span><span><strong>Size Wars</strong><small>Three boards · one series</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card mutators-action" type="button" onclick="openBoardMutators()"><span class="action-icon mutators-icon" aria-hidden="true">✦</span><span><strong>Board Mutators</strong><small>Change the battlefield</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card rivals-action" type="button" onclick="openRivals()"><span class="action-icon rivals-icon" aria-hidden="true"></span><span><strong>Rivals</strong><small>Meet a rival. Demand a rematch.</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
           <span class="action-icon players-icon" aria-hidden="true"></span>
           <span><strong>Two Players</strong><small>Play with a friend</small></span>
@@ -95,6 +97,35 @@
         <div class="size-wars-controls"><button class="control-button primary-control" type="button" onclick="restartSizeWars()">↻ New Series</button><button class="control-button" type="button" onclick="exitSizeWars()">⌂ Menu</button></div>
       </div>
       <div class="size-wars-result modal" id="sizeWarsResult" role="dialog" aria-modal="true" aria-labelledby="sizeWarsResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="sizeWarsResultKicker">Round complete</p><h2 id="sizeWarsResultTitle"></h2><p id="sizeWarsResultDetail"></p><div class="size-wars-result-score" id="sizeWarsResultScore">X 0 — 0 O</div><div class="modal-buttons"><button class="primary-control" id="sizeWarsContinue" type="button" onclick="continueSizeWars()">Continue to Round 2</button><button class="control-button" id="sizeWarsReplay" type="button" onclick="restartSizeWars()" hidden>Play Again</button><button class="control-button" type="button" onclick="exitSizeWars()">Home</button></div></div></div>
+    </section>
+
+    <section class="screen mutators-screen" id="mutators" aria-label="Board Mutators">
+      <div id="mutatorSetup">
+        <header class="mutators-hero"><p class="eyebrow">Choose one battlefield condition</p><span aria-hidden="true">✦</span><h2>Board Mutators</h2><p>One board. One new rule.</p></header>
+        <div class="mutator-size-row" aria-label="Board size"><button class="selected" type="button" data-mutator-size="3">3×3</button><button type="button" data-mutator-size="4">4×4</button><button type="button" data-mutator-size="5">5×5</button></div>
+        <div class="mutator-mode-row" aria-label="Opponent"><button class="selected" type="button" data-mutator-mode="ai">AI Challenge</button><button type="button" data-mutator-mode="two">Two Players</button></div>
+        <div class="mutator-level" id="mutatorLevel"><span>AI level <b id="mutatorLevelValue">1</b></span><div><button type="button" onclick="adjustMutatorLevel(-1)" aria-label="Lower AI level">−</button><button type="button" onclick="adjustMutatorLevel(1)" aria-label="Raise AI level">+</button></div></div>
+        <div class="mutator-grid" id="mutatorGrid" aria-label="Choose one board mutator"></div>
+        <div class="mutator-preview" id="mutatorPreview" role="status" aria-live="polite"></div>
+        <div class="mutator-actions"><button class="primary-control" type="button" onclick="startBoardMutatorMatch()">Start Match <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="closeBoardMutators()">‹ Back to home</button></div>
+      </div>
+      <div id="mutatorPlay" hidden>
+        <header class="mutator-hud"><span id="mutatorSizeHud">3×3</span><strong id="mutatorNameHud">Classic</strong><small id="mutatorStateHud">3 in a row</small></header>
+        <div class="mutator-turn" id="mutatorTurn" role="status" aria-live="polite"><span id="mutatorTurnMark" aria-hidden="true">X</span><strong>Player X turn</strong><small id="mutatorTurnDetail">Classic board</small></div>
+        <div class="mutator-board-shell"><div class="mutator-board" id="mutatorBoard" role="grid" aria-label="Board Mutators game board"></div></div>
+        <div class="mutator-controls"><button class="control-button primary-control" type="button" onclick="restartBoardMutatorMatch()">↻ Restart</button><button class="control-button" type="button" onclick="returnToMutatorSetup()">Board Mutators</button></div>
+      </div>
+      <div class="mutator-result modal" id="mutatorResult" role="dialog" aria-modal="true" aria-labelledby="mutatorResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="mutatorResultKicker">Battlefield complete</p><h2 id="mutatorResultTitle"></h2><p id="mutatorResultDetail"></p><div class="modal-buttons"><button class="primary-control" type="button" onclick="restartBoardMutatorMatch()">Play Again</button><button class="control-button" type="button" onclick="returnToMutatorSetup()">Change Mutator</button><button class="control-button" type="button" onclick="closeBoardMutators()">Home</button></div></div></div>
+    </section>
+
+    <section class="screen rivals-screen" id="rivals" aria-label="Rivals">
+      <div id="rivalSelect">
+        <header class="rivals-hero"><p class="eyebrow">Recognize the opponent</p><span class="rival-portrait master" aria-hidden="true"><i></i></span><h2>Rivals</h2><p>One opponent. One more chance.</p></header>
+        <div class="rival-level"><span>Challenge level <b id="rivalLevelValue">1</b></span><div><button type="button" onclick="adjustRivalLevel(-1)" aria-label="Lower Challenge level">−</button><button type="button" onclick="adjustRivalLevel(1)" aria-label="Raise Challenge level">+</button></div></div>
+        <div class="rival-grid" id="rivalGrid" aria-label="Select a rival"></div>
+        <div class="rival-actions"><button class="primary-control" type="button" onclick="confirmRival()">Face Rival <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="closeRivals()">‹ Back to home</button></div>
+      </div>
+      <div class="rival-intro" id="rivalIntro" hidden></div>
     </section>
 
     <section class="screen ultimate-screen" id="ultimate" aria-label="Ultimate Tic-Tac-Toe">
@@ -208,5 +239,7 @@
   <script src="tic-tac-toe-ultimate.js"></script>
   <script src="tic-tac-toe-sizes.js"></script>
   <script src="tic-tac-toe-size-wars.js"></script>
+  <script src="tic-tac-toe-mutators.js"></script>
+  <script src="tic-tac-toe-rivals.js"></script>
 </body>
 </html>
