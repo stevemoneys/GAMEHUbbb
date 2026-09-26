@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#080d1c">
   <title>Tic Tac Toe | GameHub</title>
   <link rel="stylesheet" href="tic-tac-toe.css">
+  <link rel="stylesheet" href="tic-tac-toe-campaign-art.css">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -130,7 +131,16 @@
     </section>
 
     <section class="screen campaign-screen" id="campaign" aria-label="Campaign journey">
-      <div id="campaignMap"></div>
+      <div class="campaign-gateway-view" id="campaignGateway" aria-labelledby="campaignGatewayTitle">
+        <div class="campaign-gateway-copy">
+          <p class="eyebrow">Story campaign</p>
+          <h2 id="campaignGatewayTitle">The journey begins beyond the board.</h2>
+          <p>Follow the signal to the Impossible Game.</p>
+          <button class="primary-control" type="button" onclick="enterCampaignMap()">Enter Campaign <span aria-hidden="true">›</span></button>
+          <button class="text-button" type="button" onclick="closeCampaign()">‹ Back to home</button>
+        </div>
+      </div>
+      <div id="campaignMap" hidden></div>
       <div class="campaign-intro" id="campaignIntro" hidden></div>
       <div class="campaign-play" id="campaignPlay" hidden>
         <header class="campaign-hud"><span id="campaignActHud">Act I</span><strong id="campaignEncounterHud">The First Mark</strong><small id="campaignRuleHud">3×3 · 3 in a row</small><div id="campaignRivalHud"></div></header>
@@ -254,6 +264,7 @@
   <script src="tic-tac-toe-size-wars.js"></script>
   <script src="tic-tac-toe-mutators.js"></script>
   <script src="tic-tac-toe-rivals.js"></script>
+  <script src="tic-tac-toe-campaign-art.js"></script>
   <script src="tic-tac-toe-campaign.js"></script>
 </body>
 </html>
