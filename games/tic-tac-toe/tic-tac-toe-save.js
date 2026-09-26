@@ -80,7 +80,8 @@
         records: {},
         replays: [],
         competition: { rivals: {}, prediction: { attempts: 0, correct: 0, recent: [] }, speed: { wins: 0, losses: 0, draws: 0, timeouts: 0, fastestWinMs: null }, quickDuel: { matches: 0, wins: 0, losses: 0, draws: 0 }, readOpponent: { attempts: 0, correct: 0 } },
-        experimentation: { modifiers: {}, procedural: { completed: {}, recent: [] }, lab: { lastPreset: "empty" }, twoPlayer: {}, journey: { completed: [] }, records: {}, moments: {} }
+        experimentation: { modifiers: {}, procedural: { completed: {}, recent: [] }, lab: { lastPreset: "empty" }, twoPlayer: {}, journey: { completed: [] }, records: {}, moments: {} },
+        campaign: { completed: [], impossibleDefeated: false }
       }
     };
   }
@@ -189,6 +190,7 @@
           quickDuel: { matches: count(sourceFeatures.competition?.quickDuel?.matches), wins: count(sourceFeatures.competition?.quickDuel?.wins), losses: count(sourceFeatures.competition?.quickDuel?.losses), draws: count(sourceFeatures.competition?.quickDuel?.draws) },
           readOpponent: { attempts: count(sourceFeatures.competition?.readOpponent?.attempts), correct: Math.min(count(sourceFeatures.competition?.readOpponent?.correct), count(sourceFeatures.competition?.readOpponent?.attempts)) }
         },
+        campaign: { completed: Array.isArray(sourceFeatures.campaign?.completed) ? [...new Set(sourceFeatures.campaign.completed.filter((id) => typeof id === "string" && id.length <= 32))].slice(0, 16) : [], impossibleDefeated: sourceFeatures.campaign?.impossibleDefeated === true },
         experimentation: {
           modifiers: isRecord(sourceFeatures.experimentation?.modifiers) ? clone(sourceFeatures.experimentation.modifiers) : {},
           procedural: { completed: isRecord(sourceFeatures.experimentation?.procedural?.completed) ? clone(sourceFeatures.experimentation.procedural.completed) : {}, recent: Array.isArray(sourceFeatures.experimentation?.procedural?.recent) ? sourceFeatures.experimentation.procedural.recent.filter((entry) => isRecord(entry)).slice(-12).map(clone) : [] },

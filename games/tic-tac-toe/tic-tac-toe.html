@@ -48,6 +48,7 @@
         <button class="action-card size-wars-action" type="button" onclick="openSizeWars()"><span class="action-icon size-wars-icon" aria-hidden="true">3×5</span><span><strong>Size Wars</strong><small>Three boards · one series</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card mutators-action" type="button" onclick="openBoardMutators()"><span class="action-icon mutators-icon" aria-hidden="true">✦</span><span><strong>Board Mutators</strong><small>Change the battlefield</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card rivals-action" type="button" onclick="openRivals()"><span class="action-icon rivals-icon" aria-hidden="true"></span><span><strong>Rivals</strong><small>Meet a rival. Demand a rematch.</small></span><b aria-hidden="true">›</b></button>
+        <button class="action-card campaign-action" type="button" onclick="openCampaign()"><span class="action-icon campaign-icon" aria-hidden="true">◇</span><span><strong>Campaign</strong><small>Journey to the Impossible Game</small></span><b aria-hidden="true">›</b></button>
         <button class="action-card local-action" onclick="startTwoPlayer()">
           <span class="action-icon players-icon" aria-hidden="true"></span>
           <span><strong>Two Players</strong><small>Play with a friend</small></span>
@@ -75,7 +76,7 @@
 
     <section class="screen sizes-screen" id="sizeboards" aria-label="Board size selection">
       <header class="sizes-hero"><p class="eyebrow">Choose your arena</p><span class="sizes-emblem" aria-hidden="true">4×4</span><h2>Board Sizes</h2><p>One classic rule set, scaled for a deeper board.</p></header>
-      <div class="size-choice-grid" id="sizeChoices"><button type="button" class="size-choice selected" data-size-choice="3"><span class="size-preview size-3" aria-hidden="true"></span><strong>3×3</strong><small>Classic · 3 in a row</small></button><button type="button" class="size-choice" data-size-choice="4"><span class="size-preview size-4" aria-hidden="true"></span><strong>4×4</strong><small>Expanded · 4 in a row</small></button><button type="button" class="size-choice" data-size-choice="5"><span class="size-preview size-5" aria-hidden="true"></span><strong>5×5</strong><small>Grand · 5 in a row</small></button></div>
+      <div class="size-choice-grid" id="sizeChoices"><button type="button" class="size-choice selected" data-size-choice="3"><span class="size-preview size-3" aria-hidden="true"></span><strong>3×3</strong><small>Classic · 3 in a row</small></button><button type="button" class="size-choice" data-size-choice="4"><span class="size-preview size-4" aria-hidden="true"></span><strong>4×4</strong><small>Expanded · 4 in a row</small></button><button type="button" class="size-choice" data-size-choice="5"><span class="size-preview size-5" aria-hidden="true"></span><strong>5×5</strong><small>Grand · 4 in a row</small></button></div>
       <div class="win-target-picker" id="sizeWinTargets" hidden aria-label="Win target"><span>Target</span><div id="sizeWinOptions"></div></div>
       <div class="size-ai-level" id="sizeAiLevel"><label for="sizeLevelRange">AI Level <b id="sizeLevelValue">1</b></label><input id="sizeLevelRange" type="range" min="1" max="1" value="1"><small id="sizeLevelHint">Uses your existing Challenge level strength.</small></div>
       <div class="sizes-actions" id="sizesActions"><button class="primary-control" type="button" onclick="startBoardSizeAI()">Challenge AI <span aria-hidden="true">›</span></button><button class="control-button" type="button" onclick="startBoardSizeTwoPlayers()">Two Players</button><button class="text-button" type="button" onclick="closeBoardSizes()">‹ Back to home</button></div>
@@ -126,6 +127,18 @@
         <div class="rival-actions"><button class="primary-control" type="button" onclick="confirmRival()">Face Rival <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="closeRivals()">‹ Back to home</button></div>
       </div>
       <div class="rival-intro" id="rivalIntro" hidden></div>
+    </section>
+
+    <section class="screen campaign-screen" id="campaign" aria-label="Campaign journey">
+      <div id="campaignMap"></div>
+      <div class="campaign-intro" id="campaignIntro" hidden></div>
+      <div class="campaign-play" id="campaignPlay" hidden>
+        <header class="campaign-hud"><span id="campaignActHud">Act I</span><strong id="campaignEncounterHud">The First Mark</strong><small id="campaignRuleHud">3×3 · 3 in a row</small><div id="campaignRivalHud"></div></header>
+        <div class="campaign-turn" id="campaignTurn" role="status" aria-live="polite"><span id="campaignTurnMark" aria-hidden="true">X</span><strong>Your turn</strong><small id="campaignTurnDetail">The Challenger presses the attack.</small></div>
+        <div class="campaign-board-shell"><div class="campaign-board" id="campaignBoard" role="grid" aria-label="Campaign game board"></div></div>
+        <div class="campaign-controls"><button class="control-button primary-control" type="button" onclick="restartCampaignEncounter()">↻ Restart</button><button class="control-button" type="button" onclick="exitCampaignEncounter()">Campaign Map</button></div>
+      </div>
+      <div class="campaign-result modal" id="campaignResult" role="dialog" aria-modal="true" aria-labelledby="campaignResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="campaignResultKicker">Encounter complete</p><h2 id="campaignResultTitle"></h2><p id="campaignResultDetail"></p><div class="campaign-result-rival" id="campaignResultRival"></div><div class="modal-buttons"><button class="primary-control" id="campaignNext" type="button" onclick="continueCampaign()">Continue</button><button class="control-button" type="button" onclick="restartCampaignEncounter()">Rematch</button><button class="control-button" type="button" onclick="exitCampaignEncounter()">Map</button></div></div></div>
     </section>
 
     <section class="screen ultimate-screen" id="ultimate" aria-label="Ultimate Tic-Tac-Toe">
@@ -241,5 +254,6 @@
   <script src="tic-tac-toe-size-wars.js"></script>
   <script src="tic-tac-toe-mutators.js"></script>
   <script src="tic-tac-toe-rivals.js"></script>
+  <script src="tic-tac-toe-campaign.js"></script>
 </body>
 </html>

@@ -13,7 +13,7 @@
   ]);
   const state = { size: 3, mode: "ai", level: 1, mutator: "classic", board: [], current: "X", active: false, thinking: false, resolved: false, generation: 0, timeout: null, moves: 0, blocked: [], wild: null, wildOwner: "", surge: null, surgeUsed: false, frozen: [], frozenActive: false, shift: null, shiftStep: 0 };
   const rule = () => global.TicTacToeSizeRules;
-  const target = () => state.size;
+  const target = () => state.size === 5 ? 4 : state.size;
   const lineSet = () => rule()?.getLines(state.size, target()) || [];
   const maxLevel = () => Math.max(1, Math.min(20, Number(global.TicTacToeSave?.get?.()?.progression?.levels?.highestUnlocked) || 1));
   const emit = (type, detail = {}) => global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type, ...detail } }));

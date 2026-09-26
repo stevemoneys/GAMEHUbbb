@@ -570,7 +570,7 @@ document.getElementById("scoreX").textContent = String(scoreX);
 document.getElementById("scoreO").textContent = String(scoreO);
 
 function hideAllScreens() {
-  ["menu", "reverse", "wild", "notakto", "ultimate", "sizeboards", "sizewars", "mutators", "rivals", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
+  ["menu", "reverse", "wild", "notakto", "ultimate", "sizeboards", "sizewars", "mutators", "rivals", "campaign", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => {
     document.getElementById(id).classList.remove("active");
   });
 }

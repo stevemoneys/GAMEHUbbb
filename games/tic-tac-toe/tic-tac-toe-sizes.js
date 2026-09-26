@@ -4,8 +4,8 @@
 
   const $ = (id) => document.getElementById(id);
   const state = { size: 3, target: 3, level: 1, mode: null, board: [], current: "X", playerMark: "X", aiMark: "O", active: false, thinking: false, generation: 0, timeout: null };
-  const defaults = { 3: 3, 4: 4, 5: 5 };
-  const validTargets = { 3: [3], 4: [3,4], 5: [3,4,5] };
+  const defaults = { 3: 3, 4: 4, 5: 4 };
+  const validTargets = { 3: [3], 4: [3,4], 5: [4] };
   const other = (mark) => mark === "X" ? "O" : "X";
   const $all = (selector) => [...document.querySelectorAll(selector)];
 
@@ -35,6 +35,7 @@
   function selectSize(size) { if (![3,4,5].includes(size)) return; state.size = size; state.target = defaults[size]; syncSetup(); emit("selection"); }
   function selectTarget(target) { if (!validTargets[state.size].includes(target)) return; state.target = target; renderTargetChoices(); emit("selection"); }
   function syncSetup() {
+    if (!validTargets[state.size].includes(state.target)) state.target = defaults[state.size];
     $all("[data-size-choice]").forEach((button) => button.classList.toggle("selected", Number(button.dataset.sizeChoice) === state.size));
     $("sizeWinTargets").hidden = state.size === 3; renderTargetChoices();
     const range = $("sizeLevelRange"), maximum = maxUnlockedLevel(); range.max = String(maximum); state.level = Math.min(state.level, maximum); range.value = String(state.level); $("sizeLevelValue").textContent = String(state.level);

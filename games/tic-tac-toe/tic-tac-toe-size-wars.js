@@ -3,7 +3,7 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const rounds = Object.freeze([{ size: 3, target: 3, name: "3×3 Classic" }, { size: 4, target: 4, name: "4×4 Expanded" }, { size: 5, target: 5, name: "5×5 Grand" }]);
+  const rounds = Object.freeze([{ size: 3, target: 3, name: "3×3 Classic" }, { size: 4, target: 4, name: "4×4 Expanded" }, { size: 5, target: 4, name: "5×5 Grand" }]);
   const state = { mode: "ai", level: 1, round: 0, board: [], current: "X", scores: { X: 0, O: 0 }, active: false, thinking: false, resolved: false, advancing: false, generation: 0, timeout: null };
   const other = (mark) => mark === "X" ? "O" : "X";
   const currentRound = () => rounds[state.round];
