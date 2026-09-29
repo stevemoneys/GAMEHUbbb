@@ -4,7 +4,7 @@
   "use strict";
 
   const STORAGE_KEY = "tictactoe_player_save_v1";
-  const CURRENT_VERSION = 2;
+  const CURRENT_VERSION = 4;
   const MAX_LEVEL = 20;
   const PERSONALITIES = ["human", "aggressive", "defensive", "trickster"];
   const ACHIEVEMENT_IDS = new Set([
@@ -65,12 +65,14 @@
         levels: { highestUnlocked: 1, completed: [], highestCompleted: 0 },
         streaks: { current: 0, best: 0 },
         personalityMastery: defaultPersonalityMastery(),
-        milestones: {}
+        milestones: {},
+        identity: { milestones: {}, rank: 0, rankNotified: 0, updatedAt: now }
       },
       statistics: { matches: 0, wins: 0, losses: 0, draws: 0, aiMatches: 0, twoPlayerMatches: 0, aiWins: 0, aiLosses: 0, aiDraws: 0, totalPersonalityVictories: 0, winsByLevel: {}, completionsByLevel: {} },
       achievements: {},
       settings: { selectedTheme: "default", selectedAIPersonality: "human", preferences: {}, audio: { ...DEFAULT_AUDIO } },
       cosmetics: { unlocked: [], selected: {} },
+      personalization: { owned: ["frame-initiate", "board-classic", "marks-neon", "atmosphere-calm", "move-pulse", "victory-spark"], equipped: { frame: "frame-initiate", board: "board-classic", marks: "marks-neon", atmosphere: "atmosphere-calm", move: "move-pulse", victory: "victory-spark" } },
       scores: { x: 0, o: 0 },
       features: {
         challenges: { solved: {}, trials: {} },
@@ -154,7 +156,13 @@
         levels: { highestUnlocked, completed, highestCompleted: completed.length ? Math.max(...completed) : 0 },
         streaks: { current: currentStreak, best: Math.max(currentStreak, count(progress.streaks?.best)) },
         personalityMastery: personalities,
-        milestones: isRecord(progress.milestones) ? clone(progress.milestones) : {}
+        milestones: isRecord(progress.milestones) ? clone(progress.milestones) : {},
+        identity: {
+          milestones: isRecord(progress.identity?.milestones) ? Object.fromEntries(Object.entries(progress.identity.milestones).filter(([id, value]) => typeof id === "string" && id.length <= 48 && isRecord(value) && timestamp(value.completedAt, 0) > 0).slice(0, 64).map(([id, value]) => [id, { completedAt: timestamp(value.completedAt, now) }])) : {},
+          rank: Math.min(8, Math.max(0, count(progress.identity?.rank))),
+          rankNotified: Math.min(8, Math.max(0, count(progress.identity?.rankNotified))),
+          updatedAt: timestamp(progress.identity?.updatedAt, now)
+        }
       },
       statistics,
       achievements,
@@ -165,6 +173,7 @@
         audio: normalizeAudio(sourceSettings.audio)
       },
       cosmetics: { unlocked: Array.isArray(sourceCosmetics.unlocked) ? [...new Set(sourceCosmetics.unlocked.filter((entry) => typeof entry === "string"))] : [], selected: isRecord(sourceCosmetics.selected) ? clone(sourceCosmetics.selected) : {} },
+      personalization: (() => { const starter = defaults.personalization; const sourcePersonalization = isRecord(source.personalization) ? source.personalization : {}; const owned = [...new Set([...(Array.isArray(sourcePersonalization.owned) ? sourcePersonalization.owned : []), ...starter.owned].filter((entry) => typeof entry === "string" && entry.length <= 48))].slice(0, 96); const selected = isRecord(sourcePersonalization.equipped) ? sourcePersonalization.equipped : {}; const equipped = Object.fromEntries(Object.entries(starter.equipped).map(([slot, fallback]) => [slot, typeof selected[slot] === "string" && owned.includes(selected[slot]) ? selected[slot] : fallback])); return { owned, equipped }; })(),
       scores: { x: count(source.scores?.x), o: count(source.scores?.o) },
       features: {
         challenges: { solved: isRecord(sourceFeatures.challenges?.solved) ? clone(sourceFeatures.challenges.solved) : {}, trials: isRecord(sourceFeatures.challenges?.trials) ? clone(sourceFeatures.challenges.trials) : {} },
@@ -233,7 +242,9 @@
   // Current production schema is v2. Future migrations belong in this map as
   // functions keyed by the version they migrate *from*.
   const migrations = {
-    1: (save) => ({ ...save, version: 2, features: createDefaultSave().features })
+    1: (save) => ({ ...save, version: 2, features: createDefaultSave().features }),
+    2: (save) => ({ ...save, version: 3, progression: { ...(isRecord(save.progression) ? save.progression : {}), identity: createDefaultSave().progression.identity } }),
+    3: (save) => ({ ...save, version: 4, personalization: createDefaultSave().personalization })
   };
   function migrate(raw) {
     if (!isRecord(raw)) return null;

@@ -180,6 +180,7 @@
       if (state.encounterIndex === TOTAL_ENCOUNTERS - 1) {
         state.status = "complete";
         state.complete = true;
+        global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "gauntlet", won: true } }));
         if (kicker) kicker.textContent = item?.boss ? "Final Boss Defeated" : "Gauntlet Complete";
         if (title) title.textContent = item?.boss ? "Architecture Broken" : "Run Cleared";
         if (detailText) detailText.textContent = `All ${TOTAL_ENCOUNTERS} encounters defeated.`;

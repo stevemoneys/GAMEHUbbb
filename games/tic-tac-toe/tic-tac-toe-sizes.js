@@ -81,7 +81,7 @@
   function finish(winner, draw) {
     clearPending(); state.active = false; render(); updateTurn(draw ? "No winning line remains" : `${state.target} in a row complete`); const result = $("sizesResult");
     $("sizesResultKicker").textContent = `${state.size}×${state.size} · ${state.target} in a row`; $("sizesResultTitle").textContent = draw ? "Draw" : state.mode === "ai" ? (winner === state.playerMark ? "You Win" : "Board AI Wins") : `Player ${winner} Wins`; $("sizesResultDetail").textContent = draw ? "The board filled without a valid line." : `${playerName(winner)} completed ${state.target} consecutive marks.`;
-    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
+    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "sizes", size: state.size, target: state.target, won: !draw && winner === state.playerMark } })); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
   }
   $all("[data-size-choice]").forEach((button) => button.addEventListener("click", () => selectSize(Number(button.dataset.sizeChoice))));
   $("sizeLevelRange").addEventListener("input", () => { state.level = Number($("sizeLevelRange").value); $("sizeLevelValue").textContent = String(state.level); });

@@ -97,7 +97,7 @@
     $("notaktoResultKicker").textContent = "Final board sealed";
     $("notaktoResultTitle").textContent = state.mode === "ai" ? (winner === "p1" ? "You Win" : "Notakto AI Wins") : `${playerName(winner)} Wins`;
     $("notaktoResultDetail").textContent = `${playerName(loser)} sealed the last active board and loses the match.`;
-    result.hidden = false; result.classList.add("active", winner === "p1" ? "victory" : "defeat"); emit(winner === "p1" ? "victory" : "defeat");
+    result.hidden = false; result.classList.add("active", winner === "p1" ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "notakto", won: winner === "p1" } })); emit(winner === "p1" ? "victory" : "defeat");
   }
 
   global.openNotaktoMode = open; global.closeNotaktoMode = close;

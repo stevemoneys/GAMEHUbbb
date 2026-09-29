@@ -90,7 +90,7 @@
     const result = $("ultimateResult"); $("ultimateResultKicker").textContent = draw ? "Macro board closed" : "Macro board complete";
     $("ultimateResultTitle").textContent = draw ? "Draw" : state.mode === "ai" ? (winner === state.playerMark ? "You Win" : "Ultimate AI Wins") : `Player ${winner} Wins`;
     $("ultimateResultDetail").textContent = draw ? "Every mini-board is closed with no macro-board winner." : `${playerName(winner)} claimed three mini-boards in a row.`;
-    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
+    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "ultimate", won: !draw && winner === state.playerMark } })); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
   }
 
   global.openUltimateMode = open; global.closeUltimateMode = close; global.startUltimateAI = (mark) => start("ai", mark === "O" ? "O" : "X"); global.startUltimateTwoPlayers = () => start("two", "X"); global.restartUltimate = restart; global.exitUltimate = close;

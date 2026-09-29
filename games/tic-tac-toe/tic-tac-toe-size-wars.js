@@ -73,7 +73,7 @@
     $("sizeWarsResultDetail").textContent = lastRound ? seriesDetail() : draw ? "No point awarded. The series stays live." : `${markName(winner)} earns one series point.`;
     $("sizeWarsResultScore").textContent = `X ${state.scores.X} — ${state.scores.O} O`;
     $("sizeWarsContinue").hidden = lastRound; $("sizeWarsReplay").hidden = !lastRound;
-    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === "X" ? "victory" : "defeat"); feel(lastRound ? (state.scores.X === state.scores.O ? "draw" : state.scores.X > state.scores.O ? "victory" : "defeat") : draw ? "draw" : winner === "X" ? "victory" : "defeat");
+    result.hidden = false; result.classList.add("active", draw ? "draw" : winner === "X" ? "victory" : "defeat"); if (lastRound) global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "size-wars", won: state.mode === "ai" && state.scores.X > state.scores.O } })); feel(lastRound ? (state.scores.X === state.scores.O ? "draw" : state.scores.X > state.scores.O ? "victory" : "defeat") : draw ? "draw" : winner === "X" ? "victory" : "defeat");
   }
   function seriesTitle() { if (state.scores.X === state.scores.O) return "Series Tie"; return state.mode === "ai" ? (state.scores.X > state.scores.O ? "You Win Size Wars" : "Board AI Wins") : `Player ${state.scores.X > state.scores.O ? "X" : "O"} Wins Size Wars`; }
   function seriesDetail() { if (state.scores.X === state.scores.O) return "Three rounds. Neither side took the series."; return `${state.scores.X > state.scores.O ? markName("X") : markName("O")} won more rounds across every board.`; }

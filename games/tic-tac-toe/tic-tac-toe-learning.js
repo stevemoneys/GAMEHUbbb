@@ -99,7 +99,7 @@
   function emit(type) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type } })); }
   function current() { return active && active.generation === generation ? active : null; }
   function endSession() { generation += 1; active = null; }
-  function screens(showId) { ["menu", "reverse", "wild", "notakto", "ultimate", "sizeboards", "sizewars", "mutators", "rivals", "campaign", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => $(id)?.classList.toggle("active", id === showId)); }
+  function screens(showId) { ["menu", "progression", "reverse", "wild", "notakto", "ultimate", "sizeboards", "sizewars", "mutators", "rivals", "campaign", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => $(id)?.classList.toggle("active", id === showId)); }
   function updateFeature(mutator) { save.update((data) => { mutator(data.features); }); }
   function escape(text) { return String(text).replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[char])); }
 
@@ -199,6 +199,7 @@
     if (session.saved) return; session.saved = true;
     if (session.kind === "DAILY_CHALLENGE") {
       updateFeature((features) => recordDailyCompletion(features, session));
+      global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "daily", won: true } }));
       return;
     }
     updateFeature((features) => {
