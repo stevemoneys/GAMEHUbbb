@@ -15,7 +15,7 @@
     reverse: "clubs", wild: "clubs", notakto: "clubs", ultimate: "clubs", mutators: "clubs"
   });
   const screenModes = Object.freeze({ reverse: "reverse", wild: "wild", notakto: "notakto", ultimate: "ultimate", sizeboards: "sizes", sizewars: "sizewars", mutators: "mutators", rivals: "rivals", campaign: "campaign", gauntlet: "gauntlet" });
-  let activeMode = null, artworkToken = 0, introTimer = null;
+  let activeMode = null, artworkToken = 0, introTimer = null, observedScreenId = null, screenSyncQueued = false;
   const resolve = (mode) => suits[modeMap[mode]] || null;
   const reducedMotion = () => global.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
   function ensureElements() {
@@ -55,7 +55,7 @@
     root.dataset.modeSuit = identity.id; document.body.dataset.modeSuit = identity.id;
     const { indicator } = ensureElements(); indicator.className = `suit-mode-indicator active ${identity.className}`;
     indicator.innerHTML = `<span class="suit-indicator-symbol" aria-hidden="true">${identity.symbol}</span><span><strong>${identity.name}</strong><small>${identity.phrase}</small></span>`;
-    preload(identity); stampModeCards();
+    if (changed) preload(identity); stampModeCards();
     if (changed && options.intro !== false) showIntro(identity);
     return identity;
   }
@@ -67,13 +67,26 @@
     function wrapped(...args) { activate(mode); return original.apply(this, args); }
     wrapped.__suitWrapped = true; global[name] = wrapped;
   }
+  function syncActiveScreen() {
+    screenSyncQueued = false;
+    const active = document.querySelector(".screen.active");
+    const nextScreenId = active?.id || null;
+    // The observer also sees suit-indicator class changes. Only respond when
+    // the active GAME screen itself changes, never to our own decoration.
+    if (nextScreenId === observedScreenId) return;
+    observedScreenId = nextScreenId;
+    if (!active || active.id === "menu") { clear(); return; }
+    const mapped = screenModes[active.id];
+    if (mapped && activeMode !== "impossible") activate(mapped, { intro: false });
+  }
   function observeScreens() {
     const observer = new MutationObserver(() => {
-      const active = document.querySelector(".screen.active"); if (!active) return;
-      if (active.id === "menu") { clear(); return; }
-      const mapped = screenModes[active.id]; if (mapped && activeMode !== "impossible") activate(mapped, { intro: false });
+      if (screenSyncQueued) return;
+      screenSyncQueued = true;
+      queueMicrotask(syncActiveScreen);
     });
     observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+    syncActiveScreen();
   }
   [
     ["startVsAI", "classic"], ["startTwoPlayer", "classic"], ["openDailyPuzzleFromHome", "daily"], ["learningDaily", "daily"],

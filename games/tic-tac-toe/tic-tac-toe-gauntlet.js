@@ -15,6 +15,7 @@
     { id: "cipher", name: "Cipher", title: "Hidden Reply", personality: "trickster", level: 15, accent: "#ae91ff", glyph: "✧" },
     { id: "architect", name: "The Architect", title: "Final Structure", personality: "human", level: 17, accent: "#f1d27e", glyph: "◫", boss: true, finalBoss: true, encounterRule: "sealed_corners", ruleLabel: "Corners sealed", ruleText: "The Architect seals every corner for both sides.", pattern: "corners" }
   ]);
+  const HIDDEN_ENCOUNTERS = Object.freeze({ cipher: "create-fork" });
 
   let run = null;
   let generation = 0;
@@ -35,6 +36,7 @@
   }
 
   function endRun() {
+    global.TicTacToeHiddenObjectives?.clear();
     global.clearGauntletPowerEffects?.();
     generation += 1;
     clearResultActions();
@@ -110,7 +112,7 @@
     if (current()?.status === "starting" || current()?.status === "playing") return;
     endRun();
     const token = generation;
-    run = { id: `gauntlet-${Date.now()}`, generation: token, status: "starting", encounterIndex: 0, victories: 0, complete: false, failed: false, resultHandled: false, advancing: false, powers: global.createGauntletPowerState?.() || null };
+    run = { id: `gauntlet-${Date.now()}`, generation: token, status: "starting", encounterIndex: 0, victories: 0, complete: false, failed: false, resultHandled: false, advancing: false, hiddenCommitted: false, powers: global.createGauntletPowerState?.() || null };
     startEncounter();
   }
 
@@ -118,6 +120,8 @@
     const state = current();
     const item = encounter();
     if (!state || !item || state.advancing || state.status === "failed" || state.complete) return;
+    const hiddenObjective = HIDDEN_ENCOUNTERS[item.id];
+    if (hiddenObjective && !state.hiddenCommitted) { global.TicTacToeHiddenObjectives?.begin({ id: item.id, source: "gauntlet", mode: "gauntlet", objectiveId: hiddenObjective, rivalName: item.name, size: 3, target: 3, onCommit: () => { const activeRun = current(); if (!activeRun) return; activeRun.hiddenCommitted = true; startEncounter(); } }); return; }
     state.advancing = true;
     state.status = "starting";
     state.resultHandled = false;
@@ -130,7 +134,9 @@
       gauntletRunId: state.id,
       encounterIndex: state.encounterIndex,
       encounterTotal: TOTAL_ENCOUNTERS,
-      opponentName: item.name
+      opponentName: item.name,
+      hiddenSource: hiddenObjective ? "gauntlet" : null,
+      hiddenObjective: hiddenObjective ? global.TicTacToeHiddenObjectives?.snapshot?.() : null
     });
     state.advancing = false;
     if (!started.valid) {
@@ -219,6 +225,8 @@
   function continueRun() {
     const state = current();
     if (!state || state.status !== "encounter-complete" || state.advancing) return;
+    global.TicTacToeHiddenObjectives?.clear();
+    state.hiddenCommitted = false;
     state.encounterIndex += 1;
     if (state.encounterIndex >= TOTAL_ENCOUNTERS) return;
     startEncounter();
@@ -227,6 +235,8 @@
   function replayEncounter() {
     const state = current();
     if (!state || state.status !== "draw" || state.advancing) return;
+    global.TicTacToeHiddenObjectives?.clear();
+    state.hiddenCommitted = false;
     startEncounter();
   }
 

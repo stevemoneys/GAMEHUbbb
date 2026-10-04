@@ -11,11 +11,11 @@
   const encounters = Object.freeze([
     { id: "first-mark", act: "I", actName: "The First Mark", title: "Opening Signal", size: 3, target: 3, rival: "challenger", level: 2, mutator: "classic" },
     { id: "steady-hand", act: "I", actName: "The First Mark", title: "Hold the Line", size: 3, target: 3, rival: "guardian", level: 3, mutator: "classic" },
-    { id: "pressure-point", act: "II", actName: "The Mind Game", title: "Pressure Point", size: 3, target: 3, rival: "challenger", level: 5, mutator: "classic" },
+    { id: "pressure-point", act: "II", actName: "The Mind Game", title: "Pressure Point", size: 3, target: 3, rival: "challenger", level: 5, mutator: "classic", hiddenObjective: "create-fork" },
     { id: "patient-trap", act: "II", actName: "The Mind Game", title: "Patient Trap", size: 3, target: 3, rival: "guardian", level: 5, mutator: "classic" },
     { id: "double-vision", act: "II", actName: "The Mind Game", title: "Double Vision", size: 4, target: 4, rival: "trickster", level: 6, mutator: "classic" },
     { id: "sealed-route", act: "III", actName: "The Changing Board", title: "Sealed Route", size: 4, target: 4, rival: "guardian", level: 8, mutator: "blockade" },
-    { id: "cold-calculation", act: "III", actName: "The Changing Board", title: "Cold Calculation", size: 5, target: 4, rival: "trickster", level: 10, mutator: "frozen" },
+    { id: "cold-calculation", act: "III", actName: "The Changing Board", title: "Cold Calculation", size: 5, target: 4, rival: "trickster", level: 10, mutator: "frozen", hiddenObjective: "use-corner" },
     { id: "open-fire", act: "IV", actName: "The Rivals", title: "Open Fire", size: 4, target: 4, rival: "challenger", level: 11, mutator: "surge" },
     { id: "safe-passage", act: "IV", actName: "The Rivals", title: "Safe Passage", size: 5, target: 4, rival: "guardian", level: 12, mutator: "classic" },
     { id: "moving-target", act: "IV", actName: "The Rivals", title: "Moving Target", size: 5, target: 4, rival: "trickster", level: 14, mutator: "shift" },
@@ -24,7 +24,7 @@
     { id: "the-pressure", act: "V", actName: "The Impossible Game", title: "The Pressure", size: 5, target: 4, rival: "master", level: 17, mutator: "frozen", final: 2 },
     { id: "impossible-game", act: "V", actName: "The Impossible Game", title: "The Impossible Game", size: 5, target: 4, rival: "master", level: 18, mutator: "shift", final: 3 }
   ]);
-  const state = { index: 0, board: [], current: "X", active: false, thinking: false, resolved: false, generation: 0, timeout: null, transitionTimeout: null, moves: 0, blocked: [], frozen: [], frozenActive: false, surge: null, surgeUsed: false, shift: null, shiftStep: 0 };
+  const state = { index: 0, board: [], current: "X", active: false, thinking: false, resolved: false, generation: 0, timeout: null, transitionTimeout: null, moves: 0, blocked: [], frozen: [], frozenActive: false, surge: null, surgeUsed: false, shift: null, shiftStep: 0, hiddenCommitted: false };
   const other = (mark) => mark === "X" ? "O" : "X";
   const current = () => encounters[state.index];
   const rival = () => rivals[current().rival];
@@ -64,21 +64,73 @@
   }
   function open() { global.TicTacToeSuits?.activate("campaign", { intro: false }); clearPending(); state.active = false; hideResult(); $("campaignIntro").hidden = true; $("campaignPlay").hidden = true; $("campaignMap").hidden = true; $("campaignGateway").hidden = false; applyScene("CAMPAIGN_GATEWAY"); screens("campaign"); }
   function enterMap() { global.TicTacToeSuits?.activate("campaign", { intro: false }); clearPending(); state.active = false; hideResult(); $("campaignGateway").hidden = true; $("campaignIntro").hidden = true; $("campaignPlay").hidden = true; $("campaignMap").hidden = false; applyScene("CAMPAIGN_WORLD"); renderMap(); artwork()?.preload(sceneForAct("I")); screens("campaign"); }
-  function close() { global.TicTacToeSuits?.clear(); clearPending(); state.active = false; hideResult(); applyScene(null); screens("menu"); }
+  function close() { global.TicTacToeHiddenObjectives?.clear(); global.TicTacToeSuits?.clear(); clearPending(); state.active = false; hideResult(); applyScene(null); screens("menu"); }
   function introduce(index) { if (!Number.isInteger(index) || index > unlockedIndex()) return; state.index = index; $("campaignMap").hidden = true; const config = current(), final = config.final; applyScene(sceneForAct(config.act), { rival: config.rival, final: Boolean(final) }); $("campaign").classList.add("campaign-entering-encounter"); const token = state.generation; state.transitionTimeout = setTimeout(() => { if (token === state.generation) $("campaign").classList.remove("campaign-entering-encounter"); }, 440); $("campaignIntro").hidden = false; $("campaignIntro").innerHTML = `<div class="campaign-intro-card ${final ? "final-intro" : ""}">${portrait(config.rival)}<p class="eyebrow">${final ? `Final confrontation · Round ${final} / 3` : `Act ${config.act} · Encounter ${index + 1}`}</p><h2>${config.title}</h2><p>${rival().phrase}</p><div class="campaign-intro-badges"><span>${config.size}×${config.size}</span><span>${config.target} in a row</span><span>${mutatorLabel()}</span></div><button class="primary-control" type="button" onclick="startCampaignEncounter()">${final === 1 ? "Enter Final Arena" : "Begin Encounter"} <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="enterCampaignMap()">‹ Campaign map</button></div>`; applyMasterPortraits(); artwork()?.preloadAfterAct(config.act); }
-  function start() { clearPending(); resetBoard(); hideResult(); $("campaignIntro").hidden = true; $("campaignPlay").hidden = false; const config = current(); global.TicTacToeSuits?.activate(config.final ? "impossible" : "campaign"); applyScene(config.final ? "IMPOSSIBLE_ARENA" : sceneForAct(config.act), { rival: config.rival, final: Boolean(config.final) }); render(); updateHud(); emit("selection", { feature: "campaign", encounter: config.id }); }
-  function exitEncounter() { clearPending(); state.active = false; $("campaignPlay").hidden = true; enterMap(); }
-  function restart() { start(); }
+  function start() { const config = current(); if (config.hiddenObjective && !state.hiddenCommitted) { global.TicTacToeHiddenObjectives?.begin({ id: config.id, source: "campaign", mode: "campaign", objectiveId: config.hiddenObjective, rivalName: rival().name, size: config.size, target: config.target, onCommit: () => { state.hiddenCommitted = true; start(); } }); return; } clearPending(); resetBoard(); hideResult(); $("campaignIntro").hidden = true; $("campaignPlay").hidden = false; global.TicTacToeSuits?.activate(config.final ? "impossible" : "campaign"); applyScene(config.final ? "IMPOSSIBLE_ARENA" : sceneForAct(config.act), { rival: config.rival, final: Boolean(config.final) }); render(); updateHud(); emit("selection", { feature: "campaign", encounter: config.id }); }
+  function start() {
+    const config = current();
+    if (config.hiddenObjective && state.hiddenCommitted !== config.id) {
+      global.TicTacToeHiddenObjectives?.begin({ id: config.id, source: "campaign", mode: "campaign", objectiveId: config.hiddenObjective, rivalName: rival().name, size: config.size, target: config.target, onCommit: () => { state.hiddenCommitted = config.id; start(); } });
+      return;
+    }
+    clearPending(); resetBoard(); hideResult(); $("campaignIntro").hidden = true; $("campaignPlay").hidden = false;
+    global.TicTacToeSuits?.activate(config.final ? "impossible" : "campaign");
+    applyScene(config.final ? "IMPOSSIBLE_ARENA" : sceneForAct(config.act), { rival: config.rival, final: Boolean(config.final) }); render(); updateHud(); emit("selection", { feature: "campaign", encounter: config.id });
+  }
+  function exitEncounter() { global.TicTacToeHiddenObjectives?.clear(); state.hiddenCommitted = false; clearPending(); state.active = false; $("campaignPlay").hidden = true; enterMap(); }
+  function restart() { state.hiddenCommitted = false; global.TicTacToeHiddenObjectives?.clear(); start(); }
   function status() { if (current().mutator === "blockade") return `${state.blocked.length} cells sealed`; if (current().mutator === "frozen") return state.frozenActive ? `Frozen line unlocks in ${Math.max(0, 4 - state.moves)} moves` : "Frozen line released"; if (current().mutator === "surge") return state.surgeUsed ? "Surge spent" : "Surge grants one extra turn"; if (current().mutator === "shift") return `Portal shifts in ${3 - (state.moves % 3)} moves`; return `${current().target} in a row`; }
   function updateHud(note = status()) { const config = current(), ai = state.current === "O"; $("campaignActHud").textContent = `Act ${config.act}${config.final ? ` · Final ${config.final}/3` : ""}`; $("campaignEncounterHud").textContent = config.title; $("campaignRuleHud").textContent = `${config.size}×${config.size} · ${config.target} in a row · ${mutatorLabel()}`; $("campaignRivalHud").innerHTML = `${portrait(config.rival)}<span>${rival().name}</span>`; applyMasterPortraits(); $("campaignTurn").classList.toggle("ai-turn", ai); $("campaignTurnMark").textContent = state.current; $("campaignTurn").querySelector("strong").textContent = state.active ? (ai ? `${rival().name} is thinking` : "Your turn") : "Encounter complete"; $("campaignTurnDetail").textContent = note; }
   function render() { const board = $("campaignBoard"), legal = legalMoves(); board.style.setProperty("--size", current().size); board.innerHTML = state.board.map((mark, index) => { const special = state.blocked.includes(index) ? "blockade" : state.frozenActive && state.frozen.includes(index) ? "frozen" : state.surge === index ? "surge" : state.shift === index ? "shift" : ""; const disabled = !state.active || state.thinking || !legal.includes(index); return `<button type="button" class="campaign-cell ${mark || ""} ${special} ${state.surge === index && state.surgeUsed ? "surge-used" : ""}" data-campaign-cell="${index}" ${disabled ? "disabled" : ""} aria-label="Cell ${index + 1}: ${special || mark || "empty"}"><span>${mark}</span></button>`; }).join(""); board.querySelectorAll("[data-campaign-cell]").forEach((cell) => cell.addEventListener("click", () => move(Number(cell.dataset.campaignCell)), { once: true })); }
   function move(index) { if (!state.active || state.thinking || !legalMoves().includes(index)) { emit("invalid_move"); return false; } const actor = state.current, surge = current().mutator === "surge" && index === state.surge && !state.surgeUsed; state.board[index] = actor; state.moves += 1; if (surge) state.surgeUsed = true; if (current().mutator === "frozen" && state.frozenActive && state.moves >= 4) state.frozenActive = false; if (current().mutator === "shift" && state.moves % 3 === 0) shift(); emit("piece_place", { symbol: actor, actor: actor === "O" ? "ai" : "player" }); render(); const line = winner(state.board, actor); if (line) { line.forEach((cell) => document.querySelector(`[data-campaign-cell="${cell}"]`)?.classList.add("win")); finish(actor, false); return true; } if (!legalMoves().length) { finish(null, true); return true; } if (surge) { updateHud(`${actor} triggered Surge · move again`); if (actor === "O") scheduleAI(); return true; } state.current = other(actor); updateHud(); if (state.current === "O") scheduleAI(); return true; }
+  function move(index) {
+    if (!state.active || state.thinking || !legalMoves().includes(index)) { emit("invalid_move"); return false; }
+    const actor = state.current, surge = current().mutator === "surge" && index === state.surge && !state.surgeUsed;
+    state.board[index] = actor; state.moves += 1;
+    if (actor === "X") global.TicTacToeHiddenObjectives?.trackMove({ board: state.board, symbol: actor, playerSymbol: "X", size: current().size, target: current().target, source: "campaign" });
+    if (surge) state.surgeUsed = true;
+    if (current().mutator === "frozen" && state.frozenActive && state.moves >= 4) state.frozenActive = false;
+    if (current().mutator === "shift" && state.moves % 3 === 0) shift();
+    emit("piece_place", { symbol: actor, actor: actor === "O" ? "ai" : "player" }); render();
+    const line = winner(state.board, actor);
+    if (line) { line.forEach((cell) => document.querySelector(`[data-campaign-cell="${cell}"]`)?.classList.add("win")); finish(actor, false); return true; }
+    if (!legalMoves().length) { finish(null, true); return true; }
+    if (surge) { updateHud(`${actor} triggered Surge - move again`); if (actor === "O") scheduleAI(); return true; }
+    state.current = other(actor); updateHud(); if (state.current === "O") scheduleAI(); return true;
+  }
   function shift() { const path = shiftPath(current().size); for (let offset = 1; offset <= path.length; offset += 1) { const candidate = path[(state.shiftStep + offset) % path.length]; if (!state.board[candidate] && candidate !== state.shift && !state.blocked.includes(candidate)) { state.shift = candidate; state.shiftStep = (state.shiftStep + offset) % path.length; return; } } }
   function winningMoves(board, mark) { return legalMoves(board).filter((index) => { const next = [...board]; next[index] = mark; return Boolean(winner(next, mark)); }); }
   function scoreMove(index, mark) { const next = [...state.board]; next[index] = mark; const enemy = other(mark), person = rival().personality; const ownThreat = winningMoves(next, mark).length, enemyThreat = winningMoves(next, enemy).length; const own = lines().reduce((sum, line) => sum + line.filter((cell) => next[cell] === mark).length ** 2, 0); let value = own * 8 + ownThreat * 42 - enemyThreat * 70; if (person === "aggressive") value += ownThreat * 34 + own * 3; if (person === "defensive") value -= enemyThreat * 48; if (person === "trickster") value += ownThreat >= 2 ? 90 : ownThreat * 18; if (person === "human") value += ownThreat * 22 - enemyThreat * 24; if (index === state.surge && !state.surgeUsed) value += 22; return value; }
+  function scoreMove(index, mark) {
+    const next = [...state.board]; next[index] = mark; const enemy = other(mark), person = rival().personality;
+    const ownThreat = winningMoves(next, mark).length, enemyThreat = winningMoves(next, enemy).length;
+    const own = lines().reduce((sum, line) => sum + line.filter((cell) => next[cell] === mark).length ** 2, 0);
+    let value = own * 8 + ownThreat * 42 - enemyThreat * 70;
+    if (person === "aggressive") value += ownThreat * 34 + own * 3;
+    if (person === "defensive") value -= enemyThreat * 48;
+    if (person === "trickster") value += ownThreat >= 2 ? 90 : ownThreat * 18;
+    if (person === "human") value += ownThreat * 22 - enemyThreat * 24;
+    value += global.TicTacToeHiddenObjectives?.aiAwarenessScore({ board: state.board, candidateMove: index, playerSymbol: "X", size: current().size, target: current().target, context: { hiddenSource: "campaign" } }) || 0;
+    if (index === state.surge && !state.surgeUsed) value += 22;
+    return value;
+  }
   function chooseAI() { const legal = legalMoves(); if (!legal.length) return null; const wins = winningMoves(state.board, "O"); if (wins.length) return wins[0]; const blocks = winningMoves(state.board, "X"); if (blocks.length && (current().level >= 3 || Math.random() < current().level / 6)) return blocks[0]; const ranked = legal.map((index) => ({ index, score: scoreMove(index, "O") })).sort((a, b) => b.score - a.score || a.index - b.index); const window = Math.max(1, Math.min(ranked.length, 6 - Math.ceil(current().level / 4))); return ranked[Math.floor(Math.random() * window)].index; }
   function scheduleAI() { if (!state.active || state.current !== "O" || state.thinking) return; state.thinking = true; render(); updateHud("The rival is reading the board"); emit("ai_thinking_start"); const token = state.generation; state.timeout = setTimeout(() => { state.timeout = null; if (token !== state.generation || !state.active || state.current !== "O") return; state.thinking = false; const choice = chooseAI(); if (Number.isInteger(choice)) move(choice); }, current().final ? 430 : 320); }
   function finish(winnerMark, draw) { if (state.resolved) return; state.resolved = true; clearPending(); state.active = false; render(); updateHud(draw ? "No legal move remains" : `${current().target} in a row complete`); const win = winnerMark === "X", config = current(), final = config.final; if (win) persistCompletion(config.id); const finalComplete = win && config.id === "impossible-game"; const modal = $("campaignResult"); $("campaignResultKicker").textContent = finalComplete ? "Journey complete" : final ? `Final round ${final} / 3` : `Act ${config.act} complete`; $("campaignResultTitle").textContent = finalComplete ? "The Impossible Game Defeated" : draw ? "Draw" : win ? "Encounter Won" : `${rival().name} Wins`; $("campaignResultDetail").textContent = finalComplete ? "Campaign complete. The final board yielded." : draw ? "The path remains. Settle the board." : win ? `The route to ${nextTitle()} is open.` : `${rival().name}: ${rival().phrase}`; $("campaignResultRival").innerHTML = `${portrait(config.rival)}<span>${rival().name}</span>`; applyMasterPortraits(); $("campaignNext").hidden = !win; $("campaignNext").textContent = finalComplete ? "Return to Campaign" : `Continue to ${nextTitle()}`; modal.hidden = false; modal.classList.add("active", finalComplete ? "campaign-complete" : draw ? "draw" : win ? "victory" : "defeat"); emit(draw ? "draw" : win ? "victory" : "defeat"); }
+  function finish(winnerMark, draw) {
+    if (state.resolved) return;
+    state.resolved = true; clearPending(); state.active = false; render(); updateHud(draw ? "No legal move remains" : `${current().target} in a row complete`);
+    const win = winnerMark === "X", config = current(), final = config.final;
+    const hidden = global.TicTacToeHiddenObjectives?.finish({ outcome: draw ? "draw" : win ? "win" : "loss", board: state.board, playerSymbol: "X", size: config.size, target: config.target, source: "campaign" });
+    if (win) persistCompletion(config.id);
+    const finalComplete = win && config.id === "impossible-game", modal = $("campaignResult");
+    $("campaignResultKicker").textContent = finalComplete ? "Journey complete" : final ? `Final round ${final} / 3` : `Act ${config.act} complete`;
+    $("campaignResultTitle").textContent = finalComplete ? "The Impossible Game Defeated" : draw ? "Draw" : win ? "Encounter Won" : `${rival().name} Wins`;
+    $("campaignResultDetail").textContent = finalComplete ? "Campaign complete. The final board yielded." : draw ? "The path remains. Settle the board." : win ? `The route to ${nextTitle()} is open.` : `${rival().name}: ${rival().phrase}`;
+    $("campaignResultRival").innerHTML = `${portrait(config.rival)}<span>${rival().name}</span>`; applyMasterPortraits(); $("campaignNext").hidden = !win; $("campaignNext").textContent = finalComplete ? "Return to Campaign" : `Continue to ${nextTitle()}`;
+    modal.hidden = false; modal.classList.add("active", finalComplete ? "campaign-complete" : draw ? "draw" : win ? "victory" : "defeat");
+    global.TicTacToeHiddenObjectives?.showResult(hidden); emit(draw ? "draw" : win ? "victory" : "defeat");
+  }
   function nextTitle() { const next = encounters[state.index + 1]; return next ? next.title : "Campaign"; }
   function continueCampaign() { if (!isDone(current().id)) return; hideResult(); if (current().id === "impossible-game") { enterMap(); return; } introduce(Math.min(state.index + 1, encounters.length - 1)); }
   global.openCampaign = open; global.closeCampaign = close; global.enterCampaignMap = enterMap; global.startCampaignEncounter = start; global.restartCampaignEncounter = restart; global.exitCampaignEncounter = exitEncounter; global.continueCampaign = continueCampaign;

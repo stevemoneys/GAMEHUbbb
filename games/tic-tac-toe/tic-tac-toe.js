@@ -1035,7 +1035,7 @@ function makeMove(index) {
   cell.setAttribute("aria-label", `Cell ${index + 1}: ${gameState.currentPlayer}`);
   restartAnimation(cell, gameState.currentPlayer === "X" ? "piece-in-x" : "piece-in-o");
   emitGameFeelEvent("piece_place", { symbol: gameState.currentPlayer, actor: "player" });
-  window.dispatchEvent(new CustomEvent("tictactoe:player-move", { detail: { index, symbol: gameState.currentPlayer, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation, blocksImmediateThreat, preventsFork, createsFork } }));
+  window.dispatchEvent(new CustomEvent("tictactoe:player-move", { detail: { index, symbol: gameState.currentPlayer, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation, blocksImmediateThreat, preventsFork, createsFork } }));
   haptic(10);
 
   if (checkWin()) return;
@@ -1488,7 +1488,7 @@ function getAIMoveByLevel() {
     const scored = candidates.map((candidate) => ({
       ...candidate,
       outcome: solvePosition(playOnBoard(gameState.board, candidate.move, gameState.aiSymbol), gameState.playerSymbol, memo),
-      score: scoreCandidate(candidate, personality)
+      score: scoreCandidate(candidate, personality) + (window.TicTacToeHiddenObjectives?.aiAwarenessScore({ board: gameState.board, candidateMove: candidate.move, playerSymbol: gameState.playerSymbol, size: 3, target: 3, context: gameState.match.context }) || 0)
     }));
     const bestOutcome = Math.max(...scored.map((candidate) => candidate.outcome));
     const optimal = scored.filter((candidate) => candidate.outcome === bestOutcome)
@@ -1499,7 +1499,7 @@ function getAIMoveByLevel() {
   }
 
   const ranked = candidates
-    .map((candidate) => ({ ...candidate, score: scoreCandidate(candidate, personality) }))
+    .map((candidate) => ({ ...candidate, score: scoreCandidate(candidate, personality) + (window.TicTacToeHiddenObjectives?.aiAwarenessScore({ board: gameState.board, candidateMove: candidate.move, playerSymbol: gameState.playerSymbol, size: 3, target: 3, context: gameState.match.context }) || 0) }))
     .sort((a, b) => b.score - a.score || a.move - b.move);
   return chooseRankedCandidate(ranked, profile, personality);
 }
