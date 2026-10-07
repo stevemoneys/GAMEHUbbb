@@ -4,7 +4,7 @@
 
   const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   const $ = (id) => document.getElementById(id);
-  const state = { mode: null, boards: [], dead: [], current: "p1", active: false, thinking: false, generation: 0, timeout: null };
+  const state = { mode: null, boards: [], dead: [], current: "p1", active: false, thinking: false, generation: 0, timeout: null, history: [] };
   const emptyBoard = () => Array(9).fill("");
   const other = (player) => player === "p1" ? "p2" : "p1";
 
@@ -21,10 +21,11 @@
   function emit(type, detail = {}) { global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type, ...detail } })); }
 
   function hideResult() { const result = $("notaktoResult"); result.hidden = true; result.classList.remove("active", "victory", "defeat", "draw"); }
+  function replaySnapshot(lastMove = null, marker = null) { return { turn: state.history.length, boards: state.boards.map((board) => [...board]), labels: state.dead.map((dead, index) => `Board ${index + 1}${dead ? " · sealed" : ""}`), lastMove, marker, nextPlayer: state.current === "p1" ? "O" : "X" }; }
   function open() { clearPending(); state.active = false; $("notaktoPlay").hidden = true; $("notaktoActions").hidden = false; hideResult(); screens("notakto"); }
   function close() { clearPending(); state.active = false; hideResult(); screens("menu"); }
   function start(mode) {
-    clearPending(); state.mode = mode; state.boards = [emptyBoard(), emptyBoard(), emptyBoard()]; state.dead = [false, false, false]; state.current = "p1"; state.active = true;
+    clearPending(); state.mode = mode; state.boards = [emptyBoard(), emptyBoard(), emptyBoard()]; state.dead = [false, false, false]; state.current = "p1"; state.active = true; state.history = []; state.history.push(replaySnapshot());
     $("notaktoActions").hidden = true; $("notaktoPlay").hidden = false; hideResult();
     render(); updateTurn();
   }
@@ -46,6 +47,7 @@
     state.boards[boardIndex][cellIndex] = "X";
     const killed = isLine(state.boards[boardIndex]);
     if (killed) state.dead[boardIndex] = true;
+    state.history.push(replaySnapshot({ boardIndex, cellIndex }, killed ? { type:"closure", label:"BOARD SEALED" } : null));
     emit("piece_place", { symbol: "X", actor: actor === "p1" ? "player" : "ai" });
     render();
     if (killed) {
@@ -97,6 +99,8 @@
     $("notaktoResultKicker").textContent = "Final board sealed";
     $("notaktoResultTitle").textContent = state.mode === "ai" ? (winner === "p1" ? "You Win" : "Notakto AI Wins") : `${playerName(winner)} Wins`;
     $("notaktoResultDetail").textContent = `${playerName(loser)} sealed the last active board and loses the match.`;
+    const final = state.history.at(-1); if (final) final.marker = { type:"result", label:"FINAL BOARD SEALED" };
+    global.TicTacToeReplay?.recordExternal({ matchType:"notakto", mode:state.mode, boardSize:3, winTarget:3, playerSymbol:"X", result:winner === "p1" ? "win" : "loss", snapshots:state.history });
     result.hidden = false; result.classList.add("active", winner === "p1" ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "notakto", won: winner === "p1" } })); emit(winner === "p1" ? "victory" : "defeat");
   }
 

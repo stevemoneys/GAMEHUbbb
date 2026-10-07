@@ -6,7 +6,7 @@
   const $ = (id) => document.getElementById(id);
   const emptyBoard = () => Array(9).fill("");
   const other = (mark) => mark === "X" ? "O" : "X";
-  const state = { mode: null, playerMark: "X", aiMark: "O", boards: [], claims: [], current: "X", forced: null, active: false, thinking: false, generation: 0, timeout: null };
+  const state = { mode: null, playerMark: "X", aiMark: "O", boards: [], claims: [], current: "X", forced: null, active: false, thinking: false, generation: 0, timeout: null, history: [] };
 
   function winner(board) { return LINES.find(([a,b,c]) => board[a] && board[a] === board[b] && board[b] === board[c]) || null; }
   function macroWinner(claims) { const line = LINES.find(([a,b,c]) => (claims[a] === "X" || claims[a] === "O") && claims[a] === claims[b] && claims[b] === claims[c]); return line ? claims[line[0]] : null; }
@@ -22,11 +22,12 @@
   function playerName(mark = state.current) { return state.mode === "ai" ? (mark === state.playerMark ? "You" : "Ultimate AI") : `Player ${mark}`; }
   function turnDetail() { return state.forced === null ? "Choose any open mini-board" : `Play in board ${state.forced + 1}`; }
   function hideResult() { const result = $("ultimateResult"); result.hidden = true; result.classList.remove("active", "victory", "defeat", "draw"); }
+  function replaySnapshot(lastMove = null, marker = null) { return { turn: state.history.length, boards: state.boards.map((board) => [...board]), labels: state.claims.map((claim, index) => `Mini ${index + 1}${claim ? ` · ${claim}` : ""}`), lastMove, marker, nextPlayer: other(state.current), forced: state.forced, claims: [...state.claims] }; }
 
   function open() { clearPending(); state.active = false; $("ultimatePlay").hidden = true; $("ultimateActions").hidden = false; hideResult(); screens("ultimate"); }
   function close() { clearPending(); state.active = false; hideResult(); screens("menu"); }
   function start(mode, playerMark = "X") {
-    clearPending(); state.mode = mode; state.playerMark = playerMark; state.aiMark = other(playerMark); state.boards = Array.from({ length: 9 }, emptyBoard); state.claims = Array(9).fill(""); state.current = "X"; state.forced = null; state.active = true;
+    clearPending(); state.mode = mode; state.playerMark = playerMark; state.aiMark = other(playerMark); state.boards = Array.from({ length: 9 }, emptyBoard); state.claims = Array(9).fill(""); state.current = "X"; state.forced = null; state.active = true; state.history = []; state.history.push(replaySnapshot());
     $("ultimateActions").hidden = true; $("ultimatePlay").hidden = false; hideResult(); render(); updateTurn();
     if (mode === "ai" && state.current === state.aiMark) scheduleAI();
   }
@@ -58,7 +59,7 @@
     const legal = legalMoves();
     if (!state.active || state.thinking || !legal.some((move) => move.boardIndex === boardIndex && move.cellIndex === cellIndex)) { emit("invalid_move"); return false; }
     const actor = state.current, next = simulate(state.boards, state.claims, state.forced, actor, { boardIndex, cellIndex });
-    state.boards = next.boards; state.claims = next.claims; state.forced = next.forced;
+    state.boards = next.boards; state.claims = next.claims; state.forced = next.forced; state.history.push(replaySnapshot({ boardIndex, cellIndex }, next.claimed ? { type:"claim", label: next.claimed === "draw" ? "MINI BOARD DRAW" : "ULTIMATE CLAIM" } : null));
     emit("piece_place", { symbol: actor, actor: actor === state.playerMark ? "player" : "ai" }); render();
     if (next.claimed) { document.querySelector(`[data-ultimate-mini="${boardIndex}"]`)?.classList.add(next.claimed === "draw" ? "just-drawn" : "just-claimed"); emit("win_line", { boardIndex, macro: false, ultimate: true }); }
     if (next.macro) { finish(actor, false); return true; }
@@ -90,6 +91,8 @@
     const result = $("ultimateResult"); $("ultimateResultKicker").textContent = draw ? "Macro board closed" : "Macro board complete";
     $("ultimateResultTitle").textContent = draw ? "Draw" : state.mode === "ai" ? (winner === state.playerMark ? "You Win" : "Ultimate AI Wins") : `Player ${winner} Wins`;
     $("ultimateResultDetail").textContent = draw ? "Every mini-board is closed with no macro-board winner." : `${playerName(winner)} claimed three mini-boards in a row.`;
+    const final = state.history.at(-1); if (final) final.marker = { type:"result", label: draw ? "MACRO DRAW" : "MACRO VICTORY" };
+    global.TicTacToeReplay?.recordExternal({ matchType:"ultimate", mode:state.mode, boardSize:3, winTarget:3, playerSymbol:state.playerMark, aiSymbol:state.aiMark, result:draw ? "draw" : winner === state.playerMark ? "win" : "loss", snapshots:state.history });
     result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "ultimate", won: !draw && winner === state.playerMark } })); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
   }
 

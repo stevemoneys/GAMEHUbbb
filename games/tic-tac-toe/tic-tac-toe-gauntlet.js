@@ -16,6 +16,7 @@
     { id: "architect", name: "The Architect", title: "Final Structure", personality: "human", level: 17, accent: "#f1d27e", glyph: "◫", boss: true, finalBoss: true, encounterRule: "sealed_corners", ruleLabel: "Corners sealed", ruleText: "The Architect seals every corner for both sides.", pattern: "corners" }
   ]);
   const HIDDEN_ENCOUNTERS = Object.freeze({ cipher: "create-fork" });
+  const TEMPORAL_ENCOUNTERS = Object.freeze({ flare: "ghost", architect: "quantum" });
 
   let run = null;
   let generation = 0;
@@ -88,7 +89,7 @@
       personality: item.personality,
       playerSymbol: "X",
       aiSymbol: "O",
-      rules: { blockedCells, gauntletEncounterRule: item.encounterRule || null },
+      rules: { blockedCells, gauntletEncounterRule: item.encounterRule || null, temporalMode: TEMPORAL_ENCOUNTERS[item.id] || null, temporalSides: TEMPORAL_ENCOUNTERS[item.id] ? ["X", "O"] : [] },
       timer: { enabled: true, secondsPerTurn: 10 },
       objective: { type: "WIN" },
       permissions: { progression: false, statistics: false, achievements: false, replay: true }

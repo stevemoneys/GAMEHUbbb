@@ -4,7 +4,7 @@
 
   const $ = (id) => document.getElementById(id);
   const rounds = Object.freeze([{ size: 3, target: 3, name: "3×3 Classic" }, { size: 4, target: 4, name: "4×4 Expanded" }, { size: 5, target: 4, name: "5×5 Grand" }]);
-  const state = { mode: "ai", level: 1, round: 0, board: [], current: "X", scores: { X: 0, O: 0 }, active: false, thinking: false, resolved: false, advancing: false, generation: 0, timeout: null };
+  const state = { mode: "ai", level: 1, round: 0, board: [], current: "X", scores: { X: 0, O: 0 }, active: false, thinking: false, resolved: false, advancing: false, generation: 0, timeout: null, history: [] };
   const other = (mark) => mark === "X" ? "O" : "X";
   const currentRound = () => rounds[state.round];
 
@@ -14,6 +14,7 @@
   function maxUnlockedLevel() { const save = global.TicTacToeSave?.get?.(); return Math.max(1, Math.min(20, Number(save?.progression?.levels?.highestUnlocked) || 1)); }
   function markName(mark = state.current) { return state.mode === "ai" ? (mark === "X" ? "You" : "Board AI") : `Player ${mark}`; }
   function hideResult() { const result = $("sizeWarsResult"); result.hidden = true; result.classList.remove("active", "victory", "defeat", "draw"); }
+  function replaySnapshot(lastMove = null, marker = null) { const round=currentRound(); return { turn:state.history.length, board:[...state.board], size:round.size, target:round.target, lastMove, mark:lastMove===null?null:state.current, nextPlayer:other(state.current), marker, round:state.round+1, scores:{...state.scores} }; }
 
   function syncSetup() {
     const limit = maxUnlockedLevel(); state.level = Math.min(state.level, limit);
@@ -44,16 +45,16 @@
     board.querySelectorAll("[data-size-wars-cell]").forEach((cell) => cell.addEventListener("click", () => move(Number(cell.dataset.sizeWarsCell)), { once: true }));
   }
   function beginRound(index) {
-    clearPending(); state.round = index; state.board = Array(currentRound().size ** 2).fill(""); state.current = index % 2 === 0 ? "X" : "O"; state.active = true; state.resolved = false; state.advancing = false;
+    clearPending(); state.round = index; state.board = Array(currentRound().size ** 2).fill(""); state.current = index % 2 === 0 ? "X" : "O"; state.active = true; state.resolved = false; state.advancing = false; state.history.push(replaySnapshot(null, index ? {type:"round",label:`ROUND ${index+1}`} : null));
     hideResult(); $("sizeWarsSetup").hidden = true; $("sizeWarsPlay").hidden = false; render(); updateHud();
     if (state.mode === "ai" && state.current === "O") scheduleAI();
   }
-  function start() { clearPending(); state.scores = { X: 0, O: 0 }; state.round = 0; beginRound(0); }
+  function start() { clearPending(); state.scores = { X: 0, O: 0 }; state.round = 0; state.history=[]; beginRound(0); }
   function restart() { start(); }
 
   function move(index) {
     if (!state.active || state.thinking || !Number.isInteger(index) || state.board[index]) { feel("invalid_move"); return false; }
-    const actor = state.current; state.board[index] = actor; feel("piece_place", { symbol: actor, actor: state.mode === "ai" && actor === "O" ? "ai" : "player" }); render();
+    const actor = state.current; state.board[index] = actor; state.history.push(replaySnapshot(index)); feel("piece_place", { symbol: actor, actor: state.mode === "ai" && actor === "O" ? "ai" : "player" }); render();
     const rule = global.TicTacToeSizeRules; const line = rule?.winningLine(state.board, actor, currentRound().size, currentRound().target);
     if (line) { line.forEach((cell) => document.querySelector(`[data-size-wars-cell="${cell}"]`)?.classList.add("win")); finish(actor, false); return true; }
     if (!rule?.legalMoves(state.board).length) { finish(null, true); return true; }
@@ -73,6 +74,7 @@
     $("sizeWarsResultDetail").textContent = lastRound ? seriesDetail() : draw ? "No point awarded. The series stays live." : `${markName(winner)} earns one series point.`;
     $("sizeWarsResultScore").textContent = `X ${state.scores.X} — ${state.scores.O} O`;
     $("sizeWarsContinue").hidden = lastRound; $("sizeWarsReplay").hidden = !lastRound;
+    if(lastRound){ const final=state.history.at(-1); if(final)final.marker={type:"result",label:state.scores.X===state.scores.O?"SERIES DRAW":"SERIES COMPLETE"}; global.TicTacToeReplay?.recordExternal({matchType:"sizewars",mode:state.mode,boardSize:5,winTarget:4,playerSymbol:"X",aiSymbol:"O",result:state.scores.X===state.scores.O?"draw":state.scores.X>state.scores.O?"win":"loss",snapshots:state.history}); }
     result.hidden = false; result.classList.add("active", draw ? "draw" : winner === "X" ? "victory" : "defeat"); if (lastRound) global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "size-wars", won: state.mode === "ai" && state.scores.X > state.scores.O } })); feel(lastRound ? (state.scores.X === state.scores.O ? "draw" : state.scores.X > state.scores.O ? "victory" : "defeat") : draw ? "draw" : winner === "X" ? "victory" : "defeat");
   }
   function seriesTitle() { if (state.scores.X === state.scores.O) return "Series Tie"; return state.mode === "ai" ? (state.scores.X > state.scores.O ? "You Win Size Wars" : "Board AI Wins") : `Player ${state.scores.X > state.scores.O ? "X" : "O"} Wins Size Wars`; }

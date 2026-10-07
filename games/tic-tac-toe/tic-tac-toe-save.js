@@ -4,7 +4,7 @@
   "use strict";
 
   const STORAGE_KEY = "tictactoe_player_save_v1";
-  const CURRENT_VERSION = 4;
+  const CURRENT_VERSION = 5;
   const MAX_LEVEL = 20;
   const PERSONALITIES = ["human", "aggressive", "defensive", "trickster"];
   const ACHIEVEMENT_IDS = new Set([
@@ -109,6 +109,36 @@
     };
   }
 
+  function normalizeReplayRecord(replay, now) {
+    // Phase 20 upgrades the old compact 3×3 move log into immutable snapshots.
+    // It never invents history: a malformed legacy sequence is discarded.
+    if (isRecord(replay) && !Array.isArray(replay.snapshots) && Array.isArray(replay.moves) && replay.moves.length <= 9 && replay.moves.every((move) => Number.isInteger(move) && move >= 0 && move < 9)) {
+      const board = Array(9).fill(""), snapshots = [{ turn: 0, board: [...board], size: 3, target: 3, lastMove: null, nextPlayer: "X" }]; let validMoves = true;
+      replay.moves.forEach((move, index) => { if (board[move]) { validMoves = false; return; } const mark = index % 2 === 0 ? "X" : "O"; board[move] = mark; snapshots.push({ turn: index + 1, board: [...board], size: 3, target: 3, lastMove: move, mark, nextPlayer: mark === "X" ? "O" : "X" }); });
+      if (validMoves) replay = { ...replay, version: 2, boardSize: 3, winTarget: 3, snapshots };
+    }
+    if (!isRecord(replay) || replay.completed === false || !Array.isArray(replay.snapshots) || replay.snapshots.length < 1 || replay.snapshots.length > 100) return null;
+    const boardSize = Math.min(9, Math.max(3, count(replay.boardSize || replay.snapshots[0]?.size || 3)));
+    const expectedCells = boardSize * boardSize;
+    const snapshots = replay.snapshots.map((snapshot, index) => {
+      if (!isRecord(snapshot) || !Number.isInteger(snapshot.turn) || snapshot.turn !== index) return null;
+      const snapshotSize = Math.min(9, Math.max(3, count(snapshot.size || boardSize)));
+      const board = Array.isArray(snapshot.board) && snapshot.board.length === snapshotSize * snapshotSize && snapshot.board.every((cell) => cell === "" || cell === "X" || cell === "O") ? [...snapshot.board] : null;
+      const boards = Array.isArray(snapshot.boards) && snapshot.boards.length > 0 && snapshot.boards.length <= 9 && snapshot.boards.every((entry) => Array.isArray(entry) && entry.length === 9 && entry.every((cell) => cell === "" || cell === "X" || cell === "O")) ? snapshot.boards.map((entry) => [...entry]) : null;
+      if (!board && !boards) return null;
+      const lastMove = Number.isInteger(snapshot.lastMove) && snapshot.lastMove >= 0 && snapshot.lastMove < snapshotSize * snapshotSize ? snapshot.lastMove : (isRecord(snapshot.lastMove) ? clone(snapshot.lastMove) : null);
+      const labels = Array.isArray(snapshot.labels) ? snapshot.labels.slice(0, 9).map((label) => typeof label === "string" ? label.slice(0, 40) : "") : null;
+      const claims = Array.isArray(snapshot.claims) && snapshot.claims.length === 9 && snapshot.claims.every((claim) => claim === "" || claim === "X" || claim === "O" || claim === "draw") ? [...snapshot.claims] : null;
+      const forced = Number.isInteger(snapshot.forced) && snapshot.forced >= 0 && snapshot.forced < 9 ? snapshot.forced : null;
+      const scores = isRecord(snapshot.scores) ? { X: count(snapshot.scores.X), O: count(snapshot.scores.O) } : null;
+      const mutator = isRecord(snapshot.mutator) ? clone(snapshot.mutator) : null;
+      const temporal = isRecord(snapshot.temporal) ? { ghost: isRecord(snapshot.temporal.ghost) && Number.isInteger(snapshot.temporal.ghost.cell) && snapshot.temporal.ghost.cell >= 0 && snapshot.temporal.ghost.cell < snapshotSize * snapshotSize ? { cell:snapshot.temporal.ghost.cell, owner:snapshot.temporal.ghost.owner === "O" ? "O" : "X", remaining:Math.min(2,Math.max(0,count(snapshot.temporal.ghost.remaining))) } : null, quantum: isRecord(snapshot.temporal.quantum) && Array.isArray(snapshot.temporal.quantum.cells) && snapshot.temporal.quantum.cells.length === 2 && snapshot.temporal.quantum.cells.every((cell) => Number.isInteger(cell) && cell >= 0 && cell < snapshotSize * snapshotSize) ? { cells:[...new Set(snapshot.temporal.quantum.cells)], owner:snapshot.temporal.quantum.owner === "O" ? "O" : "X", ready:snapshot.temporal.quantum.ready === true } : null } : null;
+      return { turn: index, ...(board ? { board } : { boards }), size: snapshotSize, target: Math.min(snapshotSize, Math.max(3, count(snapshot.target || replay.winTarget || 3))), lastMove, mark: snapshot.mark === "O" ? "O" : snapshot.mark === "X" ? "X" : null, nextPlayer: snapshot.nextPlayer === "O" ? "O" : "X", ...(labels ? { labels } : {}), ...(claims ? { claims } : {}), ...(forced !== null ? { forced } : {}), ...(scores ? { scores } : {}), ...(Number.isInteger(snapshot.round) ? { round: Math.max(1, Math.min(3, snapshot.round)) } : {}), ...(mutator ? { mutator } : {}), ...(temporal ? { temporal } : {}), marker: isRecord(snapshot.marker) ? { type: typeof snapshot.marker.type === "string" ? snapshot.marker.type.slice(0, 24) : "event", label: typeof snapshot.marker.label === "string" ? snapshot.marker.label.slice(0, 32) : "EVENT", detail: typeof snapshot.marker.detail === "string" ? snapshot.marker.detail.slice(0, 48) : "" } : null };
+    });
+    if (snapshots.some((snapshot) => !snapshot)) return null;
+    return { version: 2, id: typeof replay.id === "string" ? replay.id.slice(0, 80) : `replay-${timestamp(replay.createdAt, now)}`, matchType: typeof replay.matchType === "string" ? replay.matchType.slice(0, 40) : "standard", mode: replay.mode === "two" ? "two" : "ai", level: level(replay.level, 1), personality: PERSONALITIES.includes(replay.personality) ? replay.personality : "human", playerSymbol: replay.playerSymbol === "O" ? "O" : "X", aiSymbol: replay.aiSymbol === "X" ? "X" : "O", boardSize, winTarget: Math.min(boardSize, Math.max(3, count(replay.winTarget || 3))), rules: isRecord(replay.rules) ? clone(replay.rules) : {}, snapshots, result: ["win", "loss", "draw", "timeout"].includes(replay.result) ? replay.result : "draw", completed: true, createdAt: timestamp(replay.createdAt, now), suitId: typeof replay.suitId === "string" ? replay.suitId.slice(0, 24) : "♠", cosmetics: isRecord(replay.cosmetics) ? clone(replay.cosmetics) : {}, context: isRecord(replay.context) ? clone(replay.context) : {} };
+  }
+
   function normalizeSave(raw) {
     const defaults = createDefaultSave();
     const source = isRecord(raw) ? raw : {};
@@ -144,7 +174,7 @@
     const sourceFeatures = isRecord(source.features) ? source.features : {};
     const normalizeRival = (source) => ({ wins: count(source?.wins), losses: count(source?.losses), rematchWins: count(source?.rematchWins) });
     const competitionRivals = isRecord(sourceFeatures.competition?.rivals) ? Object.fromEntries(Object.entries(sourceFeatures.competition.rivals).filter(([id, value]) => typeof id === "string" && id.length <= 32 && isRecord(value)).slice(0, 6).map(([id, value]) => [id, { matches: count(value.matches), wins: count(value.wins), losses: count(value.losses), draws: count(value.draws), currentStreak: count(value.currentStreak), bestStreak: Math.max(count(value.bestStreak), count(value.currentStreak)), lastResult: ["win", "loss", "draw", "timeout", "No matches yet", "Timed out"].includes(value.lastResult) ? value.lastResult : "No matches yet" }])) : {};
-    const replayRecords = Array.isArray(sourceFeatures.replays) ? sourceFeatures.replays.filter((replay) => isRecord(replay) && replay.completed !== false && Array.isArray(replay.moves) && replay.moves.length <= 9 && replay.moves.every((move) => Number.isInteger(move) && move >= 0 && move < 9)).slice(0, 12).map((replay) => ({ id: typeof replay.id === "string" ? replay.id.slice(0, 80) : "", matchType: typeof replay.matchType === "string" ? replay.matchType : "standard", mode: replay.mode === "two" ? "two" : "ai", level: level(replay.level, 1), personality: PERSONALITIES.includes(replay.personality) ? replay.personality : "human", playerSymbol: replay.playerSymbol === "O" ? "O" : "X", aiSymbol: replay.aiSymbol === "X" ? "X" : "O", rules: isRecord(replay.rules) ? clone(replay.rules) : {}, moves: replay.moves, result: typeof replay.result === "string" ? replay.result : "draw", completed: true, createdAt: timestamp(replay.createdAt, now) })) : [];
+    const replayRecords = Array.isArray(sourceFeatures.replays) ? sourceFeatures.replays.map((replay) => normalizeReplayRecord(replay, now)).filter(Boolean).slice(0, 5) : [];
     const highestUnlocked = Math.max(completed.length ? Math.max(...completed) : 1, level(sourceLevels.highestUnlocked, 1));
     const currentStreak = count(progress.streaks?.current);
 
@@ -244,7 +274,8 @@
   const migrations = {
     1: (save) => ({ ...save, version: 2, features: createDefaultSave().features }),
     2: (save) => ({ ...save, version: 3, progression: { ...(isRecord(save.progression) ? save.progression : {}), identity: createDefaultSave().progression.identity } }),
-    3: (save) => ({ ...save, version: 4, personalization: createDefaultSave().personalization })
+    3: (save) => ({ ...save, version: 4, personalization: createDefaultSave().personalization }),
+    4: (save) => ({ ...save, version: 5, features: { ...(isRecord(save.features) ? save.features : {}) } })
   };
   function migrate(raw) {
     if (!isRecord(raw)) return null;

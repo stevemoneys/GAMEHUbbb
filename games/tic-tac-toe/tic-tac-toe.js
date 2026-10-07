@@ -380,7 +380,7 @@ function finalizeMatch(outcome) {
   };
   const result = { ...context, outcome, objectives: { ...gameState.match.objectives } };
   if (!permissions.statistics) {
-    if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome });
+    if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome, context: { ...gameState.match.context, turnHistory: gameState.match.turnHistory } });
     return;
   }
   const stats = metaProgress.statistics;
@@ -425,7 +425,7 @@ function finalizeMatch(outcome) {
 
   if (permissions.achievements) evaluateAchievements(result);
   saveMetaProgress();
-  if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome });
+  if (permissions.replay) featureCore.recordReplay({ config: gameState.match.config, moves: gameState.match.moves, result: outcome, context: { ...gameState.match.context, turnHistory: gameState.match.turnHistory } });
   updateHomeDashboard();
   const unlockedAchievement = ACHIEVEMENTS.find((achievement) => !previousAchievementIds.has(achievement.id) && metaProgress.achievements[achievement.id]);
   if (unlockedAchievement && permissions.achievements) {
@@ -638,7 +638,47 @@ function createBoardCell(index, value = "") {
   cell.setAttribute("aria-rowindex", String(Math.floor(index / 3) + 1));
   cell.setAttribute("aria-colindex", String((index % 3) + 1));
   cell.addEventListener("click", () => makeMove(index));
+  window.TicTacToeTemporal?.decorate(cell, index);
   return cell;
+}
+
+function temporalController() { return window.TicTacToeTemporal; }
+function refreshTemporalPresentation() {
+  const temporal = temporalController(), rules = gameState.match.config?.rules || {}, status = document.getElementById("temporalStatus"), controls = document.getElementById("temporalControls"), ghost = document.getElementById("ghostMoveButton"), quantum = document.getElementById("quantumMoveButton");
+  if (!temporal || !rules.temporalMode) { controls?.classList.remove("active"); status?.classList.remove("active"); return; }
+  [...boardEl.children].forEach((cell, index) => temporal.decorate(cell, index));
+  const state = temporal.state(); const owner = gameState.currentPlayer, canUse = temporal.available(owner) && (gameState.mode !== "ai" || owner === gameState.playerSymbol);
+  controls?.classList.toggle("active", canUse);
+  if (ghost) ghost.hidden = rules.temporalMode !== "ghost";
+  if (quantum) quantum.hidden = rules.temporalMode !== "quantum";
+  if (ghost) ghost.disabled = !canUse;
+  if (quantum) quantum.disabled = !canUse;
+  let message = rules.temporalMode === "ghost" ? "Ghost protocol · each side has one temporary reservation" : "Quantum protocol · each side has one paired reservation";
+  if (state?.action?.mode === "ghost") message = "♙ Choose one empty cell";
+  else if (state?.action?.mode === "quantum") message = `⚛ Choose ${2 - state.action.cells.length} future cell${state.action.cells.length ? "" : "s"}`;
+  else if (temporal.needsResolution(owner)) message = "⚛ Quantum resolution · choose one candidate";
+  else if (state?.ghost) message = `♙ Ghost active · ${state.ghost.remaining} move${state.ghost.remaining === 1 ? "" : "s"}`;
+  else if (state?.quantum) message = "⚛ Quantum pair reserved";
+  if (status) { status.textContent = message; status.classList.toggle("active", Boolean(message)); }
+}
+function activateTemporalMove() {
+  if (!gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) return;
+  const temporal = temporalController(); if (!temporal || !temporal.activate(gameState.currentPlayer)) return;
+  refreshTemporalPresentation(); setStatus(gameState.match.config.rules.temporalMode === "ghost" ? "Choose a Ghost cell" : "Choose two Quantum cells");
+}
+function advanceAfterTemporalTurn(owner) {
+  gameState.currentPlayer = owner === "X" ? "O" : "X"; transitionTo(GAME_PHASES.PLAYING); setStatus(`Player ${gameState.currentPlayer} Turn`); refreshTemporalPresentation(); startTurnTimer(); if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) scheduleAIMove();
+}
+function completeTemporalAction(result) {
+  gameState.match.turnHistory.push({ kind: result.type === "ghost" ? "ghost" : "quantum-init", owner: result.owner, ...(Number.isInteger(result.index) ? { index: result.index } : { cells: result.cells }) });
+  refreshTemporalPresentation(); emitGameFeelEvent("selection", { temporal: result.type }); advanceAfterTemporalTurn(result.owner);
+}
+function resolveTemporalAction(index) {
+  const temporal = temporalController(), resolved = temporal?.resolve(gameState.currentPlayer, index, gameState.board); if (!resolved?.valid) return false;
+  const symbol = resolved.owner; gameState.board[index] = symbol; gameState.match.turnHistory.push({ kind: "quantum-resolution", index, symbol, owner: symbol });
+  const cell = boardEl.children[index]; cell.textContent = symbol; cell.classList.remove("temporal-quantum", "temporal-quantum-choice"); cell.classList.add(symbol); cell.setAttribute("aria-label", `Cell ${index + 1}: ${symbol}`); emitGameFeelEvent("piece_place", { symbol, actor: symbol === gameState.playerSymbol ? "player" : "ai" }); refreshTemporalPresentation();
+  window.dispatchEvent(new CustomEvent(symbol === gameState.playerSymbol ? "tictactoe:player-move" : "tictactoe:ai-move", { detail: { index, symbol, temporal: "quantum-resolution", board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
+  if (checkWin()) return true; if (!getLegalMoves(gameState.board).length) { draw(); return true; } advanceAfterTemporalTurn(symbol); return true;
 }
 
 function setStatus(text) {
@@ -836,7 +876,7 @@ function startWildMatch(mode) {
   gameState.aiSymbol = "O";
   gameState.selectedLevel = 1;
   applyLevelDefinition(1);
-  if (!snapshotMatchConfig({ mode, type: "wild", timer: { enabled: false, secondsPerTurn: turnTime }, permissions: { progression: false, statistics: false, achievements: false, replay: false } })) return;
+  if (!snapshotMatchConfig({ mode, type: "wild", timer: { enabled: false, secondsPerTurn: turnTime }, permissions: { progression: false, statistics: false, achievements: false, replay: true } })) return;
   hideAllScreens();
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
@@ -1001,14 +1041,20 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   gameState.board.forEach((value, index) => {
     boardEl.appendChild(createBoardCell(index, value));
   });
+  temporalController()?.begin(gameState.match.config?.rules || {});
+  refreshTemporalPresentation();
   updateMatchPresentation();
 }
 
 function makeMove(index) {
   if (isWildMatch()) { makeWildMove(index); return; }
   const rules = gameState.match.config?.rules || {};
+  const temporal = temporalController();
+  if (temporal?.needsResolution(gameState.currentPlayer)) { if (!resolveTemporalAction(index)) emitGameFeelEvent("invalid_move", { index }); return; }
+  const pending = temporal?.state()?.action;
+  if (pending?.owner === gameState.currentPlayer) { const choice = temporal.select(index, gameState.board, getLegalMoves(gameState.board)); if (!choice.valid) { emitGameFeelEvent("invalid_move", { index }); return; } if (choice.complete) completeTemporalAction(choice); else refreshTemporalPresentation(); return; }
   const openingForced = gameState.match.moves.length === 0 && Number.isInteger(rules.forcedOpening) && index !== rules.forcedOpening;
-  if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || rules.blockedCells?.includes(index) || openingForced || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
+  if (!Number.isInteger(index) || index < 0 || index >= gameState.board.length || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked || !gameState.active || gameState.board[index] || temporal?.reserved(index) || rules.blockedCells?.includes(index) || openingForced || (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol)) {
     const cell = boardEl.children[index];
     if (cell) restartAnimation(cell, "invalid-move");
     emitGameFeelEvent("invalid_move", { index });
@@ -1023,7 +1069,7 @@ function makeMove(index) {
 
   gameState.board[index] = gameState.currentPlayer;
   gameState.match.moves.push(index);
-  gameState.match.turnHistory.push({ index, symbol: gameState.currentPlayer });
+  gameState.match.turnHistory.push({ kind: "normal", index, symbol: gameState.currentPlayer });
   if (tracksObjectives) {
     gameState.match.objectives.blockedThreat ||= blocksImmediateThreat;
     gameState.match.objectives.preventedFork ||= preventsFork;
@@ -1037,10 +1083,11 @@ function makeMove(index) {
   emitGameFeelEvent("piece_place", { symbol: gameState.currentPlayer, actor: "player" });
   window.dispatchEvent(new CustomEvent("tictactoe:player-move", { detail: { index, symbol: gameState.currentPlayer, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation, blocksImmediateThreat, preventsFork, createsFork } }));
   haptic(10);
+  temporal?.afterNormalMove(gameState.currentPlayer); refreshTemporalPresentation();
 
   if (checkWin()) return;
 
-  if (getLegalMoves(gameState.board).length === 0) {
+  if (getLegalMoves(gameState.board).length === 0 && !temporal?.state()?.quantum?.ready) {
     draw();
     return;
   }
@@ -1061,6 +1108,7 @@ function makeMove(index) {
 
   gameState.currentPlayer = gameState.currentPlayer === "X" ? "O" : "X";
   setStatus(`Player ${gameState.currentPlayer} Turn`);
+  refreshTemporalPresentation();
   startTurnTimer();
 
   if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) {
@@ -1185,6 +1233,12 @@ function aiMove() {
     return;
   }
 
+  const temporal = temporalController();
+  if (temporal?.needsResolution(gameState.aiSymbol)) { const cell = temporal.state().quantum.cells[0]; resolveTemporalAction(cell); return; }
+  const action = temporal?.aiAction(gameState.aiSymbol, gameState.board, getLegalMoves(gameState.board), gameState.level, gameState.aiPersonality);
+  if (action?.mode === "ghost") { temporal.activate(gameState.aiSymbol); const result = temporal.select(action.index, gameState.board, getLegalMoves(gameState.board)); if (result.valid) completeTemporalAction(result); return; }
+  if (action?.mode === "quantum") { temporal.activate(gameState.aiSymbol); let result = temporal.select(action.cells[0], gameState.board, getLegalMoves(gameState.board)); result = temporal.select(action.cells[1], gameState.board, getLegalMoves(gameState.board)) || result; if (result.valid && result.complete) { completeTemporalAction(result); return; } }
+
   const move = getAIMoveByLevel();
   if (move === null || move === undefined) return;
 
@@ -1242,11 +1296,12 @@ function playMoveFromAI(index) {
 }
 
 function makeMoveFromSymbol(index, symbol) {
-  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
+  const temporal = temporalController();
+  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || temporal?.reserved(index) || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
 
   gameState.board[index] = symbol;
   gameState.match.moves.push(index);
-  gameState.match.turnHistory.push({ index, symbol });
+  gameState.match.turnHistory.push({ kind: "normal", index, symbol });
   const cell = boardEl.children[index];
   cell.textContent = symbol;
   cell.classList.add(symbol);
@@ -1254,10 +1309,11 @@ function makeMoveFromSymbol(index, symbol) {
   restartAnimation(cell, symbol === "X" ? "piece-in-x" : "piece-in-o");
   emitGameFeelEvent("piece_place", { symbol, actor: "ai" });
   window.dispatchEvent(new CustomEvent("tictactoe:ai-move", { detail: { index, symbol, board: [...gameState.board], moves: [...gameState.match.moves], config: gameState.match.config, generation: gameState.match.generation } }));
+  temporal?.afterNormalMove(symbol); refreshTemporalPresentation();
 
   if (checkWin()) return;
 
-  if (getLegalMoves(gameState.board).length === 0) {
+  if (getLegalMoves(gameState.board).length === 0 && !temporal?.state()?.quantum?.ready) {
     draw();
     return;
   }
@@ -1265,6 +1321,7 @@ function makeMoveFromSymbol(index, symbol) {
   gameState.currentPlayer = symbol === "X" ? "O" : "X";
   transitionTo(GAME_PHASES.PLAYING);
   setStatus(`Player ${gameState.currentPlayer} Turn`);
+  refreshTemporalPresentation();
   startTurnTimer();
   window.dispatchEvent(new CustomEvent("tictactoe:turn-ready", { detail: { currentPlayer: gameState.currentPlayer, board: [...gameState.board], config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
 }
@@ -1301,7 +1358,7 @@ function rewindGauntletPair() {
 
 function getLegalMoves(state, rules = gameState.match.config?.rules || {}) {
   return state.reduce((moves, value, index) => {
-    if (value === "" && !rules.blockedCells?.includes(index)) moves.push(index);
+    if (value === "" && !rules.blockedCells?.includes(index) && !temporalController()?.reserved(index)) moves.push(index);
     return moves;
   }, []);
 }
@@ -1664,6 +1721,7 @@ function backToMenu() {
   const destination = getMatchReturnDestination();
   stopTurnTimer();
   clearPendingAIWork();
+  temporalController()?.clear();
   window.dispatchEvent(new CustomEvent("tictactoe:match-exit", { detail: { generation: gameState.match.generation } }));
   document.getElementById("resultModal").classList.remove("active");
   const openDestination = destination && window[destination.open];

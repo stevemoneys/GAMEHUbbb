@@ -30,7 +30,7 @@
   const integer = (value) => Number.isInteger(value) ? value : Number.NaN;
 
   function createDefaultRules() {
-    return { boardSize: BOARD_SIZE, winLength: 3, blockedCells: [], centerLocked: false, forcedOpening: null, misere: false, gauntletEncounterRule: null };
+    return { boardSize: BOARD_SIZE, winLength: 3, blockedCells: [], centerLocked: false, forcedOpening: null, misere: false, gauntletEncounterRule: null, temporalMode: null, temporalSides: [] };
   }
 
   function normalizeRules(raw = {}) {
@@ -50,7 +50,11 @@
     if (cells.length > (gauntletRule ? 4 : 2) || raw.centerLocked === true) return { valid: false, reason: gauntletRule ? "Invalid Gauntlet sealed-cell count." : "Only up to two explicit blocked cells are supported." };
     const forcedOpening = raw.forcedOpening === null || raw.forcedOpening === undefined ? null : integer(raw.forcedOpening);
     if (forcedOpening !== null && (forcedOpening < 0 || forcedOpening >= CELL_COUNT || cells.includes(forcedOpening))) return { valid: false, reason: "Forced opening must be an available board cell." };
-    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening, gauntletEncounterRule: gauntletRule, misere } };
+    const temporalMode = raw.temporalMode === undefined || raw.temporalMode === null ? null : raw.temporalMode;
+    if (temporalMode !== null && !["ghost", "quantum"].includes(temporalMode)) return { valid: false, reason: "Unknown temporal encounter rule." };
+    const temporalSides = temporalMode ? [...new Set((Array.isArray(raw.temporalSides) ? raw.temporalSides : ["X", "O"]).filter((side) => side === "X" || side === "O"))] : [];
+    if (temporalMode && !temporalSides.length) return { valid: false, reason: "Temporal encounter needs an eligible side." };
+    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening, gauntletEncounterRule: gauntletRule, misere, temporalMode, temporalSides } };
   }
 
   function createDefaultMatchConfig() {
@@ -157,6 +161,7 @@
   }
 
   function recordReplay(record) {
+    if (global.TicTacToeReplay?.recordStandard) return global.TicTacToeReplay.recordStandard(record);
     const created = createReplay(record);
     if (!created.valid || !global.TicTacToeSave) return created;
     global.TicTacToeSave.update((save) => {

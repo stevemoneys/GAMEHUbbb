@@ -3,7 +3,7 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const state = { size: 3, target: 3, level: 1, mode: null, board: [], current: "X", playerMark: "X", aiMark: "O", active: false, thinking: false, generation: 0, timeout: null };
+  const state = { size: 3, target: 3, level: 1, mode: null, board: [], current: "X", playerMark: "X", aiMark: "O", active: false, thinking: false, generation: 0, timeout: null, history: [] };
   const defaults = { 3: 3, 4: 4, 5: 4 };
   const validTargets = { 3: [3], 4: [3,4], 5: [4] };
   const other = (mark) => mark === "X" ? "O" : "X";
@@ -26,6 +26,7 @@
   function legalMoves(board = state.board) { return board.reduce((moves, mark, index) => mark ? moves : moves.concat(index), []); }
   function winningMoves(board, mark, size = state.size, target = state.target) { return legalMoves(board).filter((index) => { const next = [...board]; next[index] = mark; return Boolean(winningLine(next, mark, size, target)); }); }
   function hideResult() { const result = $("sizesResult"); result.hidden = true; result.classList.remove("active", "victory", "defeat", "draw"); }
+  function replaySnapshot(lastMove = null, marker = null) { return { turn: state.history.length, board: [...state.board], size: state.size, target: state.target, lastMove, mark: lastMove === null ? null : state.current, nextPlayer: other(state.current), marker }; }
   function maxUnlockedLevel() { const save = global.TicTacToeSave?.get?.(); return Math.max(1, Math.min(20, Number(save?.progression?.levels?.highestUnlocked) || 1)); }
 
   function open() {
@@ -42,7 +43,7 @@
   }
   function renderTargetChoices() { const host = $("sizeWinOptions"); host.innerHTML = validTargets[state.size].map((target) => `<button type="button" class="${target === state.target ? "selected" : ""}" data-size-target="${target}">${target}</button>`).join(""); host.querySelectorAll("[data-size-target]").forEach((button) => button.addEventListener("click", () => selectTarget(Number(button.dataset.sizeTarget)))); }
   function start(mode) {
-    clearPending(); state.mode = mode; state.playerMark = "X"; state.aiMark = "O"; state.current = "X"; state.board = Array(state.size ** 2).fill(""); state.active = true;
+    clearPending(); state.mode = mode; state.playerMark = "X"; state.aiMark = "O"; state.current = "X"; state.board = Array(state.size ** 2).fill(""); state.active = true; state.history = []; state.history.push(replaySnapshot());
     $("sizeChoices").hidden = true; $("sizeWinTargets").hidden = true; $("sizeAiLevel").hidden = true; $("sizesActions").hidden = true; $("sizesPlay").hidden = false; hideResult(); render(); updateTurn();
   }
   function restart() { if (!state.mode) { open(); return; } start(state.mode); }
@@ -55,7 +56,7 @@
   }
   function move(index) {
     if (!state.active || state.thinking || !Number.isInteger(index) || state.board[index]) { emit("invalid_move"); return false; }
-    const actor = state.current; state.board[index] = actor; emit("piece_place", { symbol: actor, actor: actor === state.playerMark ? "player" : "ai" }); render();
+    const actor = state.current; state.board[index] = actor; state.history.push(replaySnapshot(index)); emit("piece_place", { symbol: actor, actor: actor === state.playerMark ? "player" : "ai" }); render();
     const line = winningLine(state.board, actor); if (line) { line.forEach((cell) => document.querySelector(`[data-size-cell="${cell}"]`)?.classList.add("win")); finish(actor, false); return true; }
     if (!legalMoves().length) { finish(null, true); return true; }
     state.current = other(actor); updateTurn(); if (state.mode === "ai" && state.current === state.aiMark) scheduleAI(); return true;
@@ -81,6 +82,8 @@
   function finish(winner, draw) {
     clearPending(); state.active = false; render(); updateTurn(draw ? "No winning line remains" : `${state.target} in a row complete`); const result = $("sizesResult");
     $("sizesResultKicker").textContent = `${state.size}×${state.size} · ${state.target} in a row`; $("sizesResultTitle").textContent = draw ? "Draw" : state.mode === "ai" ? (winner === state.playerMark ? "You Win" : "Board AI Wins") : `Player ${winner} Wins`; $("sizesResultDetail").textContent = draw ? "The board filled without a valid line." : `${playerName(winner)} completed ${state.target} consecutive marks.`;
+    const final = state.history.at(-1); if (final) final.marker = { type:"result", label:draw ? "DRAW" : "WINNING MOVE" };
+    global.TicTacToeReplay?.recordExternal({ matchType:"sizes", mode:state.mode, boardSize:state.size, winTarget:state.target, playerSymbol:state.playerMark, aiSymbol:state.aiMark, result:draw ? "draw" : winner === state.playerMark ? "win" : "loss", snapshots:state.history });
     result.hidden = false; result.classList.add("active", draw ? "draw" : winner === state.playerMark ? "victory" : "defeat"); global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "sizes", size: state.size, target: state.target, won: !draw && winner === state.playerMark } })); emit(draw ? "draw" : winner === state.playerMark ? "victory" : "defeat");
   }
   $all("[data-size-choice]").forEach((button) => button.addEventListener("click", () => selectSize(Number(button.dataset.sizeChoice))));

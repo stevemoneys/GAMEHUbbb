@@ -160,6 +160,7 @@
     const session = current(); if (!session || session.generation !== token || session.locked || session.completed) return;
     session.locked = true; session.attempts += 1; session.totalAttempts += 1;
     const correct = solutions(session.position).includes(move);
+    const boardBeforeMove = [...session.position.board];
     session.position.board[move] = session.position.player;
     const selectedCell = document.querySelector(`[data-learning-cell="${move}"]`);
     if (selectedCell) { selectedCell.textContent = session.position.player; selectedCell.disabled = true; }
@@ -182,6 +183,7 @@
     emit("level_unlock");
     if (session.kind === "DAILY_CHALLENGE") {
       const firstClear = !session.alreadyCompleted;
+      if (firstClear) global.TicTacToeReplay?.recordExternal({ matchType: "daily_challenge", mode: "ai", boardSize: 3, winTarget: 3, playerSymbol: session.position.player, result: "win", context: { daily: { date: session.date, seed: session.seed, positionId: session.position.id, type: session.type, twist: session.twist } }, snapshots: [{ turn: 0, board: boardBeforeMove, size: 3, target: 3, lastMove: null, nextPlayer: session.position.player, marker: { type: "objective", label: "DAILY OBJECTIVE" } }, { turn: 1, board: [...session.position.board], size: 3, target: 3, lastMove: move, mark: session.position.player, nextPlayer: session.position.opponent, marker: { type: "result", label: "DAILY PUZZLE CLEARED" } }] });
       persistCompletion(session);
       session.alreadyCompleted = true;
       feedback.textContent = firstClear ? "Daily Puzzle cleared — your streak is updated." : "Solved again — today’s streak is already safely recorded.";

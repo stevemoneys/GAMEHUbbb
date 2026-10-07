@@ -11,6 +11,8 @@
   <link rel="stylesheet" href="tic-tac-toe-cosmetics.css">
   <link rel="stylesheet" href="tic-tac-toe-suits.css">
   <link rel="stylesheet" href="tic-tac-toe-hidden-objectives.css">
+  <link rel="stylesheet" href="tic-tac-toe-replay.css">
+  <link rel="stylesheet" href="tic-tac-toe-temporal.css">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -63,6 +65,7 @@
 
       <button class="rank-home-entry" id="rankHomeEntry" type="button" onclick="openProgression()" aria-label="Open player rank and mastery"><span class="rank-home-emblem" id="rankHomeEmblem" aria-hidden="true">◇</span><span><small>Player rank</small><strong id="rankHomeTitle">Initiate</strong></span><b id="rankHomeProgress">0%</b><i aria-hidden="true">›</i></button>
       <button class="style-home-entry" id="styleHomeEntry" type="button" onclick="openMyStyle()" aria-label="Open My Style personalization"><span aria-hidden="true">✦</span><strong>My Style</strong><small id="styleHomeLabel">Classic Neon</small><i aria-hidden="true">›</i></button>
+      <button class="time-machine-home-entry" id="timeMachineHomeEntry" type="button" onclick="openTimeMachine()" aria-label="Open Tactical Time Machine" hidden><span aria-hidden="true">◷</span><span><small>Tactical review ready</small><strong>Time Machine</strong></span><i aria-hidden="true">›</i></button>
       <div class="home-meta">
         <article class="glass-card mastery-card">
           <div class="mastery-ring"><span id="homeMastery">0%</span></div>
@@ -155,7 +158,7 @@
         <header class="campaign-hud"><span id="campaignActHud">Act I</span><strong id="campaignEncounterHud">The First Mark</strong><small id="campaignRuleHud">3×3 · 3 in a row</small><div id="campaignRivalHud"></div></header>
         <div class="campaign-turn" id="campaignTurn" role="status" aria-live="polite"><span id="campaignTurnMark" aria-hidden="true">X</span><strong>Your turn</strong><small id="campaignTurnDetail">The Challenger presses the attack.</small></div>
         <div class="campaign-board-shell"><div class="campaign-board" id="campaignBoard" role="grid" aria-label="Campaign game board"></div></div>
-        <div class="campaign-controls"><button class="control-button primary-control" type="button" onclick="restartCampaignEncounter()">↻ Restart</button><button class="control-button" type="button" onclick="exitCampaignEncounter()">Campaign Map</button></div>
+        <div class="campaign-controls"><button class="control-button campaign-temporal-control" id="campaignTemporalControl" type="button" onclick="campaignTemporalMove()" hidden>Temporal move</button><button class="control-button primary-control" type="button" onclick="restartCampaignEncounter()">↻ Restart</button><button class="control-button" type="button" onclick="exitCampaignEncounter()">Campaign Map</button></div>
       </div>
       <div class="campaign-result modal" id="campaignResult" role="dialog" aria-modal="true" aria-labelledby="campaignResultTitle" hidden><div class="modal-card"><p class="eyebrow" id="campaignResultKicker">Encounter complete</p><h2 id="campaignResultTitle"></h2><p id="campaignResultDetail"></p><div class="campaign-result-rival" id="campaignResultRival"></div><div class="modal-buttons"><button class="primary-control" id="campaignNext" type="button" onclick="continueCampaign()">Continue</button><button class="control-button" type="button" onclick="restartCampaignEncounter()">Rematch</button><button class="control-button" type="button" onclick="exitCampaignEncounter()">Map</button></div></div></div>
     </section>
@@ -223,6 +226,7 @@
       <p class="timer"><span>Turn timer</span> <b id="timerText">10s</b></p>
 
       <div class="wild-mark-selector" id="wildMarkSelector" hidden aria-label="Choose a mark"><span>Choose mark</span><button type="button" data-wild-mark="X" onclick="chooseWildMark('X')" aria-label="Choose X">X</button><button type="button" data-wild-mark="O" onclick="chooseWildMark('O')" aria-label="Choose O">O</button></div>
+      <p class="temporal-status" id="temporalStatus" role="status" aria-live="polite"></p><div class="temporal-controls" id="temporalControls"><button type="button" id="ghostMoveButton" onclick="activateTemporalMove()">♙ Ghost · 2 moves</button><button type="button" id="quantumMoveButton" onclick="activateTemporalMove()">⚛ Quantum · choose 2</button></div>
 
       <div class="board-shell"><div class="board" id="board" role="grid" aria-label="Tic-Tac-Toe board"></div></div>
       <div class="thinking-card glass-card" id="thinkingCard"><span class="opponent-emblem small" id="thinkingEmblem" aria-hidden="true">◉</span><div><strong id="thinkingTitle">Read the board</strong><small id="thinkingText">Every move creates a new decision.</small></div><i class="thinking-dots" aria-hidden="true"><b></b><b></b><b></b></i></div>
@@ -235,6 +239,11 @@
       <div class="score score-strip" aria-label="Score"><span>X <strong id="scoreX">0</strong></span><span>O <strong id="scoreO">0</strong></span></div>
       <div class="controls"><button class="control-button" onclick="resetScores()">Scores</button><button class="control-button primary-control" onclick="restartGame()">↻ Reset</button><button class="control-button" onclick="backToMenu()">⌂ Menu</button></div>
     </section>
+
+    <section class="screen replay-screen" id="timeMachine" aria-label="Tactical Time Machine" hidden>
+      <header class="replay-header"><button class="icon-button" type="button" onclick="closeTimeMachine()" aria-label="Return">‹</button><div><p class="eyebrow">Recorded history</p><h2>Tactical Time Machine</h2></div></header>
+      <div id="replayContent"></div>
+    </section>
   </main>
 
   <audio id="bgMusic" src="Puzzle_Serenity_Loop_FULL_SONG_MusicGPT.mp3" loop preload="metadata"></audio>
@@ -244,7 +253,7 @@
       <p class="eyebrow" id="resultKicker">Match Complete</p>
       <h2 id="resultTitle"></h2>
       <p id="resultDetail">Choose your next move.</p>
-      <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
+      <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button time-machine-result-action" type="button" onclick="openTimeMachine()">◷ Time Machine</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
     </div>
   </div>
 
@@ -261,6 +270,7 @@
 
   <script src="tic-tac-toe-save.js"></script>
   <script src="tic-tac-toe-features.js"></script>
+  <script src="tic-tac-toe-temporal.js"></script>
   <script src="tic-tac-toe.js"></script>
   <script src="tic-tac-toe-learning.js"></script>
   <script src="tic-tac-toe-competition.js"></script>
@@ -279,5 +289,6 @@
   <script src="tic-tac-toe-cosmetics.js"></script>
   <script src="tic-tac-toe-suits.js"></script>
   <script src="tic-tac-toe-hidden-objectives.js"></script>
+  <script src="tic-tac-toe-replay.js"></script>
 </body>
 </html>

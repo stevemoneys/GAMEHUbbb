@@ -28,7 +28,8 @@
   function backToSelect() { $("rivalIntro").hidden = true; $("rivalSelect").hidden = false; sync(); }
   function start() {
     const rival = selected(); clearResultTimer(); state.resultHandled = false;
-    const hidden = global.TicTacToeHiddenObjectives?.snapshot?.(); const response = global.TicTacToeCompetitionEngine?.start({ type: state.rematch ? "rival_rematch" : "rival", mode: "ai", level: state.level, personality: rival.personality, playerSymbol: "X", aiSymbol: "O", timer: { enabled: true, secondsPerTurn: 10 }, permissions: { progression: false, statistics: false, achievements: false, replay: false } }, { featureType: state.rematch ? "RIVAL_REMATCH" : "RIVAL", rivalId: rival.id, rivalName: rival.name, rivalPhrase: rival.phrase, rivalRematch: state.rematch, hiddenSource: hidden?.source, hiddenObjective: hidden });
+    const temporalMode = rival.id === "trickster" ? "ghost" : rival.id === "master" ? "quantum" : null;
+    const hidden = global.TicTacToeHiddenObjectives?.snapshot?.(); const response = global.TicTacToeCompetitionEngine?.start({ type: state.rematch ? "rival_rematch" : "rival", mode: "ai", level: state.level, personality: rival.personality, playerSymbol: "X", aiSymbol: "O", rules: { temporalMode, temporalSides: temporalMode ? ["X", "O"] : [] }, timer: { enabled: true, secondsPerTurn: 10 }, permissions: { progression: false, statistics: false, achievements: false, replay: true } }, { featureType: state.rematch ? "RIVAL_REMATCH" : "RIVAL", rivalId: rival.id, rivalName: rival.name, rivalPhrase: rival.phrase, rivalRematch: state.rematch, hiddenSource: hidden?.source, hiddenObjective: hidden });
     if (!response?.valid) { backToSelect(); return; }
     const emblem = $("opponentEmblem"); if (emblem) { emblem.className = `opponent-emblem rival-game-emblem ${rival.id}`; emblem.innerHTML = portrait(rival); }
     feel("selection", { feature: "rival", rival: rival.id });
