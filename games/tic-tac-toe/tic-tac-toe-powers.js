@@ -27,6 +27,7 @@
     return {
       loadout: normalizeLoadout(),
       insightUsed: false,
+      insightCharges: 1,
       insightCell: null,
       rewindUsed: false,
       rewindReady: false,
@@ -58,6 +59,8 @@
     if (!state?.powers) return;
     clearEffects(state);
     state.powers.insightUsed = false;
+    state.powers.insightCharges = Math.min(2, 1 + Math.max(0, Number(state.insightNext || 0)));
+    state.insightNext = 0;
     state.powers.rewindReady = false;
     refreshHud();
   }
@@ -76,7 +79,7 @@
     if (!hasPower(state, id)) return { enabled: false, label: "Not equipped" };
     if (!canUseOnHumanTurn(snapshot) || powers?.busy) return { enabled: false, label: "Wait" };
     if (id === "insight") {
-      return !powers.insightUsed && core.analyzePosition({ board: snapshot.board, playerSymbol: snapshot.playerSymbol, opponentSymbol: snapshot.aiSymbol, rules: snapshot.config.rules }).legalMoves.length ? { enabled: true, label: "Ready" } : { enabled: false, label: powers.insightUsed ? "Used" : "No move" };
+      return powers.insightCharges > 0 && core.analyzePosition({ board: snapshot.board, playerSymbol: snapshot.playerSymbol, opponentSymbol: snapshot.aiSymbol, rules: snapshot.config.rules }).legalMoves.length ? { enabled: true, label: powers.insightCharges > 1 ? `${powers.insightCharges} Ready` : "Ready" } : { enabled: false, label: "No charge" };
     }
     if (id === "rewind") return !powers.rewindUsed && powers.rewindReady ? { enabled: true, label: "Ready" } : { enabled: false, label: powers.rewindUsed ? "Used" : "After reply" };
     if (id === "momentum") {
@@ -175,7 +178,7 @@
     clearInsightHighlight();
     const cell = document.querySelectorAll("#board .cell")[move];
     if (!cell || cell.textContent) return false;
-    state.powers.insightUsed = true;
+    state.powers.insightCharges -= 1; state.powers.insightUsed = state.powers.insightCharges <= 0;
     state.powers.insightCell = move;
     cell.classList.add("insight-recommendation");
     addFeedback($("gauntletHud"), "Insight: consider the marked cell.", state);

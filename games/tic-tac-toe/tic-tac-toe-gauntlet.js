@@ -1,273 +1,73 @@
-/* Phase 03: a temporary eight-encounter run using the authoritative engine. */
+/* Phase 22: run-only Gauntlet expansion. The match engine remains authoritative. */
 (function createGauntletRun(global) {
   "use strict";
-
-  const engine = global.TicTacToeCompetitionEngine;
-  const $ = (id) => document.getElementById(id);
-  const TOTAL_ENCOUNTERS = 8;
-  const ENCOUNTERS = Object.freeze([
-    { id: "pulse", name: "Pulse", title: "Opening Signal", personality: "human", level: 3, accent: "#35dfe8", glyph: "◇" },
-    { id: "cinder", name: "Cinder", title: "Sealed Center", personality: "aggressive", level: 5, accent: "#ff986c", glyph: "⊘", encounterRule: "sealed_center", ruleLabel: "Center sealed", ruleText: "The center is locked for both sides.", pattern: "center" },
-    { id: "aegis", name: "Aegis", title: "Hold the Center", personality: "defensive", level: 7, accent: "#65bcff", glyph: "◈" },
-    { id: "warden", name: "The Warden", title: "Fortress Protocol", personality: "trickster", level: 9, accent: "#b496ff", glyph: "♜", boss: true, encounterRule: "sealed_center", ruleLabel: "Center sealed", ruleText: "The Warden seals the center for both sides.", pattern: "center" },
-    { id: "flare", name: "Flare", title: "Open Fire", personality: "aggressive", level: 11, accent: "#ffba6b", glyph: "◆" },
-    { id: "bastion", name: "Bastion", title: "Sealed Corners", personality: "defensive", level: 13, accent: "#66d6ff", glyph: "⊞", encounterRule: "sealed_corners", ruleLabel: "Corners sealed", ruleText: "All four corners are locked for both sides.", pattern: "corners" },
-    { id: "cipher", name: "Cipher", title: "Hidden Reply", personality: "trickster", level: 15, accent: "#ae91ff", glyph: "✧" },
-    { id: "architect", name: "The Architect", title: "Final Structure", personality: "human", level: 17, accent: "#f1d27e", glyph: "◫", boss: true, finalBoss: true, encounterRule: "sealed_corners", ruleLabel: "Corners sealed", ruleText: "The Architect seals every corner for both sides.", pattern: "corners" }
+  const engine=global.TicTacToeCompetitionEngine,$=(id)=>document.getElementById(id),TOTAL=8,MAX_SHARDS=250,MAX_ACTIVE=4;
+  const ENCOUNTERS=Object.freeze([
+    {id:"pulse",name:"Pulse",title:"Opening Signal",personality:"human",level:3,accent:"#35dfe8",glyph:"◇"},
+    {id:"cinder",name:"Cinder",title:"Sealed Center",personality:"aggressive",level:5,accent:"#ff986c",glyph:"◎",encounterRule:"sealed_center",ruleLabel:"Center sealed",ruleText:"The center is locked for both sides.",pattern:"center"},
+    {id:"aegis",name:"Aegis",title:"Hold the Center",personality:"defensive",level:7,accent:"#65bcff",glyph:"◈"},
+    {id:"warden",name:"The Warden",title:"Fortress Protocol",personality:"trickster",level:9,accent:"#b496ff",glyph:"W",boss:true,encounterRule:"sealed_center",ruleLabel:"Center sealed",ruleText:"The Warden seals the center for both sides.",pattern:"center"},
+    {id:"flare",name:"Flare",title:"Open Fire",personality:"aggressive",level:11,accent:"#ffba6b",glyph:"◆",temporal:"ghost"},
+    {id:"bastion",name:"Bastion",title:"Sealed Corners",personality:"defensive",level:13,accent:"#66d6ff",glyph:"◉",encounterRule:"sealed_corners",ruleLabel:"Corners sealed",ruleText:"All four corners are locked for both sides.",pattern:"corners"},
+    {id:"cipher",name:"Cipher",title:"Hidden Reply",personality:"trickster",level:15,accent:"#ae91ff",glyph:"✧",hidden:"create-fork"},
+    {id:"architect",name:"The Architect",title:"Final Structure",personality:"human",level:17,accent:"#f1d27e",glyph:"A",boss:true,finalBoss:true,encounterRule:"sealed_corners",ruleLabel:"Corners sealed",ruleText:"The Architect seals every corner for both sides.",pattern:"corners",temporal:"quantum"}
   ]);
-  const HIDDEN_ENCOUNTERS = Object.freeze({ cipher: "create-fork" });
-  const TEMPORAL_ENCOUNTERS = Object.freeze({ flare: "ghost", architect: "quantum" });
-
-  let run = null;
-  let generation = 0;
-  let resultTimer = null;
-
-  function screens(active) {
-    ["menu", "levels", "avatars", "symbolSelect", "game", "learning", "competition", "experiment", "gauntlet"].forEach((id) => $(id)?.classList.toggle("active", id === active));
-  }
-
-  function current() {
-    return run && run.generation === generation ? run : null;
-  }
-
-  function clearResultActions() {
-    clearTimeout(resultTimer);
-    resultTimer = null;
-    document.querySelectorAll(".gauntlet-result-action").forEach((button) => button.remove());
-  }
-
-  function endRun() {
-    global.TicTacToeHiddenObjectives?.clear();
-    global.clearGauntletPowerEffects?.();
-    generation += 1;
-    clearResultActions();
-    run = null;
-    const hud = $("gauntletHud");
-    if (hud) { hud.hidden = true; hud.innerHTML = ""; }
-  }
-
-  function encounter() {
-    const state = current();
-    return state ? ENCOUNTERS[state.encounterIndex] : null;
-  }
-
-  function routeNodes(activeIndex = -1, cleared = 0) {
-    return `<div class="gauntlet-route" role="list" aria-label="Eight encounter route">${ENCOUNTERS.map((item, index) => {
-      const state = index < cleared ? "cleared" : index === activeIndex ? "current" : "upcoming";
-      const special = item.boss ? ` boss${item.finalBoss ? " final-boss" : ""}` : item.encounterRule ? " mutator" : "";
-      const descriptor = item.boss ? `${item.finalBoss ? "final boss, " : "boss, "}${item.ruleLabel}` : item.encounterRule ? `${item.ruleLabel} mutator` : "standard encounter";
-      return `<span class="gauntlet-node ${state}${special}" role="listitem" style="--encounter:${item.accent}" aria-label="Encounter ${index + 1}: ${item.name}, ${descriptor}, ${state}"><b>${item.glyph}</b><i>${index + 1}</i></span>`;
-    }).join("")}</div>`;
-  }
-
-  function renderBriefing() {
-    const content = $("gauntletContent");
-    if (!content) return;
-    screens("gauntlet");
-    content.innerHTML = `<header class="gauntlet-hero"><p class="eyebrow">Eight encounters</p><div class="gauntlet-crest" aria-hidden="true">✦</div><h2>The Gauntlet</h2><p>One run. Defeat every opponent. A loss ends the run.</p></header><section class="gauntlet-briefing glass-card"><div class="gauntlet-briefing-top"><span>RUN</span><strong>8</strong><small>encounters</small></div>${routeNodes()}<div class="gauntlet-briefing-actions"><button class="primary-control gauntlet-start" type="button" onclick="gauntletStartRun()">Begin Run <span aria-hidden="true">›</span></button><button class="text-button" type="button" onclick="closeGauntletHub()">‹ Back to home</button></div></section>`;
-    global.renderGauntletLoadout?.();
-  }
-
-  function openHub() {
-    endRun();
-    $("resultModal")?.classList.remove("active");
-    renderBriefing();
-  }
-
-  function closeHub() {
-    endRun();
-    $("resultModal")?.classList.remove("active");
-    screens("menu");
-  }
-
-  function configFor(item) {
-    const blockedCells = item.encounterRule === "sealed_center" ? [4] : item.encounterRule === "sealed_corners" ? [0, 2, 6, 8] : [];
-    return {
-      type: "gauntlet",
-      mode: "ai",
-      level: item.level,
-      personality: item.personality,
-      playerSymbol: "X",
-      aiSymbol: "O",
-      rules: { blockedCells, gauntletEncounterRule: item.encounterRule || null, temporalMode: TEMPORAL_ENCOUNTERS[item.id] || null, temporalSides: TEMPORAL_ENCOUNTERS[item.id] ? ["X", "O"] : [] },
-      timer: { enabled: true, secondsPerTurn: 10 },
-      objective: { type: "WIN" },
-      permissions: { progression: false, statistics: false, achievements: false, replay: true }
-    };
-  }
-
-  function updateHud() {
-    const state = current();
-    const hud = $("gauntletHud");
-    const item = encounter();
-    if (!state || !hud || !item) return;
-    hud.hidden = false;
-    hud.style.setProperty("--encounter", item.accent);
-    const encounterTag = item.boss ? `<span class="gauntlet-encounter-tag boss-tag"><b aria-hidden="true">${item.glyph}</b> ${item.finalBoss ? "Final Boss" : "Boss"}</span>` : item.encounterRule ? `<span class="gauntlet-encounter-tag mutator-tag"><b aria-hidden="true">${item.glyph}</b> ${item.ruleLabel}</span>` : "";
-    const ruleBrief = item.encounterRule ? `<div class="gauntlet-rule-brief ${item.boss ? "boss-rule" : ""}" aria-label="${item.ruleLabel}: ${item.ruleText}"><span class="gauntlet-rule-pattern ${item.pattern}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span><strong>${item.ruleLabel}</strong><small>${item.ruleText}</small></span></div>` : "";
-    hud.innerHTML = `<div class="gauntlet-hud-opponent"><span class="gauntlet-hud-kicker">Gauntlet ${encounterTag}</span><strong>${item.glyph} ${item.name}</strong></div><div class="gauntlet-hud-progress" aria-label="Encounter ${state.encounterIndex + 1} of ${TOTAL_ENCOUNTERS}"><b>${state.encounterIndex + 1}</b><div class="gauntlet-hud-route">${routeNodes(state.encounterIndex, state.victories)}</div></div>${ruleBrief}`;
-    global.renderGauntletPowers?.(state, hud);
-  }
-
-  function startRun() {
-    if (current()?.status === "starting" || current()?.status === "playing") return;
-    endRun();
-    const token = generation;
-    run = { id: `gauntlet-${Date.now()}`, generation: token, status: "starting", encounterIndex: 0, victories: 0, complete: false, failed: false, resultHandled: false, advancing: false, hiddenCommitted: false, powers: global.createGauntletPowerState?.() || null };
-    startEncounter();
-  }
-
-  function startEncounter() {
-    const state = current();
-    const item = encounter();
-    if (!state || !item || state.advancing || state.status === "failed" || state.complete) return;
-    const hiddenObjective = HIDDEN_ENCOUNTERS[item.id];
-    if (hiddenObjective && !state.hiddenCommitted) { global.TicTacToeHiddenObjectives?.begin({ id: item.id, source: "gauntlet", mode: "gauntlet", objectiveId: hiddenObjective, rivalName: item.name, size: 3, target: 3, onCommit: () => { const activeRun = current(); if (!activeRun) return; activeRun.hiddenCommitted = true; startEncounter(); } }); return; }
-    state.advancing = true;
-    state.status = "starting";
-    state.resultHandled = false;
-    global.resetGauntletPowersForEncounter?.(state);
-    clearResultActions();
-    $("resultModal")?.classList.remove("active");
-    const started = engine.start(configFor(item), {
-      featureType: "GAUNTLET",
-      returnScreen: "gauntlet",
-      gauntletRunId: state.id,
-      encounterIndex: state.encounterIndex,
-      encounterTotal: TOTAL_ENCOUNTERS,
-      opponentName: item.name,
-      hiddenSource: hiddenObjective ? "gauntlet" : null,
-      hiddenObjective: hiddenObjective ? global.TicTacToeHiddenObjectives?.snapshot?.() : null
-    });
-    state.advancing = false;
-    if (!started.valid) {
-      endRun();
-      renderBriefing();
-      return;
-    }
-    state.status = "playing";
-    updateHud();
-    const kicker = $("opponentKicker");
-    const name = $("opponentName");
-    const lesson = $("opponentLesson");
-    if (kicker) kicker.textContent = item.boss ? `Gauntlet Boss · Encounter ${state.encounterIndex + 1} of ${TOTAL_ENCOUNTERS}` : item.encounterRule ? `Gauntlet Mutator · Encounter ${state.encounterIndex + 1} of ${TOTAL_ENCOUNTERS}` : `Gauntlet · Encounter ${state.encounterIndex + 1} of ${TOTAL_ENCOUNTERS}`;
-    if (name) name.textContent = item.name;
-    if (lesson) lesson.textContent = item.title;
-    global.dispatchEvent(new CustomEvent("tictactoe:feel", { detail: { type: "button_press", feature: "gauntlet" } }));
-  }
-
-  function resultButton(label, primary, handler) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `${primary ? "primary-control" : "control-button"} gauntlet-result-action`;
-    button.textContent = label;
-    button.addEventListener("click", handler, { once: true });
-    return button;
-  }
-
-  function decorateResult(detail, token) {
-    const state = current();
-    const item = encounter();
-    if (!state || state.generation !== token) return;
-    const modal = $("resultModal");
-    const actions = modal?.querySelector(".modal-buttons");
-    if (!modal || !actions) return;
-    clearResultActions();
-    const kicker = $("resultKicker");
-    const title = $("resultTitle");
-    const detailText = $("resultDetail");
-    const replay = actions.querySelector('button[onclick="restartGame()"]');
-    const home = actions.querySelector('button[onclick="goHome()"]');
-    const next = $("nextBtn");
-    if (replay) replay.style.display = "none";
-    if (home) home.style.display = "none";
-    if (next) next.style.display = "none";
-
-    if (detail.outcome === "win") {
-      if (state.encounterIndex === TOTAL_ENCOUNTERS - 1) {
-        state.status = "complete";
-        state.complete = true;
-        global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "gauntlet", won: true } }));
-        if (kicker) kicker.textContent = item?.boss ? "Final Boss Defeated" : "Gauntlet Complete";
-        if (title) title.textContent = item?.boss ? "Architecture Broken" : "Run Cleared";
-        if (detailText) detailText.textContent = `All ${TOTAL_ENCOUNTERS} encounters defeated.`;
-        actions.prepend(resultButton("Exit Gauntlet", false, closeHub));
-        actions.prepend(resultButton("New Run", true, startRun));
-      } else {
-        state.status = "encounter-complete";
-        if (kicker) kicker.textContent = item?.boss ? "Boss Defeated" : `Encounter ${state.encounterIndex + 1} Cleared`;
-        if (title) title.textContent = item?.boss ? "Fortress Breached" : "Victory";
-        if (detailText) detailText.textContent = `${state.victories} / ${TOTAL_ENCOUNTERS} opponents defeated.`;
-        actions.prepend(resultButton("Exit Run", false, exitRun));
-        actions.prepend(resultButton("Next Encounter", true, continueRun));
-      }
-      return;
-    }
-
-    if (detail.outcome === "draw") {
-      state.status = "draw";
-      if (kicker) kicker.textContent = `Encounter ${state.encounterIndex + 1} Drawn`;
-      if (title) title.textContent = "Run Holds";
-      if (detailText) detailText.textContent = "No opponent was defeated. Replay this encounter or leave the run.";
-      actions.prepend(resultButton("Exit Run", false, exitRun));
-      actions.prepend(resultButton("Replay Encounter", true, replayEncounter));
-      return;
-    }
-
-    state.status = "failed";
-    state.failed = true;
-    if (kicker) kicker.textContent = "Run Failed";
-    if (title) title.textContent = "Gauntlet Ended";
-    if (detailText) detailText.textContent = `${state.victories} / ${TOTAL_ENCOUNTERS} encounters defeated · reached encounter ${state.encounterIndex + 1}.`;
-    actions.prepend(resultButton("Exit Gauntlet", false, closeHub));
-    actions.prepend(resultButton("Fresh Run", true, startRun));
-  }
-
-  function continueRun() {
-    const state = current();
-    if (!state || state.status !== "encounter-complete" || state.advancing) return;
-    global.TicTacToeHiddenObjectives?.clear();
-    state.hiddenCommitted = false;
-    state.encounterIndex += 1;
-    if (state.encounterIndex >= TOTAL_ENCOUNTERS) return;
-    startEncounter();
-  }
-
-  function replayEncounter() {
-    const state = current();
-    if (!state || state.status !== "draw" || state.advancing) return;
-    global.TicTacToeHiddenObjectives?.clear();
-    state.hiddenCommitted = false;
-    startEncounter();
-  }
-
-  function exitRun() {
-    if (!current()) { closeHub(); return; }
-    engine.exit();
-  }
-
-  global.addEventListener("tictactoe:match-complete", (event) => {
-    const state = current();
-    const detail = event.detail;
-    if (!state || state.status !== "playing" || detail.config?.type !== "gauntlet" || detail.context?.gauntletRunId !== state.id || state.resultHandled) return;
-    state.resultHandled = true;
-    if (detail.outcome === "win") state.victories += 1;
-    const token = state.generation;
-    resultTimer = setTimeout(() => decorateResult(detail, token), 680);
+  const ARCH=Object.freeze({pressure:{icon:"P",color:"#ff8a62"},guard:{icon:"G",color:"#6ec8ff"},insight:{icon:"I",color:"#5ff1e8"},temporal:{icon:"T",color:"#b99aff"}});
+  const RELICS=Object.freeze({
+    edge_pressure:{name:"Edge of Pressure",archetype:"pressure",icon:"P",text:"+5 shards after your first threat",cost:30,tags:["threat"]},
+    breakpoint_sigil:{name:"Breakpoint Sigil",archetype:"pressure",icon:"P",text:"+10 shards for a threat-to-win",cost:40,tags:["win"]},
+    fork_engine:{name:"Fork Engine",archetype:"pressure",icon:"P",text:"Fork grants Insight next encounter",cost:50,tags:["fork"]},
+    guardian_plate:{name:"Guardian Plate",archetype:"guard",icon:"G",text:"+5 shards after a threat block",cost:30,tags:["block"]},
+    bastion_seal:{name:"Bastion Seal",archetype:"guard",icon:"G",text:"Survive a threat: Insight next",cost:40,tags:["survive"]},
+    corner_ward:{name:"Corner Ward",archetype:"guard",icon:"G",text:"+5 shards on a corner victory",cost:30,tags:["corner"]},
+    clarity_lens:{name:"Clarity Lens",archetype:"insight",icon:"I",text:"+1 Insight at encounter start",cost:40,tags:["start"]},
+    pattern_prism:{name:"Pattern Prism",archetype:"insight",icon:"I",text:"+5 shards for a tactical marker",cost:30,tags:["marker"]},
+    analyst_seal:{name:"Analyst Seal",archetype:"insight",icon:"I",text:"Next Forge purchase costs 10 less",cost:50,tags:["forge"]},
+    spectral_lens:{name:"Spectral Lens",archetype:"temporal",icon:"T",text:"+5 shards after Ghost",cost:30,tags:["ghost"]},
+    branch_prism:{name:"Branch Prism",archetype:"temporal",icon:"T",text:"+5 shards after Quantum resolves",cost:30,tags:["quantum"]},
+    echo_vault:{name:"Echo Vault",archetype:"temporal",icon:"T",text:"Temporal victory grants Insight next",cost:40,tags:["temporal-win"]}
   });
-
-  global.addEventListener("tictactoe:match-exit", () => {
-    if (current()) endRun();
-  });
-
-  global.openGauntletHub = openHub;
-  global.closeGauntletHub = closeHub;
-  global.gauntletStartRun = startRun;
-  global.gauntletContinue = continueRun;
-  global.gauntletReplayEncounter = replayEncounter;
-  global.gauntletExitRun = exitRun;
-  global.TicTacToeGauntlet = Object.freeze({
-    getActiveRun: () => current(),
-    refreshHud: updateHud
-  });
+  let run=null,generation=0,resultTimer=null;
+  const active=()=>run&&run.generation===generation?run:null,encounter=()=>active()?ENCOUNTERS[active().encounterIndex]:null;
+  const has=(id,state=active())=>Boolean(state?.activeRelics.includes(id));
+  const addShards=(amount,state=active())=>{if(!state||!Number.isFinite(amount))return;state.shards=Math.min(MAX_SHARDS,Math.max(0,state.shards+Math.floor(amount)));};
+  const screens=(id)=>["menu","levels","avatars","symbolSelect","game","learning","competition","experiment","gauntlet"].forEach((name)=>$(name)?.classList.toggle("active",name===id));
+  const seeded=(salt,state=active())=>{let value=0;for(const char of `${state?.id||""}:${salt}`)value=(value*31+char.charCodeAt(0))>>>0;return value;};
+  const relicIds=()=>Object.keys(RELICS);
+  function choices(salt,filter=()=>true){const state=active(),pool=relicIds().filter((id)=>filter(RELICS[id],id)&&!state.ownedRelics.includes(id));const base=pool.length?pool:relicIds();return [...base].sort((a,b)=>seeded(`${salt}:${a}`,state)-seeded(`${salt}:${b}`,state)).slice(0,3);}
+  function resonance(state=active()){const counts={pressure:0,guard:0,insight:0,temporal:0};(state?.activeRelics||[]).forEach((id)=>{if(RELICS[id])counts[RELICS[id].archetype]+=1;});return Object.entries(counts).filter(([,count])=>count>=2).map(([archetype,count])=>({archetype,count,tier:count===4?"Perfect":count===3?"Greater":"Resonance"}));}
+  function addInsight(state=active()){if(!state)return;state.insightNext=Math.min(1,(state.insightNext||0)+1);}
+  function validate(state=active()){if(!state)return false;state.ownedRelics=[...new Set(state.ownedRelics||[])].filter((id)=>RELICS[id]);state.activeRelics=[...new Set(state.activeRelics||[])].filter((id)=>state.ownedRelics.includes(id)).slice(0,MAX_ACTIVE);state.shards=Math.min(MAX_SHARDS,Math.max(0,Number(state.shards)||0));return true;}
+  function routeNodes(){const state=active();return `<div class="gauntlet-route gauntlet-route-v2" role="list">${ENCOUNTERS.map((item,index)=>{const status=index<state.victories?"cleared":index===state.encounterIndex?"current":"locked";return `<span class="gauntlet-node ${status}${item.boss?" boss":""}${item.finalBoss?" final-boss":""}" style="--encounter:${item.accent}" role="listitem"><b>${item.glyph}</b><i>${index+1}</i></span>`;}).join("")}</div>`;}
+  function buildStrip(state=active()){const slots=Array.from({length:MAX_ACTIVE},(_,index)=>{const id=state?.activeRelics[index],relic=RELICS[id];return `<span class="gauntlet-relic-slot ${relic?relic.archetype:"empty"}" title="${relic?relic.name:"Empty slot"}">${relic?relic.icon:"+"}</span>`;}).join("");const res=resonance(state).map((item)=>`<b class="resonance ${item.archetype}">${ARCH[item.archetype].icon} ${item.tier}</b>`).join("");return `<section class="gauntlet-build" aria-label="Your build"><div><small>Your build</small><span class="gauntlet-shards">◆ ${state?.shards||0}</span></div><div class="gauntlet-relic-slots">${slots}</div><div class="gauntlet-resonance">${res||"<small>Build resonance awaits</small>"}</div></section>`;}
+  function card(id,mode){const relic=RELICS[id],state=active(),owned=state?.ownedRelics?.includes(id),cost=Math.max(0,relic.cost-(has("analyst_seal",state)&&!state.analystDiscountUsed?10:0)),afford=(state?.shards||0)>=cost,preview=[...(state?.activeRelics||[]),id].filter((value,index,list)=>list.indexOf(value)===index).map((value)=>RELICS[value]?.archetype).filter(Boolean);const counts=preview.reduce((map,key)=>(map[key]=(map[key]||0)+1,map),{});const synergy=Object.entries(counts).find(([,count])=>count>=2),action=mode==="starter"?`gauntletStartRun('${id}')`:`gauntletChooseRelic('${id}','${mode}')`;return `<button class="gauntlet-relic-card ${relic.archetype}${owned?" owned":""}${mode==="forge"&&!afford?" unavailable":""}" type="button" ${owned||mode==="forge"&&!afford?"disabled":""} onclick="${action}"><b>${relic.icon}</b><span><small>${relic.archetype}</small><strong>${relic.name}</strong><em>${relic.text}</em>${synergy?`<i>${ARCH[synergy[0]].icon} Resonance preview</i>`:""}</span><mark>${mode==="forge"?`◆ ${cost}`:"Free"}</mark></button>`;}
+  function renderBriefing(){screens("gauntlet");const content=$("gauntletContent");content.innerHTML=`<header class="gauntlet-hero gauntlet-art-hub"><p class="eyebrow">Run-building challenge</p><div class="gauntlet-crest">◇</div><h2>The Gauntlet</h2><p>Choose a relic. Shape the run.</p></header><section class="gauntlet-briefing glass-card"><div class="gauntlet-briefing-top"><span>RUN</span><strong>8</strong><small>encounters</small></div><p class="gauntlet-start-copy">Starting relic</p><div class="gauntlet-relic-choice">${choices("starter",()=>true).map((id)=>card(id,"starter")).join("")}</div><button class="text-button" type="button" onclick="closeGauntletHub()">Back to home</button></section>`;global.renderGauntletLoadout?.();}
+  function endRun(){global.TicTacToeHiddenObjectives?.clear();global.clearGauntletPowerEffects?.();generation+=1;clearTimeout(resultTimer);run=null;const hud=$("gauntletHud");if(hud){hud.hidden=true;hud.innerHTML="";}}
+  function openHub(){endRun();$("resultModal")?.classList.remove("active");renderBriefing();}
+  function closeHub(){endRun();$("resultModal")?.classList.remove("active");screens("menu");}
+  function startRun(startingRelic){if(!RELICS[startingRelic])return;endRun();run={id:`gauntlet-${Date.now()}`,generation,status:"route",encounterIndex:0,victories:0,shards:0,ownedRelics:[startingRelic],activeRelics:[startingRelic],insightNext:0,analystDiscountUsed:false,routeHistory:[],stats:{threat:false,block:false,fork:false,corner:false,enemyThreat:false,temporal:false,resonance:{}},powers:global.createGauntletPowerState?.()||null};renderRoute();}
+  function routeChoices(){const state=active(),next=state.encounterIndex; if(next===3||next===7)return [{type:"battle",label:ENCOUNTERS[next].finalBoss?"Final Boss":"Boss",icon:"B"}];const base=next%3===0?["reward","forge"]:next%3===1?["battle","elite"]:["forge","reward"];return base.map((type)=>({type,label:type==="battle"?"Battle":type==="elite"?"Elite":type==="forge"?"Forge":"Reward",icon:type[0].toUpperCase()}));}
+  function renderRoute(){const state=active();if(!state)return;state.status="route";screens("gauntlet");const late=state.victories>=4;$("gauntletContent").innerHTML=`<header class="gauntlet-route-hero ${late?"ascension":""}"><p class="eyebrow">${late?"Gauntlet Ascension":"Choose your path"}</p><h2>Run ${state.victories+1}</h2>${buildStrip(state)}${routeNodes()}</header><section class="gauntlet-route-choices">${routeChoices().map((node)=>`<button type="button" class="gauntlet-route-choice ${node.type}" onclick="gauntletChooseRoute('${node.type}')"><b>${node.icon}</b><span>${node.label}</span><small>${node.type==="elite"?"Harder battle · +30":node.type==="forge"?"Spend run shards":node.type==="reward"?"Claim a relic":"Next encounter"}</small></button>`).join("")}</section><button class="control-button" type="button" onclick="gauntletOpenBuild()">Build</button><button class="text-button" type="button" onclick="gauntletExitRun()">End run</button>`;}
+  function chooseRoute(type){const state=active();if(!state||state.status!=="route")return;state.routeHistory.push(type);if(type==="forge")return renderForge();if(type==="reward")return renderReward(encounter()?.boss);state.elite=type==="elite";startEncounter();}
+  function renderForge(){const state=active();state.status="forge";screens("gauntlet");$("gauntletContent").innerHTML=`<section class="gauntlet-surface gauntlet-art-forge"><header><p class="eyebrow">Run Forge</p><h2>Shape the build</h2><b class="gauntlet-shards">◆ ${state.shards}</b></header><div class="gauntlet-relic-choice">${choices(`forge-${state.victories}`).map((id)=>card(id,"forge")).join("")}</div>${buildStrip(state)}<button class="control-button" type="button" onclick="gauntletCloseForge()">Decline / Continue</button></section>`;}
+  function renderReward(boss=false){const state=active();state.status="reward";screens("gauntlet");$("gauntletContent").innerHTML=`<section class="gauntlet-surface gauntlet-art-reward ${boss?"boss-reward":""}"><header><p class="eyebrow">${boss?"Gauntlet Reward Realm":"Run Reward"}</p><h2>${boss?"Boss Relic":"Choose a relic"}</h2></header><div class="gauntlet-relic-choice">${choices(`reward-${state.victories}`,boss?(relic)=>relic.cost>=40:()=>true).map((id)=>card(id,"reward")).join("")}</div>${buildStrip(state)}</section>`;}
+  function chooseRelic(id,mode){const state=active();if(!state||!RELICS[id])return;const relic=RELICS[id];if(mode==="forge"){const cost=Math.max(0,relic.cost-(has("analyst_seal")&&!state.analystDiscountUsed?10:0));if(state.shards<cost)return;state.shards-=cost;if(has("analyst_seal"))state.analystDiscountUsed=true;}if(!state.ownedRelics.includes(id))state.ownedRelics.push(id);if(state.activeRelics.length<MAX_ACTIVE){state.activeRelics.push(id);validate(state);return mode==="forge"?renderRoute():renderRoute();}state.pendingRelic=id;renderReplacement();}
+  function renderReplacement(){const state=active(),relic=RELICS[state.pendingRelic];$("gauntletContent").innerHTML=`<section class="gauntlet-surface"><header><p class="eyebrow">Replace one</p><h2>${relic.name}</h2></header><div class="gauntlet-replace">${state.activeRelics.map((id,index)=>`<button type="button" class="${RELICS[id].archetype}" onclick="gauntletReplaceRelic(${index})"><b>${RELICS[id].icon}</b>${RELICS[id].name}</button>`).join("")}</div><button class="control-button" type="button" onclick="gauntletDeclineRelic()">Keep current build</button></section>`;}
+  function replaceRelic(index){const state=active();if(!state?.pendingRelic||!state.activeRelics[index])return;state.activeRelics[index]=state.pendingRelic;state.pendingRelic=null;validate(state);renderRoute();}
+  function claimRelic(){const state=active();if(!state)return;state.pendingRelic=null;renderRoute();}
+  function configFor(item,state){const blockedCells=item.encounterRule==="sealed_center"?[4]:item.encounterRule==="sealed_corners"?[0,2,6,8]:[];return {type:"gauntlet",mode:"ai",level:Math.min(20,item.level+(state.elite?1:0)),personality:item.personality,playerSymbol:"X",aiSymbol:"O",rules:{blockedCells,gauntletEncounterRule:item.encounterRule||null,temporalMode:item.temporal||null,temporalSides:item.temporal?["X","O"]:[]},timer:{enabled:true,secondsPerTurn:10},objective:{type:"WIN"},permissions:{progression:false,statistics:false,achievements:false,replay:true}};}
+  function startEncounter(){const state=active(),item=encounter();if(!state||!item)return;if(item.hidden&&!state.hiddenCommitted){global.TicTacToeHiddenObjectives?.begin({id:item.id,source:"gauntlet",mode:"gauntlet",objectiveId:item.hidden,rivalName:item.name,size:3,target:3,onCommit:()=>{const current=active();if(current){current.hiddenCommitted=true;startEncounter();}}});return;}$("resultModal")?.querySelectorAll(".modal-buttons button").forEach((button)=>button.style.display="");state.status="playing";state.resultHandled=false;state.stats={threat:false,block:false,fork:false,corner:false,enemyThreat:false,temporal:false,resonance:{}};if(has("clarity_lens"))addInsight(state);global.resetGauntletPowersForEncounter?.(state);const started=engine.start(configFor(item,state),{featureType:"GAUNTLET",returnScreen:"gauntlet",gauntletRunId:state.id,encounterIndex:state.encounterIndex,encounterTotal:TOTAL,opponentName:item.name,hiddenSource:item.hidden?"gauntlet":null,hiddenObjective:item.hidden?global.TicTacToeHiddenObjectives?.snapshot?.():null});if(!started?.valid){endRun();renderBriefing();return;}updateHud();const intro=item.temporal?`Temporal ${item.temporal}`:"Gauntlet";$("opponentKicker").textContent=`${intro} · Encounter ${state.encounterIndex+1} of ${TOTAL}`;$("opponentName").textContent=item.name;$("opponentLesson").textContent=item.title;}
+  function updateHud(){const state=active(),item=encounter(),hud=$("gauntletHud");if(!state||!item||!hud)return;hud.hidden=false;hud.style.setProperty("--encounter",item.accent);hud.innerHTML=`<div class="gauntlet-hud-opponent"><span class="gauntlet-hud-kicker">${item.boss?"Boss":"Gauntlet"} · ◆ ${state.shards}</span><strong>${item.glyph} ${item.name}</strong></div><div class="gauntlet-hud-progress"><b>${state.encounterIndex+1}</b>${routeNodes()}</div>${buildStrip(state)}<button class="gauntlet-build-button" type="button" onclick="gauntletOpenBuild()">Build</button>`;global.renderGauntletPowers?.(state,hud);}
+  function handlePlayerMove(detail){const state=active();if(!state||state.status!=="playing"||detail.config?.type!=="gauntlet"||detail.context?.gauntletRunId!==state.id)return;const flags=state.stats;if(detail.createsFork)flags.fork=true;if(detail.blocksImmediateThreat)flags.block=true;if([0,2,6,8].includes(detail.index))flags.corner=true;if(detail.temporal==="quantum-resolution"){flags.temporal=true;if(has("branch_prism"))addShards(5);applyResonance("temporal");}const analysis=global.TicTacToeFeatureCore?.analyzePosition?.({board:detail.board,playerSymbol:"X",opponentSymbol:"O",rules:detail.config.rules});if(analysis?.immediateWins?.length)flags.threat=true;applyResonance(flags.threat?"pressure":detail.blocksImmediateThreat?"guard":detail.createsFork?"insight":null);}
+  function handleAIMove(detail){const state=active();if(!state||state.status!=="playing"||detail.config?.type!=="gauntlet")return;const analysis=global.TicTacToeFeatureCore?.analyzePosition?.({board:detail.board,playerSymbol:"X",opponentSymbol:"O",rules:detail.config.rules});if(analysis?.opponentImmediateWins?.length)state.stats.enemyThreat=true;}
+  function temporalAction(detail){const state=active();if(!state||state.status!=="playing"||detail.config?.type!=="gauntlet"||detail.owner!=="X")return;state.stats.temporal=true;if(detail.type==="ghost"&&has("spectral_lens"))addShards(5);if(detail.type==="quantum"&&has("branch_prism"))addShards(5);applyResonance("temporal");updateHud();}
+  function applyResonance(archetype){const state=active();if(!state||!archetype||state.stats.resonance[archetype])return;const match=resonance(state).find((item)=>item.archetype===archetype);if(!match)return;state.stats.resonance[archetype]=true;addShards(match.count>=3?10:5);global.dispatchEvent(new CustomEvent("tictactoe:feel",{detail:{type:"achievement",feature:"resonance"}}));updateHud();}
+  function encounterReward(detail){const state=active(),item=encounter(),flags=state.stats;let amount=detail.outcome==="win"?(item.boss?40:state.elite?30:20):detail.outcome==="draw"?10:0;if(detail.outcome==="win"){if(flags.threat&&has("edge_pressure"))amount+=5;if(flags.threat&&has("breakpoint_sigil"))amount+=10;if(flags.block&&has("guardian_plate"))amount+=5;if(flags.corner&&has("corner_ward"))amount+=5;if((flags.fork||flags.block)&&has("pattern_prism"))amount+=5;if(flags.fork&&has("fork_engine"))addInsight(state);if(flags.enemyThreat&&has("bastion_seal"))addInsight(state);if(flags.temporal&&has("echo_vault"))addInsight(state);for(const itemRes of resonance(state))if(itemRes.count>=3)addInsight(state);if(resonance(state).some((itemRes)=>itemRes.count===4))amount+=10;}addShards(amount,state);return amount;}
+  function resultButton(label,primary,handler){const button=document.createElement("button");button.type="button";button.className=`${primary?"primary-control":"control-button"} gauntlet-result-action`;button.textContent=label;button.addEventListener("click",handler,{once:true});return button;}
+  function decorateResult(detail,token){const state=active(),item=encounter(),modal=$("resultModal"),actions=modal?.querySelector(".modal-buttons");if(!state||state.generation!==token||!actions)return;actions.querySelectorAll(".gauntlet-result-action").forEach((button)=>button.remove());[...actions.children].forEach((button)=>button.style.display="none");if(detail.outcome==="win"){const reward=encounterReward(detail);state.victories+=1;state.elite=false;state.hiddenCommitted=false;if(state.victories===TOTAL){state.status="complete";$("resultKicker").textContent="Run Complete";$("resultTitle").textContent="Architecture Broken";$("resultDetail").textContent=`◆ ${state.shards} collected · ${resonance(state).map((entry)=>entry.tier).join(", ")||"Mixed build"}`;actions.prepend(resultButton("New Run",true,()=>renderBriefing()),resultButton("Exit Gauntlet",false,closeHub));return;}state.encounterIndex+=1;state.status="reward";$("resultKicker").textContent=item.boss?"Boss Defeated":"Encounter Cleared";$("resultTitle").textContent=`+${reward} Shards`;$("resultDetail").textContent="Choose the next part of your run.";actions.prepend(resultButton("Choose Reward",true,()=>{$("resultModal").classList.remove("active");renderReward(item.boss);}),resultButton("Route",false,()=>{$("resultModal").classList.remove("active");renderRoute();}));return;}if(detail.outcome==="draw"){encounterReward(detail);state.status="draw";$("resultKicker").textContent="Run Holds";$("resultTitle").textContent="+10 Shards";$("resultDetail").textContent="Replay this encounter or end the run.";actions.prepend(resultButton("Replay",true,()=>startEncounter()),resultButton("End Run",false,closeHub));return;}state.status="failed";$("resultKicker").textContent="Run Ended";$("resultTitle").textContent=`Reached ${state.victories} / ${TOTAL}`;$("resultDetail").textContent=`Build: ${state.activeRelics.map((id)=>RELICS[id].name).join(" · ")}`;actions.prepend(resultButton("Fresh Run",true,renderBriefing),resultButton("Exit",false,closeHub));}
+  function openBuild(){const state=active();if(!state)return;const host=document.createElement("div");host.className="gauntlet-build-modal";host.innerHTML=`<div><button aria-label="Close build" type="button">Close</button>${buildStrip(state)}<h3>Owned relics</h3><div class="gauntlet-owned">${state.ownedRelics.map((id)=>`<span class="${RELICS[id].archetype}">${RELICS[id].icon} ${RELICS[id].name}</span>`).join("")}</div></div>`;host.querySelector("button").addEventListener("click",()=>host.remove());document.body.append(host);}
+  global.addEventListener("tictactoe:player-move",(event)=>handlePlayerMove(event.detail||{}));global.addEventListener("tictactoe:ai-move",(event)=>handleAIMove(event.detail||{}));global.addEventListener("tictactoe:temporal-action",(event)=>temporalAction(event.detail||{}));
+  global.addEventListener("tictactoe:match-complete",(event)=>{const state=active(),detail=event.detail||{};if(!state||state.status!=="playing"||detail.config?.type!=="gauntlet"||detail.context?.gauntletRunId!==state.id||state.resultHandled)return;state.resultHandled=true;const token=state.generation;resultTimer=setTimeout(()=>decorateResult(detail,token),680);});
+  global.addEventListener("tictactoe:match-exit",()=>{if(active())endRun();});
+  global.openGauntletHub=openHub;global.closeGauntletHub=closeHub;global.gauntletStartRun=(id)=>id?startRun(id):renderBriefing();global.gauntletChooseRoute=chooseRoute;global.gauntletChooseRelic=chooseRelic;global.gauntletReplaceRelic=replaceRelic;global.gauntletDeclineRelic=claimRelic;global.gauntletCloseForge=renderRoute;global.gauntletOpenBuild=openBuild;global.gauntletExitRun=()=>engine.exit?.();global.TicTacToeGauntlet=Object.freeze({getActiveRun:active,refreshHud:updateHud,relics:RELICS});
 }(window));

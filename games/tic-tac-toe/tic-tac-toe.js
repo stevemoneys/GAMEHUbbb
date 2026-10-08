@@ -671,6 +671,7 @@ function advanceAfterTemporalTurn(owner) {
 }
 function completeTemporalAction(result) {
   gameState.match.turnHistory.push({ kind: result.type === "ghost" ? "ghost" : "quantum-init", owner: result.owner, ...(Number.isInteger(result.index) ? { index: result.index } : { cells: result.cells }) });
+  window.dispatchEvent(new CustomEvent("tictactoe:temporal-action", { detail: { type: result.type, owner: result.owner, config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
   refreshTemporalPresentation(); emitGameFeelEvent("selection", { temporal: result.type }); advanceAfterTemporalTurn(result.owner);
 }
 function resolveTemporalAction(index) {
