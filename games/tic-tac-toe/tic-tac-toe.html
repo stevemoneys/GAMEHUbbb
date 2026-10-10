@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="tic-tac-toe-temporal.css">
   <link rel="stylesheet" href="tic-tac-toe-gauntlet-expansion.css">
   <link rel="stylesheet" href="tic-tac-toe-gauntlet-temporal-entry.css">
+  <link rel="stylesheet" href="tic-tac-toe-home.css">
 </head>
 <body>
   <div class="ambient" aria-hidden="true"></div>
@@ -29,7 +30,7 @@
       <button class="icon-button settings-button" id="audioSettingsButton" type="button" aria-label="Audio settings" title="Audio settings"><span aria-hidden="true">⚙</span></button>
     </header>
 
-    <section class="screen home-screen active" id="menu" aria-label="Game mode">
+    <template id="legacyHomeDisabled">
       <header class="hero">
         <p class="eyebrow">Think <span>•</span> Plan <span>•</span> Win</p>
         <h1>Tic-T<span aria-hidden="true">✕</span>c-T<span class="warm">O</span>e</h1>
@@ -78,7 +79,29 @@
         </article>
       </div>
       <p class="home-footnote"><span>Profile ready</span><i></i><span id="homeStats">0 wins · 0 streak</span></p>
+    </template>
+
+    <section class="screen home-screen home-lobby active" id="menu" aria-label="GameHub home">
+      <div class="lobby-title"><p>PLAY. THINK. WIN.</p><h1>TIC-TAC-<span>TOE</span></h1></div>
+      <section class="lobby-hero" aria-labelledby="lobbyAiTitle">
+        <div class="lobby-copy"><p class="lobby-kicker">✦ FEATURED CHALLENGE</p><h2 id="lobbyAiTitle">AI <span>CHALLENGE</span></h2><p>Test your mind. Beat the AI!</p><div class="lobby-benefits" aria-label="AI Challenge benefits"><span>ϟ <b>Smart AI</b></span><span>◎ <b>Multiple Difficulty</b></span><span>♛ <b>Win Rewards</b></span></div><button class="lobby-play" type="button" onclick="openLobbySizeSelect('ai')"><span aria-hidden="true">▶</span> Play Now <b aria-hidden="true">›</b></button></div>
+        <div class="lobby-board-art" aria-hidden="true"><div class="lobby-board"><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i></div><em></em></div>
+      </section>
+      <div class="lobby-duo">
+        <button class="lobby-daily" type="button" onclick="openDailyPuzzleFromHome()"><span class="lobby-card-icon" aria-hidden="true">✦</span><span><strong>Daily Puzzle</strong><small>A new challenge every day</small></span><b>Play Today ›</b></button>
+        <button class="lobby-rank" id="rankHomeEntry" type="button" onclick="openProgression()" aria-label="Open player rank"><span class="rank-home-emblem" id="rankHomeEmblem" aria-hidden="true">♛</span><span><small>Player Rank</small><strong id="rankHomeTitle">Initiate</strong><i><i id="rankHomeProgress"></i></i></span><b>View Details ›</b></button>
+      </div>
+      <button class="lobby-modes" type="button" onclick="openModesLibrary()"><span aria-hidden="true" class="lobby-mode-symbols">✕ ○</span><span><strong>Explore <em>Modes</em></strong><small>Discover all exciting game modes!</small><b>6 modes · Browse Modes ›</b></span><span class="lobby-mini-cards" aria-hidden="true"><i>W</i><i>R</i><i>N</i><i>U</i></span></button>
+      <div class="lobby-actions"><button type="button" onclick="openLobbySizeSelect('two')">♟ Two Players</button><button id="styleHomeEntry" type="button" onclick="openMyStyle()">✦ My Style <small id="styleHomeLabel">Classic Neon</small></button></div>
+      <div class="lobby-value" aria-label="Game benefits"><span>♧ Sharpen your mind</span><span>♛ Beat challenges</span><span>◎ Unlock new modes</span></div>
+      <span id="homeMastery" hidden>0%</span><span id="homeGoals" hidden>0</span><span id="homeMasteryBar" hidden></span><span id="nextLevelNumber" hidden></span><span id="nextLevelName" hidden></span><span id="nextLevelMeta" hidden></span><span id="homeStats" hidden></span>
     </section>
+
+    <section class="screen modes-library-screen" id="modesLibrary" aria-label="Explore game modes">
+      <header class="modes-library-header"><button type="button" onclick="closeModesLibrary()" aria-label="Back to home">‹</button><div><p>GAMEHUB</p><h2>Explore Modes</h2></div></header><p class="modes-library-lead">Distinct ways to play Tic-Tac-Toe.</p>
+      <div class="modes-library-grid"><button type="button" onclick="launchLobbyMode('wild')"><b>W</b><span><strong>Wild</strong><small>Choose X or O every turn</small></span><i>›</i></button><button type="button" onclick="launchLobbyMode('reverse')"><b>R</b><span><strong>Reverse</strong><small>Make a line and lose</small></span><i>›</i></button><button type="button" onclick="launchLobbyMode('notakto')"><b>N</b><span><strong>Notakto</strong><small>Three boards, one last move</small></span><i>›</i></button><button type="button" onclick="launchLobbyMode('ultimate')"><b>U</b><span><strong>Ultimate</strong><small>Win boards to claim the grid</small></span><i>›</i></button><button type="button" onclick="launchLobbyMode('mutators')"><b>M</b><span><strong>Board Mutators</strong><small>Change the battlefield</small></span><i>›</i></button><button type="button" onclick="launchLobbyMode('campaign')"><b>C</b><span><strong>Campaign</strong><small>Journey to the Impossible Game</small></span><i>›</i></button></div>
+    </section>
+    <section class="screen lobby-size-screen" id="lobbySize" aria-label="Choose board size"><header class="modes-library-header"><button type="button" onclick="closeLobbySizeSelect()" aria-label="Back to home">‹</button><div><p>CHOOSE YOUR ARENA</p><h2>Board Size</h2></div></header><p class="modes-library-lead" id="lobbySizeLead">Select a board size for your match.</p><div class="lobby-size-options"><button type="button" onclick="startLobbySizedMatch(3)"><strong>3×3</strong><small>Classic · 3 in a row</small></button><button type="button" onclick="startLobbySizedMatch(4)"><strong>4×4</strong><small>Expanded · 4 in a row</small></button><button type="button" onclick="startLobbySizedMatch(5)"><strong>5×5</strong><small>Grand · 4 in a row</small></button></div></section>
 
     <section class="screen progression-screen" id="progression" aria-label="Player rank and mastery"><div id="progressionContent"></div></section>
     <section class="screen style-screen" id="style" aria-label="My Style personalization"><div id="styleContent"></div></section>
@@ -255,7 +278,7 @@
       <p class="eyebrow" id="resultKicker">Match Complete</p>
       <h2 id="resultTitle"></h2>
       <p id="resultDetail">Choose your next move.</p>
-      <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button time-machine-result-action" type="button" onclick="openTimeMachine()">◷ Time Machine</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
+      <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
     </div>
   </div>
 
@@ -277,22 +300,17 @@
   <script src="tic-tac-toe-learning.js"></script>
   <script src="tic-tac-toe-competition.js"></script>
   <script src="tic-tac-toe-experimentation.js"></script>
-  <script src="tic-tac-toe-gauntlet.js"></script>
-  <script src="tic-tac-toe-gauntlet-temporal-entry.js"></script>
-  <script src="tic-tac-toe-powers.js"></script>
   <script src="tic-tac-toe-notakto.js"></script>
   <script src="tic-tac-toe-ultimate.js"></script>
   <script src="tic-tac-toe-sizes.js"></script>
-  <script src="tic-tac-toe-size-wars.js"></script>
   <script src="tic-tac-toe-mutators.js"></script>
-  <script src="tic-tac-toe-rivals.js"></script>
   <script src="tic-tac-toe-campaign-art.js"></script>
   <script src="tic-tac-toe-campaign.js"></script>
   <script src="tic-tac-toe-progression.js"></script>
   <script src="tic-tac-toe-cosmetics.js"></script>
   <script src="tic-tac-toe-suits.js"></script>
   <script src="tic-tac-toe-hidden-objectives.js"></script>
-  <script src="tic-tac-toe-replay.js"></script>
   <script src="tic-tac-toe-campaign-entry.js"></script>
+  <script src="tic-tac-toe-home.js"></script>
 </body>
 </html>

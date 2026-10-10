@@ -88,6 +88,14 @@
   }
   $all("[data-size-choice]").forEach((button) => button.addEventListener("click", () => selectSize(Number(button.dataset.sizeChoice))));
   $("sizeLevelRange").addEventListener("input", () => { state.level = Number($("sizeLevelRange").value); $("sizeLevelValue").textContent = String(state.level); });
+  function openWith(size, mode) {
+    if (![3, 4, 5].includes(Number(size)) || !["ai", "two"].includes(mode)) return false;
+    selectSize(Number(size));
+    open();
+    start(mode);
+    return true;
+  }
   global.TicTacToeSizeRules = Object.freeze({ getLines: (size, target) => lines(size, target), winningLine: (board, mark, size, target) => winningLine(board, mark, size, target), legalMoves: (board) => legalMoves(board), chooseAIMove });
+  global.TicTacToeBoardSizes = Object.freeze({ openWith });
   global.openBoardSizes = open; global.closeBoardSizes = close; global.startBoardSizeAI = () => start("ai"); global.startBoardSizeTwoPlayers = () => start("two"); global.restartBoardSizes = restart; global.exitBoardSizes = close;
 }(window));
