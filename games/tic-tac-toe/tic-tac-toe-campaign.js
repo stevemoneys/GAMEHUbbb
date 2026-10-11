@@ -126,7 +126,7 @@
     state.resolved = true; clearPending(); state.active = false; render(); updateHud(draw ? "No legal move remains" : `${current().target} in a row complete`);
     const win = winnerMark === "X", config = current(), final = config.final;
     const hidden = global.TicTacToeHiddenObjectives?.finish({ outcome: draw ? "draw" : win ? "win" : "loss", board: state.board, playerSymbol: "X", size: config.size, target: config.target, source: "campaign" });
-    const final=state.history.at(-1); if(final)final.marker={type:"result",label:draw?"DRAW":"ENCOUNTER COMPLETE"}; global.TicTacToeReplay?.recordExternal({matchType:"campaign",mode:"ai",boardSize:config.size,winTarget:config.target,playerSymbol:"X",aiSymbol:"O",result:draw?"draw":win?"win":"loss",context:{campaign:{id:config.id,act:config.act,rival:config.rival,final:config.final||null},hiddenObjective:hidden},snapshots:state.history});
+    const finalSnapshot = state.history.at(-1); if (finalSnapshot) finalSnapshot.marker = { type:"result", label:draw ? "DRAW" : "ENCOUNTER COMPLETE" }; global.TicTacToeReplay?.recordExternal({matchType:"campaign",mode:"ai",boardSize:config.size,winTarget:config.target,playerSymbol:"X",aiSymbol:"O",result:draw?"draw":win?"win":"loss",context:{campaign:{id:config.id,act:config.act,rival:config.rival,final:config.final||null},hiddenObjective:hidden},snapshots:state.history});
     if (win) persistCompletion(config.id);
     const finalComplete = win && config.id === "impossible-game", modal = $("campaignResult");
     $("campaignResultKicker").textContent = finalComplete ? "Journey complete" : final ? `Final round ${final} / 3` : `Act ${config.act} complete`;

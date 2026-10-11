@@ -2,8 +2,18 @@
 (function initialiseHomeLobby(global) {
   "use strict";
   let selectedMode = null;
-  const screens = (id) => document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === id));
-  const safeCall = (name) => typeof global[name] === "function" && global[name]();
+  const parentBack = document.querySelector(".hub-back-btn");
+  const updateParentBack = () => {
+    const home = document.getElementById("menu");
+    const onlyHome = Boolean(home?.classList.contains("active")) && ![...document.querySelectorAll(".screen.active")].some((screen) => screen.id !== "menu");
+    if (parentBack) parentBack.hidden = !onlyHome;
+  };
+  const screens = (id) => { document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === id)); updateParentBack(); };
+  const safeCall = (name) => {
+    if (typeof global[name] !== "function") return false;
+    global[name]();
+    return true;
+  };
 
   global.openModesLibrary = () => screens("modesLibrary");
   global.closeModesLibrary = () => screens("menu");
@@ -25,4 +35,6 @@
     const routes = { wild: "openWildMode", reverse: "openReverseMode", notakto: "openNotaktoMode", ultimate: "openUltimateMode", mutators: "openBoardMutators", campaign: "openCampaign" };
     if (!safeCall(routes[mode])) screens("menu");
   };
+  new MutationObserver(updateParentBack).observe(document.querySelector("main.app"), { subtree: true, attributes: true, attributeFilter: ["class"] });
+  updateParentBack();
 }(window));

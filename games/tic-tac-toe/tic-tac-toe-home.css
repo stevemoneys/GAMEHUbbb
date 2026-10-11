@@ -28,3 +28,41 @@
 @media (max-width:390px){.lobby-hero{min-height:250px}.lobby-copy{padding-left:17px}.lobby-hero h2{font-size:29px}.lobby-benefits{gap:4px}.lobby-benefits b{font-size:8px}.lobby-duo{gap:8px}.lobby-daily,.lobby-rank{padding:13px;min-height:128px}.lobby-card-icon,.rank-home-emblem{left:12px;top:22px;width:40px;font-size:20px}.lobby-daily>span:not(.lobby-card-icon),.lobby-rank>span:not(.rank-home-emblem){margin-left:48px}.lobby-daily>b,.lobby-rank>b{right:10px;bottom:11px;font-size:8px}.lobby-modes{min-height:151px}.lobby-mini-cards i{width:37px;height:70px}.lobby-mode-symbols{font-size:35px}.lobby-value{padding:11px 3px}.lobby-value span{font-size:8px}}
 @media (max-width:600px){html,body{max-width:100%;overflow-x:hidden}.app{width:100vw!important;max-width:100vw!important;padding-left:20px!important;padding-right:20px!important}.home-lobby,.modes-library-screen,.lobby-size-screen{width:100%;max-width:100%}}
 @media (prefers-reduced-motion:no-preference){.lobby-board-art{animation:lobbyFloat 5s ease-in-out infinite}.lobby-play:hover,.lobby-daily:hover,.lobby-rank:hover,.lobby-modes:hover{transform:translateY(-2px);filter:brightness(1.13)}@keyframes lobbyFloat{50%{transform:rotate(7deg) translateY(-4px)}}}
+
+/* A contained, viewport-aware home composition. Secondary screens retain their own scroll behaviour. */
+.lobby-rank .rank-home-track { display:block; width:100%; height:7px; overflow:hidden; border-radius:99px; background:#432a7e; }
+.lobby-rank .rank-home-track #rankHomeProgress { display:block; width:0; height:100%; border-radius:inherit; background:linear-gradient(90deg,#29eff4,#8eeeff); box-shadow:0 0 9px rgba(36,239,244,.6); }
+.lobby-rank #rankHomePercent { position:absolute; right:13px; top:14px; color:#d5faff; font:800 10px/1 system-ui,sans-serif; font-style:normal; }
+.lobby-rank>b { display:grid; place-items:center; width:27px; height:27px; right:11px; bottom:10px; border:1px solid rgba(231,196,255,.5); border-radius:50%; color:#f5ddff; background:rgba(67,22,111,.66); font-size:21px; }
+.lobby-rank strong { padding-right:26px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.lobby-daily>b { font-size:9px; }
+.lobby-modes .lobby-mini-cards { right:5px; bottom:10px; transform:rotate(-5deg) scale(.88); transform-origin:bottom right; }
+.lobby-modes .lobby-mode-symbols { left:20px; bottom:16px; }
+.lobby-modes>span:nth-child(2) { min-width:0; }
+.lobby-modes strong,.lobby-modes small { overflow-wrap:anywhere; }
+.lobby-play:active,.lobby-daily:active,.lobby-rank:active,.lobby-modes:active,.lobby-actions button:active,.modes-library-grid button:active,.lobby-size-options button:active { transform:translateY(1px) scale(.985); filter:brightness(.92); }
+
+@supports selector(.app:has(#menu.active)) {
+  body:has(#menu.active) { height:100vh; height:100dvh; overflow:hidden; }
+  .app:has(#menu.active) { height:100vh; height:100dvh; min-height:0; overflow:hidden; display:grid; grid-template-rows:58px minmax(0,1fr); padding-top:max(12px,env(safe-area-inset-top)); padding-bottom:max(12px,env(safe-area-inset-bottom)); }
+  .app:has(#menu.active) .app-bar { min-height:0; height:58px; }
+  #menu.home-lobby.active { height:100%; min-height:0; padding:2px 0 0; grid-template-rows:auto minmax(188px,2.15fr) minmax(94px,1fr) minmax(104px,1.12fr) 46px 28px; gap:clamp(6px,1.1dvh,11px); align-content:stretch; }
+  .home-lobby .lobby-title { display:grid; align-content:center; min-height:31px; padding:0; }
+  .lobby-hero,.lobby-daily,.lobby-rank,.lobby-modes { min-height:0; height:100%; }
+  .lobby-copy { padding-top:clamp(15px,2.6dvh,23px); padding-bottom:clamp(12px,2.2dvh,20px); }
+  .lobby-kicker { margin-bottom:clamp(7px,1.5dvh,15px); }
+  .lobby-copy>p:not(.lobby-kicker) { margin:clamp(7px,1.5dvh,13px) 0; }
+  .lobby-benefits { margin-bottom:clamp(9px,1.8dvh,20px); }
+  .lobby-duo,.lobby-actions { min-height:0; }
+  .lobby-daily,.lobby-rank { padding:clamp(11px,2.2dvh,18px); }
+  .lobby-card-icon,.rank-home-emblem { top:50%; transform:translateY(-50%); }
+  .lobby-value { min-height:0; padding:5px 4px; align-items:center; }
+}
+@media (max-height:740px) and (max-width:767px) {
+  .app:has(#menu.active) { grid-template-rows:48px minmax(0,1fr); padding-top:max(7px,env(safe-area-inset-top)); padding-bottom:max(7px,env(safe-area-inset-bottom)); }
+  .app:has(#menu.active) .app-bar { height:48px; }.home-lobby .lobby-title p { font-size:8px; }.home-lobby .lobby-title h1 { font-size:25px; }
+  #menu.home-lobby.active { grid-template-rows:27px minmax(171px,2.1fr) minmax(84px,.92fr) minmax(96px,1.05fr) 42px 22px; gap:5px; }
+  .lobby-copy { min-width:196px; padding-left:15px; }.lobby-hero h2 { font-size:29px; }.lobby-copy>p:not(.lobby-kicker) { font-size:12px; }.lobby-kicker { padding:5px 8px; font-size:8px; }.lobby-benefits span { font-size:17px; }.lobby-benefits b { font-size:7px; }.lobby-play { min-height:43px; height:43px; font-size:14px; }.lobby-play span { width:32px; }
+  .lobby-daily strong,.lobby-rank strong { font-size:13px; }.lobby-daily small,.lobby-rank small { font-size:9px; }.lobby-daily>b { font-size:7px; }.lobby-card-icon,.rank-home-emblem { width:37px; left:10px; font-size:17px; }.lobby-daily>span:not(.lobby-card-icon),.lobby-rank>span:not(.rank-home-emblem) { margin-left:42px; }.lobby-rank #rankHomePercent { top:8px; right:9px; font-size:8px; }.lobby-rank>b { right:7px; bottom:6px; width:22px; height:22px; font-size:17px; }
+  .lobby-modes { padding:13px; }.lobby-modes strong { font-size:24px; }.lobby-modes small { font-size:11px; }.lobby-modes b { padding:8px 11px; font-size:9px; }.lobby-mini-cards { transform:scale(.66)!important; right:-11px!important; bottom:-3px!important; }.lobby-mode-symbols { font-size:27px; left:13px!important; bottom:9px!important; }.lobby-value span { font-size:7px; }
+}

@@ -66,30 +66,30 @@
         </button>
       </div>
 
-      <button class="rank-home-entry" id="rankHomeEntry" type="button" onclick="openProgression()" aria-label="Open player rank and mastery"><span class="rank-home-emblem" id="rankHomeEmblem" aria-hidden="true">◇</span><span><small>Player rank</small><strong id="rankHomeTitle">Initiate</strong></span><b id="rankHomeProgress">0%</b><i aria-hidden="true">›</i></button>
-      <button class="style-home-entry" id="styleHomeEntry" type="button" onclick="openMyStyle()" aria-label="Open My Style personalization"><span aria-hidden="true">✦</span><strong>My Style</strong><small id="styleHomeLabel">Classic Neon</small><i aria-hidden="true">›</i></button>
-      <button class="time-machine-home-entry" id="timeMachineHomeEntry" type="button" onclick="openTimeMachine()" aria-label="Open Tactical Time Machine" hidden><span aria-hidden="true">◷</span><span><small>Tactical review ready</small><strong>Time Machine</strong></span><i aria-hidden="true">›</i></button>
+      <button class="rank-home-entry" id="legacyRankHomeEntry" type="button" tabindex="-1" aria-hidden="true"><span class="rank-home-emblem" id="legacyRankHomeEmblem" aria-hidden="true">◇</span><span><small>Player rank</small><strong id="legacyRankHomeTitle">Initiate</strong></span><b id="legacyRankHomeProgress">0%</b><i aria-hidden="true">›</i></button>
+      <button class="style-home-entry" id="legacyStyleHomeEntry" type="button" tabindex="-1" aria-hidden="true"><span aria-hidden="true">✦</span><strong>My Style</strong><small id="legacyStyleHomeLabel">Classic Neon</small><i aria-hidden="true">›</i></button>
+      <button class="time-machine-home-entry" id="legacyTimeMachineHomeEntry" type="button" tabindex="-1" aria-hidden="true" hidden><span aria-hidden="true">◷</span><span><small>Tactical review ready</small><strong>Time Machine</strong></span><i aria-hidden="true">›</i></button>
       <div class="home-meta">
         <article class="glass-card mastery-card">
-          <div class="mastery-ring"><span id="homeMastery">0%</span></div>
-          <div><p>Tic-Tac-Toe Mastery</p><strong id="homeGoals">0 / 44 goals</strong><div class="progress-track"><i id="homeMasteryBar"></i></div></div>
+          <div class="mastery-ring"><span id="legacyHomeMastery">0%</span></div>
+          <div><p>Tic-Tac-Toe Mastery</p><strong id="legacyHomeGoals">0 / 44 goals</strong><div class="progress-track"><i id="legacyHomeMasteryBar"></i></div></div>
         </article>
         <article class="glass-card next-card" id="nextChallengeCard">
-          <p>Next Challenge</p><strong id="nextLevelNumber">Level 1</strong><span id="nextLevelName">First Steps</span><small id="nextLevelMeta">Human-like · Very Easy</small>
+          <p>Next Challenge</p><strong id="legacyNextLevelNumber">Level 1</strong><span id="legacyNextLevelName">First Steps</span><small id="legacyNextLevelMeta">Human-like · Very Easy</small>
         </article>
       </div>
-      <p class="home-footnote"><span>Profile ready</span><i></i><span id="homeStats">0 wins · 0 streak</span></p>
+      <p class="home-footnote"><span>Profile ready</span><i></i><span id="legacyHomeStats">0 wins · 0 streak</span></p>
     </template>
 
     <section class="screen home-screen home-lobby active" id="menu" aria-label="GameHub home">
       <div class="lobby-title"><p>PLAY. THINK. WIN.</p><h1>TIC-TAC-<span>TOE</span></h1></div>
       <section class="lobby-hero" aria-labelledby="lobbyAiTitle">
-        <div class="lobby-copy"><p class="lobby-kicker">✦ FEATURED CHALLENGE</p><h2 id="lobbyAiTitle">AI <span>CHALLENGE</span></h2><p>Test your mind. Beat the AI!</p><div class="lobby-benefits" aria-label="AI Challenge benefits"><span>ϟ <b>Smart AI</b></span><span>◎ <b>Multiple Difficulty</b></span><span>♛ <b>Win Rewards</b></span></div><button class="lobby-play" type="button" onclick="openLobbySizeSelect('ai')"><span aria-hidden="true">▶</span> Play Now <b aria-hidden="true">›</b></button></div>
+        <div class="lobby-copy"><p class="lobby-kicker">✦ FEATURED CHALLENGE</p><h2 id="lobbyAiTitle">AI <span>CHALLENGE</span></h2><p>Test your mind. Beat the AI!</p><div class="lobby-benefits" aria-label="AI Challenge benefits"><span>ϟ <b>Smart AI</b></span><span>◎ <b>Multiple Difficulty</b></span><span>♛ <b>Master New Levels</b></span></div><button class="lobby-play" type="button" onclick="openLobbySizeSelect('ai')"><span aria-hidden="true">▶</span> Play Now <b aria-hidden="true">›</b></button></div>
         <div class="lobby-board-art" aria-hidden="true"><div class="lobby-board"><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i><i class="o"></i><i class="x"></i></div><em></em></div>
       </section>
       <div class="lobby-duo">
         <button class="lobby-daily" type="button" onclick="openDailyPuzzleFromHome()"><span class="lobby-card-icon" aria-hidden="true">✦</span><span><strong>Daily Puzzle</strong><small>A new challenge every day</small></span><b>Play Today ›</b></button>
-        <button class="lobby-rank" id="rankHomeEntry" type="button" onclick="openProgression()" aria-label="Open player rank"><span class="rank-home-emblem" id="rankHomeEmblem" aria-hidden="true">♛</span><span><small>Player Rank</small><strong id="rankHomeTitle">Initiate</strong><i><i id="rankHomeProgress"></i></i></span><b>View Details ›</b></button>
+        <button class="lobby-rank" id="rankHomeEntry" type="button" onclick="openProgression()" aria-label="Open player rank"><span class="rank-home-emblem" id="rankHomeEmblem" aria-hidden="true">♛</span><span><small>Player Rank</small><strong id="rankHomeTitle">Initiate</strong><i class="rank-home-track"><i id="rankHomeProgress"></i></i><em id="rankHomePercent">0%</em></span><b aria-hidden="true">›</b></button>
       </div>
       <button class="lobby-modes" type="button" onclick="openModesLibrary()"><span aria-hidden="true" class="lobby-mode-symbols">✕ ○</span><span><strong>Explore <em>Modes</em></strong><small>Discover all exciting game modes!</small><b>6 modes · Browse Modes ›</b></span><span class="lobby-mini-cards" aria-hidden="true"><i>W</i><i>R</i><i>N</i><i>U</i></span></button>
       <div class="lobby-actions"><button type="button" onclick="openLobbySizeSelect('two')">♟ Two Players</button><button id="styleHomeEntry" type="button" onclick="openMyStyle()">✦ My Style <small id="styleHomeLabel">Classic Neon</small></button></div>
