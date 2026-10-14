@@ -12,6 +12,9 @@ let unlockedLevel = playerSave.progression.levels.highestUnlocked;
 let scoreX = playerSave.scores.x;
 let scoreO = playerSave.scores.o;
 let pendingLevelSelection = false;
+// Selected before the shared AI Challenge journey. 3x3 stays on the original
+// perfect-play board; expanded arenas receive the same challenge context.
+let selectedChallengeBoardSize = 3;
 const turnTime = 10;
 const maxLevel = 20;
 const GAME_PHASES = Object.freeze({ HOME: "HOME", LEVEL_SELECT: "LEVEL_SELECT", SYMBOL_SELECT: "SYMBOL_SELECT", PLAYING: "PLAYING", AI_THINKING: "AI_THINKING", RESULT: "RESULT" });
@@ -836,7 +839,8 @@ function startConfiguredMatch(config, featureContext = {}) {
   return { valid: true, value: prepared.value };
 }
 
-function startVsAI() {
+function startVsAI(boardSize = 3) {
+  selectedChallengeBoardSize = [3, 4, 5].includes(Number(boardSize)) ? Number(boardSize) : 3;
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
@@ -846,6 +850,13 @@ function startVsAI() {
   document.getElementById("menu").classList.remove("active");
   hideHubBackBtn();
   showLevels();
+}
+
+function startAIChallengeForSize(size = 3) {
+  const normalizedSize = Number(size);
+  if (![3, 4, 5].includes(normalizedSize) || gameState.active) return false;
+  startVsAI(normalizedSize);
+  return true;
 }
 
 function openReverseMode() {
@@ -920,18 +931,31 @@ function showLevels() {
   const heading = levelBox.querySelector(".screen-heading");
   if (heading) {
     const [eyebrow, title, detail] = heading.children;
-    if (eyebrow) eyebrow.textContent = isReverse ? "Reverse AI" : "AI Challenge";
-    if (title) title.textContent = isReverse ? "Choose your trap" : "Choose your tactic";
-    if (detail) detail.textContent = isReverse ? "A three-in-a-row of your own mark loses." : "Each challenge builds a real Tic-Tac-Toe skill.";
+    if (eyebrow) eyebrow.textContent = isReverse ? "Reverse AI" : `AI Challenge · ${selectedChallengeBoardSize}×${selectedChallengeBoardSize}`;
+    if (title) title.textContent = isReverse ? "Choose your trap" : "Challenge Journey";
+    if (detail) detail.textContent = isReverse ? "A three-in-a-row of your own mark loses." : "Follow the path, master each tactic, and unlock the next opponent.";
   }
 
   levelButtons.innerHTML = "";
   pendingLevelSelection = false;
 
+  if (!isReverse) {
+    const completedCount = metaProgress.levels.completed.length;
+    const nextLevel = Math.max(1, Math.min(maxLevel, unlockedLevel));
+    const nextDefinition = getLevelDefinition(nextLevel);
+    const journey = document.createElement("section");
+    journey.className = "challenge-journey-summary";
+    journey.innerHTML = `<div><span>Your path</span><strong>${completedCount} / ${maxLevel} cleared</strong><small>${selectedChallengeBoardSize}×${selectedChallengeBoardSize} arena · ${selectedChallengeBoardSize === 5 ? "4" : selectedChallengeBoardSize} in a row</small></div><button type="button" class="journey-next"><span>Up next</span><strong>Level ${nextDefinition.number}: ${nextDefinition.name}</strong><small>${nextDefinition.strategicLesson}</small><b>Play ›</b></button>`;
+    journey.querySelector(".journey-next").addEventListener("click", () => selectLevel(nextLevel));
+    levelButtons.appendChild(journey);
+  }
+
   let activeBand = "";
   for (let i = 1; i <= maxLevel; i += 1) {
     const btn = document.createElement("button");
     const definition = getLevelDefinition(i);
+    btn.className = "journey-node";
+    if (definition.tracking || [5, 10, 15, 20].includes(i)) btn.classList.add("milestone");
     if (definition.band !== activeBand) {
       activeBand = definition.band;
       const bandHeading = document.createElement("h3");
@@ -944,6 +968,7 @@ function showLevels() {
     btn.setAttribute("aria-label", `Level ${i}, ${definition.name}, ${definition.band}, ${definition.difficulty}`);
     const completed = metaProgress.levels.completed.includes(i);
     if (completed) btn.classList.add("completed");
+    if (i === unlockedLevel && !completed) btn.classList.add("current");
     btn.querySelector(".level-state").textContent = completed ? "Complete" : "Play";
 
     if (i > unlockedLevel) {
@@ -1001,6 +1026,22 @@ function chooseSymbol(symbol) {
   gameState.aiSymbol = symbol === "X" ? "O" : "X";
   if (!snapshotMatchConfig({ playerSymbol: symbol, aiSymbol: gameState.aiSymbol })) return;
 
+  if (selectedChallengeBoardSize > 3) {
+    const controller = window.TicTacToeBoardSizes;
+    if (!controller?.startChallenge) {
+      showGameToast("Arena unavailable", "The expanded board controller could not be started.", "locked");
+      return;
+    }
+    controller.startChallenge({
+      size: selectedChallengeBoardSize,
+      level: gameState.selectedLevel,
+      playerSymbol: gameState.playerSymbol,
+      aiSymbol: gameState.aiSymbol,
+      personality: gameState.aiPersonality
+    });
+    return;
+  }
+
   hideAllScreens();
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
@@ -1016,6 +1057,54 @@ function chooseSymbol(symbol) {
 
 function backToLevelsFromSymbol() {
   showLevels();
+}
+
+function returnToAIChallengeLevels() {
+  clearSavedMatch();
+  gameState.mode = "ai";
+  applyLevelDefinition(unlockedLevel);
+  snapshotMatchConfig({ mode: "ai", type: "standard" });
+  showLevels();
+}
+
+function recordExpandedChallengeResult({ level, outcome, playerSymbol = "X", aiSymbol = "O", personality = "human" } = {}) {
+  const challengeLevel = Math.max(1, Math.min(maxLevel, Number(level) || 1));
+  const normalizedOutcome = ["win", "loss", "draw"].includes(outcome) ? outcome : "draw";
+  const stats = metaProgress.statistics;
+  const previousUnlocked = metaProgress.levels.highestUnlocked;
+  stats.matches += 1;
+  stats.aiMatches += 1;
+  if (normalizedOutcome === "win") {
+    stats.wins += 1; stats.aiWins += 1;
+    metaProgress.streaks.current += 1;
+    metaProgress.streaks.best = Math.max(metaProgress.streaks.best, metaProgress.streaks.current);
+    const mastery = metaProgress.personalityMastery[META_PERSONALITIES.includes(personality) ? personality : "human"];
+    mastery.victories += 1; mastery.defeated = true;
+    mastery.highestLevelDefeated = Math.max(mastery.highestLevelDefeated, challengeLevel);
+    stats.totalPersonalityVictories += 1;
+    stats.winsByLevel[challengeLevel] = asNonNegativeNumber(stats.winsByLevel[challengeLevel]) + 1;
+    if (!metaProgress.levels.completed.includes(challengeLevel)) {
+      metaProgress.levels.completed.push(challengeLevel);
+      metaProgress.levels.completed.sort((a, b) => a - b);
+      stats.completionsByLevel[challengeLevel] = 1;
+    }
+    metaProgress.levels.highestCompleted = Math.max(metaProgress.levels.highestCompleted, challengeLevel);
+    if (challengeLevel >= unlockedLevel && unlockedLevel < maxLevel) unlockedLevel = challengeLevel + 1;
+    if (playerSymbol === "X") scoreX += 1;
+    else scoreO += 1;
+  } else if (normalizedOutcome === "loss") {
+    stats.losses += 1; stats.aiLosses += 1; metaProgress.streaks.current = 0;
+  } else {
+    stats.draws += 1; stats.aiDraws += 1; metaProgress.streaks.current = 0;
+  }
+  metaProgress.levels.highestUnlocked = Math.max(metaProgress.levels.highestUnlocked, unlockedLevel);
+  gameState.selectedLevel = challengeLevel;
+  evaluateAchievements({ mode: "ai", level: challengeLevel, personality, playerSymbol, aiSymbol, outcome: normalizedOutcome, objectives: createMatchObjectives() });
+  saveMetaProgress();
+  document.getElementById("scoreX").textContent = String(scoreX);
+  document.getElementById("scoreO").textContent = String(scoreO);
+  updateHomeDashboard();
+  return { unlockedLevel, newlyUnlocked: metaProgress.levels.highestUnlocked > previousUnlocked };
 }
 
 function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
@@ -1903,6 +1992,16 @@ featureCore.attachEngine({
 });
 
 showHomeScreen();
+
+// Public, deliberately narrow bridge for the size-aware AI Challenge arena.
+// It reuses the normal level journey and its single central persistence path.
+window.TicTacToeAIChallenge = Object.freeze({
+  startForSize: startAIChallengeForSize,
+  returnToLevels: returnToAIChallengeLevels,
+  recordExpandedResult: recordExpandedChallengeResult,
+  getUnlockedLevel: () => unlockedLevel
+});
+window.startAIChallengeForSize = startAIChallengeForSize;
 
 window.addEventListener("tictactoe:feel", (event) => {
   const { type, ...detail } = event.detail;

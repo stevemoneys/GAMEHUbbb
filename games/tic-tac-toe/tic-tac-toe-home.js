@@ -9,6 +9,7 @@
     if (parentBack) parentBack.hidden = !onlyHome;
   };
   const screens = (id) => { document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === id)); updateParentBack(); };
+  global.refreshTicTacToeChrome = updateParentBack;
   const safeCall = (name) => {
     if (typeof global[name] !== "function") return false;
     global[name]();
@@ -34,7 +35,12 @@
   global.closeLobbySizeSelect = () => screens("menu");
   global.startLobbySizedMatch = (size) => {
     const mode = selectedMode || "ai";
-    if (size === 3 && mode === "ai") return safeCall("startVsAI");
+    // Every AI arena enters the same level and symbol flow.  The old direct
+    // 4x4/5x5 launch skipped the Challenge Journey and caused a mismatched UI.
+    if (mode === "ai") {
+      if (typeof global.startAIChallengeForSize === "function") return global.startAIChallengeForSize(size);
+      return safeCall("startVsAI");
+    }
     if (size === 3 && mode === "two") return safeCall("startTwoPlayer");
     if (global.TicTacToeBoardSizes?.openWith) return global.TicTacToeBoardSizes.openWith(size, mode);
     safeCall("openBoardSizes");
