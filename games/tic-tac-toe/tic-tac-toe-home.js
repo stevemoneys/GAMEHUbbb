@@ -15,6 +15,14 @@
     return true;
   };
 
+  const modePreview = document.querySelector(".lobby-mini-cards");
+  if (modePreview) {
+    modePreview.innerHTML = [
+      ["wild", "&#215;&#9675;", "Wild"], ["reverse", "&#8645;", "Reverse"], ["notakto", "&#215; &#215; &#215;", "Notakto"],
+      ["ultimate", "&#8853;", "Ultimate"], ["mutators", "&#10022;", "Mutators"], ["campaign", "&#9671;", "Campaign"]
+    ].map(([identity, symbol, label]) => `<i class="mode-preview ${identity}"><b>${symbol}</b><small>${label}</small></i>`).join("");
+  }
+
   global.openModesLibrary = () => screens("modesLibrary");
   global.closeModesLibrary = () => screens("menu");
   global.openLobbySizeSelect = (mode) => {
