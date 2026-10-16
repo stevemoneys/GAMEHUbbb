@@ -43,7 +43,9 @@
     const misere = raw.misere === true;
     if (misere) raw = { ...raw, misere: false };
     const cellCount = boardSize ** 2;
-    if (boardSize !== 3 && (raw.gauntletEncounterRule || raw.centerLocked === true || raw.forcedOpening !== undefined || raw.temporalMode || (Array.isArray(raw.blockedCells) && raw.blockedCells.length))) return { valid: false, reason: "Expanded boards use standard AI Challenge rules." };
+    // Default rule fields are retained in every normalized configuration.
+    // Only an active specialty rule may reject an expanded standard match.
+    if (boardSize !== 3 && (raw.gauntletEncounterRule != null || raw.centerLocked === true || raw.forcedOpening != null || raw.temporalMode != null || (Array.isArray(raw.blockedCells) && raw.blockedCells.length))) return { valid: false, reason: "Expanded boards use standard AI Challenge rules." };
     // Existing specialty-mode validation below is deliberately 3x3-only.
     // Preserve it while returning the expanded configuration captured above.
     raw = { ...raw, boardSize: BOARD_SIZE, winLength: 3 };
