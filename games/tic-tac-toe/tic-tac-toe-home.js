@@ -2,6 +2,7 @@
 (function initialiseHomeLobby(global) {
   "use strict";
   let selectedMode = null;
+  let arenaSelectionForChallenge = false;
   const parentBack = document.querySelector(".hub-back-btn");
   const updateParentBack = () => {
     const home = document.getElementById("menu");
@@ -28,13 +29,29 @@
   global.closeModesLibrary = () => screens("menu");
   global.openLobbySizeSelect = (mode) => {
     selectedMode = mode === "two" ? "two" : "ai";
+    arenaSelectionForChallenge = false;
+    if (selectedMode === "ai") return safeCall("startVsAI");
     const lead = document.getElementById("lobbySizeLead");
-    if (lead) lead.textContent = selectedMode === "ai" ? "Choose an arena, then meet your AI opponent." : "Choose an arena for your local match.";
+    if (lead) lead.textContent = "Choose an arena for your local match.";
     screens("lobbySize");
   };
-  global.closeLobbySizeSelect = () => screens("menu");
+  global.openAIChallengeArenaSelect = (level) => {
+    arenaSelectionForChallenge = true;
+    selectedMode = "ai";
+    const lead = document.getElementById("lobbySizeLead");
+    if (lead) lead.textContent = `Level ${level} selected. Choose the board for this challenge.`;
+    screens("lobbySize");
+  };
+  global.closeLobbySizeSelect = () => {
+    if (arenaSelectionForChallenge) { arenaSelectionForChallenge = false; return safeCall("showLevels"); }
+    screens("menu");
+  };
   global.startLobbySizedMatch = (size) => {
     const mode = selectedMode || "ai";
+    if (arenaSelectionForChallenge) {
+      arenaSelectionForChallenge = false;
+      return global.TicTacToeAIChallenge?.startMatchWithSize?.(size);
+    }
     // Every AI arena enters the same level and symbol flow.  The old direct
     // 4x4/5x5 launch skipped the Challenge Journey and caused a mismatched UI.
     if (mode === "ai") {

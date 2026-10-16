@@ -35,8 +35,18 @@
 
   function normalizeRules(raw = {}) {
     if (!isRecord(raw)) return { valid: false, reason: "Rules must be an object." };
+    const boardSize = raw.boardSize === undefined ? BOARD_SIZE : integer(raw.boardSize);
+    if (![3, 4, 5].includes(boardSize)) return { valid: false, reason: "Board size must be 3, 4, or 5." };
+    const requiredWinLength = boardSize === 5 ? 4 : 3;
+    const winLength = raw.winLength === undefined ? requiredWinLength : integer(raw.winLength);
+    if (winLength !== requiredWinLength) return { valid: false, reason: `This board uses ${requiredWinLength} in a row.` };
     const misere = raw.misere === true;
     if (misere) raw = { ...raw, misere: false };
+    const cellCount = boardSize ** 2;
+    if (boardSize !== 3 && (raw.gauntletEncounterRule || raw.centerLocked === true || raw.forcedOpening !== undefined || raw.temporalMode || (Array.isArray(raw.blockedCells) && raw.blockedCells.length))) return { valid: false, reason: "Expanded boards use standard AI Challenge rules." };
+    // Existing specialty-mode validation below is deliberately 3x3-only.
+    // Preserve it while returning the expanded configuration captured above.
+    raw = { ...raw, boardSize: BOARD_SIZE, winLength: 3 };
     if (raw.boardSize !== undefined && raw.boardSize !== BOARD_SIZE) return { valid: false, reason: "Only the 3 × 3 board is supported." };
     if (raw.winLength !== undefined && raw.winLength !== 3) return { valid: false, reason: "Only three-in-a-row is supported." };
     if (raw.misere === true) return { valid: false, reason: "Misère is reserved until the engine supports it end-to-end." };
@@ -44,17 +54,17 @@
     if (gauntletRule !== null && !["sealed_center", "sealed_corners"].includes(gauntletRule)) return { valid: false, reason: "Unknown Gauntlet encounter rule." };
     const blocked = Array.isArray(raw.blockedCells) ? raw.blockedCells : [];
     const cells = [...new Set(blocked.map(integer))];
-    if (cells.length !== blocked.length || cells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= CELL_COUNT)) return { valid: false, reason: "Blocked cells must be unique board indices." };
+    if (cells.length !== blocked.length || cells.some((cell) => !Number.isInteger(cell) || cell < 0 || cell >= cellCount)) return { valid: false, reason: "Blocked cells must be unique board indices." };
     const expectedBlocked = gauntletRule === "sealed_center" ? [4] : gauntletRule === "sealed_corners" ? [0, 2, 6, 8] : null;
     if (expectedBlocked && (cells.length !== expectedBlocked.length || expectedBlocked.some((cell) => !cells.includes(cell)))) return { valid: false, reason: "Gauntlet encounter rule has an invalid sealed-cell pattern." };
     if (cells.length > (gauntletRule ? 4 : 2) || raw.centerLocked === true) return { valid: false, reason: gauntletRule ? "Invalid Gauntlet sealed-cell count." : "Only up to two explicit blocked cells are supported." };
     const forcedOpening = raw.forcedOpening === null || raw.forcedOpening === undefined ? null : integer(raw.forcedOpening);
-    if (forcedOpening !== null && (forcedOpening < 0 || forcedOpening >= CELL_COUNT || cells.includes(forcedOpening))) return { valid: false, reason: "Forced opening must be an available board cell." };
+    if (forcedOpening !== null && (forcedOpening < 0 || forcedOpening >= cellCount || cells.includes(forcedOpening))) return { valid: false, reason: "Forced opening must be an available board cell." };
     const temporalMode = raw.temporalMode === undefined || raw.temporalMode === null ? null : raw.temporalMode;
     if (temporalMode !== null && !["ghost", "quantum"].includes(temporalMode)) return { valid: false, reason: "Unknown temporal encounter rule." };
     const temporalSides = temporalMode ? [...new Set((Array.isArray(raw.temporalSides) ? raw.temporalSides : ["X", "O"]).filter((side) => side === "X" || side === "O"))] : [];
     if (temporalMode && !temporalSides.length) return { valid: false, reason: "Temporal encounter needs an eligible side." };
-    return { valid: true, value: { ...createDefaultRules(), blockedCells: cells, forcedOpening, gauntletEncounterRule: gauntletRule, misere, temporalMode, temporalSides } };
+    return { valid: true, value: { ...createDefaultRules(), boardSize, winLength, blockedCells: cells, forcedOpening, gauntletEncounterRule: gauntletRule, misere, temporalMode, temporalSides } };
   }
 
   function createDefaultMatchConfig() {
@@ -156,7 +166,8 @@
 
   function createReplay({ config, moves, result, createdAt = Date.now() } = {}) {
     const normalized = normalizeMatchConfig(config);
-    if (!normalized.valid || !Array.isArray(moves) || moves.length > CELL_COUNT || moves.some((move) => !Number.isInteger(move) || move < 0 || move >= CELL_COUNT)) return { valid: false, reason: "Replay record is invalid." };
+    const cellCount = normalized.valid ? normalized.value.rules.boardSize ** 2 : 0;
+    if (!normalized.valid || !Array.isArray(moves) || moves.length > cellCount || moves.some((move) => !Number.isInteger(move) || move < 0 || move >= cellCount)) return { valid: false, reason: "Replay record is invalid." };
     return { valid: true, value: { version: 1, id: `${createdAt}-${moves.join("")}`, matchType: normalized.value.type, mode: normalized.value.mode, level: normalized.value.level, personality: normalized.value.personality, playerSymbol: normalized.value.playerSymbol, aiSymbol: normalized.value.aiSymbol, rules: clone(normalized.value.rules), moves: [...moves], result: typeof result === "string" ? result : "draw", completed: true, createdAt } };
   }
 

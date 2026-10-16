@@ -43,6 +43,27 @@ const winPatterns = [
   [0, 4, 8], [2, 4, 6]
 ];
 
+const boardPatternCache = new Map();
+function getBoardRules(rules = gameState.match.config?.rules || {}) {
+  const size = [3, 4, 5].includes(Number(rules.boardSize)) ? Number(rules.boardSize) : 3;
+  const target = Number(rules.winLength) || (size === 5 ? 4 : 3);
+  return { size, target: Math.max(3, Math.min(size, target)) };
+}
+function getWinningPatternsForRules(rules = gameState.match.config?.rules || {}) {
+  const { size, target } = getBoardRules(rules);
+  if (size === 3 && target === 3) return winPatterns;
+  const key = `${size}:${target}`;
+  if (boardPatternCache.has(key)) return boardPatternCache.get(key);
+  const patterns = [], directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  for (let row = 0; row < size; row += 1) for (let col = 0; col < size; col += 1) for (const [rowStep, colStep] of directions) {
+    const endRow = row + (target - 1) * rowStep, endCol = col + (target - 1) * colStep;
+    if (endRow < 0 || endRow >= size || endCol < 0 || endCol >= size) continue;
+    patterns.push(Array.from({ length: target }, (_, step) => (row + step * rowStep) * size + col + step * colStep));
+  }
+  boardPatternCache.set(key, patterns);
+  return patterns;
+}
+
 // Personality describes preferred *kinds* of moves. Strength controls how
 // consistently the AI recognizes and executes those moves. Keeping these
 // concerns separate prevents a high-level opponent from becoming generic.
@@ -624,6 +645,7 @@ function clearSavedMatch() {
 }
 
 function createBoardCell(index, value = "") {
+  const { size } = getBoardRules();
   const cell = document.createElement("button");
   const isBlocked = !value && gameState.match.config?.rules?.blockedCells?.includes(index);
   cell.type = "button";
@@ -638,8 +660,8 @@ function createBoardCell(index, value = "") {
     cell.textContent = "⊘";
   }
   cell.setAttribute("aria-label", isBlocked ? `Cell ${index + 1}: sealed and unavailable` : value ? `Cell ${index + 1}: ${value}` : `Cell ${index + 1}: empty`);
-  cell.setAttribute("aria-rowindex", String(Math.floor(index / 3) + 1));
-  cell.setAttribute("aria-colindex", String((index % 3) + 1));
+  cell.setAttribute("aria-rowindex", String(Math.floor(index / size) + 1));
+  cell.setAttribute("aria-colindex", String((index % size) + 1));
   cell.addEventListener("click", () => makeMove(index));
   window.TicTacToeTemporal?.decorate(cell, index);
   return cell;
@@ -801,7 +823,7 @@ function startTwoPlayer() {
   gameState.playerSymbol = "X";
   gameState.aiSymbol = "O";
   gameState.selectedLevel = 1;
-  snapshotMatchConfig({ mode: "two", type: "standard" });
+  snapshotMatchConfig({ mode: "two", type: "standard", rules: { boardSize: 3, winLength: 3 } });
   hideAllScreens();
   hideHubBackBtn();
   document.getElementById("game").classList.add("active");
@@ -839,12 +861,12 @@ function startConfiguredMatch(config, featureContext = {}) {
   return { valid: true, value: prepared.value };
 }
 
-function startVsAI(boardSize = 3) {
-  selectedChallengeBoardSize = [3, 4, 5].includes(Number(boardSize)) ? Number(boardSize) : 3;
+function startVsAI() {
+  selectedChallengeBoardSize = 3;
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
-  snapshotMatchConfig({ mode: "ai", type: "standard" });
+  snapshotMatchConfig({ mode: "ai", type: "standard", rules: { boardSize: 3, winLength: 3 } });
   updateHomeDashboard();
 
   document.getElementById("menu").classList.remove("active");
@@ -853,9 +875,8 @@ function startVsAI(boardSize = 3) {
 }
 
 function startAIChallengeForSize(size = 3) {
-  const normalizedSize = Number(size);
-  if (![3, 4, 5].includes(normalizedSize) || gameState.active) return false;
-  startVsAI(normalizedSize);
+  if (![3, 4, 5].includes(Number(size)) || gameState.active) return false;
+  startVsAI();
   return true;
 }
 
@@ -1004,11 +1025,29 @@ function selectLevel(lvl) {
   clearSavedMatch();
   applyLevelDefinition(lvl);
   savePlayerData();
+  if (gameState.mode === "ai" && gameState.match.config?.type === "standard") {
+    window.openAIChallengeArenaSelect?.(lvl);
+    return;
+  }
   transitionTo(GAME_PHASES.SYMBOL_SELECT);
 
   document.getElementById("levels").classList.remove("active");
   document.getElementById("symbolSelect").classList.add("active");
   updateSymbolScreen();
+}
+
+function startAIChallengeMatchWithSize(size) {
+  const normalizedSize = Number(size);
+  if (![3, 4, 5].includes(normalizedSize) || gameState.active || gameState.mode !== "ai") return false;
+  selectedChallengeBoardSize = normalizedSize;
+  const winLength = normalizedSize === 5 ? 4 : 3;
+  if (!snapshotMatchConfig({ mode: "ai", type: "standard", rules: { boardSize: normalizedSize, winLength } })) return false;
+  transitionTo(GAME_PHASES.SYMBOL_SELECT);
+  hideAllScreens();
+  hideHubBackBtn();
+  document.getElementById("symbolSelect").classList.add("active");
+  updateSymbolScreen();
+  return true;
 }
 
 function selectAvatar() {
@@ -1025,22 +1064,6 @@ function chooseSymbol(symbol) {
   gameState.playerSymbol = symbol;
   gameState.aiSymbol = symbol === "X" ? "O" : "X";
   if (!snapshotMatchConfig({ playerSymbol: symbol, aiSymbol: gameState.aiSymbol })) return;
-
-  if (selectedChallengeBoardSize > 3) {
-    const controller = window.TicTacToeBoardSizes;
-    if (!controller?.startChallenge) {
-      showGameToast("Arena unavailable", "The expanded board controller could not be started.", "locked");
-      return;
-    }
-    controller.startChallenge({
-      size: selectedChallengeBoardSize,
-      level: gameState.selectedLevel,
-      playerSymbol: gameState.playerSymbol,
-      aiSymbol: gameState.aiSymbol,
-      personality: gameState.aiPersonality
-    });
-    return;
-  }
 
   hideAllScreens();
   hideHubBackBtn();
@@ -1063,7 +1086,7 @@ function returnToAIChallengeLevels() {
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
-  snapshotMatchConfig({ mode: "ai", type: "standard" });
+  snapshotMatchConfig({ mode: "ai", type: "standard", rules: { boardSize: 3, winLength: 3 } });
   showLevels();
 }
 
@@ -1107,7 +1130,7 @@ function recordExpandedChallengeResult({ level, outcome, playerSymbol = "X", aiS
   return { unlockedLevel, newlyUnlocked: metaProgress.levels.highestUnlocked > previousUnlocked };
 }
 
-function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
+function resetBoard(initialBoard, initialPlayer = "X") {
   stopTurnTimer();
   clearPendingAIWork();
   gameState.match.objectives = createMatchObjectives();
@@ -1116,14 +1139,20 @@ function resetBoard(initialBoard = Array(9).fill(""), initialPlayer = "X") {
   // while allowing Gauntlet's Rewind to safely restore one completed pair.
   gameState.match.turnHistory = [];
   beginMatchContext();
-  gameState.board = Array.isArray(initialBoard) && initialBoard.length === 9 ? [...initialBoard] : Array(9).fill("");
+  const { size } = getBoardRules();
+  const cellCount = size ** 2;
+  gameState.board = Array.isArray(initialBoard) && initialBoard.length === cellCount ? [...initialBoard] : Array(cellCount).fill("");
   gameState.wild.selectedMark = null;
   gameState.active = true;
   gameState.currentPlayer = initialPlayer === "O" ? "O" : "X";
   gameState.result.data = null;
   transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
-  document.querySelector(".board-shell")?.classList.remove("has-win", "win-impact", "draw-complete", "reverse-line", "wild-line", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
+  boardEl.style.setProperty("--board-size", String(size));
+  boardEl.style.setProperty("--mark-size", size === 5 ? "clamp(1.45rem, 8.8vw, 3.45rem)" : size === 4 ? "clamp(1.8rem, 10.8vw, 4.25rem)" : "clamp(3.1rem, 15vw, 5.9rem)");
+  boardEl.setAttribute("aria-rowcount", String(size));
+  boardEl.setAttribute("aria-colcount", String(size));
+  document.querySelector(".board-shell")?.classList.remove("has-win", "dynamic-win-line", "win-impact", "draw-complete", "reverse-line", "wild-line", "win-row-top", "win-row-middle", "win-row-bottom", "win-col-left", "win-col-middle", "win-col-right", "win-diagonal-main", "win-diagonal-cross");
 
   setStatus(isWildMatch() ? getWildTurnLabel() : `Player ${gameState.currentPlayer} Turn`);
   timerTextEl.textContent = `${turnTime}s`;
@@ -1453,9 +1482,9 @@ function getLegalMoves(state, rules = gameState.match.config?.rules || {}) {
   }, []);
 }
 
-function getWinner(state) {
-  for (const [a, b, c] of winPatterns) {
-    if (state[a] && state[a] === state[b] && state[b] === state[c]) return state[a];
+function getWinner(state, rules = gameState.match.config?.rules || {}) {
+  for (const pattern of getWinningPatternsForRules(rules)) {
+    if (state[pattern[0]] && pattern.every((index) => state[index] === state[pattern[0]])) return state[pattern[0]];
   }
   return null;
 }
@@ -1465,6 +1494,26 @@ function getWinLineClass(pattern) {
   return lines[pattern.join("")] || "";
 }
 
+function applyDynamicWinLine(boardShell, pattern) {
+  const { size, target } = getBoardRules();
+  boardShell?.classList.remove("dynamic-win-line");
+  if (!boardShell || size === 3 || pattern.length !== target) return;
+  const first = pattern[0], last = pattern.at(-1);
+  const firstRow = Math.floor(first / size), firstCol = first % size;
+  const lastRow = Math.floor(last / size), lastCol = last % size;
+  const centerRow = (firstRow + lastRow) / 2, centerCol = (firstCol + lastCol) / 2;
+  const rowDelta = lastRow - firstRow, colDelta = lastCol - firstCol;
+  const angle = Math.atan2(rowDelta, colDelta) * (180 / Math.PI);
+  const length = (Math.hypot(rowDelta, colDelta) / size) * 100;
+  const centerX = ((centerCol + .5) / size) * 100;
+  boardShell.style.setProperty("--win-line-x", `${centerX}%`);
+  boardShell.style.setProperty("--win-line-left", `${centerX - (length / 2)}%`);
+  boardShell.style.setProperty("--win-line-y", `${((centerRow + .5) / size) * 100}%`);
+  boardShell.style.setProperty("--win-line-length", `${length}%`);
+  boardShell.style.setProperty("--win-line-angle", `${angle}deg`);
+  boardShell.classList.add("dynamic-win-line");
+}
+
 function playOnBoard(state, index, symbol) {
   const next = state.slice();
   next[index] = symbol;
@@ -1472,13 +1521,13 @@ function playOnBoard(state, index, symbol) {
 }
 
 function getWinningMoves(state, symbol, rules) {
-  return getLegalMoves(state, rules).filter((move) => getWinner(playOnBoard(state, move, symbol)) === symbol);
+  return getLegalMoves(state, rules).filter((move) => getWinner(playOnBoard(state, move, symbol), rules) === symbol);
 }
 
 function getForkMoves(state, symbol, rules) {
   return getLegalMoves(state, rules).filter((move) => {
     const next = playOnBoard(state, move, symbol);
-    return getWinner(next) !== symbol && getWinningMoves(next, symbol, rules).length >= 2;
+    return getWinner(next, rules) !== symbol && getWinningMoves(next, symbol, rules).length >= 2;
   });
 }
 
@@ -1624,6 +1673,16 @@ function getReverseAIMove() {
 
 function getAIMoveByLevel() {
   if (gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere) return getReverseAIMove();
+  const activeRules = getBoardRules();
+  if (activeRules.size > 3) {
+    return window.TicTacToeSizeRules?.chooseAIMove?.(gameState.board, {
+      size: activeRules.size,
+      target: activeRules.target,
+      level: gameState.level,
+      aiMark: gameState.aiSymbol,
+      playerMark: gameState.playerSymbol
+    }) ?? null;
+  }
   const profile = getStrengthProfile(gameState.level);
   const personality = AI_PERSONALITIES[gameState.aiPersonality] ? gameState.aiPersonality : "human";
   const legal = getLegalMoves(gameState.board);
@@ -1679,14 +1738,15 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
 
 function checkWin() {
 
-  for (const pattern of winPatterns) {
-    const [a, b, c] = pattern;
+  for (const pattern of getWinningPatternsForRules()) {
+    const [a, b, ...rest] = pattern;
 
-    if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[b] === gameState.board[c]) {
+    if (gameState.board[a] && gameState.board[a] === gameState.board[b] && rest.every((index) => gameState.board[index] === gameState.board[a])) {
       const reverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
-      [a, b, c].forEach((idx) => boardEl.children[idx].classList.add("win", reverse ? "reverse-line" : ""));
+      pattern.forEach((idx) => boardEl.children[idx].classList.add("win", reverse ? "reverse-line" : ""));
       const boardShell = document.querySelector(".board-shell");
       boardShell?.classList.add("has-win", getWinLineClass(pattern));
+      applyDynamicWinLine(boardShell, pattern);
       if (reverse) boardShell?.classList.add("reverse-line");
       restartAnimation(boardShell, "win-impact");
 
@@ -1705,9 +1765,9 @@ function checkWin() {
 }
 
 function checkWildWin(actor) {
-  for (const pattern of winPatterns) {
-    const [a, b, c] = pattern;
-    if (!gameState.board[a] || gameState.board[a] !== gameState.board[b] || gameState.board[b] !== gameState.board[c]) continue;
+  for (const pattern of getWinningPatternsForRules()) {
+    const [a, b, ...rest] = pattern;
+    if (!gameState.board[a] || gameState.board[a] !== gameState.board[b] || !rest.every((index) => gameState.board[index] === gameState.board[a])) continue;
     pattern.forEach((idx) => boardEl.children[idx].classList.add("win", "wild-line"));
     const boardShell = document.querySelector(".board-shell");
     boardShell?.classList.add("has-win", "wild-line", getWinLineClass(pattern));
@@ -1997,11 +2057,13 @@ showHomeScreen();
 // It reuses the normal level journey and its single central persistence path.
 window.TicTacToeAIChallenge = Object.freeze({
   startForSize: startAIChallengeForSize,
+  startMatchWithSize: startAIChallengeMatchWithSize,
   returnToLevels: returnToAIChallengeLevels,
   recordExpandedResult: recordExpandedChallengeResult,
   getUnlockedLevel: () => unlockedLevel
 });
 window.startAIChallengeForSize = startAIChallengeForSize;
+window.startAIChallengeMatchWithSize = startAIChallengeMatchWithSize;
 
 window.addEventListener("tictactoe:feel", (event) => {
   const { type, ...detail } = event.detail;

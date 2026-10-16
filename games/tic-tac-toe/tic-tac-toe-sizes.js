@@ -4,8 +4,8 @@
 
   const $ = (id) => document.getElementById(id);
   const state = { size: 3, target: 3, level: 1, mode: null, board: [], current: "X", playerMark: "X", aiMark: "O", active: false, thinking: false, generation: 0, timeout: null, history: [], context: null, resultRecorded: false };
-  const defaults = { 3: 3, 4: 4, 5: 4 };
-  const validTargets = { 3: [3], 4: [3,4], 5: [4] };
+  const defaults = { 3: 3, 4: 3, 5: 4 };
+  const validTargets = { 3: [3], 4: [3], 5: [4] };
   const other = (mark) => mark === "X" ? "O" : "X";
   const $all = (selector) => [...document.querySelectorAll(selector)];
 
@@ -92,10 +92,10 @@
       choiceWindow: normalized >= 17 ? 1 : normalized >= 13 ? 2 : normalized >= 8 ? 3 : normalized >= 4 ? 4 : 5
     };
   }
-  function awarenessPass(rate, board, salt) {
+  function awarenessPass(rate, board, salt, level = state.level) {
     // Deterministic imperfection: lower levels can make a recognizable,
     // repeatable tactical oversight instead of behaving as random noise.
-    const source = `${board.join("-")}:${state.level}:${salt}`;
+    const source = `${board.join("-")}:${level}:${salt}`;
     let hash = 2166136261;
     for (let i = 0; i < source.length; i += 1) hash = Math.imul(hash ^ source.charCodeAt(i), 16777619);
     return ((hash >>> 0) % 1000) / 1000 < rate;
@@ -104,9 +104,9 @@
     const legal = legalMoves(board); if (!legal.length) return null;
     const profile = challengeProfile(level);
     const wins = winningMoves(board, aiMark, size, target);
-    if (wins.length && awarenessPass(profile.winAwareness, board, "win")) return wins[0];
+    if (wins.length && awarenessPass(profile.winAwareness, board, "win", level)) return wins[0];
     const blocks = winningMoves(board, playerMark, size, target);
-    if (blocks.length && awarenessPass(profile.blockAwareness, board, "block")) return blocks[0];
+    if (blocks.length && awarenessPass(profile.blockAwareness, board, "block", level)) return blocks[0];
     const opponentForks = forkMoves(board, playerMark, size, target);
     const ranked = legal.map((index) => {
       const next = [...board]; next[index] = aiMark;
