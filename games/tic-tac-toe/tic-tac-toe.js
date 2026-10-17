@@ -16,7 +16,7 @@ let pendingLevelSelection = false;
 // perfect-play board; expanded arenas receive the same challenge context.
 let selectedChallengeBoardSize = 3;
 const turnTime = 10;
-const maxLevel = 20;
+const maxLevel = 50;
 const GAME_PHASES = Object.freeze({ HOME: "HOME", LEVEL_SELECT: "LEVEL_SELECT", SYMBOL_SELECT: "SYMBOL_SELECT", PLAYING: "PLAYING", AI_THINKING: "AI_THINKING", RESULT: "RESULT" });
 const gameState = {
   phase: GAME_PHASES.HOME,
@@ -75,16 +75,22 @@ const AI_PERSONALITIES = {
 };
 
 const AI_STRENGTH_BANDS = [
-  { name: "Foundations", first: 1, last: 4, win: [0.65, 0.8], block: [0.4, 0.65], fork: [0.04, 0.18], forkDefense: [0.02, 0.12], choiceWindow: 4, optimal: false },
-  { name: "Awareness", first: 5, last: 8, win: [0.84, 0.96], block: [0.74, 0.91], fork: [0.28, 0.58], forkDefense: [0.2, 0.48], choiceWindow: 3, optimal: false },
-  { name: "Pressure", first: 9, last: 12, win: [0.98, 1], block: [0.94, 0.99], fork: [0.68, 0.88], forkDefense: [0.6, 0.82], choiceWindow: 2, optimal: false },
-  { name: "Tactical Mastery", first: 13, last: 16, win: [1, 1], block: [1, 1], fork: [0.92, 0.99], forkDefense: [0.9, 0.98], choiceWindow: 2, optimal: false },
-  { name: "Proof", first: 17, last: 20, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true }
+  { name: "Learning", first: 1, last: 5, win: [.35, .72], block: [.18, .58], fork: [0, .12], forkDefense: [0, .08], choiceWindow: 5, optimal: false },
+  { name: "Developing", first: 6, last: 10, win: [.78, .98], block: [.62, .92], fork: [.16, .48], forkDefense: [.12, .42], choiceWindow: 4, optimal: false },
+  { name: "Tactical", first: 11, last: 15, win: [1, 1], block: [.94, 1], fork: [.55, .84], forkDefense: [.5, .82], choiceWindow: 3, optimal: false },
+  { name: "Advanced", first: 16, last: 20, win: [1, 1], block: [1, 1], fork: [.86, .98], forkDefense: [.85, .98], choiceWindow: 2, optimal: false },
+  { name: "Expert", first: 21, last: 25, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 2, optimal: false },
+  { name: "Master", first: 26, last: 30, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true },
+  { name: "Elite", first: 31, last: 35, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true },
+  { name: "Champion", first: 36, last: 40, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true },
+  { name: "Grandmaster", first: 41, last: 45, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true },
+  { name: "Legendary", first: 46, last: 49, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true },
+  { name: "Final Challenge", first: 50, last: 50, win: [1, 1], block: [1, 1], fork: [1, 1], forkDefense: [1, 1], choiceWindow: 1, optimal: true }
 ];
 
 // Phase 4's single source of truth: levels define the tactical curriculum;
 // personality defines style and strength defines the AI's capability.
-const LEVELS = [
+const BASE_LEVELS = [
   ["First Steps", "Foundations", "human", "Learn the board, turns, and three-in-a-row.", "Complete a match.", "Win the match.", "First level completion", "Very Easy", false, "completeMatch"],
   ["See the Threat", "Foundations", "human", "Recognize immediate winning threats.", "Check whether either side can win next.", "Win without allowing an obvious immediate threat.", "Level progression recognition", "Easy", false, null],
   ["The Block", "Foundations", "defensive", "Answer immediate threats with defense.", "Prevent an immediate opponent win.", "Win while answering every immediate threat.", "Progression recognition", "Easy", true, "blockThreat"],
@@ -126,6 +132,30 @@ const LEVELS = [
   unlockRequirement: index === 0 ? "Available from the beginning" : `Complete Level ${index}`
 }));
 
+const ADVANCED_LEVEL_SEEDS = [
+  ["Calculated Pressure", "Expert", "aggressive"], ["Quiet Defense", "Expert", "defensive"], ["Fork Geometry", "Expert", "trickster"], ["No Free Tempo", "Expert", "human"], ["Expert Line", "Expert", "defensive"],
+  ["Master Sequence", "Master", "aggressive"], ["The Patient Move", "Master", "defensive"], ["Hidden Fork", "Master", "trickster"], ["Precision Center", "Master", "human"], ["Master Defense", "Master", "defensive"],
+  ["Elite Tempo", "Elite", "aggressive"], ["Elite Read", "Elite", "trickster"], ["Counterplay", "Elite", "human"], ["No Weak Square", "Elite", "defensive"], ["Elite Conversion", "Elite", "aggressive"],
+  ["Champion's Line", "Champion", "human"], ["Champion Pressure", "Champion", "aggressive"], ["Champion Shield", "Champion", "defensive"], ["Champion Trap", "Champion", "trickster"], ["Champion Proof", "Champion", "human"],
+  ["Grandmaster Tempo", "Grandmaster", "aggressive"], ["Grandmaster Defense", "Grandmaster", "defensive"], ["Grandmaster Vision", "Grandmaster", "trickster"], ["Grandmaster Balance", "Grandmaster", "human"], ["Grandmaster Trial", "Grandmaster", "defensive"],
+  ["Legendary Opening", "Legendary", "aggressive"], ["Legendary Wall", "Legendary", "defensive"], ["Legendary Bait", "Legendary", "trickster"], ["Legendary Proof", "Legendary", "human"], ["Final Challenge", "Final Challenge", "trickster"]
+];
+
+const LEVELS = BASE_LEVELS.concat(ADVANCED_LEVEL_SEEDS.map(([name, band, personality], index) => {
+  const number = index + BASE_LEVELS.length + 1;
+  return {
+    number, name, band, personality, strength: number,
+    strategicLesson: number === 50 ? "Every threat matters. Play the strongest honest line you can find." : "Read threats, protect your position, and convert only real tactical advantages.",
+    objective: number === 50 ? "Achieve the strongest available result." : "Find the strongest legal tactical response.",
+    bonusObjective: "Win without allowing an immediate tactical answer.",
+    unlockRequirement: `Complete Level ${number - 1}`,
+    reward: number === 50 ? "Final Challenge completion" : `${band} mastery recognition`,
+    difficulty: band,
+    replayableForMastery: true,
+    tracking: number >= 26 ? "bestResult" : null
+  };
+}));
+
 const CORE_TACTICAL_LEVELS = [3, 6, 7, 8, 10, 11, 12];
 const META_PERSONALITIES = ["human", "aggressive", "defensive", "trickster"];
 
@@ -133,7 +163,7 @@ const ACHIEVEMENTS = [
   { id: "first-victory", name: "First Victory", description: "Win your first AI Challenge.", category: "Foundations", active: true, meets: (meta) => meta.statistics.aiWins >= 1 },
   { id: "getting-started", name: "Getting Started", description: "Complete the first 5 AI levels.", category: "Foundations", active: true, meets: (meta) => meta.levels.completed.length >= 5 },
   { id: "halfway-there", name: "Halfway There", description: "Complete 10 AI levels.", category: "Foundations", active: true, meets: (meta) => meta.levels.completed.length >= 10 },
-  { id: "the-long-game", name: "The Long Game", description: "Complete all 20 AI levels.", category: "Foundations", active: true, meets: (meta) => meta.levels.completed.length === maxLevel },
+  { id: "the-long-game", name: "The Long Game", description: "Complete all 50 AI levels.", category: "Foundations", active: true, meets: (meta) => meta.levels.completed.length === maxLevel },
   { id: "watch-the-threat", name: "Watch the Threat", description: "Block an immediate winning threat.", category: "Tactical Skill", active: true, meets: (_, result) => Boolean(result?.objectives?.blockedThreat) },
   { id: "double-trouble", name: "Double Trouble", description: "Create a genuine fork.", category: "Tactical Skill", active: true, meets: (_, result) => Boolean(result?.objectives?.createdFork) },
   { id: "fork-breaker", name: "Fork Breaker", description: "Prevent an AI fork opportunity.", category: "Tactical Skill", active: true, meets: (_, result) => Boolean(result?.objectives?.preventedFork) },
@@ -151,7 +181,7 @@ const ACHIEVEMENTS = [
   { id: "unshaken", name: "Unshaken", description: "Reach a 5-match win streak.", category: "Consistency", active: true, meets: (meta) => meta.streaks.best >= 5 },
   { id: "complete-player", name: "Complete Player", description: "Defeat all four AI personalities.", category: "Consistency", active: true, meets: (meta) => META_PERSONALITIES.every((personality) => meta.personalityMastery[personality].defeated) },
   { id: "tactical-student", name: "Tactical Student", description: "Complete the core tactical-learning challenges.", category: "Consistency", active: true, meets: (meta) => CORE_TACTICAL_LEVELS.every((levelNumber) => meta.levels.completed.includes(levelNumber)) },
-  { id: "master-tactician", name: "Master Tactician", description: "Complete Level 20.", category: "Consistency", active: true, meets: (meta) => meta.levels.completed.includes(20) }
+  { id: "master-tactician", name: "Master Tactician", description: "Complete the Final Challenge.", category: "Consistency", active: true, meets: (meta) => meta.levels.completed.includes(50) }
 ];
 
 function asNonNegativeNumber(value) {
@@ -445,6 +475,13 @@ function finalizeMatch(outcome) {
       if (permissions.progression) metaProgress.levels.highestCompleted = Math.max(metaProgress.levels.highestCompleted, context.level);
     }
     if (permissions.progression) metaProgress.levels.highestUnlocked = Math.max(metaProgress.levels.highestUnlocked, unlockedLevel);
+    if (gameState.match.config?.type === "standard") {
+      const challengeStats = stats.aiChallenge || (stats.aiChallenge = { wins: 0, losses: 0, draws: 0, matches: 0 });
+      challengeStats.matches += 1;
+      if (outcome === "win") challengeStats.wins += 1;
+      else if (outcome === "loss") challengeStats.losses += 1;
+      else if (outcome === "draw") challengeStats.draws += 1;
+    }
   }
 
   if (permissions.achievements) evaluateAchievements(result);
@@ -578,15 +615,6 @@ function scheduleAIMove(delay = 350) {
     gameState.ai.timeout = undefined;
     if (generation !== gameState.match.generation || gameState.phase !== GAME_PHASES.AI_THINKING) return;
     aiMove();
-  }, delay);
-}
-
-function scheduleResult(won, isDraw, delay) {
-  clearTimeout(gameState.result.timeout);
-  const generation = gameState.match.generation;
-  gameState.result.timeout = setTimeout(() => {
-    gameState.result.timeout = undefined;
-    if (generation === gameState.match.generation && gameState.phase === GAME_PHASES.RESULT) showResult(won, isDraw);
   }, delay);
 }
 
@@ -729,7 +757,7 @@ function updateHomeDashboard() {
   const bar = document.getElementById("homeMasteryBar");
   const nextLevel = getLevelDefinition(Math.min(maxLevel, unlockedLevel));
   if (mastery) mastery.textContent = `${summary.mastery}%`;
-  if (goals) goals.textContent = `${summary.levelsCompleted + summary.personalitiesDefeated + summary.achievementsCompleted} / 44 goals`;
+  if (goals) goals.textContent = `${summary.levelsCompleted + summary.personalitiesDefeated + summary.achievementsCompleted} / ${maxLevel + META_PERSONALITIES.length + ACHIEVEMENTS.filter((achievement) => achievement.active).length} goals`;
   if (bar) {
     bar.style.width = `${summary.mastery}%`;
     bar.closest(".mastery-card")?.querySelector(".mastery-ring")?.style.setProperty("--p", `${summary.mastery}%`);
@@ -754,6 +782,8 @@ function updateMatchPresentation() {
   const isAI = gameState.mode === "ai";
   const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
   const isWild = isWildMatch();
+  const isStandardAIChallenge = isAI && gameState.match.config?.type === "standard";
+  const boardRules = getBoardRules();
   const personality = getPersonalityPresentation(isAI ? gameState.aiPersonality : "human");
   const opponentCard = document.getElementById("opponentCard");
   opponentCard.style.setProperty("--personality", personality.color);
@@ -777,6 +807,16 @@ function updateMatchPresentation() {
   document.getElementById("gameLevelNumber").textContent = isReverse ? "Reverse" : isAI ? `Level ${definition.number}` : "Classic";
   document.getElementById("gameLesson").textContent = isReverse ? "Complete a line, lose" : isAI ? definition.name : "Three in a row wins";
   document.getElementById("game").classList.toggle("wild-match", isWild);
+  document.getElementById("game").classList.toggle("standard-ai-challenge", isStandardAIChallenge);
+  const challengeHeader = document.getElementById("challengeGameHeader");
+  const challengeControls = document.getElementById("challengeControls");
+  if (challengeHeader) challengeHeader.hidden = !isStandardAIChallenge;
+  if (challengeControls) challengeControls.hidden = !isStandardAIChallenge;
+  if (isStandardAIChallenge) {
+    document.getElementById("challengeGameMark").textContent = gameState.playerSymbol;
+    document.getElementById("challengeGameTitle").textContent = `Level ${definition.number} · ${definition.name}`;
+    document.getElementById("challengeSizeBadge").textContent = `${boardRules.size}×${boardRules.size} · ${boardRules.target} in a row`;
+  }
   if (isWild) {
     document.getElementById("opponentKicker").textContent = "Wild · Choose Your Mark";
     document.getElementById("opponentName").textContent = isAI ? "Wild AI" : "Two Players";
@@ -791,6 +831,36 @@ function updateMatchPresentation() {
   updateWildMarkSelector();
   updateTurnPresentation();
   updateMatchReturnControls();
+}
+
+function backToChallengeLevels() {
+  if (gameState.mode === "ai" && gameState.match.config?.type === "standard") {
+    stopTurnTimer();
+    clearPendingAIWork();
+    document.getElementById("resultModal").classList.remove("active");
+    document.getElementById("challengeStatsModal").hidden = true;
+    returnToAIChallengeLevels();
+    return;
+  }
+  backToMenu();
+}
+
+function openChallengeStats() {
+  const modal = document.getElementById("challengeStatsModal");
+  const grid = document.getElementById("challengeStatsGrid");
+  if (!modal || !grid) return;
+  const stats = metaProgress.statistics.aiChallenge || { wins: 0, losses: 0, draws: 0, matches: 0 };
+  const rate = stats.matches ? Math.round((stats.wins / stats.matches) * 100) : 0;
+  const rows = [["Wins", stats.wins], ["Losses", stats.losses], ["Draws", stats.draws], ["Matches", stats.matches], ["Win rate", `${rate}%`], ["Best streak", metaProgress.streaks.best]];
+  grid.innerHTML = rows.map(([label, value]) => `<span><small>${label}</small><strong>${value}</strong></span>`).join("");
+  modal.hidden = false;
+  modal.classList.add("active");
+}
+
+function closeChallengeStats() {
+  const modal = document.getElementById("challengeStatsModal");
+  modal?.classList.remove("active");
+  if (modal) modal.hidden = true;
 }
 
 function updateTurnPresentation() {
@@ -863,6 +933,9 @@ function startConfiguredMatch(config, featureContext = {}) {
 
 function startVsAI() {
   selectedChallengeBoardSize = 3;
+  stopTurnTimer();
+  clearPendingAIWork();
+  gameState.active = false;
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
@@ -1083,6 +1156,10 @@ function backToLevelsFromSymbol() {
 }
 
 function returnToAIChallengeLevels() {
+  stopTurnTimer();
+  clearPendingAIWork();
+  gameState.active = false;
+  gameState.result.data = null;
   clearSavedMatch();
   gameState.mode = "ai";
   applyLevelDefinition(unlockedLevel);
@@ -1094,10 +1171,13 @@ function recordExpandedChallengeResult({ level, outcome, playerSymbol = "X", aiS
   const challengeLevel = Math.max(1, Math.min(maxLevel, Number(level) || 1));
   const normalizedOutcome = ["win", "loss", "draw"].includes(outcome) ? outcome : "draw";
   const stats = metaProgress.statistics;
+  const challengeStats = stats.aiChallenge || (stats.aiChallenge = { wins: 0, losses: 0, draws: 0, matches: 0 });
   const previousUnlocked = metaProgress.levels.highestUnlocked;
   stats.matches += 1;
   stats.aiMatches += 1;
+  challengeStats.matches += 1;
   if (normalizedOutcome === "win") {
+    challengeStats.wins += 1;
     stats.wins += 1; stats.aiWins += 1;
     metaProgress.streaks.current += 1;
     metaProgress.streaks.best = Math.max(metaProgress.streaks.best, metaProgress.streaks.current);
@@ -1116,8 +1196,10 @@ function recordExpandedChallengeResult({ level, outcome, playerSymbol = "X", aiS
     if (playerSymbol === "X") scoreX += 1;
     else scoreO += 1;
   } else if (normalizedOutcome === "loss") {
+    challengeStats.losses += 1;
     stats.losses += 1; stats.aiLosses += 1; metaProgress.streaks.current = 0;
   } else {
+    challengeStats.draws += 1;
     stats.draws += 1; stats.aiDraws += 1; metaProgress.streaks.current = 0;
   }
   metaProgress.levels.highestUnlocked = Math.max(metaProgress.levels.highestUnlocked, unlockedLevel);
@@ -1732,7 +1814,11 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
 
   finalizeMatch(outcome);
   window.dispatchEvent(new CustomEvent("tictactoe:match-complete", { detail: { outcome, isDraw, winner, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], durationMs: Date.now() - (gameState.match.context?.startedAt || Date.now()), generation: gameState.match.generation } }));
-  scheduleResult(outcome === "win", isDraw, isDraw ? 500 : 600);
+  // The previous deferred-only presentation could be cancelled by its own
+  // lifecycle invalidation, leaving a finished board without a result. The
+  // result is state, not an animation: render it immediately and let CSS own
+  // any optional motion.
+  showResult(outcome === "win", isDraw);
   return true;
 }
 
@@ -1802,15 +1888,6 @@ function updateScore(winner = gameState.currentPlayer) {
     }
   }
   if (gameState.match.config.permissions.statistics) savePlayerData();
-}
-
-function resetScores() {
-  scoreX = 0;
-  scoreO = 0;
-
-  document.getElementById("scoreX").textContent = "0";
-  document.getElementById("scoreO").textContent = "0";
-  savePlayerData();
 }
 
 function resetPlayerData() {
@@ -1889,6 +1966,7 @@ function showResult(won, isDraw = false) {
   const nextBtn = document.getElementById("nextBtn");
   const kicker = document.getElementById("resultKicker");
   const detail = document.getElementById("resultDetail");
+  const summary = document.getElementById("resultSummary");
   const isCompetitionMatch = !["standard", "reverse", "wild"].includes(gameState.match.config?.type);
   const playAgainButton = modal.querySelector('button[onclick="restartGame()"]');
   const isReverse = gameState.match.config?.type === "reverse" && gameState.match.config.rules?.misere;
@@ -1899,6 +1977,20 @@ function showResult(won, isDraw = false) {
   modal.classList.remove("victory", "defeat", "draw", "reverse-result", "wild-result");
   modal.querySelectorAll(".competition-result-action").forEach((button) => button.remove());
   if (playAgainButton) playAgainButton.style.display = isCompetitionMatch ? "none" : "";
+  if (summary) {
+    const rules = getBoardRules();
+    summary.textContent = gameState.mode === "ai" && gameState.match.config?.type === "standard"
+      ? `Level ${gameState.selectedLevel} · ${rules.size}×${rules.size} · ${gameState.match.moves.length} moves`
+      : `${gameState.match.moves.length} moves played`;
+  }
+  const resultHomeButton = modal.querySelector('button[onclick="goHome()"]');
+  if (resultHomeButton && gameState.mode === "ai" && gameState.match.config?.type === "standard") {
+    resultHomeButton.textContent = "Back to Levels";
+    resultHomeButton.onclick = backToChallengeLevels;
+  } else if (resultHomeButton) {
+    resultHomeButton.textContent = "Home";
+    resultHomeButton.onclick = goHome;
+  }
 
   if (gameState.result.data?.outcome === "timeout") {
     modal.classList.add("defeat");
@@ -2016,7 +2108,9 @@ window.selectLevel = selectLevel;
 window.selectAvatar = selectAvatar;
 window.chooseSymbol = chooseSymbol;
 window.backToLevelsFromSymbol = backToLevelsFromSymbol;
-window.resetScores = resetScores;
+window.backToChallengeLevels = backToChallengeLevels;
+window.openChallengeStats = openChallengeStats;
+window.closeChallengeStats = closeChallengeStats;
 window.resetPlayerData = resetPlayerData;
 window.restartGame = restartGame;
 window.backToMenu = backToMenu;

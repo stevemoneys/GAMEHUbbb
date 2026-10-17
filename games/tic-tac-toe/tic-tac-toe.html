@@ -240,6 +240,12 @@
 
     <section class="screen game-screen" id="game" aria-label="Game board">
       <section class="gauntlet-hud" id="gauntletHud" aria-label="Gauntlet progress" hidden></section>
+      <header class="challenge-game-header" id="challengeGameHeader" hidden>
+        <button class="challenge-back" type="button" onclick="backToChallengeLevels()" aria-label="Back to AI Challenge levels">Back</button>
+        <span class="challenge-game-mark" id="challengeGameMark" aria-hidden="true">X</span>
+        <div><p>AI Challenge</p><strong id="challengeGameTitle">Level 1 · First Steps</strong></div>
+        <span class="challenge-size-badge" id="challengeSizeBadge">3×3 · 3 in a row</span>
+      </header>
       <section class="opponent-card glass-card" id="opponentCard">
         <span class="opponent-emblem" id="opponentEmblem" aria-hidden="true">◉</span>
         <div><p id="opponentKicker">Tactical Opponent</p><h2 id="opponentName">Human-like</h2><span id="opponentLesson">Level 1 · First Steps</span></div>
@@ -262,9 +268,13 @@
       </div>
 
       <div class="score score-strip" aria-label="Score"><span>X <strong id="scoreX">0</strong></span><span>O <strong id="scoreO">0</strong></span></div>
-      <div class="controls"><button class="control-button" onclick="resetScores()">Scores</button><button class="control-button primary-control" onclick="restartGame()">↻ Reset</button><button class="control-button" onclick="backToMenu()">⌂ Menu</button></div>
+      <div class="controls"><button class="control-button" type="button" onclick="openChallengeStats()">Stats</button><button class="control-button primary-control" onclick="restartGame()">↻ Reset</button><button class="control-button" onclick="backToMenu()">⌂ Menu</button></div>
+      <div class="challenge-controls" id="challengeControls" hidden>
+        <button class="control-button" type="button" onclick="openChallengeStats()">Stats</button>
+        <button class="control-button primary-control" type="button" onclick="restartGame()">New Match</button>
+        <button class="control-button" type="button" onclick="backToChallengeLevels()">Levels</button>
+      </div>
     </section>
-
     <section class="screen replay-screen" id="timeMachine" aria-label="Tactical Time Machine" hidden>
       <header class="replay-header"><button class="icon-button" type="button" onclick="closeTimeMachine()" aria-label="Return">‹</button><div><p class="eyebrow">Recorded history</p><h2>Tactical Time Machine</h2></div></header>
       <div id="replayContent"></div>
@@ -278,11 +288,16 @@
       <p class="eyebrow" id="resultKicker">Match Complete</p>
       <h2 id="resultTitle"></h2>
       <p id="resultDetail">Choose your next move.</p>
+      <p class="result-summary" id="resultSummary"></p>
       <div class="modal-buttons"><button class="primary-control" onclick="restartGame()">Play Again</button><button class="control-button" onclick="goHome()">Home</button><button class="control-button" id="nextBtn" onclick="nextLevel()">Next Level ›</button></div>
     </div>
   </div>
 
   <div class="game-toast" id="gameToast" role="status" aria-live="polite"><span id="toastIcon" aria-hidden="true">✦</span><div><strong id="toastTitle">Progress updated</strong><small id="toastDetail"></small></div></div>
+
+  <div class="modal stats-modal" id="challengeStatsModal" role="dialog" aria-modal="true" aria-labelledby="challengeStatsTitle" hidden>
+    <div class="modal-card"><p class="eyebrow">AI Challenge</p><h2 id="challengeStatsTitle">Your record</h2><div class="challenge-stats-grid" id="challengeStatsGrid"></div><button class="primary-control" type="button" onclick="closeChallengeStats()">Done</button></div>
+  </div>
 
   <aside class="audio-panel" id="audioPanel" aria-label="Audio settings" hidden>
     <header><strong>Audio</strong><button id="closeAudioPanel" type="button" aria-label="Close audio settings">×</button></header>

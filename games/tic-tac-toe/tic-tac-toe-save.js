@@ -4,8 +4,10 @@
   "use strict";
 
   const STORAGE_KEY = "tictactoe_player_save_v1";
-  const CURRENT_VERSION = 5;
-  const MAX_LEVEL = 20;
+  const CURRENT_VERSION = 6;
+  // AI Challenge now has one continuous fifty-level curriculum. Keeping the
+  // limit here makes migration, progression, and statistics agree.
+  const MAX_LEVEL = 50;
   const PERSONALITIES = ["human", "aggressive", "defensive", "trickster"];
   const ACHIEVEMENT_IDS = new Set([
     "first-victory", "getting-started", "halfway-there", "the-long-game", "watch-the-threat", "double-trouble", "fork-breaker", "think-ahead", "pressure-player", "calm-under-pressure", "wall-builder", "no-easy-opening", "draw-master", "read-the-human", "break-the-attack", "hold-the-line", "see-through-the-trick", "winning-habit", "unshaken", "complete-player", "tactical-student", "master-tactician"
@@ -68,7 +70,7 @@
         milestones: {},
         identity: { milestones: {}, rank: 0, rankNotified: 0, updatedAt: now }
       },
-      statistics: { matches: 0, wins: 0, losses: 0, draws: 0, aiMatches: 0, twoPlayerMatches: 0, aiWins: 0, aiLosses: 0, aiDraws: 0, totalPersonalityVictories: 0, winsByLevel: {}, completionsByLevel: {} },
+      statistics: { matches: 0, wins: 0, losses: 0, draws: 0, aiMatches: 0, twoPlayerMatches: 0, aiWins: 0, aiLosses: 0, aiDraws: 0, totalPersonalityVictories: 0, winsByLevel: {}, completionsByLevel: {}, aiChallenge: { wins: 0, losses: 0, draws: 0, matches: 0 } },
       achievements: {},
       settings: { selectedTheme: "default", selectedAIPersonality: "human", preferences: {}, audio: { ...DEFAULT_AUDIO } },
       cosmetics: { unlocked: [], selected: {} },
@@ -158,10 +160,17 @@
       };
     });
     const sourceStats = isRecord(source.statistics) ? source.statistics : {};
-    const statistics = Object.fromEntries(Object.keys(defaults.statistics).map((key) => [
+    const statistics = Object.fromEntries(Object.keys(defaults.statistics).filter((key) => key !== "aiChallenge").map((key) => [
       key,
       key === "winsByLevel" || key === "completionsByLevel" ? normalizeLevelMap(sourceStats[key]) : count(sourceStats[key])
     ]));
+    const sourceChallengeStats = isRecord(sourceStats.aiChallenge) ? sourceStats.aiChallenge : {};
+    statistics.aiChallenge = {
+      wins: count(sourceChallengeStats.wins),
+      losses: count(sourceChallengeStats.losses),
+      draws: count(sourceChallengeStats.draws),
+      matches: Math.max(count(sourceChallengeStats.matches), count(sourceChallengeStats.wins) + count(sourceChallengeStats.losses) + count(sourceChallengeStats.draws))
+    };
     statistics.matches = Math.max(statistics.matches, statistics.wins + statistics.losses + statistics.draws, statistics.aiMatches + statistics.twoPlayerMatches);
     statistics.aiMatches = Math.max(statistics.aiMatches, statistics.aiWins + statistics.aiLosses + statistics.aiDraws);
     const achievements = Object.entries(isRecord(source.achievements) ? source.achievements : {}).reduce((result, [id, value]) => {

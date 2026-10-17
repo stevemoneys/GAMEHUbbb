@@ -30,7 +30,7 @@
   function winningMoves(board, mark, size = state.size, target = state.target) { return legalMoves(board).filter((index) => { const next = [...board]; next[index] = mark; return Boolean(winningLine(next, mark, size, target)); }); }
   function hideResult() { const result = $("sizesResult"); result.hidden = true; result.classList.remove("active", "victory", "defeat", "draw"); }
   function replaySnapshot(lastMove = null, marker = null) { return { turn: state.history.length, board: [...state.board], size: state.size, target: state.target, lastMove, mark: lastMove === null ? null : state.current, nextPlayer: other(state.current), marker }; }
-  function maxUnlockedLevel() { const save = global.TicTacToeSave?.get?.(); return Math.max(1, Math.min(20, Number(save?.progression?.levels?.highestUnlocked) || 1)); }
+  function maxUnlockedLevel() { const save = global.TicTacToeSave?.get?.(); return Math.max(1, Math.min(50, Number(save?.progression?.levels?.highestUnlocked) || 1)); }
 
   function open() {
     clearPending(); state.active = false; state.context = null; state.resultRecorded = false; $("sizeboards").classList.remove("challenge-arena"); state.level = Math.min(state.level, maxUnlockedLevel()); $("sizesPlay").hidden = true; $("sizeChoices").hidden = false; $("sizeWinTargets").hidden = state.size === 3; $("sizeAiLevel").hidden = false; $("sizesActions").hidden = false; hideResult(); syncSetup(); screens("sizeboards");
@@ -81,15 +81,15 @@
     });
   }
   function challengeProfile(level) {
-    const normalized = Math.max(1, Math.min(20, Number(level) || 1));
-    const progress = (normalized - 1) / 19;
+    const normalized = Math.max(1, Math.min(50, Number(level) || 1));
+    const progress = (normalized - 1) / 49;
     return {
       winAwareness: Math.min(1, 0.48 + progress * 0.52),
       blockAwareness: Math.min(1, 0.25 + progress * 0.75),
-      forkAwareness: Math.max(0, (normalized - 3) / 13),
-      forkDefense: Math.max(0, (normalized - 5) / 12),
+      forkAwareness: Math.min(1, Math.max(0, (normalized - 5) / 17)),
+      forkDefense: Math.min(1, Math.max(0, (normalized - 7) / 17)),
       replySafety: Math.max(0.2, progress),
-      choiceWindow: normalized >= 17 ? 1 : normalized >= 13 ? 2 : normalized >= 8 ? 3 : normalized >= 4 ? 4 : 5
+      choiceWindow: normalized >= 26 ? 1 : normalized >= 16 ? 2 : normalized >= 10 ? 3 : normalized >= 5 ? 4 : 5
     };
   }
   function awarenessPass(rate, board, salt, level = state.level) {
