@@ -725,11 +725,13 @@ function advanceAfterTemporalTurn(owner) {
   gameState.currentPlayer = owner === "X" ? "O" : "X"; transitionTo(GAME_PHASES.PLAYING); setStatus(`Player ${gameState.currentPlayer} Turn`); refreshTemporalPresentation(); startTurnTimer(); if (gameState.mode === "ai" && gameState.currentPlayer === gameState.aiSymbol) scheduleAIMove();
 }
 function completeTemporalAction(result) {
+  if (!gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked) return false;
   gameState.match.turnHistory.push({ kind: result.type === "ghost" ? "ghost" : "quantum-init", owner: result.owner, ...(Number.isInteger(result.index) ? { index: result.index } : { cells: result.cells }) });
   window.dispatchEvent(new CustomEvent("tictactoe:temporal-action", { detail: { type: result.type, owner: result.owner, config: gameState.match.config, context: { ...gameState.match.context }, generation: gameState.match.generation } }));
   refreshTemporalPresentation(); emitGameFeelEvent("selection", { temporal: result.type }); advanceAfterTemporalTurn(result.owner);
 }
 function resolveTemporalAction(index) {
+  if (!gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked) return false;
   const temporal = temporalController(), resolved = temporal?.resolve(gameState.currentPlayer, index, gameState.board); if (!resolved?.valid) return false;
   const symbol = resolved.owner; gameState.board[index] = symbol; gameState.match.turnHistory.push({ kind: "quantum-resolution", index, symbol, owner: symbol });
   const cell = boardEl.children[index]; cell.textContent = symbol; cell.classList.remove("temporal-quantum", "temporal-quantum-choice"); cell.classList.add(symbol); cell.setAttribute("aria-label", `Cell ${index + 1}: ${symbol}`); emitGameFeelEvent("piece_place", { symbol, actor: symbol === gameState.playerSymbol ? "player" : "ai" }); refreshTemporalPresentation();
@@ -1232,6 +1234,8 @@ function resetBoard(initialBoard, initialPlayer = "X") {
   gameState.result.data = null;
   transitionTo(GAME_PHASES.PLAYING);
   boardEl.innerHTML = "";
+  boardEl.classList.remove("result-locked");
+  boardEl.setAttribute("aria-disabled", "false");
   boardEl.style.setProperty("--board-size", String(size));
   boardEl.style.setProperty("--mark-size", size === 5 ? "clamp(1.45rem, 8.8vw, 3.45rem)" : size === 4 ? "clamp(1.8rem, 10.8vw, 4.25rem)" : "clamp(3.1rem, 15vw, 5.9rem)");
   boardEl.setAttribute("aria-rowcount", String(size));
@@ -1250,6 +1254,9 @@ function resetBoard(initialBoard, initialPlayer = "X") {
 }
 
 function makeMove(index) {
+  // This guard is intentionally first: no normal, Wild, Ghost, or Quantum
+  // interaction may change a board after the authoritative result state.
+  if (!gameState.active || gameState.phase !== GAME_PHASES.PLAYING || gameState.inputLocked) return;
   if (isWildMatch()) { makeWildMove(index); return; }
   const rules = gameState.match.config?.rules || {};
   const temporal = temporalController();
@@ -1488,6 +1495,7 @@ function playWildMoveFromAI(index, mark) {
 }
 
 function playMoveFromAI(index) {
+  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.inputLocked) return;
   if (gameState.board[index]) {
     const fallback = gameState.board.findIndex((v) => v === "");
     if (fallback === -1) return;
@@ -1500,7 +1508,7 @@ function playMoveFromAI(index) {
 
 function makeMoveFromSymbol(index, symbol) {
   const temporal = temporalController();
-  if (!gameState.active || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || temporal?.reserved(index) || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
+  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.inputLocked || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || temporal?.reserved(index) || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
 
   gameState.board[index] = symbol;
   gameState.match.moves.push(index);
@@ -1802,6 +1810,7 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
   gameState.ai.thinking = false;
   gameState.result.data = { outcome, isDraw, winner, reason };
   transitionTo(GAME_PHASES.RESULT);
+  lockCompletedBoard();
 
   if (isDraw) {
     gameState.match.objectives.completed = true;
@@ -1822,6 +1831,19 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
   // any optional motion.
   showResult(outcome === "win", isDraw);
   return true;
+}
+
+function lockCompletedBoard() {
+  boardEl.classList.add("result-locked");
+  boardEl.setAttribute("aria-disabled", "true");
+  [...boardEl.querySelectorAll("button")].forEach((cell) => {
+    cell.disabled = true;
+    cell.setAttribute("aria-disabled", "true");
+  });
+  ["ghostMoveButton", "quantumMoveButton"].forEach((id) => {
+    const control = document.getElementById(id);
+    if (control) control.disabled = true;
+  });
 }
 
 function checkWin() {
@@ -1975,7 +1997,10 @@ function showResult(won, isDraw = false) {
   const isWild = isWildMatch();
 
   updateMatchReturnControls();
+  lockCompletedBoard();
+  modal.setAttribute("aria-hidden", "false");
   modal.classList.add("active");
+  requestAnimationFrame(() => playAgainButton?.focus());
   modal.classList.remove("victory", "defeat", "draw", "reverse-result", "wild-result");
   modal.querySelectorAll(".competition-result-action").forEach((button) => button.remove());
   if (playAgainButton) playAgainButton.style.display = isCompetitionMatch ? "none" : "";
@@ -2064,6 +2089,7 @@ function showResult(won, isDraw = false) {
     nextBtn.style.display = "none";
     emitGameFeelEvent("defeat");
   }
+
 }
 
 function nextLevel() {
