@@ -280,6 +280,8 @@ function setThinkingState(isThinking) {
   gameState.ai.thinking = Boolean(isThinking);
   document.getElementById("thinkingCard")?.classList.toggle("is-thinking", isThinking);
   document.getElementById("turnPill")?.classList.toggle("is-thinking", isThinking);
+  const challengeThinking = document.getElementById("challengeThinking");
+  if (challengeThinking) challengeThinking.hidden = !isThinking;
 }
 
 let audioSettings = playerSave.settings.audio;

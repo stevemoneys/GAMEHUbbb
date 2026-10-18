@@ -146,8 +146,8 @@
     const session = current(); if (!session) return;
     const category = CATEGORIES[session.type];
     if (session.kind === "DAILY_CHALLENGE") {
-      $("learningIntro").textContent = `Daily Puzzle · ${session.date} — Daily Precision`;
-      $("learningContent").innerHTML = `<article class="glass-card learning-card learning-play daily-play"><div class="daily-play-status"><span class="daily-glyph" aria-hidden="true">◉</span><span><strong>Daily Precision</strong><small>One tactical decision · hints are off</small></span><b>${session.alreadyCompleted ? "Cleared" : "UTC"}</b></div><p><strong>You are ${session.position.player}.</strong> Find the one move that fulfills today’s tactical objective.</p><div class="learning-board" role="grid" aria-label="Daily ${escape(category.title)} tactical board">${session.position.board.map((mark, index) => `<button class="learning-cell" type="button" data-learning-cell="${index}" ${mark ? "disabled" : ""} aria-label="Cell ${index + 1}: ${mark || "empty"}">${mark || ""}</button>`).join("")}</div><p class="learning-feedback" id="learningFeedback">Attempt ${session.totalAttempts + 1} · ${category.title}</p><div class="learning-actions"><button class="control-button" type="button" onclick="learningExit()">Exit</button></div></article>`;
+      $("learningIntro").textContent = "One verified tactical decision. The same puzzle is available everywhere today.";
+      $("learningContent").innerHTML = `<article class="glass-card learning-card learning-play daily-play daily-arena"><header class="daily-arena-header"><span class="daily-glyph" aria-hidden="true">◉</span><div><p class="eyebrow">Daily Puzzle</p><h3>Daily Precision</h3><small>${session.date} · deterministic daily board</small></div><b>${session.alreadyCompleted ? "Cleared" : "Live today"}</b></header><section class="daily-objective" aria-label="Puzzle objective"><span aria-hidden="true">✦</span><div><strong>${escape(category.title)}</strong><small>You are ${session.position.player}. Find the single move that proves the tactic.</small></div></section><div class="learning-board daily-board" role="grid" aria-label="Daily ${escape(category.title)} tactical board">${session.position.board.map((mark, index) => `<button class="learning-cell" type="button" data-learning-cell="${index}" ${mark ? "disabled" : ""} aria-label="Cell ${index + 1}: ${mark || "empty"}">${mark || ""}</button>`).join("")}</div><p class="learning-feedback" id="learningFeedback">Attempt ${session.totalAttempts + 1} · Choose one square.</p><div class="learning-actions"><button class="control-button" type="button" onclick="learningExit()">Back to home</button></div></article>`;
       document.querySelectorAll("[data-learning-cell]").forEach((button) => button.addEventListener("click", () => answer(Number(button.dataset.learningCell), session.generation), { once: true }));
       return;
     }
@@ -184,7 +184,7 @@
     if (session.kind === "DAILY_CHALLENGE") {
       const firstClear = !session.alreadyCompleted;
       if (firstClear) global.TicTacToeReplay?.recordExternal({ matchType: "daily_challenge", mode: "ai", boardSize: 3, winTarget: 3, playerSymbol: session.position.player, result: "win", context: { daily: { date: session.date, seed: session.seed, positionId: session.position.id, type: session.type, twist: session.twist } }, snapshots: [{ turn: 0, board: boardBeforeMove, size: 3, target: 3, lastMove: null, nextPlayer: session.position.player, marker: { type: "objective", label: "DAILY OBJECTIVE" } }, { turn: 1, board: [...session.position.board], size: 3, target: 3, lastMove: move, mark: session.position.player, nextPlayer: session.position.opponent, marker: { type: "result", label: "DAILY PUZZLE CLEARED" } }] });
-      persistCompletion(session);
+      persistCompletion(session, firstClear);
       session.alreadyCompleted = true;
       feedback.textContent = firstClear ? "Daily Puzzle cleared — your streak is updated." : "Solved again — today’s streak is already safely recorded.";
       feedback.insertAdjacentHTML("afterend", `<div class="learning-actions daily-result-actions"><button class="primary-control" type="button" onclick="learningShareDaily()">Share result</button><button class="control-button" type="button" onclick="learningRetry()">Replay</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
@@ -197,11 +197,11 @@
       feedback.insertAdjacentHTML("afterend", `<div class="learning-actions"><button class="primary-control" type="button" onclick="learningNextChallenge()">Next challenge</button><button class="control-button" type="button" onclick="learningRetry()">Retry</button><button class="control-button" type="button" onclick="learningExit()">Back</button></div>`);
     }
   }
-  function persistCompletion(session) {
+  function persistCompletion(session, shouldAnnounce = true) {
     if (session.saved) return; session.saved = true;
     if (session.kind === "DAILY_CHALLENGE") {
       updateFeature((features) => recordDailyCompletion(features, session));
-      global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "daily", won: true } }));
+      if (shouldAnnounce) global.dispatchEvent(new CustomEvent("tictactoe:feature-complete", { detail: { feature: "daily", won: true } }));
       return;
     }
     updateFeature((features) => {
