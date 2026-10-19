@@ -81,7 +81,9 @@
     const mode = source.mode ?? base.mode;
     if (!["ai", "two"].includes(mode)) return { valid: false, reason: "Unknown match mode." };
     const level = Number(source.level ?? base.level);
-    if (!Number.isInteger(level) || level < 1 || level > 20) return { valid: false, reason: "Level must be between 1 and 20." };
+    // The AI Challenge curriculum has fifty authored levels. Configuration
+    // validation must agree with the level selector and progression system.
+    if (!Number.isInteger(level) || level < 1 || level > 50) return { valid: false, reason: "Level must be between 1 and 50." };
     const playerSymbol = symbol(source.playerSymbol, base.playerSymbol);
     const aiSymbol = mode === "ai" ? other(playerSymbol) : symbol(source.aiSymbol, other(playerSymbol));
     const personality = source.personality ?? base.personality;

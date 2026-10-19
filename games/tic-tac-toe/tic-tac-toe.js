@@ -1449,10 +1449,35 @@ function aiMove() {
   if (action?.mode === "ghost") { temporal.activate(gameState.aiSymbol); const result = temporal.select(action.index, gameState.board, getLegalMoves(gameState.board)); if (result.valid) completeTemporalAction(result); return; }
   if (action?.mode === "quantum") { temporal.activate(gameState.aiSymbol); let result = temporal.select(action.cells[0], gameState.board, getLegalMoves(gameState.board)); result = temporal.select(action.cells[1], gameState.board, getLegalMoves(gameState.board)) || result; if (result.valid && result.complete) { completeTemporalAction(result); return; } }
 
-  const move = getAIMoveByLevel();
-  if (move === null || move === undefined) return;
+  const legal = getLegalMoves(gameState.board);
+  if (!legal.length) { draw(); return; }
 
+  let move = null;
+  try {
+    move = getAIMoveByLevel();
+  } catch (error) {
+    console.error("GameHub AI calculation failed; using the deterministic safety evaluator.", error);
+  }
+  // A failed optional size-aware evaluator must not leave the match in the
+  // thinking phase. This is a deterministic tactical fallback, never a
+  // random move: win first, block second, then choose the most central cell.
+  if (!Number.isInteger(move) || !legal.includes(move)) move = getSafeAIFallbackMove(legal);
+  if (!Number.isInteger(move)) { draw(); return; }
   playMoveFromAI(move);
+}
+
+function getSafeAIFallbackMove(legal = getLegalMoves(gameState.board)) {
+  const win = getWinningMoves(gameState.board, gameState.aiSymbol).find((move) => legal.includes(move));
+  if (Number.isInteger(win)) return win;
+  const block = getWinningMoves(gameState.board, gameState.playerSymbol).find((move) => legal.includes(move));
+  if (Number.isInteger(block)) return block;
+  const { size } = getBoardRules();
+  const center = (size - 1) / 2;
+  return [...legal].sort((left, right) => {
+    const leftDistance = Math.abs((left % size) - center) + Math.abs(Math.floor(left / size) - center);
+    const rightDistance = Math.abs((right % size) - center) + Math.abs(Math.floor(right / size) - center);
+    return leftDistance - rightDistance || left - right;
+  })[0] ?? null;
 }
 
 function wildLineWinner(board) { return getWinner(board); }
@@ -1497,7 +1522,7 @@ function playWildMoveFromAI(index, mark) {
 function playMoveFromAI(index) {
   if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.inputLocked) return;
   if (gameState.board[index]) {
-    const fallback = gameState.board.findIndex((v) => v === "");
+    const fallback = getLegalMoves(gameState.board)[0];
     if (fallback === -1) return;
     makeMoveFromSymbol(fallback, gameState.aiSymbol);
     return;
@@ -1823,12 +1848,19 @@ function finishMatch({ outcome, isDraw = false, winner = null, reason = null }) 
     if (!isWildMatch()) updateScore(winner);
   }
 
-  finalizeMatch(outcome);
-  window.dispatchEvent(new CustomEvent("tictactoe:match-complete", { detail: { outcome, isDraw, winner, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], durationMs: Date.now() - (gameState.match.context?.startedAt || Date.now()), generation: gameState.match.generation } }));
-  // The previous deferred-only presentation could be cancelled by its own
-  // lifecycle invalidation, leaving a finished board without a result. The
-  // result is state, not an animation: render it immediately and let CSS own
-  // any optional motion.
+  // A completed board must never wait on saving, analytics, or optional
+  // listeners before the player receives the result actions. Those systems
+  // are isolated so an unexpected extension error cannot leave play stuck.
+  try {
+    finalizeMatch(outcome);
+  } catch (error) {
+    console.error("GameHub match finalization failed after a completed board.", error);
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("tictactoe:match-complete", { detail: { outcome, isDraw, winner, config: gameState.match.config, context: { ...gameState.match.context }, moves: [...gameState.match.moves], durationMs: Date.now() - (gameState.match.context?.startedAt || Date.now()), generation: gameState.match.generation } }));
+  } catch (error) {
+    console.error("GameHub match-complete listener failed after a completed board.", error);
+  }
   showResult(outcome === "win", isDraw);
   return true;
 }
@@ -2098,8 +2130,15 @@ function nextLevel() {
   document.getElementById("resultModal").classList.remove("active");
   clearSavedMatch();
   clearPendingAIWork();
+  const previousLevel = gameState.selectedLevel;
   applyLevelDefinition(gameState.selectedLevel + 1);
-  snapshotMatchConfig({ level: gameState.selectedLevel });
+  if (!snapshotMatchConfig({ level: gameState.selectedLevel })) {
+    // Do not silently start a board with an old configuration if validation
+    // ever fails. Restore the finished level and leave its result actionable.
+    applyLevelDefinition(previousLevel);
+    showResult(true, false);
+    return;
+  }
   savePlayerData();
   resetBoard();
   startTurnTimer();
