@@ -1520,10 +1520,12 @@ function playWildMoveFromAI(index, mark) {
 }
 
 function playMoveFromAI(index) {
-  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.inputLocked) return;
+  // AI_THINKING deliberately locks player input. The AI itself must still be
+  // permitted to commit its one validated move during that phase.
+  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING) return;
   if (gameState.board[index]) {
     const fallback = getLegalMoves(gameState.board)[0];
-    if (fallback === -1) return;
+    if (!Number.isInteger(fallback)) { draw(); return; }
     makeMoveFromSymbol(fallback, gameState.aiSymbol);
     return;
   }
@@ -1533,7 +1535,9 @@ function playMoveFromAI(index) {
 
 function makeMoveFromSymbol(index, symbol) {
   const temporal = temporalController();
-  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || gameState.inputLocked || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || temporal?.reserved(index) || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
+  // `inputLocked` is the player-input guard. Requiring it to be false here
+  // blocked every scheduled AI move because AI turns run in AI_THINKING.
+  if (!gameState.active || gameState.phase !== GAME_PHASES.AI_THINKING || !Number.isInteger(index) || symbol !== gameState.currentPlayer || gameState.board[index] || temporal?.reserved(index) || gameState.match.config?.rules?.blockedCells?.includes(index)) return;
 
   gameState.board[index] = symbol;
   gameState.match.moves.push(index);
